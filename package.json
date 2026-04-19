@@ -1,0 +1,13 @@
+{
+  "name": "ximi4ka-shop",
+  "version": "0.0.0",
+  "private": true,
+  "workspaces": [
+    "web",
+    "api",
+    "shared"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}
