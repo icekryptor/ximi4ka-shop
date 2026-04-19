@@ -5,6 +5,6 @@ export type {
   OrderStatus,
   PaymentProvider,
   DeliveryAddress,
-} from './types/order'
+} from './types/order.js'
 
-export type { Product, ProductImage, StockStatus } from './types/product'
+export type { Product, ProductImage, StockStatus } from './types/product.js'
