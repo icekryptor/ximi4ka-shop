@@ -11,10 +11,12 @@
     "typecheck": "tsc --noEmit",
     "migration:generate": "tsx ./node_modules/typeorm/cli.js migration:generate -d src/config/dataSource.ts",
     "migration:run": "tsx ./node_modules/typeorm/cli.js migration:run -d src/config/dataSource.ts",
-    "migration:revert": "tsx ./node_modules/typeorm/cli.js migration:revert -d src/config/dataSource.ts"
+    "migration:revert": "tsx ./node_modules/typeorm/cli.js migration:revert -d src/config/dataSource.ts",
+    "seed": "tsx src/seeds/seed.ts"
   },
   "dependencies": {
     "@ximi4ka-shop/shared": "^0.0.0",
+    "argon2": "^0.44.0",
     "dotenv": "^16.6.1",
     "express": "^4.21.1",
     "pg": "^8.20.0",
