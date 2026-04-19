@@ -4,6 +4,7 @@ import type { Product } from '@ximi4ka-shop/shared'
 import { ApiError, getPublishedProduct, listPublishedProducts } from '@/lib/api'
 import { formatRub, stockLabel } from '@/lib/stockLabel'
 import { AddToCartButton } from '@/components/AddToCartButton'
+import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 
 export const revalidate = 60
 
@@ -97,14 +98,11 @@ export default async function ProductPage({ params }: Props) {
 
           <AddToCartButton product={product} />
 
-          {/* Long description blocks — TODO(task-2.5): real block renderer */}
           {Array.isArray(product.longDescriptionBlocks) &&
             product.longDescriptionBlocks.length > 0 && (
               <section className="mt-12 pt-8 border-t border-gray-200">
                 <h2 className="text-xl font-semibold mb-4">Описание</h2>
-                <pre className="text-xs text-gray-500 whitespace-pre-wrap">
-                  {JSON.stringify(product.longDescriptionBlocks, null, 2)}
-                </pre>
+                <BlockRenderer blocks={product.longDescriptionBlocks} />
               </section>
             )}
         </div>

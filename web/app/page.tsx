@@ -1,6 +1,7 @@
 import { getPage, listPublishedProducts } from '@/lib/api'
 import type { Page, Product } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
+import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 
 export const revalidate = 60
 
@@ -13,14 +14,6 @@ async function fetchHome(): Promise<{ page: Page | null; products: Product[] }> 
     page: pageResult.status === 'fulfilled' ? pageResult.value : null,
     products: productsResult.status === 'fulfilled' ? productsResult.value.data : [],
   }
-}
-
-function BlockPlaceholder({ block }: { block: unknown }) {
-  return (
-    <pre className="text-xs bg-gray-50 border border-gray-200 rounded-md p-3 overflow-x-auto">
-      {JSON.stringify(block, null, 2)}
-    </pre>
-  )
 }
 
 export default async function HomePage() {
@@ -38,10 +31,8 @@ export default async function HomePage() {
       </section>
 
       {blocks.length > 0 && (
-        <section className="mb-8 space-y-3">
-          {blocks.map((block, index) => (
-            <BlockPlaceholder key={index} block={block} />
-          ))}
+        <section className="mb-8">
+          <BlockRenderer blocks={blocks} />
         </section>
       )}
 
