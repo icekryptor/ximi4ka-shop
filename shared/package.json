@@ -8,7 +8,9 @@
   "exports": {
     ".": "./src/index.ts",
     "./types/order": "./src/types/order.ts",
-    "./types/product": "./src/types/product.ts"
+    "./types/product": "./src/types/product.ts",
+    "./types/category": "./src/types/category.ts",
+    "./types/page": "./src/types/page.ts"
   },
   "scripts": {
     "test": "tsc --noEmit && vitest run",
