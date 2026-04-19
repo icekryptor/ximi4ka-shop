@@ -7,7 +7,17 @@
     "api",
     "shared"
   ],
+  "scripts": {
+    "lint": "npm run lint -ws --if-present",
+    "test": "npm run test -ws --if-present",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "prettier": "^3.8.3"
   }
 }
