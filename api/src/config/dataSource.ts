@@ -1,6 +1,9 @@
 import 'dotenv/config'
 import 'reflect-metadata'
 import { DataSource } from 'typeorm'
+import { Product } from '../entities/Product.js'
+import { ProductImage } from '../entities/ProductImage.js'
+import { ProductCategory } from '../entities/ProductCategory.js'
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
@@ -13,7 +16,6 @@ export const AppDataSource = new DataSource({
   // ALWAYS false — schema changes go through migrations.
   synchronize: false,
   logging: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-  // Entity dir is currently empty; populated in Task 1.3.
-  entities: ['src/entities/*.ts'],
+  entities: [Product, ProductImage, ProductCategory],
   migrations: ['src/migrations/*.ts'],
 })
