@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { CartDrawer } from './CartDrawer'
+import { OPEN_CART_EVENT } from './CartButton'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
 
 beforeEach(() => {
@@ -17,25 +18,21 @@ const seed: CartItem[] = [
 ]
 
 function openDrawer() {
-  fireEvent.click(screen.getByRole('button', { name: 'Открыть корзину' }))
+  window.dispatchEvent(new CustomEvent(OPEN_CART_EVENT))
 }
 
 describe('CartDrawer', () => {
-  it('renders trigger without badge when cart empty', () => {
+  it('does not render a trigger button (extracted to CartButton)', () => {
     render(<CartDrawer />)
-    expect(screen.getByRole('button', { name: 'Открыть корзину' })).toBeInTheDocument()
-    expect(screen.queryByTestId('cart-badge')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Открыть корзину' })).not.toBeInTheDocument()
   })
 
-  it('shows item count badge summing quantities', () => {
-    act(() => {
-      saveCart(seed)
-    })
+  it('is closed by default', () => {
     render(<CartDrawer />)
-    expect(screen.getByTestId('cart-badge')).toHaveTextContent('3')
+    expect(screen.queryByRole('dialog', { name: 'Корзина' })).not.toBeInTheDocument()
   })
 
-  it('opens drawer and lists items on click', () => {
+  it('opens drawer on open-cart custom event', () => {
     act(() => {
       saveCart(seed)
     })

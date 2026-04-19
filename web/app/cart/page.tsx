@@ -12,18 +12,18 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12">
+      <div className="max-w-3xl mx-auto w-full px-6 py-12">
         <h1 className="text-3xl font-bold mb-4">Корзина</h1>
         <p className="text-neutral-500 mb-6">Корзина пуста</p>
         <Link href="/" className="text-blue-600 hover:underline">
           Вернуться на главную
         </Link>
-      </main>
+      </div>
     )
   }
 
   return (
-    <main className="flex-1 max-w-3xl mx-auto w-full px-6 py-12">
+    <div className="max-w-3xl mx-auto w-full px-6 py-12">
       <h1 className="text-3xl font-bold mb-8">Корзина</h1>
 
       <ul className="space-y-4 mb-8">
@@ -101,6 +101,6 @@ export default function CartPage() {
           Очистить корзину
         </button>
       </div>
-    </main>
+    </div>
   )
 }

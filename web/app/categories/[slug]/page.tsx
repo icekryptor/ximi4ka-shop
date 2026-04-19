@@ -51,8 +51,8 @@ export default async function CategoryDetailPage({
   const { category, products } = await fetchCategoryAndProducts(slug)
 
   return (
-    <main className="min-h-screen p-8 max-w-6xl mx-auto">
-      <nav aria-label="breadcrumbs" className="text-sm text-gray-500 mb-4">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <nav aria-label="breadcrumbs" className="text-sm text-brand-text-secondary mb-4">
         <Link href="/categories" className="hover:underline">
           Категории
         </Link>
@@ -60,10 +60,10 @@ export default async function CategoryDetailPage({
         <span>{category.name}</span>
       </nav>
 
-      <h1 className="text-4xl font-bold mb-8">{category.name}</h1>
+      <h1 className="text-4xl font-bold mb-8 text-brand-text">{category.name}</h1>
 
       {products.length === 0 ? (
-        <p className="text-gray-500">В этой категории пока нет товаров</p>
+        <p className="text-brand-text-secondary">В этой категории пока нет товаров</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {products.map((product) => (
@@ -71,6 +71,6 @@ export default async function CategoryDetailPage({
           ))}
         </div>
       )}
-    </main>
+    </div>
   )
 }

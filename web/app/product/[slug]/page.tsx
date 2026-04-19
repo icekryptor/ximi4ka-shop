@@ -34,8 +34,8 @@ export default async function ProductPage({ params }: Props) {
   }
 
   return (
-    <main className="min-h-screen p-8 max-w-6xl mx-auto">
-      <nav aria-label="breadcrumbs" className="text-sm mb-6 text-gray-500">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <nav aria-label="breadcrumbs" className="text-sm mb-6 text-brand-text-secondary">
         <Link href="/" className="hover:text-black">
           Главная
         </Link>
@@ -107,6 +107,6 @@ export default async function ProductPage({ params }: Props) {
             )}
         </div>
       </div>
-    </main>
+    </div>
   )
 }

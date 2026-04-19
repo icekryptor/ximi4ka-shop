@@ -2,21 +2,19 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #1c1528;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-brand: #836efe;
+  --color-brand-dark: #6703ff;
+  --color-brand-text: #1c1528;
+  --color-brand-text-secondary: #524667;
+  --color-brand-border: #e8e5ef;
+  --color-brand-bg-soft: #eeebf3;
+  --font-sans: Arial, Helvetica, sans-serif;
 }
 
 body {

@@ -1,21 +1,13 @@
 import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
+import { Header } from '@/components/Header'
+import { Footer } from '@/components/Footer'
 import { CartDrawer } from '@/components/CartDrawer'
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-})
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-})
-
 export const metadata: Metadata = {
-  title: 'Магазин Ximi4ka',
-  description: 'Наборы химических экспериментов Ximi4ka',
+  title: 'Ximi4ka — наборы для химических экспериментов',
+  description:
+    'Химические наборы для детей и подростков. Научные эксперименты дома.',
 }
 
 export default function RootLayout({
@@ -24,9 +16,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ru" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
-        {children}
+    <html lang="ru" className="h-full antialiased">
+      <body className="min-h-screen flex flex-col text-brand-text bg-background">
+        <Header />
+        <main className="flex-1">{children}</main>
+        <Footer />
         <CartDrawer />
       </body>
     </html>

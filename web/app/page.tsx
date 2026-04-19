@@ -22,11 +22,11 @@ export default async function HomePage() {
   const blocks = page?.blocks ?? []
 
   return (
-    <main className="min-h-screen p-8 max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
       <section className="mb-8">
-        <h1 className="text-4xl font-bold">{title}</h1>
+        <h1 className="text-4xl font-bold text-brand-text">{title}</h1>
         {page === null && products.length === 0 && (
-          <p className="mt-4 text-gray-500">Магазин Ximi4ka — контент загружается</p>
+          <p className="mt-4 text-brand-text-secondary">Магазин Ximi4ka — контент загружается</p>
         )}
       </section>
 
@@ -38,7 +38,7 @@ export default async function HomePage() {
 
       {products.length > 0 && (
         <section>
-          <h2 className="text-2xl font-semibold mb-4">Каталог</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-brand-text">Каталог</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
@@ -46,6 +46,6 @@ export default async function HomePage() {
           </div>
         </section>
       )}
-    </main>
+    </div>
   )
 }
