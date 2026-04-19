@@ -5,6 +5,7 @@ import {
   getPublishedProduct,
   listCategories,
   getCategory,
+  listProductsByCategory,
   getPage,
 } from './api'
 
@@ -211,6 +212,65 @@ describe('api client', () => {
       expect(result).toEqual(category)
       const [url] = fetchMock.mock.calls[0]
       expect(url).toBe('http://localhost:3001/api/public/categories/kits')
+    })
+  })
+
+  describe('listProductsByCategory', () => {
+    it('calls /api/public/categories/:slug/products with no query when no opts', async () => {
+      const mockResponse = {
+        data: [],
+        pagination: { limit: 20, offset: 0, total: 0 },
+      }
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, mockResponse))
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await listProductsByCategory('kits')
+
+      expect(result).toEqual(mockResponse)
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/categories/kits/products')
+    })
+
+    it('serializes limit and offset as a query string', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse(200, { data: [], pagination: { limit: 10, offset: 5, total: 0 } }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      await listProductsByCategory('kits', { limit: 10, offset: 5 })
+
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/categories/kits/products?limit=10&offset=5')
+    })
+
+    it('URL-encodes slugs with special characters', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse(200, { data: [], pagination: { limit: 20, offset: 0, total: 0 } }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      await listProductsByCategory('slug with spaces')
+
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/categories/slug%20with%20spaces/products')
+    })
+
+    it('throws ApiError on 404', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          jsonResponse(
+            404,
+            { error: { code: 'category_not_found', message: 'Not found' } },
+            false,
+          ),
+        ),
+      )
+
+      await expect(listProductsByCategory('nope')).rejects.toMatchObject({
+        status: 404,
+        code: 'category_not_found',
+      })
     })
   })
 

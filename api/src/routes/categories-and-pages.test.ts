@@ -83,6 +83,66 @@ describe('Category routes', () => {
     })
   })
 
+  describe('GET /api/public/categories/:slug/products', () => {
+    it('returns products linked to the category', async () => {
+      const cat = await request(app)
+        .post('/api/admin/categories')
+        .send({ slug: 'kits', name: 'Kits' })
+      const p1 = await request(app)
+        .post('/api/admin/products')
+        .send({ slug: 'kit-one', name: 'Kit One', priceRub: 100 })
+      const p2 = await request(app)
+        .post('/api/admin/products')
+        .send({ slug: 'kit-two', name: 'Kit Two', priceRub: 200 })
+      await request(app).post(`/api/admin/products/${p1.body.data.id}/publish`)
+      await request(app).post(`/api/admin/products/${p2.body.data.id}/publish`)
+      await AppDataSource.query(
+        'INSERT INTO product_category_links (category_id, product_id) VALUES ($1, $2), ($1, $3)',
+        [cat.body.data.id, p1.body.data.id, p2.body.data.id],
+      )
+      const res = await request(app).get('/api/public/categories/kits/products')
+      expect(res.status).toBe(200)
+      expect(res.body.data).toHaveLength(2)
+      const slugs = res.body.data.map((p: { slug: string }) => p.slug).sort()
+      expect(slugs).toEqual(['kit-one', 'kit-two'])
+      expect(res.body.pagination).toMatchObject({ limit: 20, offset: 0, total: 2 })
+    })
+    it('returns empty data when category has no products', async () => {
+      await request(app)
+        .post('/api/admin/categories')
+        .send({ slug: 'empty', name: 'Empty' })
+      const res = await request(app).get('/api/public/categories/empty/products')
+      expect(res.status).toBe(200)
+      expect(res.body.data).toEqual([])
+      expect(res.body.pagination).toMatchObject({ limit: 20, offset: 0, total: 0 })
+    })
+    it('returns 404 when category does not exist', async () => {
+      const res = await request(app).get('/api/public/categories/missing/products')
+      expect(res.status).toBe(404)
+      expect(res.body.error.code).toBe('category_not_found')
+    })
+    it('excludes unpublished products', async () => {
+      const cat = await request(app)
+        .post('/api/admin/categories')
+        .send({ slug: 'mix', name: 'Mix' })
+      const pub = await request(app)
+        .post('/api/admin/products')
+        .send({ slug: 'published', name: 'Pub', priceRub: 100 })
+      const unpub = await request(app)
+        .post('/api/admin/products')
+        .send({ slug: 'unpublished', name: 'Unpub', priceRub: 100 })
+      await request(app).post(`/api/admin/products/${pub.body.data.id}/publish`)
+      await AppDataSource.query(
+        'INSERT INTO product_category_links (category_id, product_id) VALUES ($1, $2), ($1, $3)',
+        [cat.body.data.id, pub.body.data.id, unpub.body.data.id],
+      )
+      const res = await request(app).get('/api/public/categories/mix/products')
+      expect(res.status).toBe(200)
+      expect(res.body.data).toHaveLength(1)
+      expect(res.body.data[0].slug).toBe('published')
+    })
+  })
+
   describe('GET /api/admin/categories/:id', () => {
     it('returns by id', async () => {
       const {

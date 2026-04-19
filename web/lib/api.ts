@@ -93,6 +93,15 @@ export async function getCategory(slug: string): Promise<ProductCategory> {
   return body.data
 }
 
+export async function listProductsByCategory(
+  categorySlug: string,
+  opts: { limit?: number; offset?: number } = {},
+): Promise<Paginated<Product>> {
+  return request<Paginated<Product>>(
+    `/api/public/categories/${encodeURIComponent(categorySlug)}/products${buildListQuery(opts)}`,
+  )
+}
+
 // ---------- Pages (public) ----------
 
 export async function getPage(slug: string): Promise<Page> {
