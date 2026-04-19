@@ -10,5 +10,5 @@
     // TODO(task-1.2): add paths for @ximi4ka-shop/shared when first consumed
   },
   "include": ["src/**/*"],
-  "exclude": ["dist", "node_modules"]
+  "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts", "dist", "node_modules"]
 }
