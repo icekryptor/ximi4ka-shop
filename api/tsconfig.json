@@ -6,8 +6,13 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "noEmit": false,
-    "isolatedModules": true
-    // TODO(task-1.2): add paths for @ximi4ka-shop/shared when first consumed
+    "isolatedModules": true,
+    // TypeORM 0.3.x uses legacy-proposal decorators. Both flags are required,
+    // and `reflect-metadata` must be imported at the top of the entry point.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+    // Note: no `paths` needed — `@ximi4ka-shop/shared` is resolved via npm
+    // workspace linking (declared as a dependency in package.json).
   },
   "include": ["src/**/*"],
   "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts", "dist", "node_modules"]
