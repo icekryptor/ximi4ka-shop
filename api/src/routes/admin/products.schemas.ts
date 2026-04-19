@@ -1,0 +1,30 @@
+import { z } from 'zod'
+
+export const CreateProductSchema = z.object({
+  slug: z
+    .string()
+    .min(1)
+    .max(255)
+    .regex(/^[a-z0-9-]+$/, 'slug must be lowercase kebab-case'),
+  sku: z.string().max(64).nullable().optional(),
+  name: z.string().min(1).max(500),
+  shortDescription: z.string().max(2000).nullable().optional(),
+  longDescriptionBlocks: z.array(z.unknown()).default([]),
+  priceRub: z.number().int().nonnegative(),
+  compareAtPriceRub: z.number().int().nonnegative().nullable().optional(),
+  stockStatus: z.enum(['in_stock', 'out_of_stock', 'preorder']).default('in_stock'),
+  sortOrder: z.number().int().default(0),
+  metaTitle: z.string().max(255).nullable().optional(),
+  metaDescription: z.string().max(2000).nullable().optional(),
+  ogImage: z.string().max(500).nullable().optional(),
+  canonicalUrl: z.string().max(500).nullable().optional(),
+  noindex: z.boolean().default(false),
+  translations: z.record(z.string(), z.unknown()).default({}),
+})
+
+export const UpdateProductSchema = CreateProductSchema.partial()
+
+export const ListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+})

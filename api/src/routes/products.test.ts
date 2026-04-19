@@ -1,0 +1,195 @@
+import 'reflect-metadata'
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import request from 'supertest'
+import { AppDataSource } from '../config/dataSource.js'
+import { createApp } from '../app.js'
+
+describe('Product routes', () => {
+  let app: ReturnType<typeof createApp>
+
+  beforeAll(async () => {
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize()
+    app = createApp()
+  })
+  afterAll(async () => {
+    if (AppDataSource.isInitialized) await AppDataSource.destroy()
+  })
+  beforeEach(async () => {
+    await AppDataSource.query(
+      'TRUNCATE products, product_images, product_category_links RESTART IDENTITY CASCADE',
+    )
+  })
+
+  describe('POST /api/admin/products', () => {
+    it('creates a product with valid input', async () => {
+      const res = await request(app).post('/api/admin/products').send({
+        slug: 'test-kit',
+        name: 'Test Kit',
+        priceRub: 1500,
+      })
+      expect(res.status).toBe(201)
+      expect(res.body.data).toMatchObject({
+        slug: 'test-kit',
+        name: 'Test Kit',
+        priceRub: 1500,
+        isPublished: false,
+      })
+      expect(res.body.data.id).toBeTruthy()
+    })
+    it('rejects invalid slug (400 validation_error)', async () => {
+      const res = await request(app).post('/api/admin/products').send({
+        slug: 'Invalid Slug!',
+        name: 'X',
+        priceRub: 100,
+      })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('validation_error')
+    })
+    it('rejects duplicate slug (409 slug_conflict)', async () => {
+      await request(app)
+        .post('/api/admin/products')
+        .send({ slug: 'dup', name: 'A', priceRub: 100 })
+      const res = await request(app)
+        .post('/api/admin/products')
+        .send({ slug: 'dup', name: 'B', priceRub: 200 })
+      expect(res.status).toBe(409)
+      expect(res.body.error.code).toBe('slug_conflict')
+    })
+  })
+
+  describe('GET /api/public/products', () => {
+    it('returns only published products', async () => {
+      await request(app)
+        .post('/api/admin/products')
+        .send({ slug: 'pub', name: 'P', priceRub: 100 })
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app)
+        .post('/api/admin/products')
+        .send({ slug: 'hidden', name: 'H', priceRub: 200 })
+      await request(app).post(`/api/admin/products/${id}/publish`).send()
+      const res = await request(app).get('/api/public/products')
+      expect(res.status).toBe(200)
+      expect(res.body.data).toHaveLength(1)
+      expect(res.body.data[0].slug).toBe('hidden')
+    })
+    it('paginates with limit and offset', async () => {
+      for (let i = 0; i < 25; i++) {
+        const {
+          body: {
+            data: { id },
+          },
+        } = await request(app).post('/api/admin/products').send({
+          slug: `p-${i}`,
+          name: `P${i}`,
+          priceRub: 100,
+        })
+        await request(app).post(`/api/admin/products/${id}/publish`).send()
+      }
+      const res = await request(app).get('/api/public/products?limit=10&offset=5')
+      expect(res.status).toBe(200)
+      expect(res.body.data).toHaveLength(10)
+      expect(res.body.pagination).toEqual({ limit: 10, offset: 5, total: 25 })
+    })
+  })
+
+  describe('GET /api/public/products/:slug', () => {
+    it('returns a published product', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app).post('/api/admin/products').send({
+        slug: 'visible',
+        name: 'V',
+        priceRub: 100,
+      })
+      await request(app).post(`/api/admin/products/${id}/publish`).send()
+      const res = await request(app).get('/api/public/products/visible')
+      expect(res.status).toBe(200)
+      expect(res.body.data.slug).toBe('visible')
+    })
+    it('returns 404 for unpublished', async () => {
+      await request(app)
+        .post('/api/admin/products')
+        .send({ slug: 'private', name: 'X', priceRub: 100 })
+      const res = await request(app).get('/api/public/products/private')
+      expect(res.status).toBe(404)
+      expect(res.body.error.code).toBe('product_not_found')
+    })
+    it('returns 404 for missing', async () => {
+      const res = await request(app).get('/api/public/products/nope')
+      expect(res.status).toBe(404)
+    })
+  })
+
+  describe('PATCH /api/admin/products/:id', () => {
+    it('updates fields', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app).post('/api/admin/products').send({
+        slug: 'upd',
+        name: 'Orig',
+        priceRub: 100,
+      })
+      const res = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .send({ name: 'Updated', priceRub: 200 })
+      expect(res.status).toBe(200)
+      expect(res.body.data.name).toBe('Updated')
+      expect(res.body.data.priceRub).toBe(200)
+      expect(res.body.data.slug).toBe('upd')
+    })
+    it('returns 404 for missing id', async () => {
+      const res = await request(app)
+        .patch('/api/admin/products/00000000-0000-0000-0000-000000000000')
+        .send({ name: 'X' })
+      expect(res.status).toBe(404)
+    })
+  })
+
+  describe('publish / unpublish', () => {
+    it('publishes and unpublishes', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app).post('/api/admin/products').send({
+        slug: 'toggle',
+        name: 'T',
+        priceRub: 100,
+      })
+      const p1 = await request(app).post(`/api/admin/products/${id}/publish`)
+      expect(p1.status).toBe(200)
+      expect(p1.body.data.isPublished).toBe(true)
+      const p2 = await request(app).post(`/api/admin/products/${id}/unpublish`)
+      expect(p2.status).toBe(200)
+      expect(p2.body.data.isPublished).toBe(false)
+    })
+  })
+
+  describe('DELETE /api/admin/products/:id', () => {
+    it('soft-deletes and removes from both public and admin lists', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app).post('/api/admin/products').send({
+        slug: 'gone',
+        name: 'G',
+        priceRub: 100,
+      })
+      await request(app).post(`/api/admin/products/${id}/publish`)
+      const del = await request(app).delete(`/api/admin/products/${id}`)
+      expect(del.status).toBe(204)
+      const pub = await request(app).get('/api/public/products')
+      expect(pub.body.data).toHaveLength(0)
+      const adm = await request(app).get('/api/admin/products')
+      expect(adm.body.data).toHaveLength(0)
+    })
+  })
+})
