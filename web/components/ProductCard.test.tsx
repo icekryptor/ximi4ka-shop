@@ -13,6 +13,7 @@ const fixture: Product = {
   sku: null,
   name: 'Test Kit',
   shortDescription: null,
+  longDescriptionBlocks: [],
   priceRub: 2490,
   compareAtPriceRub: 2990,
   stockStatus: 'in_stock',

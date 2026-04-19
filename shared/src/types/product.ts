@@ -14,6 +14,7 @@ export interface Product {
   sku: string | null
   name: string
   shortDescription: string | null
+  longDescriptionBlocks: unknown[]
   priceRub: number
   compareAtPriceRub: number | null
   stockStatus: StockStatus

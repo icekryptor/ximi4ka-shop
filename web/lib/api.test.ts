@@ -89,6 +89,7 @@ describe('api client', () => {
         sku: null,
         name: 'Kit',
         shortDescription: null,
+        longDescriptionBlocks: [],
         priceRub: 100,
         compareAtPriceRub: null,
         stockStatus: 'in_stock',
