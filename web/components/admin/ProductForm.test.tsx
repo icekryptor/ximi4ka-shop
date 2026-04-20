@@ -15,7 +15,7 @@ describe('ProductForm', () => {
     expect(screen.getByText('Основные')).toBeInTheDocument()
     expect(screen.getByText('Медиа')).toBeInTheDocument()
     expect(screen.getByText('SEO')).toBeInTheDocument()
-    expect(screen.getByText(/редактор блоков/i)).toBeInTheDocument()
+    expect(screen.getByText('Описание (блоки)')).toBeInTheDocument()
   })
 
   it('shows slug error for invalid characters', async () => {

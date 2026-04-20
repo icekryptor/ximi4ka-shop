@@ -6,6 +6,7 @@ import {
   ImageUploadField,
   MultiImageUploadField,
 } from './ImageUploadField'
+import { BlockEditor } from './block-editor/BlockEditor'
 import { ApiError, type AdminProductInput } from '@/lib/adminApi'
 
 interface Props {
@@ -48,8 +49,8 @@ export function ProductForm({
   const [shortDescription, setShortDescription] = useState(
     initialValue?.shortDescription ?? '',
   )
-  const [longBlocksJson, setLongBlocksJson] = useState(() =>
-    JSON.stringify(initialValue?.longDescriptionBlocks ?? [], null, 2),
+  const [longDescriptionBlocks, setLongDescriptionBlocks] = useState<unknown[]>(
+    () => initialValue?.longDescriptionBlocks ?? [],
   )
 
   // SEO
@@ -96,18 +97,6 @@ export function ProductForm({
     }
     if (!Number.isFinite(priceRub) || priceRub < 0) {
       setFormError('Цена должна быть неотрицательным числом.')
-      return
-    }
-
-    let longDescriptionBlocks: unknown[] = []
-    try {
-      const parsed = JSON.parse(longBlocksJson || '[]')
-      if (!Array.isArray(parsed)) throw new Error('not an array')
-      longDescriptionBlocks = parsed
-    } catch {
-      setFormError(
-        'Блоки описания должны быть JSON-массивом (редактор появится в Task 3.5).',
-      )
       return
     }
 
@@ -251,16 +240,10 @@ export function ProductForm({
         />
       </Section>
 
-      <Section
-        title="Описание (блоки)"
-        note="Редактор блоков — Task 3.5. Пока блоки отображаются как JSON, только чтение в v1."
-      >
-        <textarea
-          value={longBlocksJson}
-          onChange={(e) => setLongBlocksJson(e.target.value)}
-          rows={8}
-          className="input font-mono text-xs"
-          spellCheck={false}
+      <Section title="Описание (блоки)">
+        <BlockEditor
+          value={longDescriptionBlocks}
+          onChange={(blocks) => setLongDescriptionBlocks(blocks)}
         />
       </Section>
 
