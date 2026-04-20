@@ -4,9 +4,11 @@ import {
   adminCreatePage,
   adminCreateProduct,
   adminDeleteCategory,
+  adminDeleteMedia,
   adminDeletePage,
   adminGetPage,
   adminListCategories,
+  adminListMedia,
   adminListPages,
   adminListProducts,
   adminPublishPage,
@@ -273,6 +275,51 @@ describe('adminApi', () => {
       expect(err).toBeInstanceOf(ApiError)
       expect((err as ApiError).status).toBe(404)
       expect((err as ApiError).code).toBe('page_not_found')
+    }
+  })
+
+  it('media: list forwards q + mimePrefix, sends credentials, no CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: [],
+        pagination: { limit: 40, offset: 0, total: 0 },
+      }),
+    )
+    await adminListMedia({ limit: 20, offset: 40, q: 'cat', mimePrefix: 'image/' })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/media?')
+    expect(String(url)).toContain('limit=20')
+    expect(String(url)).toContain('offset=40')
+    expect(String(url)).toContain('q=cat')
+    expect(String(url)).toContain('mimePrefix=image')
+    expect(init?.credentials).toBe('include')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBeUndefined()
+  })
+
+  it('media: delete sends DELETE with CSRF and resolves on 204', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }))
+    await expect(adminDeleteMedia('m1')).resolves.toBeUndefined()
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/media/m1')
+    expect(init?.method).toBe('DELETE')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+  })
+
+  it('media: delete surfaces 404 media_not_found', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(404, {
+        error: { code: 'media_not_found', message: 'gone' },
+      }),
+    )
+    try {
+      await adminDeleteMedia('missing')
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as ApiError).status).toBe(404)
+      expect((err as ApiError).code).toBe('media_not_found')
     }
   })
 

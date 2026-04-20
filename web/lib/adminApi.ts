@@ -15,12 +15,25 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 export { ApiError } from './api'
 
 export interface UploadResult {
+  id: string
   url: string
   filename: string
   size: number
   width?: number
   height?: number
   mimeType: string
+}
+
+export interface Media {
+  id: string
+  url: string
+  filename: string
+  mimeType: string
+  size: number
+  width: number | null
+  height: number | null
+  uploadedBy: string | null
+  createdAt: string
 }
 
 export interface AdminProductInput {
@@ -293,4 +306,26 @@ export async function adminUploadImage(file: File): Promise<UploadResult> {
   if (!res.ok) throw await parseError(res)
   const body = (await res.json()) as { data: UploadResult }
   return body.data
+}
+
+// --- media library ---
+
+export async function adminListMedia(
+  opts: { limit?: number; offset?: number; q?: string; mimePrefix?: string } = {},
+): Promise<Paginated<Media>> {
+  const params = new URLSearchParams()
+  if (opts.limit != null) params.set('limit', String(opts.limit))
+  if (opts.offset != null) params.set('offset', String(opts.offset))
+  if (opts.q) params.set('q', opts.q)
+  if (opts.mimePrefix) params.set('mimePrefix', opts.mimePrefix)
+  const qs = params.toString()
+  return authedRequest<Paginated<Media>>(
+    `/api/admin/media${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export async function adminDeleteMedia(id: string): Promise<void> {
+  await authedRequest<void>(`/api/admin/media/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
 }

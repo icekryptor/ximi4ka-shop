@@ -61,4 +61,23 @@ describe('ImageUploadField', () => {
     fireEvent.click(screen.getByText(/Удалить/))
     expect(onChange).toHaveBeenCalledWith(null)
   })
+
+  it('renders "Из библиотеки" button that opens the media picker dialog', async () => {
+    // Empty library response for the picker's initial fetch.
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          data: [],
+          pagination: { limit: 40, offset: 0, total: 0 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      ),
+    )
+    render(<ImageUploadField value={null} onChange={() => undefined} />)
+    const libButton = screen.getByText(/Из библиотеки/)
+    expect(libButton).toBeInTheDocument()
+    fireEvent.click(libButton)
+    // Modal opens with a dialog role.
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
 })

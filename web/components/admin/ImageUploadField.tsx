@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { ApiError, adminUploadImage } from '@/lib/adminApi'
+import { MediaPicker } from './MediaPicker'
 
 interface SingleProps {
   value: string | null
@@ -16,6 +17,7 @@ export function ImageUploadField({ value, onChange, label, id }: SingleProps) {
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   async function handleFiles(files: FileList | File[] | null) {
     if (!files || files.length === 0) return
@@ -92,6 +94,14 @@ export function ImageUploadField({ value, onChange, label, id }: SingleProps) {
             >
               {uploading ? 'Загрузка...' : value ? 'Заменить' : 'Выбрать файл'}
             </button>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              disabled={uploading}
+              className="px-3 py-1.5 rounded-full bg-brand-bg-soft text-brand-text text-sm disabled:opacity-50"
+            >
+              Из библиотеки
+            </button>
             {value ? (
               <button
                 type="button"
@@ -118,6 +128,11 @@ export function ImageUploadField({ value, onChange, label, id }: SingleProps) {
           ) : null}
         </div>
       </div>
+      <MediaPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onPick={(url) => onChange(url)}
+      />
     </div>
   )
 }

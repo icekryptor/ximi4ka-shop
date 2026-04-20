@@ -11,6 +11,7 @@ import { AdminUser } from '../entities/AdminUser.js'
 import { AdminSession } from '../entities/AdminSession.js'
 import { EntityRevision } from '../entities/EntityRevision.js'
 import { Redirect } from '../entities/Redirect.js'
+import { Media } from '../entities/Media.js'
 
 const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
@@ -27,6 +28,7 @@ export const AppDataSource = new DataSource({
     Product, ProductImage, ProductCategory,
     Page, Order, OrderItem,
     AdminUser, AdminSession, EntityRevision, Redirect,
+    Media,
   ],
   migrations: ['src/migrations/*.ts'],
 })
