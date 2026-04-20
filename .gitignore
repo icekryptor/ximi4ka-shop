@@ -39,3 +39,7 @@ test-results/
 # Certs / keys (Next.js local HTTPS, misc)
 *.pem
 *.key
+
+# Uploaded files (runtime artifact; directory kept via .gitkeep)
+api/uploads/*
+!api/uploads/.gitkeep

@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { IsNull } from 'typeorm'
+import { Brackets, IsNull } from 'typeorm'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Product } from '../../entities/Product.js'
 import {
@@ -30,14 +30,26 @@ function isUniqueViolation(err: unknown): boolean {
 // List
 adminProductsRouter.get('/', async (req, res, next) => {
   try {
-    const { limit, offset } = ListQuerySchema.parse(req.query)
+    const { limit, offset, q } = ListQuerySchema.parse(req.query)
     const repo = AppDataSource.getRepository(Product)
-    const [items, total] = await repo.findAndCount({
-      where: { deletedAt: IsNull() },
-      order: { sortOrder: 'ASC', createdAt: 'DESC' },
-      skip: offset,
-      take: limit,
-    })
+    const qb = repo
+      .createQueryBuilder('p')
+      .where('p.deleted_at IS NULL')
+      .orderBy('p.sort_order', 'ASC')
+      .addOrderBy('p.created_at', 'DESC')
+      .skip(offset)
+      .take(limit)
+    if (q) {
+      qb.andWhere(
+        new Brackets((qq) => {
+          qq.where('p.name ILIKE :q', { q: `%${q}%` }).orWhere(
+            'p.sku ILIKE :q',
+            { q: `%${q}%` },
+          )
+        }),
+      )
+    }
+    const [items, total] = await qb.getManyAndCount()
     res.json({ data: items, pagination: { limit, offset, total } })
   } catch (err) {
     next(err)

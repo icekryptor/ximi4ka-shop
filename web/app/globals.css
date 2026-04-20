@@ -22,3 +22,20 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Shared admin input styling. Used by ProductForm/ImageUploadField and any
+ * later admin forms. Kept here (rather than repeated in every field) so the
+ * look evolves from one place. */
+.input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-brand-border);
+  background: white;
+  color: var(--color-brand-text);
+  font-size: 0.9rem;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--color-brand);
+}

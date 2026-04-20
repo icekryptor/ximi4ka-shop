@@ -7,8 +7,10 @@ import { publicCategoriesRouter } from './routes/public/categories.js'
 import { adminCategoriesRouter } from './routes/admin/categories.js'
 import { publicPagesRouter } from './routes/public/pages.js'
 import { adminPagesRouter } from './routes/admin/pages.js'
+import { mediaRouter } from './routes/admin/media.js'
 import { authRouter } from './routes/auth/index.js'
 import { errorHandler } from './routes/errors.js'
+import { UPLOADS_DIR } from './lib/storage/index.js'
 
 export function createApp(): Express {
   const app = express()
@@ -37,6 +39,12 @@ export function createApp(): Express {
   app.use('/api/admin/categories', adminCategoriesRouter)
   app.use('/api/public/pages', publicPagesRouter)
   app.use('/api/admin/pages', adminPagesRouter)
+  app.use('/api/admin/media', mediaRouter)
+
+  // Serve uploaded files statically. UPLOADS_DIR is resolved relative to the
+  // storage module, not process.cwd(), so it behaves consistently whether
+  // launched from the repo root or from api/ via `npm run dev -w api`.
+  app.use('/uploads', express.static(UPLOADS_DIR))
 
   app.use(errorHandler)
 

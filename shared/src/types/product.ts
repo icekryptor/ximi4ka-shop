@@ -20,6 +20,12 @@ export interface Product {
   stockStatus: StockStatus
   isPublished: boolean
   sortOrder: number
+  metaTitle: string | null
+  metaDescription: string | null
+  ogImage: string | null
+  canonicalUrl: string | null
+  noindex: boolean
+  translations: Record<string, unknown>
   images: ProductImage[]
   createdAt: string
   updatedAt: string

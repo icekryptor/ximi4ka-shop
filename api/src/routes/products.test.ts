@@ -212,6 +212,41 @@ describe('Product routes', () => {
     })
   })
 
+  describe('GET /api/admin/products?q=', () => {
+    it('matches by name case-insensitively', async () => {
+      await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'a', name: 'Набор Юного Химика', priceRub: 100 })
+      await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'b', name: 'Что-то другое', priceRub: 200 })
+      const res = await request(app)
+        .get('/api/admin/products?q=юного')
+        .set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      expect(res.body.data).toHaveLength(1)
+      expect(res.body.data[0].slug).toBe('a')
+    })
+    it('matches by sku', async () => {
+      await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'c', name: 'Thing', sku: 'SKU-001', priceRub: 100 })
+      await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'd', name: 'Other', sku: 'OTHER-999', priceRub: 100 })
+      const res = await request(app)
+        .get('/api/admin/products?q=sku-001')
+        .set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      expect(res.body.data).toHaveLength(1)
+      expect(res.body.data[0].slug).toBe('c')
+    })
+  })
+
   describe('DELETE /api/admin/products/:id', () => {
     it('soft-deletes and removes from both public and admin lists', async () => {
       const {

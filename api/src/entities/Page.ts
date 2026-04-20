@@ -28,7 +28,7 @@ export class Page {
   @Column({ type: 'text', name: 'meta_description', nullable: true })
   metaDescription!: string | null
 
-  @Column({ type: 'varchar', length: 255, name: 'og_image', nullable: true })
+  @Column({ type: 'varchar', length: 500, name: 'og_image', nullable: true })
   ogImage!: string | null
 
   @Column({ type: 'varchar', length: 500, name: 'canonical_url', nullable: true })

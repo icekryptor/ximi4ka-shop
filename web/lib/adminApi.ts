@@ -1,0 +1,178 @@
+import type { Product } from '@ximi4ka-shop/shared'
+import { ApiError, type Paginated } from './api'
+
+// Admin API client. Mirrors the public client in api.ts but:
+//   * always sends cookies (credentials: 'include') — admin routes are
+//     gated by the ximi4ka_shop_session cookie.
+//   * adds X-CSRF-Token on mutations, read from the readable csrf cookie.
+//
+// Kept in a separate file from api.ts so a server component that happens
+// to import the public client doesn't accidentally pull in anything that
+// references document.cookie (the csrf read is client-only).
+
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+
+export { ApiError } from './api'
+
+export interface UploadResult {
+  url: string
+  filename: string
+  size: number
+  width?: number
+  height?: number
+  mimeType: string
+}
+
+export interface AdminProductInput {
+  slug: string
+  sku?: string | null
+  name: string
+  shortDescription?: string | null
+  longDescriptionBlocks?: unknown[]
+  priceRub: number
+  compareAtPriceRub?: number | null
+  stockStatus?: 'in_stock' | 'out_of_stock' | 'preorder'
+  sortOrder?: number
+  metaTitle?: string | null
+  metaDescription?: string | null
+  ogImage?: string | null
+  canonicalUrl?: string | null
+  noindex?: boolean
+  translations?: Record<string, unknown>
+}
+
+function readCsrfToken(): string {
+  if (typeof document === 'undefined') return ''
+  const m = document.cookie.match(/(?:^|;\s*)ximi4ka_shop_csrf=([^;]+)/)
+  return m ? decodeURIComponent(m[1]) : ''
+}
+
+interface ErrorEnvelope {
+  error?: { code?: string; message?: string; details?: unknown }
+}
+
+async function parseError(res: Response): Promise<ApiError> {
+  let body: ErrorEnvelope | null = null
+  try {
+    body = (await res.json()) as ErrorEnvelope
+  } catch {
+    // Response was not JSON — fall through to defaults.
+  }
+  return new ApiError(
+    res.status,
+    body?.error?.code ?? 'unknown',
+    body?.error?.message ?? `Request failed with status ${res.status}`,
+    body?.error?.details,
+  )
+}
+
+async function authedRequest<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const method = (init?.method ?? 'GET').toUpperCase()
+  const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(method)
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    ...((init?.headers as Record<string, string> | undefined) ?? {}),
+  }
+  if (isMutation) {
+    const csrf = readCsrfToken()
+    if (csrf) headers['X-CSRF-Token'] = csrf
+  }
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    credentials: 'include',
+    headers,
+  })
+  if (!res.ok) throw await parseError(res)
+  if (res.status === 204) return undefined as T
+  return (await res.json()) as T
+}
+
+// --- products ---
+
+export async function adminListProducts(
+  opts: { limit?: number; offset?: number; q?: string } = {},
+): Promise<Paginated<Product>> {
+  const params = new URLSearchParams()
+  if (opts.limit != null) params.set('limit', String(opts.limit))
+  if (opts.offset != null) params.set('offset', String(opts.offset))
+  if (opts.q) params.set('q', opts.q)
+  const qs = params.toString()
+  return authedRequest<Paginated<Product>>(
+    `/api/admin/products${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export async function adminGetProduct(id: string): Promise<Product> {
+  const body = await authedRequest<{ data: Product }>(
+    `/api/admin/products/${encodeURIComponent(id)}`,
+  )
+  return body.data
+}
+
+export async function adminCreateProduct(
+  input: AdminProductInput,
+): Promise<Product> {
+  const body = await authedRequest<{ data: Product }>(`/api/admin/products`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return body.data
+}
+
+export async function adminUpdateProduct(
+  id: string,
+  input: Partial<AdminProductInput>,
+): Promise<Product> {
+  const body = await authedRequest<{ data: Product }>(
+    `/api/admin/products/${encodeURIComponent(id)}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+  return body.data
+}
+
+export async function adminPublishProduct(id: string): Promise<Product> {
+  const body = await authedRequest<{ data: Product }>(
+    `/api/admin/products/${encodeURIComponent(id)}/publish`,
+    { method: 'POST' },
+  )
+  return body.data
+}
+
+export async function adminUnpublishProduct(id: string): Promise<Product> {
+  const body = await authedRequest<{ data: Product }>(
+    `/api/admin/products/${encodeURIComponent(id)}/unpublish`,
+    { method: 'POST' },
+  )
+  return body.data
+}
+
+export async function adminDeleteProduct(id: string): Promise<void> {
+  await authedRequest<void>(`/api/admin/products/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+}
+
+// --- media upload ---
+
+export async function adminUploadImage(file: File): Promise<UploadResult> {
+  const form = new FormData()
+  form.append('file', file)
+  const csrf = readCsrfToken()
+  const headers: Record<string, string> = {}
+  if (csrf) headers['X-CSRF-Token'] = csrf
+  // IMPORTANT: do not set content-type; the browser fills in the
+  // multipart/form-data; boundary=... header itself.
+  const res = await fetch(`${API_BASE}/api/admin/media/upload`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: form,
+  })
+  if (!res.ok) throw await parseError(res)
+  const body = (await res.json()) as { data: UploadResult }
+  return body.data
+}
