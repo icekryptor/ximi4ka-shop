@@ -25,25 +25,19 @@ describe('Category routes', () => {
 
   describe('POST /api/admin/categories', () => {
     it('creates a category with valid input', async () => {
-      const res = await request(app)
-        .post('/api/admin/categories')
-        .set(authHeaders(auth))
-        .send({
-          slug: 'kits',
-          name: 'Kits',
-        })
+      const res = await request(app).post('/api/admin/categories').set(authHeaders(auth)).send({
+        slug: 'kits',
+        name: 'Kits',
+      })
       expect(res.status).toBe(201)
       expect(res.body.data).toMatchObject({ slug: 'kits', name: 'Kits' })
       expect(res.body.data.id).toBeTruthy()
     })
     it('rejects invalid slug (400 validation_error)', async () => {
-      const res = await request(app)
-        .post('/api/admin/categories')
-        .set(authHeaders(auth))
-        .send({
-          slug: 'Not Valid!',
-          name: 'X',
-        })
+      const res = await request(app).post('/api/admin/categories').set(authHeaders(auth)).send({
+        slug: 'Not Valid!',
+        name: 'X',
+      })
       expect(res.status).toBe(400)
       expect(res.body.error.code).toBe('validation_error')
     })
@@ -71,12 +65,52 @@ describe('Category routes', () => {
         .post('/api/admin/categories')
         .set(authHeaders(auth))
         .send({ slug: 'b', name: 'B' })
-      const res = await request(app)
-        .get('/api/admin/categories')
-        .set(authHeaders(auth))
+      const res = await request(app).get('/api/admin/categories').set(authHeaders(auth))
       expect(res.status).toBe(200)
       expect(res.body.data).toHaveLength(2)
       expect(res.body.pagination.total).toBe(2)
+      // Every entry carries productCount (0 here, nothing linked yet).
+      for (const c of res.body.data) {
+        expect(c).toEqual(expect.objectContaining({ productCount: 0 }))
+      }
+    })
+
+    it('returns productCount per category', async () => {
+      const catA = await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug: 'cat-a', name: 'A' })
+      const catB = await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug: 'cat-b', name: 'B' })
+      await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug: 'cat-empty', name: 'Empty' })
+      const p1 = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'p-one', name: 'P1', priceRub: 10 })
+      const p2 = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'p-two', name: 'P2', priceRub: 20 })
+      // A has 2 products, B has 1, Empty has none.
+      await AppDataSource.query(
+        'INSERT INTO product_category_links (category_id, product_id) VALUES ($1, $2), ($1, $3), ($4, $2)',
+        [catA.body.data.id, p1.body.data.id, p2.body.data.id, catB.body.data.id],
+      )
+      const res = await request(app).get('/api/admin/categories').set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      const byId = new Map<string, number>(
+        res.body.data.map((c: { id: string; productCount: number }) => [c.id, c.productCount]),
+      )
+      expect(byId.get(catA.body.data.id)).toBe(2)
+      expect(byId.get(catB.body.data.id)).toBe(1)
+      // "Empty" should still appear with 0.
+      const empty = res.body.data.find((c: { slug: string }) => c.slug === 'cat-empty')
+      expect(empty.productCount).toBe(0)
     })
   })
 
@@ -196,11 +230,10 @@ describe('Category routes', () => {
         .post('/api/admin/categories')
         .set(authHeaders(auth))
         .send({ slug: 's', name: 'S' })
-      const res = await request(app)
-        .get(`/api/admin/categories/${id}`)
-        .set(authHeaders(auth))
+      const res = await request(app).get(`/api/admin/categories/${id}`).set(authHeaders(auth))
       expect(res.status).toBe(200)
       expect(res.body.data.id).toBe(id)
+      expect(res.body.data.productCount).toBe(0)
     })
     it('404 for missing id', async () => {
       const res = await request(app)
@@ -246,13 +279,9 @@ describe('Category routes', () => {
         .post('/api/admin/categories')
         .set(authHeaders(auth))
         .send({ slug: 'gone', name: 'G' })
-      const del = await request(app)
-        .delete(`/api/admin/categories/${id}`)
-        .set(authHeaders(auth))
+      const del = await request(app).delete(`/api/admin/categories/${id}`).set(authHeaders(auth))
       expect(del.status).toBe(204)
-      const list = await request(app)
-        .get('/api/admin/categories')
-        .set(authHeaders(auth))
+      const list = await request(app).get('/api/admin/categories').set(authHeaders(auth))
       expect(list.body.data).toHaveLength(0)
     })
     it('blocks delete if category has linked products', async () => {
@@ -303,13 +332,10 @@ describe('Page routes', () => {
 
   describe('POST /api/admin/pages', () => {
     it('creates a page with valid input', async () => {
-      const res = await request(app)
-        .post('/api/admin/pages')
-        .set(authHeaders(auth))
-        .send({
-          slug: 'home',
-          title: 'Home',
-        })
+      const res = await request(app).post('/api/admin/pages').set(authHeaders(auth)).send({
+        slug: 'home',
+        title: 'Home',
+      })
       expect(res.status).toBe(201)
       expect(res.body.data).toMatchObject({
         slug: 'home',
@@ -318,13 +344,10 @@ describe('Page routes', () => {
       })
     })
     it('rejects invalid slug (400)', async () => {
-      const res = await request(app)
-        .post('/api/admin/pages')
-        .set(authHeaders(auth))
-        .send({
-          slug: 'BAD SLUG!',
-          title: 'T',
-        })
+      const res = await request(app).post('/api/admin/pages').set(authHeaders(auth)).send({
+        slug: 'BAD SLUG!',
+        title: 'T',
+      })
       expect(res.status).toBe(400)
       expect(res.body.error.code).toBe('validation_error')
     })
@@ -369,9 +392,7 @@ describe('Page routes', () => {
         .post('/api/admin/pages')
         .set(authHeaders(auth))
         .send({ slug: 's', title: 'S' })
-      const res = await request(app)
-        .get(`/api/admin/pages/${id}`)
-        .set(authHeaders(auth))
+      const res = await request(app).get(`/api/admin/pages/${id}`).set(authHeaders(auth))
       expect(res.status).toBe(200)
       expect(res.body.data.id).toBe(id)
     })
@@ -393,10 +414,7 @@ describe('Page routes', () => {
         .post('/api/admin/pages')
         .set(authHeaders(auth))
         .send({ slug: 'home', title: 'H' })
-      await request(app)
-        .post(`/api/admin/pages/${id}/publish`)
-        .set(authHeaders(auth))
-        .send()
+      await request(app).post(`/api/admin/pages/${id}/publish`).set(authHeaders(auth)).send()
       const res = await request(app).get('/api/public/pages/home')
       expect(res.status).toBe(200)
       expect(res.body.data.slug).toBe('home')
@@ -452,14 +470,10 @@ describe('Page routes', () => {
         .post('/api/admin/pages')
         .set(authHeaders(auth))
         .send({ slug: 't', title: 'T' })
-      const p1 = await request(app)
-        .post(`/api/admin/pages/${id}/publish`)
-        .set(authHeaders(auth))
+      const p1 = await request(app).post(`/api/admin/pages/${id}/publish`).set(authHeaders(auth))
       expect(p1.status).toBe(200)
       expect(p1.body.data.isPublished).toBe(true)
-      const p2 = await request(app)
-        .post(`/api/admin/pages/${id}/unpublish`)
-        .set(authHeaders(auth))
+      const p2 = await request(app).post(`/api/admin/pages/${id}/unpublish`).set(authHeaders(auth))
       expect(p2.status).toBe(200)
       expect(p2.body.data.isPublished).toBe(false)
     })
@@ -475,12 +489,8 @@ describe('Page routes', () => {
         .post('/api/admin/pages')
         .set(authHeaders(auth))
         .send({ slug: 'gone', title: 'G' })
-      await request(app)
-        .post(`/api/admin/pages/${id}/publish`)
-        .set(authHeaders(auth))
-      const del = await request(app)
-        .delete(`/api/admin/pages/${id}`)
-        .set(authHeaders(auth))
+      await request(app).post(`/api/admin/pages/${id}/publish`).set(authHeaders(auth))
+      const del = await request(app).delete(`/api/admin/pages/${id}`).set(authHeaders(auth))
       expect(del.status).toBe(204)
       const pub = await request(app).get('/api/public/pages/gone')
       expect(pub.status).toBe(404)

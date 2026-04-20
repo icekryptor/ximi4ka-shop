@@ -7,10 +7,7 @@ import {
   ListQuerySchema,
 } from './categories.schemas.js'
 import { conflict, notFound } from '../errors.js'
-import {
-  requireAdminAuth,
-  requireCsrfToken,
-} from '../middleware/requireAdminAuth.js'
+import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 
 export const adminCategoriesRouter: Router = Router()
 
@@ -26,7 +23,22 @@ function isUniqueViolation(err: unknown): boolean {
   )
 }
 
-// List
+// Count of non-deleted linked products for a given category id.
+async function countProductsForCategory(categoryId: string): Promise<number> {
+  const [row] = await AppDataSource.query(
+    `SELECT COUNT(DISTINCT p.id)::int AS count
+       FROM product_category_links pcl
+       JOIN products p ON p.id = pcl.product_id AND p.deleted_at IS NULL
+      WHERE pcl.category_id = $1`,
+    [categoryId],
+  )
+  return Number(row?.count ?? 0)
+}
+
+// List — includes per-category product count. We do a raw aggregate keyed by
+// category id and merge into the entity objects. Using a raw aggregate (rather
+// than a loadRelationCountAndMap) keeps it portable and respects the
+// product soft-delete filter.
 adminCategoriesRouter.get('/', async (req, res, next) => {
   try {
     const { limit, offset } = ListQuerySchema.parse(req.query)
@@ -36,7 +48,27 @@ adminCategoriesRouter.get('/', async (req, res, next) => {
       skip: offset,
       take: limit,
     })
-    res.json({ data: items, pagination: { limit, offset, total } })
+
+    const counts = new Map<string, number>()
+    if (items.length > 0) {
+      const ids = items.map((c) => c.id)
+      const rows: Array<{ category_id: string; count: number }> = await AppDataSource.query(
+        `SELECT pcl.category_id, COUNT(DISTINCT p.id)::int AS count
+             FROM product_category_links pcl
+             JOIN products p ON p.id = pcl.product_id AND p.deleted_at IS NULL
+            WHERE pcl.category_id = ANY($1::uuid[])
+            GROUP BY pcl.category_id`,
+        [ids],
+      )
+      for (const r of rows) counts.set(r.category_id, Number(r.count))
+    }
+
+    const data = items.map((entity) => ({
+      ...entity,
+      productCount: counts.get(entity.id) ?? 0,
+    }))
+
+    res.json({ data, pagination: { limit, offset, total } })
   } catch (err) {
     next(err)
   }
@@ -48,7 +80,8 @@ adminCategoriesRouter.get('/:id', async (req, res, next) => {
     const repo = AppDataSource.getRepository(ProductCategory)
     const category = await repo.findOne({ where: { id: req.params.id } })
     if (!category) throw notFound('category_not_found', 'Category not found')
-    res.json({ data: category })
+    const productCount = await countProductsForCategory(category.id)
+    res.json({ data: { ...category, productCount } })
   } catch (err) {
     next(err)
   }

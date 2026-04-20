@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  adminCreateCategory,
   adminCreateProduct,
+  adminDeleteCategory,
+  adminListCategories,
   adminListProducts,
+  adminUpdateCategory,
   adminUploadImage,
   ApiError,
 } from './adminApi'
@@ -69,13 +73,13 @@ describe('adminApi', () => {
         },
       }),
     )
-    await expect(
-      adminCreateProduct({ slug: 'Bad', name: 'X', priceRub: 1 }),
-    ).rejects.toMatchObject({
-      status: 400,
-      code: 'validation_error',
-      message: 'bad slug',
-    })
+    await expect(adminCreateProduct({ slug: 'Bad', name: 'X', priceRub: 1 })).rejects.toMatchObject(
+      {
+        status: 400,
+        code: 'validation_error',
+        message: 'bad slug',
+      },
+    )
   })
 
   it('parses 409 slug_conflict', async () => {
@@ -90,6 +94,65 @@ describe('adminApi', () => {
     } catch (err) {
       expect(err).toBeInstanceOf(ApiError)
       expect((err as ApiError).code).toBe('slug_conflict')
+    }
+  })
+
+  it('categories: list uses limit=200 and no CSRF header (GET)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: [],
+        pagination: { limit: 200, offset: 0, total: 0 },
+      }),
+    )
+    await adminListCategories()
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/categories?limit=200')
+    expect(init?.credentials).toBe('include')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBeUndefined()
+  })
+
+  it('categories: create sends POST with CSRF + JSON body', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(201, {
+        data: { id: 'c1', slug: 'c1', name: 'C1', parentId: null, sortOrder: 0 },
+      }),
+    )
+    const result = await adminCreateCategory({ slug: 'c1', name: 'C1' })
+    expect(result.id).toBe('c1')
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init?.method).toBe('POST')
+    expect(init?.credentials).toBe('include')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+    expect(init?.body).toBe(JSON.stringify({ slug: 'c1', name: 'C1' }))
+  })
+
+  it('categories: update sends PATCH with CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { data: { id: 'c1', slug: 'c1', name: 'Renamed' } }),
+    )
+    await adminUpdateCategory('c1', { name: 'Renamed' })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/categories/c1')
+    expect(init?.method).toBe('PATCH')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+  })
+
+  it('categories: delete surfaces 409 category_has_products', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(409, {
+        error: { code: 'category_has_products', message: 'blocked' },
+      }),
+    )
+    try {
+      await adminDeleteCategory('c1')
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as ApiError).code).toBe('category_has_products')
+      expect((err as ApiError).status).toBe(409)
     }
   })
 

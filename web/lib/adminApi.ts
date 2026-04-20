@@ -1,4 +1,4 @@
-import type { Product } from '@ximi4ka-shop/shared'
+import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ApiError, type Paginated } from './api'
 
 // Admin API client. Mirrors the public client in api.ts but:
@@ -10,8 +10,7 @@ import { ApiError, type Paginated } from './api'
 // to import the public client doesn't accidentally pull in anything that
 // references document.cookie (the csrf read is client-only).
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export { ApiError } from './api'
 
@@ -67,10 +66,7 @@ async function parseError(res: Response): Promise<ApiError> {
   )
 }
 
-async function authedRequest<T>(
-  path: string,
-  init?: RequestInit,
-): Promise<T> {
+async function authedRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? 'GET').toUpperCase()
   const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(method)
   const headers: Record<string, string> = {
@@ -101,9 +97,7 @@ export async function adminListProducts(
   if (opts.offset != null) params.set('offset', String(opts.offset))
   if (opts.q) params.set('q', opts.q)
   const qs = params.toString()
-  return authedRequest<Paginated<Product>>(
-    `/api/admin/products${qs ? `?${qs}` : ''}`,
-  )
+  return authedRequest<Paginated<Product>>(`/api/admin/products${qs ? `?${qs}` : ''}`)
 }
 
 export async function adminGetProduct(id: string): Promise<Product> {
@@ -113,9 +107,7 @@ export async function adminGetProduct(id: string): Promise<Product> {
   return body.data
 }
 
-export async function adminCreateProduct(
-  input: AdminProductInput,
-): Promise<Product> {
+export async function adminCreateProduct(input: AdminProductInput): Promise<Product> {
   const body = await authedRequest<{ data: Product }>(`/api/admin/products`, {
     method: 'POST',
     body: JSON.stringify(input),
@@ -154,6 +146,59 @@ export async function adminDeleteProduct(id: string): Promise<void> {
   await authedRequest<void>(`/api/admin/products/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   })
+}
+
+// --- categories ---
+
+export interface AdminCategoryInput {
+  slug: string
+  name: string
+  parentId?: string | null
+  metaTitle?: string | null
+  metaDescription?: string | null
+  sortOrder?: number
+  translations?: Record<string, unknown>
+}
+
+// List returns up to 200 items in a single request — categories are few by
+// design. Tree UIs need the whole set at once to resolve parent/child links,
+// so there's no pagination in the page UX.
+export async function adminListCategories(): Promise<
+  Paginated<ProductCategory & { productCount: number }>
+> {
+  return authedRequest<Paginated<ProductCategory & { productCount: number }>>(
+    `/api/admin/categories?limit=200`,
+  )
+}
+
+export async function adminGetCategory(id: string): Promise<ProductCategory> {
+  const body = await authedRequest<{ data: ProductCategory }>(
+    `/api/admin/categories/${encodeURIComponent(id)}`,
+  )
+  return body.data
+}
+
+export async function adminCreateCategory(input: AdminCategoryInput): Promise<ProductCategory> {
+  const body = await authedRequest<{ data: ProductCategory }>(`/api/admin/categories`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return body.data
+}
+
+export async function adminUpdateCategory(
+  id: string,
+  input: Partial<AdminCategoryInput>,
+): Promise<ProductCategory> {
+  const body = await authedRequest<{ data: ProductCategory }>(
+    `/api/admin/categories/${encodeURIComponent(id)}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+  return body.data
+}
+
+export async function adminDeleteCategory(id: string): Promise<void> {
+  await authedRequest<void>(`/api/admin/categories/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
 // --- media upload ---
