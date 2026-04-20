@@ -3,18 +3,23 @@ import {
   adminCreateCategory,
   adminCreatePage,
   adminCreateProduct,
+  adminCreateRedirect,
   adminDeleteCategory,
   adminDeleteMedia,
   adminDeletePage,
+  adminDeleteRedirect,
   adminGetPage,
+  adminImportRedirectsCsv,
   adminListCategories,
   adminListMedia,
   adminListPages,
   adminListProducts,
+  adminListRedirects,
   adminPublishPage,
   adminUnpublishPage,
   adminUpdateCategory,
   adminUpdatePage,
+  adminUpdateRedirect,
   adminUploadImage,
   ApiError,
 } from './adminApi'
@@ -321,6 +326,96 @@ describe('adminApi', () => {
       expect((err as ApiError).status).toBe(404)
       expect((err as ApiError).code).toBe('media_not_found')
     }
+  })
+
+  it('redirects: list sends sort + q as query params', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: [],
+        pagination: { limit: 50, offset: 0, total: 0 },
+      }),
+    )
+    await adminListRedirects({ sort: 'hits_desc', q: '/old', limit: 50 })
+    const [url] = fetchMock.mock.calls[0]
+    const href = String(url)
+    expect(href).toContain('/api/admin/redirects')
+    expect(href).toContain('sort=hits_desc')
+    expect(href).toContain('q=%2Fold')
+    expect(href).toContain('limit=50')
+  })
+
+  it('redirects: create POSTs JSON and parses 409 from_path_conflict', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(409, {
+        error: {
+          code: 'from_path_conflict',
+          message: 'duplicate',
+        },
+      }),
+    )
+    try {
+      await adminCreateRedirect({ fromPath: '/a', toPath: '/b', statusCode: 301 })
+      throw new Error('expected throw')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as ApiError).code).toBe('from_path_conflict')
+      expect((err as ApiError).status).toBe(409)
+    }
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init?.method).toBe('POST')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+    expect(headers['content-type']).toBe('application/json')
+  })
+
+  it('redirects: update PATCHes JSON with correct id encoding', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: {
+          id: 'abc',
+          fromPath: '/a',
+          toPath: '/new',
+          statusCode: 302,
+          hitCount: 0,
+        },
+      }),
+    )
+    await adminUpdateRedirect('abc', { toPath: '/new', statusCode: 302 })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/redirects/abc')
+    expect(init?.method).toBe('PATCH')
+  })
+
+  it('redirects: delete returns void on 204', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }))
+    await adminDeleteRedirect('abc')
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/redirects/abc')
+    expect(init?.method).toBe('DELETE')
+  })
+
+  it('redirects: import CSV sends FormData with file and CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: { inserted: 2, updated: 1, skipped: 0, errors: [] },
+      }),
+    )
+    const file = new File(['from_path,to_path\n/a,/b\n'], 'r.csv', {
+      type: 'text/csv',
+    })
+    const summary = await adminImportRedirectsCsv(file)
+    expect(summary).toEqual({
+      inserted: 2,
+      updated: 1,
+      skipped: 0,
+      errors: [],
+    })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/redirects/import-csv')
+    expect(init?.body).toBeInstanceOf(FormData)
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+    expect(headers['content-type']).toBeUndefined()
   })
 
   it('upload: sends FormData, omits content-type override, includes CSRF', async () => {

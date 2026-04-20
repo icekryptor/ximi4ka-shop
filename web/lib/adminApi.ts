@@ -287,6 +287,98 @@ export async function adminDeletePage(id: string): Promise<void> {
   })
 }
 
+// --- redirects ---
+
+export interface Redirect {
+  id: string
+  fromPath: string
+  toPath: string
+  statusCode: number
+  hitCount: number
+}
+
+export interface AdminRedirectInput {
+  fromPath: string
+  toPath: string
+  statusCode?: number
+}
+
+export interface RedirectCsvSummary {
+  inserted: number
+  updated: number
+  skipped: number
+  errors: Array<{ row: number; message: string }>
+}
+
+export async function adminListRedirects(
+  opts: { limit?: number; offset?: number; q?: string; sort?: string } = {},
+): Promise<Paginated<Redirect>> {
+  const params = new URLSearchParams()
+  if (opts.limit != null) params.set('limit', String(opts.limit))
+  if (opts.offset != null) params.set('offset', String(opts.offset))
+  if (opts.q) params.set('q', opts.q)
+  if (opts.sort) params.set('sort', opts.sort)
+  const qs = params.toString()
+  return authedRequest<Paginated<Redirect>>(
+    `/api/admin/redirects${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export async function adminGetRedirect(id: string): Promise<Redirect> {
+  const body = await authedRequest<{ data: Redirect }>(
+    `/api/admin/redirects/${encodeURIComponent(id)}`,
+  )
+  return body.data
+}
+
+export async function adminCreateRedirect(
+  input: AdminRedirectInput,
+): Promise<Redirect> {
+  const body = await authedRequest<{ data: Redirect }>(`/api/admin/redirects`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return body.data
+}
+
+export async function adminUpdateRedirect(
+  id: string,
+  input: Partial<AdminRedirectInput>,
+): Promise<Redirect> {
+  const body = await authedRequest<{ data: Redirect }>(
+    `/api/admin/redirects/${encodeURIComponent(id)}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+  return body.data
+}
+
+export async function adminDeleteRedirect(id: string): Promise<void> {
+  await authedRequest<void>(`/api/admin/redirects/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function adminImportRedirectsCsv(
+  file: File,
+): Promise<RedirectCsvSummary> {
+  // Multipart upload — let the browser set the content-type boundary itself,
+  // same pattern as adminUploadImage.
+  const form = new FormData()
+  form.append('file', file)
+  const csrf = readCsrfToken()
+  const headers: Record<string, string> = {}
+  if (csrf) headers['X-CSRF-Token'] = csrf
+  const res = await fetch(`${API_BASE}/api/admin/redirects/import-csv`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: form,
+  })
+  if (!res.ok) throw await parseError(res)
+  const body = (await res.json()) as { data: RedirectCsvSummary }
+  return body.data
+}
+
 // --- media upload ---
 
 export async function adminUploadImage(file: File): Promise<UploadResult> {
