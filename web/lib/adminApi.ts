@@ -400,6 +400,38 @@ export async function adminUploadImage(file: File): Promise<UploadResult> {
   return body.data
 }
 
+// --- revisions ---
+
+export interface RevisionSummary {
+  id: string
+  entityType: 'product' | 'page' | 'product_category'
+  entityId: string
+  editedAt: string
+  editedBy: string | null
+  editorEmail: string | null
+}
+
+export async function adminListRevisions(
+  entityType: 'product' | 'page' | 'product_category',
+  entityId: string,
+  opts: { limit?: number; offset?: number } = {},
+): Promise<Paginated<RevisionSummary>> {
+  const params = new URLSearchParams()
+  if (opts.limit != null) params.set('limit', String(opts.limit))
+  if (opts.offset != null) params.set('offset', String(opts.offset))
+  const qs = params.toString()
+  return authedRequest<Paginated<RevisionSummary>>(
+    `/api/admin/revisions/entity/${encodeURIComponent(entityType)}/${encodeURIComponent(entityId)}${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export async function adminRestoreRevision(id: string): Promise<void> {
+  await authedRequest<{ data: unknown }>(
+    `/api/admin/revisions/${encodeURIComponent(id)}/restore`,
+    { method: 'POST' },
+  )
+}
+
 // --- media library ---
 
 export async function adminListMedia(

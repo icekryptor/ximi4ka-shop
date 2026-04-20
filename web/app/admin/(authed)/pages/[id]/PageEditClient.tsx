@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import type { Page } from '@ximi4ka-shop/shared'
 import { PageForm } from '@/components/admin/PageForm'
+import { RevisionsPanel } from '@/components/admin/RevisionsPanel'
 import {
   ApiError,
   adminDeletePage,
@@ -95,6 +96,11 @@ export function PageEditClient({ initial }: Props) {
         onSubmit={handleSubmit}
         submitting={submitting}
         error={error}
+      />
+      <RevisionsPanel
+        entityType="page"
+        entityId={page.id}
+        onRestored={() => router.refresh()}
       />
     </>
   )

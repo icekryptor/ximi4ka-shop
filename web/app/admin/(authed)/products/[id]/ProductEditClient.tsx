@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import type { Product } from '@ximi4ka-shop/shared'
 import { ProductForm } from '@/components/admin/ProductForm'
+import { RevisionsPanel } from '@/components/admin/RevisionsPanel'
 import {
   ApiError,
   adminDeleteProduct,
@@ -94,6 +95,11 @@ export function ProductEditClient({ initial }: Props) {
         onSubmit={handleSubmit}
         submitting={submitting}
         error={error}
+      />
+      <RevisionsPanel
+        entityType="product"
+        entityId={product.id}
+        onRestored={() => router.refresh()}
       />
     </>
   )

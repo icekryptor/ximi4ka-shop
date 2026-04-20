@@ -8,6 +8,7 @@ import {
   requireAdminAuth,
   requireCsrfToken,
 } from '../middleware/requireAdminAuth.js'
+import { writeRevision } from '../../lib/revisions.js'
 
 export const adminPagesRouter: Router = Router()
 
@@ -72,6 +73,7 @@ adminPagesRouter.post('/', async (req, res, next) => {
     const repo = AppDataSource.getRepository(Page)
     const entity = repo.create(parsed)
     const saved = await repo.save(entity)
+    await writeRevision('page', saved.id, req.adminUser?.id ?? null)
     res.status(201).json({ data: saved })
   } catch (err) {
     if (isUniqueViolation(err)) {
@@ -91,6 +93,7 @@ adminPagesRouter.patch('/:id', async (req, res, next) => {
       where: { id: req.params.id, deletedAt: IsNull() },
     })
     if (!existing) throw notFound('page_not_found', 'Page not found')
+    await writeRevision('page', existing.id, req.adminUser?.id ?? null)
     const merged = repo.merge(existing, parsed)
     const saved = await repo.save(merged)
     res.json({ data: saved })
@@ -111,6 +114,7 @@ adminPagesRouter.post('/:id/publish', async (req, res, next) => {
       where: { id: req.params.id, deletedAt: IsNull() },
     })
     if (!existing) throw notFound('page_not_found', 'Page not found')
+    await writeRevision('page', existing.id, req.adminUser?.id ?? null)
     existing.isPublished = true
     const saved = await repo.save(existing)
     res.json({ data: saved })
@@ -127,6 +131,7 @@ adminPagesRouter.post('/:id/unpublish', async (req, res, next) => {
       where: { id: req.params.id, deletedAt: IsNull() },
     })
     if (!existing) throw notFound('page_not_found', 'Page not found')
+    await writeRevision('page', existing.id, req.adminUser?.id ?? null)
     existing.isPublished = false
     const saved = await repo.save(existing)
     res.json({ data: saved })
@@ -143,6 +148,7 @@ adminPagesRouter.delete('/:id', async (req, res, next) => {
       where: { id: req.params.id, deletedAt: IsNull() },
     })
     if (!existing) throw notFound('page_not_found', 'Page not found')
+    await writeRevision('page', existing.id, req.adminUser?.id ?? null)
     await repo.softRemove(existing)
     res.status(204).send()
   } catch (err) {

@@ -15,7 +15,9 @@ import {
   adminListPages,
   adminListProducts,
   adminListRedirects,
+  adminListRevisions,
   adminPublishPage,
+  adminRestoreRevision,
   adminUnpublishPage,
   adminUpdateCategory,
   adminUpdatePage,
@@ -440,5 +442,35 @@ describe('adminApi', () => {
     expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
     // No content-type explicitly set — let the browser generate the boundary.
     expect(headers['content-type']).toBeUndefined()
+  })
+
+  it('revisions: list hits the entity-scoped endpoint (GET, no CSRF)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: [],
+        pagination: { limit: 20, offset: 0, total: 0 },
+      }),
+    )
+    await adminListRevisions('product', 'p1', { limit: 10, offset: 5 })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/revisions/entity/product/p1?')
+    expect(String(url)).toContain('limit=10')
+    expect(String(url)).toContain('offset=5')
+    expect(init?.credentials).toBe('include')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBeUndefined()
+  })
+
+  it('revisions: restore sends POST with CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { data: { entityType: 'product', entityId: 'p1' } }),
+    )
+    await adminRestoreRevision('rev-1')
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/revisions/rev-1/restore')
+    expect(init?.method).toBe('POST')
+    expect(init?.credentials).toBe('include')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
   })
 })

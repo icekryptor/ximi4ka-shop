@@ -12,6 +12,7 @@ import {
   requireAdminAuth,
   requireCsrfToken,
 } from '../middleware/requireAdminAuth.js'
+import { writeRevision } from '../../lib/revisions.js'
 
 export const adminProductsRouter: Router = Router()
 
@@ -77,6 +78,8 @@ adminProductsRouter.post('/', async (req, res, next) => {
     const repo = AppDataSource.getRepository(Product)
     const entity = repo.create(parsed)
     const saved = await repo.save(entity)
+    // Snapshot the initial state so the revision history has a "t=0" row.
+    await writeRevision('product', saved.id, req.adminUser?.id ?? null)
     res.status(201).json({ data: saved })
   } catch (err) {
     if (isUniqueViolation(err)) {
@@ -96,6 +99,8 @@ adminProductsRouter.patch('/:id', async (req, res, next) => {
       where: { id: req.params.id, deletedAt: IsNull() },
     })
     if (!existing) throw notFound('product_not_found', 'Product not found')
+    // Snapshot the prior state before mutating.
+    await writeRevision('product', existing.id, req.adminUser?.id ?? null)
     const merged = repo.merge(existing, parsed)
     const saved = await repo.save(merged)
     res.json({ data: saved })
@@ -116,6 +121,7 @@ adminProductsRouter.post('/:id/publish', async (req, res, next) => {
       where: { id: req.params.id, deletedAt: IsNull() },
     })
     if (!existing) throw notFound('product_not_found', 'Product not found')
+    await writeRevision('product', existing.id, req.adminUser?.id ?? null)
     existing.isPublished = true
     const saved = await repo.save(existing)
     res.json({ data: saved })
@@ -132,6 +138,7 @@ adminProductsRouter.post('/:id/unpublish', async (req, res, next) => {
       where: { id: req.params.id, deletedAt: IsNull() },
     })
     if (!existing) throw notFound('product_not_found', 'Product not found')
+    await writeRevision('product', existing.id, req.adminUser?.id ?? null)
     existing.isPublished = false
     const saved = await repo.save(existing)
     res.json({ data: saved })
@@ -148,6 +155,7 @@ adminProductsRouter.delete('/:id', async (req, res, next) => {
       where: { id: req.params.id, deletedAt: IsNull() },
     })
     if (!existing) throw notFound('product_not_found', 'Product not found')
+    await writeRevision('product', existing.id, req.adminUser?.id ?? null)
     await repo.softRemove(existing)
     res.status(204).send()
   } catch (err) {

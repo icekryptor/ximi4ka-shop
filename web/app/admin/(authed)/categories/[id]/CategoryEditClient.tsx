@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import type { ProductCategory } from '@ximi4ka-shop/shared'
 import { CategoryForm } from '@/components/admin/CategoryForm'
+import { RevisionsPanel } from '@/components/admin/RevisionsPanel'
 import { ApiError, adminUpdateCategory, type AdminCategoryInput } from '@/lib/adminApi'
 
 interface Props {
@@ -49,6 +50,11 @@ export function CategoryEditClient({ initial, allCategories }: Props) {
         onSubmit={handleSubmit}
         submitting={submitting}
         error={error}
+      />
+      <RevisionsPanel
+        entityType="product_category"
+        entityId={category.id}
+        onRestored={() => router.refresh()}
       />
     </>
   )

@@ -8,6 +8,7 @@ import {
 } from './categories.schemas.js'
 import { conflict, notFound } from '../errors.js'
 import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
+import { writeRevision } from '../../lib/revisions.js'
 
 export const adminCategoriesRouter: Router = Router()
 
@@ -94,6 +95,7 @@ adminCategoriesRouter.post('/', async (req, res, next) => {
     const repo = AppDataSource.getRepository(ProductCategory)
     const entity = repo.create(parsed)
     const saved = await repo.save(entity)
+    await writeRevision('product_category', saved.id, req.adminUser?.id ?? null)
     res.status(201).json({ data: saved })
   } catch (err) {
     if (isUniqueViolation(err)) {
@@ -111,6 +113,7 @@ adminCategoriesRouter.patch('/:id', async (req, res, next) => {
     const repo = AppDataSource.getRepository(ProductCategory)
     const existing = await repo.findOne({ where: { id: req.params.id } })
     if (!existing) throw notFound('category_not_found', 'Category not found')
+    await writeRevision('product_category', existing.id, req.adminUser?.id ?? null)
     const merged = repo.merge(existing, parsed)
     const saved = await repo.save(merged)
     res.json({ data: saved })
@@ -139,6 +142,7 @@ adminCategoriesRouter.delete('/:id', async (req, res, next) => {
         'Category has associated products; unlink them first.',
       )
     }
+    await writeRevision('product_category', existing.id, req.adminUser?.id ?? null)
     await repo.remove(existing)
     res.status(204).send()
   } catch (err) {
