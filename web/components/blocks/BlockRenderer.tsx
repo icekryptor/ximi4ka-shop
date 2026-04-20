@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import type { Block } from '@ximi4ka-shop/shared'
-import { isBlock } from '@ximi4ka-shop/shared'
+import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 import { ParagraphBlock } from './ParagraphBlock'
 import { ImageBlock } from './ImageBlock'
 import { GalleryBlock } from './GalleryBlock'

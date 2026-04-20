@@ -28,4 +28,7 @@ export type {
   FaqItem,
   ProductGridBlock,
 } from './types/blocks.js'
-export { isBlock } from './types/blocks'
+// Note: isBlock (runtime export) is NOT re-exported here because shared/ emits no
+// JS (noEmit: true). Next.js's bundler can't resolve runtime re-exports from a
+// TS-only source. Consumers should import it directly:
+//   import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
