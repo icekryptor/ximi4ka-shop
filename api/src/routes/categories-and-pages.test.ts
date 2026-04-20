@@ -380,6 +380,40 @@ describe('Page routes', () => {
       expect(res.body.data).toHaveLength(2)
       expect(res.body.pagination.total).toBe(2)
     })
+
+    it('filters by q (matches title or slug, case-insensitive)', async () => {
+      await request(app)
+        .post('/api/admin/pages')
+        .set(authHeaders(auth))
+        .send({ slug: 'o-nas', title: 'О нас' })
+      await request(app)
+        .post('/api/admin/pages')
+        .set(authHeaders(auth))
+        .send({ slug: 'dostavka', title: 'Доставка и оплата' })
+      await request(app)
+        .post('/api/admin/pages')
+        .set(authHeaders(auth))
+        .send({ slug: 'kontakty', title: 'Контакты' })
+      // slug match
+      const bySlug = await request(app)
+        .get('/api/admin/pages?q=DOSTAVKA')
+        .set(authHeaders(auth))
+      expect(bySlug.status).toBe(200)
+      expect(bySlug.body.data).toHaveLength(1)
+      expect(bySlug.body.data[0].slug).toBe('dostavka')
+      // title match (Russian substring, case-insensitive)
+      const byTitle = await request(app)
+        .get('/api/admin/pages?q=%D0%94%D0%BE%D1%81%D1%82%D0%B0%D0%B2%D0%BA%D0%B0') // "Доставка"
+        .set(authHeaders(auth))
+      expect(byTitle.status).toBe(200)
+      expect(byTitle.body.data).toHaveLength(1)
+      expect(byTitle.body.data[0].slug).toBe('dostavka')
+      // no match
+      const none = await request(app)
+        .get('/api/admin/pages?q=missing')
+        .set(authHeaders(auth))
+      expect(none.body.data).toHaveLength(0)
+    })
   })
 
   describe('GET /api/admin/pages/:id', () => {

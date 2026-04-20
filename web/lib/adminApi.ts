@@ -1,4 +1,4 @@
-import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
+import type { Page, Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ApiError, type Paginated } from './api'
 
 // Admin API client. Mirrors the public client in api.ts but:
@@ -199,6 +199,79 @@ export async function adminUpdateCategory(
 
 export async function adminDeleteCategory(id: string): Promise<void> {
   await authedRequest<void>(`/api/admin/categories/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+// --- pages ---
+
+export interface AdminPageInput {
+  slug: string
+  title: string
+  blocks?: unknown[]
+  metaTitle?: string | null
+  metaDescription?: string | null
+  ogImage?: string | null
+  canonicalUrl?: string | null
+  noindex?: boolean
+  translations?: Record<string, unknown>
+}
+
+export async function adminListPages(
+  opts: { limit?: number; offset?: number; q?: string } = {},
+): Promise<Paginated<Page>> {
+  const params = new URLSearchParams()
+  if (opts.limit != null) params.set('limit', String(opts.limit))
+  if (opts.offset != null) params.set('offset', String(opts.offset))
+  if (opts.q) params.set('q', opts.q)
+  const qs = params.toString()
+  return authedRequest<Paginated<Page>>(`/api/admin/pages${qs ? `?${qs}` : ''}`)
+}
+
+export async function adminGetPage(id: string): Promise<Page> {
+  const body = await authedRequest<{ data: Page }>(
+    `/api/admin/pages/${encodeURIComponent(id)}`,
+  )
+  return body.data
+}
+
+export async function adminCreatePage(input: AdminPageInput): Promise<Page> {
+  const body = await authedRequest<{ data: Page }>(`/api/admin/pages`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return body.data
+}
+
+export async function adminUpdatePage(
+  id: string,
+  input: Partial<AdminPageInput>,
+): Promise<Page> {
+  const body = await authedRequest<{ data: Page }>(
+    `/api/admin/pages/${encodeURIComponent(id)}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+  return body.data
+}
+
+export async function adminPublishPage(id: string): Promise<Page> {
+  const body = await authedRequest<{ data: Page }>(
+    `/api/admin/pages/${encodeURIComponent(id)}/publish`,
+    { method: 'POST' },
+  )
+  return body.data
+}
+
+export async function adminUnpublishPage(id: string): Promise<Page> {
+  const body = await authedRequest<{ data: Page }>(
+    `/api/admin/pages/${encodeURIComponent(id)}/unpublish`,
+    { method: 'POST' },
+  )
+  return body.data
+}
+
+export async function adminDeletePage(id: string): Promise<void> {
+  await authedRequest<void>(`/api/admin/pages/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
 }
 
 // --- media upload ---

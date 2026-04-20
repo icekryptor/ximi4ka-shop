@@ -1,11 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   adminCreateCategory,
+  adminCreatePage,
   adminCreateProduct,
   adminDeleteCategory,
+  adminDeletePage,
+  adminGetPage,
   adminListCategories,
+  adminListPages,
   adminListProducts,
+  adminPublishPage,
+  adminUnpublishPage,
   adminUpdateCategory,
+  adminUpdatePage,
   adminUploadImage,
   ApiError,
 } from './adminApi'
@@ -153,6 +160,119 @@ describe('adminApi', () => {
       expect(err).toBeInstanceOf(ApiError)
       expect((err as ApiError).code).toBe('category_has_products')
       expect((err as ApiError).status).toBe(409)
+    }
+  })
+
+  it('pages: list forwards q + pagination, sends credentials, no CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: [],
+        pagination: { limit: 20, offset: 0, total: 0 },
+      }),
+    )
+    await adminListPages({ limit: 10, offset: 20, q: 'о нас' })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/pages?')
+    expect(String(url)).toContain('limit=10')
+    expect(String(url)).toContain('offset=20')
+    // URLSearchParams encodes Cyrillic as percent-escaped utf-8
+    expect(String(url)).toContain('q=')
+    expect(init?.credentials).toBe('include')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBeUndefined()
+  })
+
+  it('pages: get by id returns unwrapped data', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { data: { id: 'p1', slug: 'home', title: 'Home' } }),
+    )
+    const page = await adminGetPage('p1')
+    expect(page.id).toBe('p1')
+    const [url] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/pages/p1')
+  })
+
+  it('pages: create sends POST with CSRF + JSON body', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(201, {
+        data: { id: 'p1', slug: 'home', title: 'Home' },
+      }),
+    )
+    const result = await adminCreatePage({ slug: 'home', title: 'Home' })
+    expect(result.id).toBe('p1')
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init?.method).toBe('POST')
+    expect(init?.credentials).toBe('include')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+    expect(init?.body).toBe(JSON.stringify({ slug: 'home', title: 'Home' }))
+  })
+
+  it('pages: update sends PATCH with CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { data: { id: 'p1', slug: 'home', title: 'Renamed' } }),
+    )
+    await adminUpdatePage('p1', { title: 'Renamed' })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/pages/p1')
+    expect(init?.method).toBe('PATCH')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+  })
+
+  it('pages: publish/unpublish POST with CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { data: { id: 'p1', isPublished: true } }),
+    )
+    await adminPublishPage('p1')
+    expect(String(fetchMock.mock.calls[0][0])).toContain(
+      '/api/admin/pages/p1/publish',
+    )
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('POST')
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { data: { id: 'p1', isPublished: false } }),
+    )
+    await adminUnpublishPage('p1')
+    expect(String(fetchMock.mock.calls[1][0])).toContain(
+      '/api/admin/pages/p1/unpublish',
+    )
+  })
+
+  it('pages: delete sends DELETE and resolves on 204', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }))
+    await expect(adminDeletePage('p1')).resolves.toBeUndefined()
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init?.method).toBe('DELETE')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+  })
+
+  it('pages: surfaces 409 slug_conflict', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(409, { error: { code: 'slug_conflict', message: 'dup' } }),
+    )
+    try {
+      await adminCreatePage({ slug: 'home', title: 'X' })
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as ApiError).code).toBe('slug_conflict')
+      expect((err as ApiError).status).toBe(409)
+    }
+  })
+
+  it('pages: surfaces 404 on get', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(404, { error: { code: 'page_not_found', message: 'nope' } }),
+    )
+    try {
+      await adminGetPage('missing')
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as ApiError).status).toBe(404)
+      expect((err as ApiError).code).toBe('page_not_found')
     }
   })
 
