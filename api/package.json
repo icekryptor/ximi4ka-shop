@@ -17,6 +17,7 @@
   "dependencies": {
     "@ximi4ka-shop/shared": "^0.0.0",
     "argon2": "^0.44.0",
+    "cookie-parser": "^1.4.7",
     "dotenv": "^16.6.1",
     "express": "^4.21.1",
     "pg": "^8.20.0",
@@ -26,6 +27,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^4.17.21",
     "@types/node": "^22.9.0",
     "@types/pg": "^8.20.0",

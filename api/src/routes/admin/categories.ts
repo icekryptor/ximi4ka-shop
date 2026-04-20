@@ -7,10 +7,15 @@ import {
   ListQuerySchema,
 } from './categories.schemas.js'
 import { conflict, notFound } from '../errors.js'
+import {
+  requireAdminAuth,
+  requireCsrfToken,
+} from '../middleware/requireAdminAuth.js'
 
 export const adminCategoriesRouter: Router = Router()
 
-// TODO(phase-3): adminCategoriesRouter.use(requireAdminAuth())
+adminCategoriesRouter.use(requireAdminAuth)
+adminCategoriesRouter.use(requireCsrfToken)
 
 function isUniqueViolation(err: unknown): boolean {
   return (

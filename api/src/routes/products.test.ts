@@ -3,9 +3,11 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { createApp } from '../app.js'
+import { authHeaders, loginAsAdmin, type AdminAuth } from './testUtils.js'
 
 describe('Product routes', () => {
   let app: ReturnType<typeof createApp>
+  let auth: AdminAuth
 
   beforeAll(async () => {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize()
@@ -16,17 +18,21 @@ describe('Product routes', () => {
   })
   beforeEach(async () => {
     await AppDataSource.query(
-      'TRUNCATE products, product_images, product_category_links RESTART IDENTITY CASCADE',
+      'TRUNCATE products, product_images, product_category_links, admin_sessions, admin_users RESTART IDENTITY CASCADE',
     )
+    auth = await loginAsAdmin(app)
   })
 
   describe('POST /api/admin/products', () => {
     it('creates a product with valid input', async () => {
-      const res = await request(app).post('/api/admin/products').send({
-        slug: 'test-kit',
-        name: 'Test Kit',
-        priceRub: 1500,
-      })
+      const res = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'test-kit',
+          name: 'Test Kit',
+          priceRub: 1500,
+        })
       expect(res.status).toBe(201)
       expect(res.body.data).toMatchObject({
         slug: 'test-kit',
@@ -37,20 +43,25 @@ describe('Product routes', () => {
       expect(res.body.data.id).toBeTruthy()
     })
     it('rejects invalid slug (400 validation_error)', async () => {
-      const res = await request(app).post('/api/admin/products').send({
-        slug: 'Invalid Slug!',
-        name: 'X',
-        priceRub: 100,
-      })
+      const res = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'Invalid Slug!',
+          name: 'X',
+          priceRub: 100,
+        })
       expect(res.status).toBe(400)
       expect(res.body.error.code).toBe('validation_error')
     })
     it('rejects duplicate slug (409 slug_conflict)', async () => {
       await request(app)
         .post('/api/admin/products')
+        .set(authHeaders(auth))
         .send({ slug: 'dup', name: 'A', priceRub: 100 })
       const res = await request(app)
         .post('/api/admin/products')
+        .set(authHeaders(auth))
         .send({ slug: 'dup', name: 'B', priceRub: 200 })
       expect(res.status).toBe(409)
       expect(res.body.error.code).toBe('slug_conflict')
@@ -61,6 +72,7 @@ describe('Product routes', () => {
     it('returns only published products', async () => {
       await request(app)
         .post('/api/admin/products')
+        .set(authHeaders(auth))
         .send({ slug: 'pub', name: 'P', priceRub: 100 })
       const {
         body: {
@@ -68,8 +80,12 @@ describe('Product routes', () => {
         },
       } = await request(app)
         .post('/api/admin/products')
+        .set(authHeaders(auth))
         .send({ slug: 'hidden', name: 'H', priceRub: 200 })
-      await request(app).post(`/api/admin/products/${id}/publish`).send()
+      await request(app)
+        .post(`/api/admin/products/${id}/publish`)
+        .set(authHeaders(auth))
+        .send()
       const res = await request(app).get('/api/public/products')
       expect(res.status).toBe(200)
       expect(res.body.data).toHaveLength(1)
@@ -81,12 +97,17 @@ describe('Product routes', () => {
           body: {
             data: { id },
           },
-        } = await request(app).post('/api/admin/products').send({
-          slug: `p-${i}`,
-          name: `P${i}`,
-          priceRub: 100,
-        })
-        await request(app).post(`/api/admin/products/${id}/publish`).send()
+        } = await request(app)
+          .post('/api/admin/products')
+          .set(authHeaders(auth))
+          .send({
+            slug: `p-${i}`,
+            name: `P${i}`,
+            priceRub: 100,
+          })
+        await request(app)
+          .post(`/api/admin/products/${id}/publish`)
+          .set(authHeaders(auth))
       }
       const res = await request(app).get('/api/public/products?limit=10&offset=5')
       expect(res.status).toBe(200)
@@ -101,12 +122,18 @@ describe('Product routes', () => {
         body: {
           data: { id },
         },
-      } = await request(app).post('/api/admin/products').send({
-        slug: 'visible',
-        name: 'V',
-        priceRub: 100,
-      })
-      await request(app).post(`/api/admin/products/${id}/publish`).send()
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'visible',
+          name: 'V',
+          priceRub: 100,
+        })
+      await request(app)
+        .post(`/api/admin/products/${id}/publish`)
+        .set(authHeaders(auth))
+        .send()
       const res = await request(app).get('/api/public/products/visible')
       expect(res.status).toBe(200)
       expect(res.body.data.slug).toBe('visible')
@@ -114,6 +141,7 @@ describe('Product routes', () => {
     it('returns 404 for unpublished', async () => {
       await request(app)
         .post('/api/admin/products')
+        .set(authHeaders(auth))
         .send({ slug: 'private', name: 'X', priceRub: 100 })
       const res = await request(app).get('/api/public/products/private')
       expect(res.status).toBe(404)
@@ -131,13 +159,17 @@ describe('Product routes', () => {
         body: {
           data: { id },
         },
-      } = await request(app).post('/api/admin/products').send({
-        slug: 'upd',
-        name: 'Orig',
-        priceRub: 100,
-      })
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'upd',
+          name: 'Orig',
+          priceRub: 100,
+        })
       const res = await request(app)
         .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
         .send({ name: 'Updated', priceRub: 200 })
       expect(res.status).toBe(200)
       expect(res.body.data.name).toBe('Updated')
@@ -147,6 +179,7 @@ describe('Product routes', () => {
     it('returns 404 for missing id', async () => {
       const res = await request(app)
         .patch('/api/admin/products/00000000-0000-0000-0000-000000000000')
+        .set(authHeaders(auth))
         .send({ name: 'X' })
       expect(res.status).toBe(404)
     })
@@ -158,15 +191,22 @@ describe('Product routes', () => {
         body: {
           data: { id },
         },
-      } = await request(app).post('/api/admin/products').send({
-        slug: 'toggle',
-        name: 'T',
-        priceRub: 100,
-      })
-      const p1 = await request(app).post(`/api/admin/products/${id}/publish`)
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'toggle',
+          name: 'T',
+          priceRub: 100,
+        })
+      const p1 = await request(app)
+        .post(`/api/admin/products/${id}/publish`)
+        .set(authHeaders(auth))
       expect(p1.status).toBe(200)
       expect(p1.body.data.isPublished).toBe(true)
-      const p2 = await request(app).post(`/api/admin/products/${id}/unpublish`)
+      const p2 = await request(app)
+        .post(`/api/admin/products/${id}/unpublish`)
+        .set(authHeaders(auth))
       expect(p2.status).toBe(200)
       expect(p2.body.data.isPublished).toBe(false)
     })
@@ -178,17 +218,26 @@ describe('Product routes', () => {
         body: {
           data: { id },
         },
-      } = await request(app).post('/api/admin/products').send({
-        slug: 'gone',
-        name: 'G',
-        priceRub: 100,
-      })
-      await request(app).post(`/api/admin/products/${id}/publish`)
-      const del = await request(app).delete(`/api/admin/products/${id}`)
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'gone',
+          name: 'G',
+          priceRub: 100,
+        })
+      await request(app)
+        .post(`/api/admin/products/${id}/publish`)
+        .set(authHeaders(auth))
+      const del = await request(app)
+        .delete(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
       expect(del.status).toBe(204)
       const pub = await request(app).get('/api/public/products')
       expect(pub.body.data).toHaveLength(0)
-      const adm = await request(app).get('/api/admin/products')
+      const adm = await request(app)
+        .get('/api/admin/products')
+        .set(authHeaders(auth))
       expect(adm.body.data).toHaveLength(0)
     })
   })

@@ -4,10 +4,15 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { Page } from '../../entities/Page.js'
 import { CreatePageSchema, UpdatePageSchema, ListQuerySchema } from './pages.schemas.js'
 import { conflict, notFound } from '../errors.js'
+import {
+  requireAdminAuth,
+  requireCsrfToken,
+} from '../middleware/requireAdminAuth.js'
 
 export const adminPagesRouter: Router = Router()
 
-// TODO(phase-3): adminPagesRouter.use(requireAdminAuth())
+adminPagesRouter.use(requireAdminAuth)
+adminPagesRouter.use(requireCsrfToken)
 
 function isUniqueViolation(err: unknown): boolean {
   return (

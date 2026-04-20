@@ -8,10 +8,15 @@ import {
   ListQuerySchema,
 } from './products.schemas.js'
 import { conflict, notFound } from '../errors.js'
+import {
+  requireAdminAuth,
+  requireCsrfToken,
+} from '../middleware/requireAdminAuth.js'
 
 export const adminProductsRouter: Router = Router()
 
-// TODO(phase-3): adminProductsRouter.use(requireAdminAuth())
+adminProductsRouter.use(requireAdminAuth)
+adminProductsRouter.use(requireCsrfToken)
 
 function isUniqueViolation(err: unknown): boolean {
   return (

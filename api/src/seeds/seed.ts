@@ -342,7 +342,7 @@ async function seed() {
     // Clear existing data — seed is idempotent; re-runs give a clean slate.
     // CASCADE handles the product_category_links join table and product_images.
     await AppDataSource.query(
-      'TRUNCATE products, product_images, product_categories, pages, admin_users RESTART IDENTITY CASCADE',
+      'TRUNCATE products, product_images, product_categories, pages, admin_sessions, admin_users RESTART IDENTITY CASCADE',
     )
     logger.info('truncated seed tables')
 

@@ -8,6 +8,7 @@ import { Page } from '../entities/Page.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { AdminUser } from '../entities/AdminUser.js'
+import { AdminSession } from '../entities/AdminSession.js'
 import { EntityRevision } from '../entities/EntityRevision.js'
 import { Redirect } from '../entities/Redirect.js'
 
@@ -25,7 +26,7 @@ export const AppDataSource = new DataSource({
   entities: [
     Product, ProductImage, ProductCategory,
     Page, Order, OrderItem,
-    AdminUser, EntityRevision, Redirect,
+    AdminUser, AdminSession, EntityRevision, Redirect,
   ],
   migrations: ['src/migrations/*.ts'],
 })
