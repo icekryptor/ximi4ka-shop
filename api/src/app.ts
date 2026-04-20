@@ -11,6 +11,8 @@ import { mediaRouter } from './routes/admin/media.js'
 import { adminRedirectsRouter } from './routes/admin/redirects.js'
 import { publicRedirectsRouter } from './routes/public/redirects.js'
 import { adminRevisionsRouter } from './routes/admin/revisions.js'
+import { adminSettingsRouter } from './routes/admin/settings.js'
+import { publicSettingsRouter } from './routes/public/settings.js'
 import { authRouter } from './routes/auth/index.js'
 import { errorHandler } from './routes/errors.js'
 import { UPLOADS_DIR } from './lib/storage/index.js'
@@ -46,6 +48,8 @@ export function createApp(): Express {
   app.use('/api/public/redirects', publicRedirectsRouter)
   app.use('/api/admin/redirects', adminRedirectsRouter)
   app.use('/api/admin/revisions', adminRevisionsRouter)
+  app.use('/api/public/settings', publicSettingsRouter)
+  app.use('/api/admin/settings', adminSettingsRouter)
 
   // Serve uploaded files statically. UPLOADS_DIR is resolved relative to the
   // storage module, not process.cwd(), so it behaves consistently whether

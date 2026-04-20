@@ -7,6 +7,7 @@ import {
   getCategory,
   listProductsByCategory,
   getPage,
+  getPublicSettings,
 } from './api'
 
 function jsonResponse(status: number, body: unknown, ok = status >= 200 && status < 300) {
@@ -310,6 +311,29 @@ describe('api client', () => {
 
       const [url] = fetchMock.mock.calls[0]
       expect(url).toBe('http://localhost:3001/api/public/pages/o%20nas')
+    })
+  })
+
+  describe('getPublicSettings', () => {
+    it('fetches /api/public/settings and unwraps the data envelope', async () => {
+      const settings = {
+        metrikaId: '12345',
+        ga4Id: 'G-ABC',
+        robotsTxt: 'User-agent: *\nAllow: /',
+        llmsTxt: '',
+        yandexWebmasterVerification: null,
+        googleSiteVerification: null,
+      }
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(jsonResponse(200, { data: settings }))
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await getPublicSettings()
+
+      expect(result).toEqual(settings)
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/settings')
     })
   })
 })

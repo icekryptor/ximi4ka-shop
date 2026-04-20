@@ -1,0 +1,306 @@
+'use client'
+
+import { useState } from 'react'
+import {
+  ApiError,
+  adminUpdateSettings,
+  type AdminSettingsPatch,
+  type SiteSettings,
+} from '@/lib/adminApi'
+
+interface Props {
+  initial: SiteSettings
+}
+
+// Convert "" -> null before sending so empty form fields clear the column
+// instead of storing the empty string. Keeps a later admin revisiting the
+// form from seeing "" (which looks disabled) when they mean "unset".
+function nullifyBlank(value: string): string | null {
+  const trimmed = value.trim()
+  return trimmed.length === 0 ? null : trimmed
+}
+
+// Client-side URL sanity check so the admin sees an error inline before the
+// request round-trip. The server does the authoritative check via zod.
+function isValidUrlOrEmpty(value: string): boolean {
+  if (value.trim() === '') return true
+  try {
+    new URL(value.trim())
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function SettingsForm({ initial }: Props) {
+  const [metrikaId, setMetrikaId] = useState(initial.metrikaId ?? '')
+  const [ga4Id, setGa4Id] = useState(initial.ga4Id ?? '')
+  const [robotsTxt, setRobotsTxt] = useState(initial.robotsTxt)
+  const [llmsTxt, setLlmsTxt] = useState(initial.llmsTxt)
+  const [yandexWebmasterVerification, setYandexWebmasterVerification] =
+    useState(initial.yandexWebmasterVerification ?? '')
+  const [googleSiteVerification, setGoogleSiteVerification] = useState(
+    initial.googleSiteVerification ?? '',
+  )
+  const [ymlShopName, setYmlShopName] = useState(initial.ymlShopName ?? '')
+  const [ymlCompany, setYmlCompany] = useState(initial.ymlCompany ?? '')
+  const [ymlUrl, setYmlUrl] = useState(initial.ymlUrl ?? '')
+  const [yandexPayEnabled, setYandexPayEnabled] = useState(
+    initial.yandexPayEnabled,
+  )
+  const [yandexPayMode, setYandexPayMode] = useState<'sandbox' | 'production'>(
+    initial.yandexPayMode,
+  )
+
+  const [submitting, setSubmitting] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [apiError, setApiError] = useState<ApiError | null>(null)
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setFormError(null)
+    setApiError(null)
+    setSavedAt(null)
+
+    if (!isValidUrlOrEmpty(ymlUrl)) {
+      setFormError('URL для YML должен быть корректным (https://...).')
+      return
+    }
+
+    const patch: AdminSettingsPatch = {
+      metrikaId: nullifyBlank(metrikaId),
+      ga4Id: nullifyBlank(ga4Id),
+      robotsTxt,
+      llmsTxt,
+      yandexWebmasterVerification: nullifyBlank(yandexWebmasterVerification),
+      googleSiteVerification: nullifyBlank(googleSiteVerification),
+      ymlShopName: nullifyBlank(ymlShopName),
+      ymlCompany: nullifyBlank(ymlCompany),
+      ymlUrl: nullifyBlank(ymlUrl),
+      yandexPayEnabled,
+      yandexPayMode,
+    }
+
+    setSubmitting(true)
+    try {
+      await adminUpdateSettings(patch)
+      setSavedAt(Date.now())
+    } catch (err) {
+      if (err instanceof ApiError) setApiError(err)
+      else setApiError(new ApiError(500, 'network_error', 'Ошибка сети'))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      aria-label="Настройки сайта"
+      className="space-y-6"
+    >
+      <Section title="Аналитика">
+        <Field label="Яндекс.Метрика (ID счётчика)" htmlFor="metrika-id">
+          <input
+            id="metrika-id"
+            value={metrikaId}
+            onChange={(e) => setMetrikaId(e.target.value)}
+            placeholder="12345678"
+            className="input"
+          />
+          <p className="mt-1 text-xs text-brand-text-secondary">
+            Числовой идентификатор из интерфейса Метрики. Оставьте пустым, чтобы
+            отключить.
+          </p>
+        </Field>
+        <Field label="Google Analytics 4 (Measurement ID)" htmlFor="ga4-id">
+          <input
+            id="ga4-id"
+            value={ga4Id}
+            onChange={(e) => setGa4Id(e.target.value)}
+            placeholder="G-XXXXXXXXXX"
+            className="input"
+          />
+        </Field>
+      </Section>
+
+      <Section title="SEO">
+        <Field label="robots.txt" htmlFor="robots-txt">
+          <textarea
+            id="robots-txt"
+            value={robotsTxt}
+            onChange={(e) => setRobotsTxt(e.target.value)}
+            rows={6}
+            className="input font-mono text-xs"
+          />
+          <p className="mt-1 text-xs text-brand-text-secondary">
+            Публикуется по адресу <code>/robots.txt</code>.
+          </p>
+        </Field>
+        <Field label="llms.txt" htmlFor="llms-txt">
+          <textarea
+            id="llms-txt"
+            value={llmsTxt}
+            onChange={(e) => setLlmsTxt(e.target.value)}
+            rows={8}
+            className="input font-mono text-xs"
+          />
+          <p className="mt-1 text-xs text-brand-text-secondary">
+            Публикуется по адресу <code>/llms.txt</code>.
+          </p>
+        </Field>
+        <Field
+          label="Яндекс.Вебмастер — код подтверждения"
+          htmlFor="yandex-webmaster"
+        >
+          <input
+            id="yandex-webmaster"
+            value={yandexWebmasterVerification}
+            onChange={(e) => setYandexWebmasterVerification(e.target.value)}
+            className="input"
+          />
+        </Field>
+        <Field
+          label="Google Search Console — код подтверждения"
+          htmlFor="google-site-verification"
+        >
+          <input
+            id="google-site-verification"
+            value={googleSiteVerification}
+            onChange={(e) => setGoogleSiteVerification(e.target.value)}
+            className="input"
+          />
+        </Field>
+      </Section>
+
+      <Section title="YML-фид">
+        <Field label="Название магазина" htmlFor="yml-shop-name">
+          <input
+            id="yml-shop-name"
+            value={ymlShopName}
+            onChange={(e) => setYmlShopName(e.target.value)}
+            className="input"
+          />
+        </Field>
+        <Field label="Юр. лицо" htmlFor="yml-company">
+          <input
+            id="yml-company"
+            value={ymlCompany}
+            onChange={(e) => setYmlCompany(e.target.value)}
+            className="input"
+          />
+        </Field>
+        <Field label="URL магазина" htmlFor="yml-url">
+          <input
+            id="yml-url"
+            type="url"
+            value={ymlUrl}
+            onChange={(e) => setYmlUrl(e.target.value)}
+            placeholder="https://ximi4ka.ru"
+            className="input"
+          />
+        </Field>
+      </Section>
+
+      <Section title="Яндекс.Pay">
+        <div className="flex items-center gap-3">
+          <input
+            id="yandex-pay-enabled"
+            type="checkbox"
+            checked={yandexPayEnabled}
+            onChange={(e) => setYandexPayEnabled(e.target.checked)}
+          />
+          <label
+            htmlFor="yandex-pay-enabled"
+            className="text-sm text-brand-text"
+          >
+            Включить Яндекс.Pay в оформлении заказа
+          </label>
+        </div>
+        <Field label="Режим" htmlFor="yandex-pay-mode">
+          <select
+            id="yandex-pay-mode"
+            value={yandexPayMode}
+            onChange={(e) =>
+              setYandexPayMode(e.target.value as 'sandbox' | 'production')
+            }
+            className="input"
+          >
+            <option value="sandbox">Sandbox (тестовый)</option>
+            <option value="production">Production</option>
+          </select>
+          <p className="mt-1 text-xs text-brand-text-secondary">
+            Учётные данные платёжной системы хранятся в переменных окружения, а
+            не в базе.
+          </p>
+        </Field>
+      </Section>
+
+      {formError || apiError ? (
+        <div
+          role="alert"
+          className="p-3 rounded-xl bg-red-50 text-red-700 text-sm"
+        >
+          {formError ?? apiError?.message}
+        </div>
+      ) : null}
+
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="px-5 py-2.5 rounded-full bg-brand text-white font-semibold disabled:opacity-50"
+        >
+          {submitting ? 'Сохранение...' : 'Сохранить'}
+        </button>
+        {savedAt ? (
+          <span
+            role="status"
+            className="text-sm text-green-700"
+            data-testid="saved-indicator"
+          >
+            Сохранено ✓
+          </span>
+        ) : null}
+      </div>
+    </form>
+  )
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="bg-white rounded-2xl border border-brand-border p-6 space-y-4">
+      <h2 className="text-lg font-semibold text-brand-text">{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+function Field({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string
+  htmlFor: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label
+        htmlFor={htmlFor}
+        className="block text-sm font-medium text-brand-text-secondary mb-1"
+      >
+        {label}
+      </label>
+      {children}
+    </div>
+  )
+}

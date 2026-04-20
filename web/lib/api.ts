@@ -110,3 +110,21 @@ export async function getPage(slug: string): Promise<Page> {
   )
   return body.data
 }
+
+// ---------- Public site settings ----------
+
+export interface PublicSettings {
+  metrikaId: string | null
+  ga4Id: string | null
+  robotsTxt: string
+  llmsTxt: string
+  yandexWebmasterVerification: string | null
+  googleSiteVerification: string | null
+}
+
+export async function getPublicSettings(): Promise<PublicSettings> {
+  const body = await request<DataEnvelope<PublicSettings>>(
+    `/api/public/settings`,
+  )
+  return body.data
+}

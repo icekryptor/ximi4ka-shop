@@ -379,6 +379,44 @@ export async function adminImportRedirectsCsv(
   return body.data
 }
 
+// --- settings (singleton) ---
+
+export interface SiteSettings {
+  id: string
+  metrikaId: string | null
+  ga4Id: string | null
+  robotsTxt: string
+  llmsTxt: string
+  yandexWebmasterVerification: string | null
+  googleSiteVerification: string | null
+  ymlShopName: string | null
+  ymlCompany: string | null
+  ymlUrl: string | null
+  yandexPayEnabled: boolean
+  yandexPayMode: 'sandbox' | 'production'
+  updatedAt: string
+}
+
+export async function adminGetSettings(): Promise<SiteSettings> {
+  const body = await authedRequest<{ data: SiteSettings }>(`/api/admin/settings`)
+  return body.data
+}
+
+// Partial<SiteSettings> with `id`/`updatedAt` dropped — server ignores them.
+export type AdminSettingsPatch = Partial<
+  Omit<SiteSettings, 'id' | 'updatedAt'>
+>
+
+export async function adminUpdateSettings(
+  patch: AdminSettingsPatch,
+): Promise<SiteSettings> {
+  const body = await authedRequest<{ data: SiteSettings }>(`/api/admin/settings`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  })
+  return body.data
+}
+
 // --- media upload ---
 
 export async function adminUploadImage(file: File): Promise<UploadResult> {

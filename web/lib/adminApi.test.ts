@@ -9,6 +9,7 @@ import {
   adminDeletePage,
   adminDeleteRedirect,
   adminGetPage,
+  adminGetSettings,
   adminImportRedirectsCsv,
   adminListCategories,
   adminListMedia,
@@ -22,6 +23,7 @@ import {
   adminUpdateCategory,
   adminUpdatePage,
   adminUpdateRedirect,
+  adminUpdateSettings,
   adminUploadImage,
   ApiError,
 } from './adminApi'
@@ -472,5 +474,76 @@ describe('adminApi', () => {
     expect(init?.credentials).toBe('include')
     const headers = init?.headers as Record<string, string>
     expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+  })
+
+  it('settings: get returns the singleton via GET', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: {
+          id: 'default',
+          metrikaId: null,
+          ga4Id: null,
+          robotsTxt: 'User-agent: *\nAllow: /',
+          llmsTxt: '',
+          yandexWebmasterVerification: null,
+          googleSiteVerification: null,
+          ymlShopName: null,
+          ymlCompany: null,
+          ymlUrl: null,
+          yandexPayEnabled: false,
+          yandexPayMode: 'sandbox',
+          updatedAt: '2026-04-20T00:00:00Z',
+        },
+      }),
+    )
+    const settings = await adminGetSettings()
+    expect(settings.id).toBe('default')
+    expect(settings.yandexPayMode).toBe('sandbox')
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/settings')
+    expect(init?.credentials).toBe('include')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBeUndefined()
+  })
+
+  it('settings: update sends PATCH with CSRF and JSON body', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: {
+          id: 'default',
+          metrikaId: '99999',
+          ga4Id: null,
+          robotsTxt: 'User-agent: *\nAllow: /',
+          llmsTxt: '',
+          yandexWebmasterVerification: null,
+          googleSiteVerification: null,
+          ymlShopName: null,
+          ymlCompany: null,
+          ymlUrl: null,
+          yandexPayEnabled: true,
+          yandexPayMode: 'production',
+          updatedAt: '2026-04-20T00:00:00Z',
+        },
+      }),
+    )
+    const result = await adminUpdateSettings({
+      metrikaId: '99999',
+      yandexPayEnabled: true,
+      yandexPayMode: 'production',
+    })
+    expect(result.metrikaId).toBe('99999')
+    expect(result.yandexPayEnabled).toBe(true)
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/settings')
+    expect(init?.method).toBe('PATCH')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+    expect(headers['content-type']).toBe('application/json')
+    expect(JSON.parse(init?.body as string)).toEqual({
+      metrikaId: '99999',
+      yandexPayEnabled: true,
+      yandexPayMode: 'production',
+    })
   })
 })
