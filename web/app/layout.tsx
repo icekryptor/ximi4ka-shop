@@ -1,8 +1,5 @@
 import type { Metadata } from 'next'
 import './globals.css'
-import { Header } from '@/components/Header'
-import { Footer } from '@/components/Footer'
-import { CartDrawer } from '@/components/CartDrawer'
 
 export const metadata: Metadata = {
   title: 'Ximi4ka — наборы для химических экспериментов',
@@ -10,6 +7,9 @@ export const metadata: Metadata = {
     'Химические наборы для детей и подростков. Научные эксперименты дома.',
 }
 
+// Root layout mounts only the html/body shell. Public chrome (Header, Footer,
+// CartDrawer) lives in app/(public)/layout.tsx; admin chrome lives in
+// app/admin/(authed)/layout.tsx. Neither leaks into the other.
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -18,10 +18,7 @@ export default function RootLayout({
   return (
     <html lang="ru" className="h-full antialiased">
       <body className="min-h-screen flex flex-col text-brand-text bg-background">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
-        <CartDrawer />
+        {children}
       </body>
     </html>
   )
