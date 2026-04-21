@@ -30,6 +30,12 @@ const UpdateSchema = z.object({
   ymlShopName: z.string().trim().max(255).nullable().optional(),
   ymlCompany: z.string().trim().max(255).nullable().optional(),
   ymlUrl: z.string().trim().url().max(500).nullable().optional(),
+  // Currency is an enum on the DB column too; mirror it here so a wrong
+  // string from the form becomes a structured validation_error.
+  ymlCurrency: z.enum(['RUB', 'RUR']).optional(),
+  // Delivery note is free-form; 2000 chars is generous but bounded so a
+  // paste of something enormous doesn't balloon the settings row.
+  ymlDeliveryNote: z.string().max(2000).nullable().optional(),
   yandexPayEnabled: z.boolean().optional(),
   yandexPayMode: z.enum(['sandbox', 'production']).optional(),
 })

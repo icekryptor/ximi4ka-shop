@@ -392,6 +392,8 @@ export interface SiteSettings {
   ymlShopName: string | null
   ymlCompany: string | null
   ymlUrl: string | null
+  ymlCurrency: 'RUB' | 'RUR'
+  ymlDeliveryNote: string | null
   yandexPayEnabled: boolean
   yandexPayMode: 'sandbox' | 'production'
   updatedAt: string
@@ -415,6 +417,24 @@ export async function adminUpdateSettings(
     body: JSON.stringify(patch),
   })
   return body.data
+}
+
+// Fetches the current YML feed XML for the preview/validation button in the
+// admin settings form. Returns the raw text body rather than a JSON envelope
+// because the server handler just forwards the generator's output — wrapping
+// it in JSON would force double-parsing with no benefit.
+export async function adminPreviewYml(): Promise<string> {
+  const method = 'GET'
+  const csrf = readCsrfToken()
+  const headers: Record<string, string> = {}
+  if (csrf) headers['X-CSRF-Token'] = csrf
+  const res = await fetch(`${API_BASE}/api/admin/yml-preview`, {
+    method,
+    credentials: 'include',
+    headers,
+  })
+  if (!res.ok) throw await parseError(res)
+  return res.text()
 }
 
 // --- media upload ---

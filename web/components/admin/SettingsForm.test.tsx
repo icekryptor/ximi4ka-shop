@@ -29,6 +29,8 @@ const baseSettings: SiteSettings = {
   ymlShopName: null,
   ymlCompany: null,
   ymlUrl: null,
+  ymlCurrency: 'RUB',
+  ymlDeliveryNote: null,
   yandexPayEnabled: false,
   yandexPayMode: 'sandbox',
   updatedAt: '2026-04-20T00:00:00Z',

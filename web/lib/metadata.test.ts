@@ -117,6 +117,22 @@ describe('buildMetadata', () => {
     expect(meta.twitter?.images).toEqual(['https://cdn.example.com/og.jpg'])
   })
 
+  it('emits an amphtml link under `other` when ampPath is provided', () => {
+    const meta = buildMetadata({
+      title: 'T',
+      pathname: '/product/foo',
+      ampPath: '/amp/product/foo',
+    })
+    expect(meta.other).toEqual({
+      amphtml: 'https://shop.ximi4ka.ru/amp/product/foo',
+    })
+  })
+
+  it('leaves `other` undefined when ampPath is omitted', () => {
+    const meta = buildMetadata({ title: 'T', pathname: '/' })
+    expect(meta.other).toBeUndefined()
+  })
+
   it('trims whitespace on metaTitle / metaDescription / canonicalUrl / ogImage', () => {
     const meta = buildMetadata({
       title: 'Base',

@@ -1,11 +1,13 @@
 import { Router } from 'express'
 import { getSettings } from '../../lib/settings.js'
 
-// Public subset of the settings. Deliberately small — analytics IDs and SEO
-// content must round-trip to the browser (for the <script> tags and the
-// /robots.txt and /llms.txt routes on the web app), but Yandex Pay toggle /
-// mode and YML metadata are NOT exposed here. The checkout will read those
-// server-to-server. Payment credentials themselves never live in the DB.
+// Public subset of the settings. Analytics IDs and SEO content must
+// round-trip to the browser (for the <script> tags and the /robots.txt /
+// /llms.txt routes on the web app). YML shop metadata (name, company, url,
+// currency, delivery note) is ALSO public-safe — it describes the shop
+// externally and is the same data that appears in the Yandex Market feed.
+// Admin-only toggles (Yandex Pay) stay out of this response; payment
+// credentials themselves never live in the DB.
 export const publicSettingsRouter: Router = Router()
 
 publicSettingsRouter.get('/', async (_req, res, next) => {
@@ -23,6 +25,11 @@ publicSettingsRouter.get('/', async (_req, res, next) => {
         llmsTxt: s.llmsTxt,
         yandexWebmasterVerification: s.yandexWebmasterVerification,
         googleSiteVerification: s.googleSiteVerification,
+        ymlShopName: s.ymlShopName,
+        ymlCompany: s.ymlCompany,
+        ymlUrl: s.ymlUrl,
+        ymlCurrency: s.ymlCurrency,
+        ymlDeliveryNote: s.ymlDeliveryNote,
       },
     })
   } catch (err) {

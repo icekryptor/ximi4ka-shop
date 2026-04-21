@@ -45,6 +45,23 @@ export function SettingsForm({ initial }: Props) {
   const [ymlShopName, setYmlShopName] = useState(initial.ymlShopName ?? '')
   const [ymlCompany, setYmlCompany] = useState(initial.ymlCompany ?? '')
   const [ymlUrl, setYmlUrl] = useState(initial.ymlUrl ?? '')
+  const [ymlCurrency, setYmlCurrency] = useState<'RUB' | 'RUR'>(
+    initial.ymlCurrency,
+  )
+  const [ymlDeliveryNote, setYmlDeliveryNote] = useState(
+    initial.ymlDeliveryNote ?? '',
+  )
+  // Preview state — drives the "Проверить YML" panel. Kept local to the form
+  // since it's ephemeral: closing the page discards it, matching the rest of
+  // the admin's one-shot validation affordances (e.g. redirects CSV import).
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [previewReport, setPreviewReport] = useState<{
+    ok: boolean
+    offersCount: number
+    issues: string[]
+    snippet: string
+  } | null>(null)
   const [yandexPayEnabled, setYandexPayEnabled] = useState(
     initial.yandexPayEnabled,
   )
@@ -78,6 +95,8 @@ export function SettingsForm({ initial }: Props) {
       ymlShopName: nullifyBlank(ymlShopName),
       ymlCompany: nullifyBlank(ymlCompany),
       ymlUrl: nullifyBlank(ymlUrl),
+      ymlCurrency,
+      ymlDeliveryNote: nullifyBlank(ymlDeliveryNote),
       yandexPayEnabled,
       yandexPayMode,
     }
@@ -201,6 +220,91 @@ export function SettingsForm({ initial }: Props) {
             className="input"
           />
         </Field>
+        <Field label="Валюта" htmlFor="yml-currency">
+          <select
+            id="yml-currency"
+            value={ymlCurrency}
+            onChange={(e) =>
+              setYmlCurrency(e.target.value as 'RUB' | 'RUR')
+            }
+            className="input"
+          >
+            <option value="RUB">RUB — ISO 4217</option>
+            <option value="RUR">RUR — устаревший код</option>
+          </select>
+          <p className="mt-1 text-xs text-brand-text-secondary">
+            Код валюты в YML. Большинство площадок принимают обе формы, RUB
+            — современный ISO 4217.
+          </p>
+        </Field>
+        <Field label="Примечание о доставке" htmlFor="yml-delivery-note">
+          <textarea
+            id="yml-delivery-note"
+            value={ymlDeliveryNote}
+            onChange={(e) => setYmlDeliveryNote(e.target.value)}
+            rows={3}
+            className="input"
+            placeholder="Доставка по России — 3-7 дней"
+          />
+        </Field>
+        <div className="pt-2 border-t border-brand-border">
+          <button
+            type="button"
+            onClick={async () => {
+              setPreviewLoading(true)
+              setPreviewError(null)
+              setPreviewReport(null)
+              try {
+                const { adminPreviewYml } = await import('@/lib/adminApi')
+                const { validateYmlPreview } = await import('@/lib/ymlPreview')
+                const xml = await adminPreviewYml()
+                setPreviewReport(validateYmlPreview(xml))
+              } catch (err) {
+                if (err instanceof ApiError) setPreviewError(err.message)
+                else setPreviewError('Не удалось получить YML-фид')
+              } finally {
+                setPreviewLoading(false)
+              }
+            }}
+            disabled={previewLoading}
+            className="px-4 py-2 rounded-full border border-brand text-brand text-sm font-medium disabled:opacity-50"
+          >
+            {previewLoading ? 'Проверка...' : 'Проверить YML'}
+          </button>
+          {previewError && (
+            <p role="alert" className="mt-2 text-sm text-red-700">
+              {previewError}
+            </p>
+          )}
+          {previewReport && (
+            <div
+              role="status"
+              data-testid="yml-preview-report"
+              className="mt-3 p-3 rounded-xl border border-brand-border bg-brand-bg-muted text-sm space-y-2"
+            >
+              <p className={previewReport.ok ? 'text-green-700' : 'text-red-700'}>
+                {previewReport.ok
+                  ? `OK — ${previewReport.offersCount} предложений`
+                  : `Найдены проблемы (${previewReport.issues.length})`}
+              </p>
+              {previewReport.issues.length > 0 && (
+                <ul className="list-disc pl-5 text-red-700 text-xs">
+                  {previewReport.issues.map((msg, i) => (
+                    <li key={i}>{msg}</li>
+                  ))}
+                </ul>
+              )}
+              <details className="text-xs">
+                <summary className="cursor-pointer text-brand-text-secondary">
+                  Первые 20 предложений (сокращённо)
+                </summary>
+                <pre className="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-[11px] text-brand-text-secondary">
+                  {previewReport.snippet}
+                </pre>
+              </details>
+            </div>
+          )}
+        </div>
       </Section>
 
       <Section title="Яндекс.Pay">

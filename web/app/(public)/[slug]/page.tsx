@@ -4,7 +4,7 @@ import type { Page } from '@ximi4ka-shop/shared'
 import { ApiError, getPage } from '@/lib/api'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { buildMetadata } from '@/lib/metadata'
+import { buildMetadata, siteUrl } from '@/lib/metadata'
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/jsonLd'
 
 export const revalidate = 60
@@ -48,6 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       noindex: page.noindex,
       pathname: `/${slug}`,
       type: 'article',
+      ampPath: `/amp/article/${slug}`,
     })
   } catch {
     return { title: 'Страница — Ximi4ka' }
@@ -75,6 +76,8 @@ export default async function CmsPage({ params }: Props) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      {/* AMP discovery link — see product page for rationale. */}
+      <link rel="amphtml" href={`${siteUrl()}/amp/article/${slug}`} />
       <JsonLd data={articleJsonLd(page)} />
       <JsonLd
         data={breadcrumbJsonLd([

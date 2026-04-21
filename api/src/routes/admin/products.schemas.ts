@@ -25,7 +25,27 @@ export const CreateProductSchema = z.object({
 export const UpdateProductSchema = CreateProductSchema.partial()
 
 export const ListQuerySchema = z.object({
+  // Admin listing is paginated; feed-style bulk reads use the public
+  // endpoint which raises this cap separately.
   limit: z.coerce.number().int().min(1).max(100).default(20),
   offset: z.coerce.number().int().min(0).default(0),
   q: z.string().trim().min(1).max(100).optional(),
+})
+
+// Public listing accepts a much larger limit because external consumers
+// (YML feed, sitemap, Turbo RSS) enumerate the full catalog. 5000 is
+// generous for the foreseeable catalog size without risking runaway memory.
+export const PublicListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(5000).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+  // Opt-in relation loader. `categories` triggers a left-join on the
+  // product_category_links table and returns a `categoryIds` string[] on
+  // each row. Comma-separated to keep room for future `include` targets
+  // (e.g. `images`), though images are already eager-loaded elsewhere.
+  include: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .transform((v) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : [])),
 })

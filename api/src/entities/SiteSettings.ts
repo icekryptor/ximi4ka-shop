@@ -64,6 +64,23 @@ export class SiteSettings {
   @Column({ type: 'varchar', length: 500, name: 'yml_url', nullable: true })
   ymlUrl!: string | null
 
+  // Currency code used in the YML feed. Yandex accepts both 'RUB' (the ISO
+  // 4217 code) and the legacy 'RUR'. Default to 'RUB' which matches the
+  // current Yandex Market spec.
+  @Column({
+    type: 'varchar',
+    length: 8,
+    name: 'yml_currency',
+    default: 'RUB',
+  })
+  ymlCurrency!: 'RUB' | 'RUR'
+
+  // Optional free-form delivery blurb surfaced inside the YML <shop> block
+  // under <delivery_options>. Kept nullable because many shops don't want
+  // to declare structured delivery options in the feed at all.
+  @Column({ type: 'text', name: 'yml_delivery_note', nullable: true })
+  ymlDeliveryNote!: string | null
+
   // --- Payment toggle ---
   // API credentials themselves are NOT stored here — they live in env vars.
   // Only the toggle + mode affect the checkout UI.

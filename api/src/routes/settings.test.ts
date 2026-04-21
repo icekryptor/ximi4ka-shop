@@ -39,6 +39,8 @@ describe('Site settings', () => {
         yml_shop_name = NULL,
         yml_company = NULL,
         yml_url = NULL,
+        yml_currency = 'RUB',
+        yml_delivery_note = NULL,
         yandex_pay_enabled = false,
         yandex_pay_mode = 'sandbox'
       WHERE id = 'default'
@@ -76,6 +78,8 @@ describe('Site settings', () => {
         ymlShopName: 'Ximi4ka',
         ymlCompany: 'Ximi4ka LLC',
         ymlUrl: 'https://ximi4ka.example.com',
+        ymlCurrency: 'RUR',
+        ymlDeliveryNote: 'Самовывоз бесплатно',
         yandexPayEnabled: true,
         yandexPayMode: 'production',
       })
@@ -86,6 +90,8 @@ describe('Site settings', () => {
       yandexPayEnabled: true,
       yandexPayMode: 'production',
       ymlUrl: 'https://ximi4ka.example.com',
+      ymlCurrency: 'RUR',
+      ymlDeliveryNote: 'Самовывоз бесплатно',
     })
 
     // Persistence round-trip: re-GET to ensure the values actually landed.
@@ -94,6 +100,16 @@ describe('Site settings', () => {
       .set(authHeaders(auth))
     expect(reGet.body.data.metrikaId).toBe('12345678')
     expect(reGet.body.data.ymlCompany).toBe('Ximi4ka LLC')
+    expect(reGet.body.data.ymlCurrency).toBe('RUR')
+  })
+
+  it('PATCH rejects an invalid ymlCurrency with 400 validation_error', async () => {
+    const res = await request(app)
+      .patch('/api/admin/settings')
+      .set(authHeaders(auth))
+      .send({ ymlCurrency: 'USD' })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('validation_error')
   })
 
   it('PATCH rejects an invalid yandexPayMode with 400 validation_error', async () => {
@@ -114,21 +130,27 @@ describe('Site settings', () => {
     expect(res.body.error.code).toBe('validation_error')
   })
 
-  it('GET /api/public/settings returns the public subset only', async () => {
-    // Seed some admin-only fields to prove they're NOT leaked.
+  it('GET /api/public/settings exposes public analytics/SEO + YML shop metadata', async () => {
+    // Seed the full public-visible settings surface plus an admin-only one
+    // (yandexPayEnabled) to prove the payment toggle is still NOT leaked.
     await request(app)
       .patch('/api/admin/settings')
       .set(authHeaders(auth))
       .send({
         metrikaId: 'M-PUBLIC',
-        ymlShopName: 'Ximi4ka-private',
+        ymlShopName: 'Ximi4ka',
+        ymlCompany: 'Ximi4ka LLC',
+        ymlUrl: 'https://ximi4ka.example.com',
+        ymlCurrency: 'RUB',
+        ymlDeliveryNote: 'Доставка по России — 3-7 дней',
         yandexPayEnabled: true,
       })
       .expect(200)
 
     const res = await request(app).get('/api/public/settings')
     expect(res.status).toBe(200)
-    // Public fields present:
+    // Public fields present, including YML shop metadata — these describe
+    // the shop externally and are the same data Yandex sees in the feed.
     expect(res.body.data).toMatchObject({
       metrikaId: 'M-PUBLIC',
       ga4Id: null,
@@ -136,15 +158,16 @@ describe('Site settings', () => {
       llmsTxt: expect.any(String),
       yandexWebmasterVerification: null,
       googleSiteVerification: null,
+      ymlShopName: 'Ximi4ka',
+      ymlCompany: 'Ximi4ka LLC',
+      ymlUrl: 'https://ximi4ka.example.com',
+      ymlCurrency: 'RUB',
+      ymlDeliveryNote: 'Доставка по России — 3-7 дней',
     })
-    // Admin-only / payment / YML fields NOT present — important because this
-    // endpoint is CDN-cacheable and would otherwise leak store-admin config
-    // to every visitor.
+    // Payment toggle / mode stay admin-only; leaking them would change the
+    // checkout UX conditionally based on config visible to every visitor.
     expect(res.body.data.yandexPayEnabled).toBeUndefined()
     expect(res.body.data.yandexPayMode).toBeUndefined()
-    expect(res.body.data.ymlShopName).toBeUndefined()
-    expect(res.body.data.ymlCompany).toBeUndefined()
-    expect(res.body.data.ymlUrl).toBeUndefined()
   })
 
   it('GET /api/public/settings sets a 60s Cache-Control header', async () => {

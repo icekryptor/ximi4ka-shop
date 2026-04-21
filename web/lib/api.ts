@@ -63,10 +63,22 @@ function buildListQuery(opts: { limit?: number; offset?: number }): string {
 
 // ---------- Products (public) ----------
 
+// Server-augmented shape returned when the caller passes `include: 'categories'`.
+// The base Product type stays unchanged so all existing consumers still
+// compile; YML/feed code that needs categoryIds narrows via this alias.
+export type ProductWithCategories = Product & { categoryIds: string[] }
+
 export async function listPublishedProducts(
-  opts: { limit?: number; offset?: number } = {},
+  opts: { limit?: number; offset?: number; include?: 'categories' } = {},
 ): Promise<Paginated<Product>> {
-  return request<Paginated<Product>>(`/api/public/products${buildListQuery(opts)}`)
+  const params = new URLSearchParams()
+  if (opts.limit != null) params.set('limit', String(opts.limit))
+  if (opts.offset != null) params.set('offset', String(opts.offset))
+  if (opts.include) params.set('include', opts.include)
+  const qs = params.toString()
+  return request<Paginated<Product>>(
+    `/api/public/products${qs ? `?${qs}` : ''}`,
+  )
 }
 
 export async function getPublishedProduct(slug: string): Promise<Product> {
@@ -126,6 +138,11 @@ export interface PublicSettings {
   llmsTxt: string
   yandexWebmasterVerification: string | null
   googleSiteVerification: string | null
+  ymlShopName: string | null
+  ymlCompany: string | null
+  ymlUrl: string | null
+  ymlCurrency: 'RUB' | 'RUR'
+  ymlDeliveryNote: string | null
 }
 
 export async function getPublicSettings(): Promise<PublicSettings> {

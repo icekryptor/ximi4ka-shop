@@ -11,6 +11,13 @@ export interface SeoInput {
   /** Route-relative path, e.g. '/product/foo'. Used to build absolute canonical + OG URL. */
   pathname: string
   type?: 'website' | 'article' | 'product'
+  /**
+   * Route-relative path to the AMP equivalent, e.g. '/amp/product/foo'.
+   * When set, buildMetadata emits `<link rel="amphtml" href="...">` pointing
+   * at this URL so Yandex/Google can discover the Accelerated Mobile Pages
+   * variant.
+   */
+  ampPath?: string | null
 }
 
 export function siteUrl(): string {
@@ -49,11 +56,19 @@ export function buildMetadata(input: SeoInput): Metadata {
   // for product-specific signals anyway.
   const ogType = input.type === 'product' ? 'website' : input.type ?? 'website'
 
+  // Next's Metadata API doesn't have a first-class amphtml slot — it lives
+  // under `other` and renders as a flat `<link>` tag. We build it manually
+  // so the caller just passes `/amp/product/slug` without thinking about
+  // URL assembly.
+  const ampHref = input.ampPath ? `${base}${input.ampPath}` : null
+  const other = ampHref ? { amphtml: ampHref } : undefined
+
   return {
     title,
     description,
     alternates: { canonical },
     robots: input.noindex ? { index: false, follow: false } : undefined,
+    other,
     openGraph: {
       title,
       description,

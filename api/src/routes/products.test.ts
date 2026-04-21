@@ -18,7 +18,7 @@ describe('Product routes', () => {
   })
   beforeEach(async () => {
     await AppDataSource.query(
-      'TRUNCATE products, product_images, product_category_links, admin_sessions, admin_users RESTART IDENTITY CASCADE',
+      'TRUNCATE products, product_images, product_categories, product_category_links, admin_sessions, admin_users RESTART IDENTITY CASCADE',
     )
     auth = await loginAsAdmin(app)
   })
@@ -91,6 +91,55 @@ describe('Product routes', () => {
       expect(res.body.data).toHaveLength(1)
       expect(res.body.data[0].slug).toBe('hidden')
     })
+    it('returns categoryIds when include=categories is passed', async () => {
+      // Create two categories and a published product linked to both.
+      const catA = await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug: 'cat-a', name: 'A' })
+      const catB = await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug: 'cat-b', name: 'B' })
+      expect(catA.status).toBe(201)
+      expect(catB.status).toBe(201)
+
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'linked', name: 'L', priceRub: 100 })
+
+      // The admin uses the categories PATCH endpoint to set links; but
+      // since this test doesn't care about the HTTP surface we write the
+      // join row directly.
+      await AppDataSource.query(
+        `INSERT INTO product_category_links (category_id, product_id) VALUES ($1, $2), ($3, $2)`,
+        [catA.body.data.id, id, catB.body.data.id],
+      )
+      await request(app)
+        .post(`/api/admin/products/${id}/publish`)
+        .set(authHeaders(auth))
+        .send()
+
+      const withInclude = await request(app).get(
+        '/api/public/products?include=categories',
+      )
+      expect(withInclude.status).toBe(200)
+      expect(withInclude.body.data[0]).toHaveProperty('categoryIds')
+      expect(withInclude.body.data[0].categoryIds).toEqual(
+        expect.arrayContaining([catA.body.data.id, catB.body.data.id]),
+      )
+
+      // Without the flag, response stays backwards-compatible.
+      const noInclude = await request(app).get('/api/public/products')
+      expect(noInclude.status).toBe(200)
+      expect(noInclude.body.data[0]).not.toHaveProperty('categoryIds')
+    })
+
     it('paginates with limit and offset', async () => {
       for (let i = 0; i < 25; i++) {
         const {

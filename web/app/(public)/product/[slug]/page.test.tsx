@@ -104,6 +104,37 @@ describe('ProductPage', () => {
       expect(meta.title).toBe('Kit')
     })
 
+    it('links the AMP variant via other.amphtml', async () => {
+      vi.mocked(getPublishedProduct).mockResolvedValue({
+        id: 'p1',
+        slug: 'kit',
+        sku: null,
+        name: 'Kit',
+        shortDescription: null,
+        longDescriptionBlocks: [],
+        priceRub: 100,
+        compareAtPriceRub: null,
+        stockStatus: 'in_stock',
+        isPublished: true,
+        sortOrder: 0,
+        metaTitle: null,
+        metaDescription: null,
+        ogImage: null,
+        canonicalUrl: null,
+        noindex: false,
+        translations: {},
+        images: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      })
+      const meta = await generateMetadata({
+        params: Promise.resolve({ slug: 'kit' }),
+      })
+      expect(meta.other).toEqual({
+        amphtml: 'https://shop.ximi4ka.ru/amp/product/kit',
+      })
+    })
+
     it('returns a safe fallback when the product fetch fails', async () => {
       vi.mocked(getPublishedProduct).mockRejectedValue(new Error('down'))
       const meta = await generateMetadata({

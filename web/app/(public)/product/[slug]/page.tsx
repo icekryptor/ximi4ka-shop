@@ -7,7 +7,7 @@ import { formatRub, stockLabel } from '@/lib/stockLabel'
 import { AddToCartButton } from '@/components/AddToCartButton'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { buildMetadata } from '@/lib/metadata'
+import { buildMetadata, siteUrl } from '@/lib/metadata'
 import { breadcrumbJsonLd, productJsonLd } from '@/lib/jsonLd'
 
 export const revalidate = 60
@@ -39,6 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       noindex: product.noindex,
       pathname: `/product/${slug}`,
       type: 'product',
+      ampPath: `/amp/product/${slug}`,
     })
   } catch {
     return { title: 'Товар — Ximi4ka' }
@@ -59,6 +60,10 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      {/* AMP discovery: search engines expect <link rel="amphtml"> on the
+          canonical page. Next's Metadata API can emit the meta-tag form but
+          not this link directly, so we render it inline alongside JSON-LD. */}
+      <link rel="amphtml" href={`${siteUrl()}/amp/product/${slug}`} />
       <JsonLd data={productJsonLd(product)} />
       <JsonLd
         data={breadcrumbJsonLd([
