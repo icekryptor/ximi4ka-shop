@@ -1,10 +1,14 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import type { Product } from '@ximi4ka-shop/shared'
 import { ApiError, getPublishedProduct, listPublishedProducts } from '@/lib/api'
 import { formatRub, stockLabel } from '@/lib/stockLabel'
 import { AddToCartButton } from '@/components/AddToCartButton'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { buildMetadata } from '@/lib/metadata'
+import { breadcrumbJsonLd, productJsonLd } from '@/lib/jsonLd'
 
 export const revalidate = 60
 
@@ -21,6 +25,26 @@ interface Props {
   params: Promise<{ slug: string }>
 }
 
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  try {
+    const product = await getPublishedProduct(slug)
+    return buildMetadata({
+      title: product.name,
+      description: product.shortDescription,
+      metaTitle: product.metaTitle,
+      metaDescription: product.metaDescription,
+      ogImage: product.ogImage ?? product.images?.[0]?.url ?? null,
+      canonicalUrl: product.canonicalUrl,
+      noindex: product.noindex,
+      pathname: `/product/${slug}`,
+      type: 'product',
+    })
+  } catch {
+    return { title: 'Товар — Ximi4ka' }
+  }
+}
+
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params
   let product: Product
@@ -35,6 +59,14 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <JsonLd data={productJsonLd(product)} />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Главная', url: '/' },
+          { name: 'Каталог', url: '/categories' },
+          { name: product.name, url: `/product/${product.slug}` },
+        ])}
+      />
       <nav aria-label="breadcrumbs" className="text-sm mb-6 text-brand-text-secondary">
         <Link href="/" className="hover:text-black">
           Главная

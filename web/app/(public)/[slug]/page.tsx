@@ -1,7 +1,11 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import type { Page } from '@ximi4ka-shop/shared'
 import { ApiError, getPage } from '@/lib/api'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { buildMetadata } from '@/lib/metadata'
+import { articleJsonLd, breadcrumbJsonLd } from '@/lib/jsonLd'
 
 export const revalidate = 60
 export const dynamicParams = true
@@ -26,6 +30,30 @@ export async function generateStaticParams(): Promise<Array<{ slug: string }>> {
   return results.filter((p): p is { slug: string } => p !== null)
 }
 
+interface Props {
+  params: Promise<{ slug: string }>
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  if (slug === 'home') return { title: 'Ximi4ka' }
+  try {
+    const page = await getPage(slug)
+    return buildMetadata({
+      title: page.title,
+      metaTitle: page.metaTitle,
+      metaDescription: page.metaDescription,
+      ogImage: page.ogImage,
+      canonicalUrl: page.canonicalUrl,
+      noindex: page.noindex,
+      pathname: `/${slug}`,
+      type: 'article',
+    })
+  } catch {
+    return { title: 'Страница — Ximi4ka' }
+  }
+}
+
 async function fetchPage(slug: string): Promise<Page> {
   try {
     return await getPage(slug)
@@ -35,10 +63,6 @@ async function fetchPage(slug: string): Promise<Page> {
     }
     throw err
   }
-}
-
-interface Props {
-  params: Promise<{ slug: string }>
 }
 
 export default async function CmsPage({ params }: Props) {
@@ -51,6 +75,14 @@ export default async function CmsPage({ params }: Props) {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <JsonLd data={articleJsonLd(page)} />
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Главная', url: '/' },
+          { name: page.title, url: `/${page.slug}` },
+        ])}
+      />
+
       <h1 className="text-4xl font-bold text-brand-text mb-6">{page.title}</h1>
       {blocks.length > 0 ? (
         <BlockRenderer blocks={blocks} />

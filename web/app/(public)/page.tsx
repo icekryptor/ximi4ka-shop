@@ -1,7 +1,11 @@
+import type { Metadata } from 'next'
 import { getPage, listPublishedProducts } from '@/lib/api'
 import type { Page, Product } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { buildMetadata } from '@/lib/metadata'
+import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
 
 export const revalidate = 60
 
@@ -16,6 +20,22 @@ async function fetchHome(): Promise<{ page: Page | null; products: Product[] }> 
   }
 }
 
+export async function generateMetadata(): Promise<Metadata> {
+  const home = await getPage('home').catch(() => null)
+  return buildMetadata({
+    title: home?.title ?? 'Ximi4ka — наборы для химических экспериментов',
+    description:
+      'Химические наборы для детей и подростков. Научные эксперименты дома.',
+    metaTitle: home?.metaTitle ?? null,
+    metaDescription: home?.metaDescription ?? null,
+    ogImage: home?.ogImage ?? null,
+    canonicalUrl: home?.canonicalUrl ?? null,
+    noindex: home?.noindex ?? false,
+    pathname: '/',
+    type: 'website',
+  })
+}
+
 export default async function HomePage() {
   const { page, products } = await fetchHome()
   const title = page?.title ?? 'Магазин Ximi4ka'
@@ -23,6 +43,10 @@ export default async function HomePage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <JsonLd data={organizationJsonLd()} />
+      <JsonLd data={websiteJsonLd()} />
+      {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
+
       <section className="mb-8">
         <h1 className="text-4xl font-bold text-brand-text">{title}</h1>
         {page === null && products.length === 0 && (

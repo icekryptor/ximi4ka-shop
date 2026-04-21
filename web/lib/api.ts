@@ -111,6 +111,12 @@ export async function getPage(slug: string): Promise<Page> {
   return body.data
 }
 
+export async function listPages(
+  opts: { limit?: number; offset?: number } = {},
+): Promise<Paginated<Page>> {
+  return request<Paginated<Page>>(`/api/public/pages${buildListQuery(opts)}`)
+}
+
 // ---------- Public site settings ----------
 
 export interface PublicSettings {

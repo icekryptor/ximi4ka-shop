@@ -468,6 +468,51 @@ describe('Page routes', () => {
     })
   })
 
+  describe('GET /api/public/pages', () => {
+    it('returns only published + non-deleted pages', async () => {
+      // Published
+      const pub = await request(app)
+        .post('/api/admin/pages')
+        .set(authHeaders(auth))
+        .send({ slug: 'o-nas', title: 'О нас' })
+      await request(app).post(`/api/admin/pages/${pub.body.data.id}/publish`).set(authHeaders(auth))
+      // Unpublished
+      await request(app)
+        .post('/api/admin/pages')
+        .set(authHeaders(auth))
+        .send({ slug: 'draft', title: 'Draft' })
+      // Published then soft-deleted
+      const gone = await request(app)
+        .post('/api/admin/pages')
+        .set(authHeaders(auth))
+        .send({ slug: 'gone', title: 'Gone' })
+      await request(app).post(`/api/admin/pages/${gone.body.data.id}/publish`).set(authHeaders(auth))
+      await request(app).delete(`/api/admin/pages/${gone.body.data.id}`).set(authHeaders(auth))
+
+      const res = await request(app).get('/api/public/pages')
+      expect(res.status).toBe(200)
+      expect(res.body.data).toHaveLength(1)
+      expect(res.body.data[0].slug).toBe('o-nas')
+      expect(res.body.pagination).toMatchObject({ total: 1 })
+    })
+
+    it('supports pagination (limit/offset)', async () => {
+      for (const slug of ['a', 'b', 'c']) {
+        const r = await request(app)
+          .post('/api/admin/pages')
+          .set(authHeaders(auth))
+          .send({ slug, title: slug.toUpperCase() })
+        await request(app).post(`/api/admin/pages/${r.body.data.id}/publish`).set(authHeaders(auth))
+      }
+      const page1 = await request(app).get('/api/public/pages?limit=2&offset=0')
+      expect(page1.status).toBe(200)
+      expect(page1.body.data).toHaveLength(2)
+      expect(page1.body.pagination).toMatchObject({ limit: 2, offset: 0, total: 3 })
+      const page2 = await request(app).get('/api/public/pages?limit=2&offset=2')
+      expect(page2.body.data).toHaveLength(1)
+    })
+  })
+
   describe('PATCH /api/admin/pages/:id', () => {
     it('updates fields', async () => {
       const {

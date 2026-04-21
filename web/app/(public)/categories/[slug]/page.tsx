@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import {
   ApiError,
@@ -8,6 +9,9 @@ import {
 } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
+import { JsonLd } from '@/components/seo/JsonLd'
+import { buildMetadata } from '@/lib/metadata'
+import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonLd'
 
 export const revalidate = 60
 
@@ -17,6 +21,26 @@ export async function generateStaticParams() {
     return res.data.map((cat) => ({ slug: cat.slug }))
   } catch {
     return []
+  }
+}
+
+interface Props {
+  params: Promise<{ slug: string }>
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  try {
+    const category = await getCategory(slug)
+    return buildMetadata({
+      title: category.name,
+      metaTitle: category.metaTitle,
+      metaDescription: category.metaDescription,
+      pathname: `/categories/${slug}`,
+      type: 'website',
+    })
+  } catch {
+    return { title: 'Категория — Ximi4ka' }
   }
 }
 
@@ -42,16 +66,21 @@ async function fetchCategoryAndProducts(
   return { category, products }
 }
 
-export default async function CategoryDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>
-}) {
+export default async function CategoryDetailPage({ params }: Props) {
   const { slug } = await params
   const { category, products } = await fetchCategoryAndProducts(slug)
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Главная', url: '/' },
+          { name: 'Категории', url: '/categories' },
+          { name: category.name, url: `/categories/${category.slug}` },
+        ])}
+      />
+      {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
+
       <nav aria-label="breadcrumbs" className="text-sm text-brand-text-secondary mb-4">
         <Link href="/categories" className="hover:underline">
           Категории

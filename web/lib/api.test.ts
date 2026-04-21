@@ -7,6 +7,7 @@ import {
   getCategory,
   listProductsByCategory,
   getPage,
+  listPages,
   getPublicSettings,
 } from './api'
 
@@ -311,6 +312,35 @@ describe('api client', () => {
 
       const [url] = fetchMock.mock.calls[0]
       expect(url).toBe('http://localhost:3001/api/public/pages/o%20nas')
+    })
+  })
+
+  describe('listPages', () => {
+    it('calls /api/public/pages without query string when no args', async () => {
+      const mockResponse = {
+        data: [],
+        pagination: { limit: 50, offset: 0, total: 0 },
+      }
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, mockResponse))
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await listPages()
+
+      expect(result).toEqual(mockResponse)
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/pages')
+    })
+
+    it('serializes limit and offset as a query string', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse(200, { data: [], pagination: { limit: 10, offset: 5, total: 0 } }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      await listPages({ limit: 10, offset: 5 })
+
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/pages?limit=10&offset=5')
     })
   })
 
