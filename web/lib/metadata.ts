@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from './i18n'
 
 export interface SeoInput {
   title: string
@@ -18,6 +19,21 @@ export interface SeoInput {
    * variant.
    */
   ampPath?: string | null
+  /**
+   * Current locale this page renders in. Controls OG `locale` and
+   * seeds the default alternates map if `alternatesByLocale` is omitted.
+   */
+  locale?: Locale
+  /**
+   * Per-locale route-relative paths, e.g.
+   *   { ru: '/product/foo', en: '/en/product/foo' }
+   * Every supported locale that appears here becomes a `hreflang` entry.
+   * The default locale also becomes the `x-default` alternate.
+   * When omitted, we emit alternates using `pathname` for every locale,
+   * which is fine for static pages like `/categories` where the RU URL
+   * and EN URL only differ by prefix.
+   */
+  alternatesByLocale?: Partial<Record<Locale, string>>
 }
 
 export function siteUrl(): string {
@@ -30,18 +46,63 @@ function trimOrNull(value: string | null | undefined): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
+// Map our internal locale codes to IETF BCP 47 tags used by hreflang +
+// OpenGraph. Keep this table alongside DEFAULT_LOCALE / SUPPORTED_LOCALES
+// so additions only require one edit.
+const OG_LOCALE_BY_CODE: Record<Locale, string> = {
+  ru: 'ru_RU',
+  en: 'en_US',
+}
+const HREFLANG_BY_CODE: Record<Locale, string> = {
+  ru: 'ru',
+  en: 'en',
+}
+
+/**
+ * Build the default path map for alternates when the caller doesn't
+ * supply one. Mirrors the middleware's prefixing rule: default locale
+ * is unprefixed, others get `/${locale}` prefix.
+ */
+function defaultAlternatePaths(pathname: string): Record<Locale, string> {
+  // `pathname` may already be prefixed (e.g. `/en/product/foo`) when the
+  // caller forgot to supply a map. Strip the prefix first, then rebuild.
+  const stripped = stripLocalePrefix(pathname)
+  const map = {} as Record<Locale, string>
+  for (const loc of SUPPORTED_LOCALES) {
+    map[loc] =
+      loc === DEFAULT_LOCALE
+        ? stripped
+        : `/${loc}${stripped === '/' ? '' : stripped}` || `/${loc}`
+  }
+  return map
+}
+
+function stripLocalePrefix(pathname: string): string {
+  for (const loc of SUPPORTED_LOCALES) {
+    if (pathname === `/${loc}`) return '/'
+    if (pathname.startsWith(`/${loc}/`)) return pathname.slice(loc.length + 1)
+  }
+  return pathname
+}
+
 /**
  * Build a Next.js `Metadata` object from an entity's SEO fields + fallbacks.
  *
  * Admin-set `metaTitle` / `metaDescription` / `ogImage` / `canonicalUrl` /
  * `noindex` take precedence over the natural title/description. The canonical
  * URL is always absolute — either the explicit override or `siteUrl() + pathname`.
+ *
+ * `hreflang` alternates are emitted for every supported locale plus an
+ * `x-default` pointing at the default-locale URL. When the caller doesn't
+ * supply `alternatesByLocale`, we synthesize one from `pathname` using the
+ * same rule the middleware uses (default locale unprefixed, others prefixed).
  */
 export function buildMetadata(input: SeoInput): Metadata {
   const metaTitle = trimOrNull(input.metaTitle)
   const metaDescription = trimOrNull(input.metaDescription)
   const ogImage = trimOrNull(input.ogImage)
   const canonicalOverride = trimOrNull(input.canonicalUrl)
+  const locale: Locale = input.locale ?? DEFAULT_LOCALE
 
   const title = metaTitle ?? input.title
   const description =
@@ -63,10 +124,29 @@ export function buildMetadata(input: SeoInput): Metadata {
   const ampHref = input.ampPath ? `${base}${input.ampPath}` : null
   const other = ampHref ? { amphtml: ampHref } : undefined
 
+  // Build hreflang alternates. We include every supported locale that
+  // has a path in the map (or synthesize one from pathname), plus an
+  // `x-default` entry pointing at the default locale URL.
+  const paths = {
+    ...defaultAlternatePaths(input.pathname),
+    ...(input.alternatesByLocale ?? {}),
+  }
+  const languages: Record<string, string> = {}
+  for (const loc of SUPPORTED_LOCALES) {
+    const p = paths[loc]
+    if (p != null) {
+      languages[HREFLANG_BY_CODE[loc]] = `${base}${p}`
+    }
+  }
+  const defaultPath = paths[DEFAULT_LOCALE]
+  if (defaultPath != null) {
+    languages['x-default'] = `${base}${defaultPath}`
+  }
+
   return {
     title,
     description,
-    alternates: { canonical },
+    alternates: { canonical, languages },
     robots: input.noindex ? { index: false, follow: false } : undefined,
     other,
     openGraph: {
@@ -75,7 +155,7 @@ export function buildMetadata(input: SeoInput): Metadata {
       url: canonical,
       siteName: 'Ximi4ka',
       images: [{ url: image }],
-      locale: 'ru_RU',
+      locale: OG_LOCALE_BY_CODE[locale],
       type: ogType,
     },
     twitter: {

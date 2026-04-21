@@ -8,6 +8,13 @@ import {
 } from './ImageUploadField'
 import { BlockEditor } from './block-editor/BlockEditor'
 import { ApiError, type AdminProductInput } from '@/lib/adminApi'
+import { LanguageTabs, countFilled } from './LanguageTabs'
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n'
+
+// Which fields we consider for EN completeness. We keep the list
+// small on purpose — admins translate top-of-funnel SEO copy first;
+// long blocks can come later without blocking launch.
+const EN_TRACKED_FIELDS = ['name', 'metaTitle', 'metaDescription'] as const
 
 interface Props {
   mode: 'create' | 'edit'
@@ -77,6 +84,23 @@ export function ProductForm({
       })) as ImageItem[],
   )
 
+  // i18n — active tab + per-locale translation state. Only non-default
+  // locales are stored here; RU lives in the top-level state above and
+  // is the source of truth (written to the entity's columns directly).
+  const [activeLocale, setActiveLocale] = useState<Locale>(DEFAULT_LOCALE)
+  const initialEn = (initialValue?.translations as
+    | { en?: Record<string, unknown> }
+    | undefined)?.en
+  const [enName, setEnName] = useState<string>(
+    typeof initialEn?.name === 'string' ? initialEn.name : '',
+  )
+  const [enMetaTitle, setEnMetaTitle] = useState<string>(
+    typeof initialEn?.metaTitle === 'string' ? initialEn.metaTitle : '',
+  )
+  const [enMetaDescription, setEnMetaDescription] = useState<string>(
+    typeof initialEn?.metaDescription === 'string' ? initialEn.metaDescription : '',
+  )
+
   const [formError, setFormError] = useState<string | null>(null)
 
   const slugInvalid = slug !== '' && !SLUG_RE.test(slug)
@@ -118,20 +142,37 @@ export function ProductForm({
       noindex,
     }
 
-    // The api's shared Product type is authoritative; we only pass the
-    // gallery via translations until a dedicated product_images endpoint
-    // lands. For now it's not part of AdminProductInput — the future
-    // endpoint will handle it. We stash to translations just so it round-
-    // trips visually (harmless: the field is jsonb).
+    // Build the translations blob. EN fields go under `translations.en`;
+    // we only include them if they're non-empty (keeps the JSON clean and
+    // avoids falsely marking incomplete locales as translated). Gallery
+    // images still ride in the top-level translations map for now — a
+    // dedicated product_images endpoint is a future concern.
+    const enBlock: Record<string, unknown> = {}
+    if (enName.trim()) enBlock.name = enName.trim()
+    if (enMetaTitle.trim()) enBlock.metaTitle = enMetaTitle.trim()
+    if (enMetaDescription.trim())
+      enBlock.metaDescription = enMetaDescription.trim()
+
+    const nextTranslations: Record<string, unknown> = {
+      ...(initialValue?.translations ?? {}),
+    }
+    if (Object.keys(enBlock).length > 0) {
+      nextTranslations.en = enBlock
+    } else {
+      // Clear stale EN data if the admin emptied every field.
+      delete nextTranslations.en
+    }
     if (images.length > 0) {
-      input.translations = {
-        ...(initialValue?.translations ?? {}),
-        gallery: images,
-      }
+      nextTranslations.gallery = images
+    }
+    if (Object.keys(nextTranslations).length > 0) {
+      input.translations = nextTranslations
     }
 
     await onSubmit(input)
   }
+
+  const enFilled = countFilled([enName, enMetaTitle, enMetaDescription])
 
   return (
     <form
@@ -139,6 +180,19 @@ export function ProductForm({
       aria-label={mode === 'create' ? 'Создание товара' : 'Редактирование товара'}
       className="space-y-8"
     >
+      <div className="flex items-center justify-between">
+        <LanguageTabs
+          active={activeLocale}
+          onChange={setActiveLocale}
+          completeness={{
+            en: { filled: enFilled, total: EN_TRACKED_FIELDS.length },
+          }}
+        />
+        <span className="text-xs text-brand-text-secondary">
+          RU — основная версия, EN — перевод с фолбэком
+        </span>
+      </div>
+
       <Section title="Основные">
         <Field label="Slug" htmlFor="slug" error={slugInvalid ? 'Недопустимый slug' : undefined}>
           <input
@@ -150,15 +204,30 @@ export function ProductForm({
             className="input"
           />
         </Field>
-        <Field label="Название" htmlFor="name">
-          <input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="input"
-          />
-        </Field>
+        {activeLocale === DEFAULT_LOCALE ? (
+          <Field label="Название" htmlFor="name">
+            <input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="input"
+            />
+          </Field>
+        ) : (
+          <Field
+            label="Название (EN)"
+            htmlFor="name-en"
+          >
+            <input
+              id="name-en"
+              value={enName}
+              onChange={(e) => setEnName(e.target.value)}
+              placeholder={name || 'RU fallback'}
+              className="input"
+            />
+          </Field>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <Field label="SKU" htmlFor="sku">
             <input
@@ -248,25 +317,53 @@ export function ProductForm({
       </Section>
 
       <Section title="SEO">
-        <Field label="Meta title" htmlFor="meta-title">
-          <input
-            id="meta-title"
-            value={metaTitle ?? ''}
-            onChange={(e) => setMetaTitle(e.target.value)}
-            maxLength={255}
-            className="input"
-          />
-        </Field>
-        <Field label="Meta description" htmlFor="meta-desc">
-          <textarea
-            id="meta-desc"
-            value={metaDescription ?? ''}
-            onChange={(e) => setMetaDescription(e.target.value)}
-            rows={3}
-            maxLength={2000}
-            className="input"
-          />
-        </Field>
+        {activeLocale === DEFAULT_LOCALE ? (
+          <>
+            <Field label="Meta title" htmlFor="meta-title">
+              <input
+                id="meta-title"
+                value={metaTitle ?? ''}
+                onChange={(e) => setMetaTitle(e.target.value)}
+                maxLength={255}
+                className="input"
+              />
+            </Field>
+            <Field label="Meta description" htmlFor="meta-desc">
+              <textarea
+                id="meta-desc"
+                value={metaDescription ?? ''}
+                onChange={(e) => setMetaDescription(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                className="input"
+              />
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label="Meta title (EN)" htmlFor="meta-title-en">
+              <input
+                id="meta-title-en"
+                value={enMetaTitle}
+                onChange={(e) => setEnMetaTitle(e.target.value)}
+                maxLength={255}
+                placeholder={metaTitle ?? ''}
+                className="input"
+              />
+            </Field>
+            <Field label="Meta description (EN)" htmlFor="meta-desc-en">
+              <textarea
+                id="meta-desc-en"
+                value={enMetaDescription}
+                onChange={(e) => setEnMetaDescription(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder={metaDescription ?? ''}
+                className="input"
+              />
+            </Field>
+          </>
+        )}
         <Field label="Canonical URL" htmlFor="canonical-url">
           <input
             id="canonical-url"

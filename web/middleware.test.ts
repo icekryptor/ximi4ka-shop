@@ -52,7 +52,7 @@ describe('redirect middleware', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('fetches the redirects list and falls through on no match', async () => {
+  it('fetches the redirects list and falls through to a locale rewrite on no match', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
         JSON.stringify({ data: [] }),
@@ -60,11 +60,15 @@ describe('redirect middleware', () => {
       ),
     )
     const res = await middleware(makeRequest('/some-page'))
+    // No Location (it's a rewrite, not a redirect) but the rewrite
+    // header carries the internal URL for debugging.
     expect(res.headers.get('location')).toBeNull()
     expect(fetchMock).toHaveBeenCalledOnce()
     expect(String(fetchMock.mock.calls[0][0])).toContain(
       'http://api.test/api/public/redirects',
     )
+    // Rewrote to /ru/some-page internally.
+    expect(res.headers.get('x-middleware-rewrite')).toContain('/ru/some-page')
   })
 
   it('redirects matching path with the configured status and posts a hit', async () => {
@@ -125,6 +129,72 @@ describe('redirect middleware', () => {
     const res = await middleware(makeRequest('/ext'))
     expect(res.status).toBe(302)
     expect(res.headers.get('location')).toBe('https://example.com/landing')
+  })
+
+  it('skips locale rewrite for /robots.txt, /sitemap.xml, /yml.xml, /turbo.xml, /llms.txt, /amp/*', async () => {
+    for (const p of [
+      '/robots.txt',
+      '/sitemap.xml',
+      '/yml.xml',
+      '/turbo.xml',
+      '/llms.txt',
+      '/amp/product/foo',
+    ]) {
+      const res = await middleware(makeRequest(p))
+      expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+      expect(res.headers.get('location')).toBeNull()
+    }
+    // None of those should have hit the redirects endpoint either.
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('rewrites unprefixed requests internally to /ru (invisible to user)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const res = await middleware(makeRequest('/product/foo'))
+    // Rewrite, not redirect — no Location, but x-middleware-rewrite set.
+    expect(res.headers.get('location')).toBeNull()
+    expect(res.headers.get('x-middleware-rewrite')).toContain('/ru/product/foo')
+  })
+
+  it('rewrites the root path to /ru', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const res = await middleware(makeRequest('/'))
+    expect(res.headers.get('x-middleware-rewrite')).toContain('/ru')
+  })
+
+  it('passes through /en-prefixed URLs without rewriting', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const res = await middleware(makeRequest('/en/product/foo'))
+    // No rewrite header — Next sees the /en prefix and routes to [locale].
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+    expect(res.headers.get('location')).toBeNull()
+  })
+
+  it('passes through /ru-prefixed URLs without double-rewriting', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const res = await middleware(makeRequest('/ru/product/foo'))
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+    expect(res.headers.get('location')).toBeNull()
   })
 
   it('caches the list for 60s — second request within window does not re-fetch', async () => {

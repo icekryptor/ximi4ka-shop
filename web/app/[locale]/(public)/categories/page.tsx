@@ -1,19 +1,42 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { listCategories } from '@/lib/api'
 import type { ProductCategory } from '@ximi4ka-shop/shared'
 import { CategoryCard } from '@/components/CategoryCard'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { breadcrumbJsonLd } from '@/lib/jsonLd'
+import {
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+  isLocale,
+  type Locale,
+} from '@/lib/i18n'
 
 export const revalidate = 60
 
-export function generateMetadata(): Metadata {
+export function generateStaticParams() {
+  return SUPPORTED_LOCALES.map((locale) => ({ locale }))
+}
+
+interface Props {
+  params: Promise<{ locale: string }>
+}
+
+function pathForLocale(locale: Locale): string {
+  return locale === DEFAULT_LOCALE ? '/categories' : `/${locale}/categories`
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale: rawLocale } = await params
+  if (!isLocale(rawLocale)) notFound()
+  const locale: Locale = rawLocale
   return buildMetadata({
     title: 'Категории — Ximi4ka',
     description: 'Все категории товаров магазина Ximi4ka.',
-    pathname: '/categories',
+    pathname: pathForLocale(locale),
     type: 'website',
+    locale,
   })
 }
 
@@ -26,7 +49,9 @@ async function fetchCategories(): Promise<ProductCategory[]> {
   }
 }
 
-export default async function CategoriesListPage() {
+export default async function CategoriesListPage({ params }: Props) {
+  const { locale: rawLocale } = await params
+  if (!isLocale(rawLocale)) notFound()
   const categories = await fetchCategories()
 
   return (

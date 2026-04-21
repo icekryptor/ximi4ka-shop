@@ -325,4 +325,55 @@ describe('Product routes', () => {
       expect(adm.body.data).toHaveLength(0)
     })
   })
+
+  describe('translations validation', () => {
+    it('accepts a well-formed translations blob for a non-default locale', async () => {
+      const res = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'kit-tr',
+          name: 'Набор',
+          priceRub: 1000,
+          translations: {
+            en: {
+              name: 'Kit',
+              metaTitle: 'Kit | Ximi4ka',
+              metaDescription: 'A kit.',
+            },
+          },
+        })
+      expect(res.status).toBe(201)
+      expect(res.body.data.translations.en.name).toBe('Kit')
+    })
+
+    it('rejects translations with an unsupported locale key', async () => {
+      const res = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'kit-bad-loc',
+          name: 'Набор',
+          priceRub: 1000,
+          translations: { fr: { name: 'Kit' } },
+        })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('validation_error')
+    })
+
+    it('rejects translations with wrong field types', async () => {
+      const res = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'kit-bad-type',
+          name: 'Набор',
+          priceRub: 1000,
+          // `name` must be a string; passing a number should fail validation.
+          translations: { en: { name: 123 } },
+        })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('validation_error')
+    })
+  })
 })

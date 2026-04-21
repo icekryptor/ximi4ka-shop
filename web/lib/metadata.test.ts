@@ -133,6 +133,61 @@ describe('buildMetadata', () => {
     expect(meta.other).toBeUndefined()
   })
 
+  it('emits hreflang alternates for every supported locale + x-default', () => {
+    const meta = buildMetadata({
+      title: 'T',
+      pathname: '/product/foo',
+      alternatesByLocale: {
+        ru: '/product/foo',
+        en: '/en/product/foo',
+      },
+    })
+    expect(meta.alternates?.languages).toEqual({
+      ru: 'https://shop.ximi4ka.ru/product/foo',
+      en: 'https://shop.ximi4ka.ru/en/product/foo',
+      'x-default': 'https://shop.ximi4ka.ru/product/foo',
+    })
+  })
+
+  it('synthesizes alternates from pathname when none supplied', () => {
+    const meta = buildMetadata({ title: 'T', pathname: '/categories' })
+    expect(meta.alternates?.languages).toEqual({
+      ru: 'https://shop.ximi4ka.ru/categories',
+      en: 'https://shop.ximi4ka.ru/en/categories',
+      'x-default': 'https://shop.ximi4ka.ru/categories',
+    })
+  })
+
+  it('strips a locale prefix from pathname when synthesizing alternates', () => {
+    // Caller might pass `/en/product/foo` without thinking; strip it so
+    // the RU alternate is `/product/foo`, not `/en/product/foo`.
+    const meta = buildMetadata({ title: 'T', pathname: '/en/product/foo' })
+    expect(meta.alternates?.languages).toEqual({
+      ru: 'https://shop.ximi4ka.ru/product/foo',
+      en: 'https://shop.ximi4ka.ru/en/product/foo',
+      'x-default': 'https://shop.ximi4ka.ru/product/foo',
+    })
+  })
+
+  it('synthesizes alternates for the root path', () => {
+    const meta = buildMetadata({ title: 'T', pathname: '/' })
+    expect(meta.alternates?.languages).toEqual({
+      ru: 'https://shop.ximi4ka.ru/',
+      en: 'https://shop.ximi4ka.ru/en',
+      'x-default': 'https://shop.ximi4ka.ru/',
+    })
+  })
+
+  it('sets OG locale to ru_RU by default and en_US when locale=en', () => {
+    expect(buildMetadata({ title: 'T', pathname: '/' }).openGraph?.locale).toBe(
+      'ru_RU',
+    )
+    expect(
+      buildMetadata({ title: 'T', pathname: '/', locale: 'en' }).openGraph
+        ?.locale,
+    ).toBe('en_US')
+  })
+
   it('trims whitespace on metaTitle / metaDescription / canonicalUrl / ogImage', () => {
     const meta = buildMetadata({
       title: 'Base',

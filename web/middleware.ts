@@ -1,22 +1,33 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { DEFAULT_LOCALE, isLocale } from '@/lib/i18n'
 
-// Public redirect middleware.
+// Public-site middleware.
 //
-// Fetches the full redirect table from the API at the first request, caches
-// it in module scope for 60s, and on each match issues a Location redirect
-// with the configured status code. A fire-and-forget POST to the hit-counter
-// endpoint is dispatched so we can see which redirects are active without
-// instrumenting every edge invocation.
+// Two jobs, in this order:
+//
+//   1. Locale routing. Public routes live under `app/[locale]/(public)/…`.
+//      Requests for unprefixed URLs (`/product/foo`) are rewritten
+//      internally to `/${DEFAULT_LOCALE}/product/foo` so the user's
+//      address bar stays prefix-free for Russian (launch language).
+//      Prefixed URLs (`/en/product/foo`) are left alone for Next to
+//      match the `[locale]` segment directly.
+//
+//   2. Admin-defined redirects. Fetches the redirect table from the
+//      API (cached 60s in module scope) and issues Location redirects
+//      with the configured status code. A fire-and-forget hit ping is
+//      dispatched for analytics.
+//
+// Redirects run first, BEFORE locale rewriting, so that an editor who
+// sets up `/old-slug → /new-slug` still works regardless of language
+// prefix. Locale-aware redirects (`/en/old-slug`) are out of scope for
+// Phase 8 — admins can always add `/en/old → /en/new` explicitly.
 //
 // Deliberately light-weight:
 //   * No DB access from the edge runtime; we proxy through the API.
 //   * No per-request auth; the list and hit endpoints are public.
-//   * The matcher config below excludes /_next, /api, /admin, /uploads —
-//     redirecting those would either never fire or break the admin panel.
-//     We ALSO re-check inside the function body, because matchers use
-//     lookahead regex that can behave slightly differently across Next
-//     versions, and we'd rather be safe than route an admin page into a
-//     user-created loop.
+//   * The matcher config below excludes /_next, /api, /admin, /uploads,
+//     static feeds (robots, sitemap, yml, turbo, amp) — those paths
+//     must stay unprefixed and untouched.
 
 interface Redirect {
   id: string
@@ -63,16 +74,33 @@ async function getRedirects(baseUrl: string): Promise<Redirect[]> {
   }
 }
 
-// Paths that must never be redirected, regardless of any DB row. Matches the
+// Paths that must never be redirected OR locale-rewritten. Matches the
 // API validation to guarantee consistency — if a row somehow made it into
 // the DB (e.g. via a lax migration or direct SQL), we still won't apply it.
-const EXCLUDED_PREFIXES = ['/_next', '/api', '/admin', '/uploads']
+// Also covers feed/route-handler paths that ship XML/plain-text and have
+// no locale concept.
+const EXCLUDED_PREFIXES = ['/_next', '/api', '/admin', '/uploads', '/amp']
+
+const EXCLUDED_EXACT = new Set([
+  '/favicon.ico',
+  '/robots.txt',
+  '/llms.txt',
+  '/sitemap.xml',
+  '/yml.xml',
+  '/turbo.xml',
+])
 
 function isExcluded(path: string): boolean {
-  if (path === '/favicon.ico') return true
+  if (EXCLUDED_EXACT.has(path)) return true
   return EXCLUDED_PREFIXES.some(
     (p) => path === p || path.startsWith(`${p}/`),
   )
+}
+
+function firstSegment(pathname: string): string {
+  // `/foo/bar` -> 'foo'; `/` -> ''
+  const idx = pathname.indexOf('/', 1)
+  return idx === -1 ? pathname.slice(1) : pathname.slice(1, idx)
 }
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
@@ -87,26 +115,44 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     'http://localhost:3001'
   const redirects = await getRedirects(base)
   const match = redirects.find((r) => r.fromPath === path)
-  if (!match) return NextResponse.next()
+  if (match) {
+    // Fire-and-forget. We intentionally don't await — the redirect response
+    // should ship with minimal TTFB; the counter POST is best-effort.
+    fetch(`${base}/api/public/redirects/${match.id}/hit`, {
+      method: 'POST',
+    }).catch(() => {
+      // swallow: counters are a soft signal, not correctness
+    })
 
-  // Fire-and-forget. We intentionally don't await — the redirect response
-  // should ship with minimal TTFB; the counter POST is best-effort.
-  fetch(`${base}/api/public/redirects/${match.id}/hit`, {
-    method: 'POST',
-  }).catch(() => {
-    // swallow: counters are a soft signal, not correctness
-  })
+    const targetUrl = /^https?:\/\//i.test(match.toPath)
+      ? match.toPath
+      : new URL(match.toPath, req.nextUrl.origin).toString()
+    return NextResponse.redirect(targetUrl, match.statusCode)
+  }
 
-  const targetUrl = /^https?:\/\//i.test(match.toPath)
-    ? match.toPath
-    : new URL(match.toPath, req.nextUrl.origin).toString()
-  return NextResponse.redirect(targetUrl, match.statusCode)
+  // Locale routing. If the URL already starts with a supported locale
+  // segment, let Next's [locale] route match it directly. Otherwise
+  // rewrite internally to the default locale so the user's address bar
+  // stays clean for RU.
+  const seg = firstSegment(path)
+  if (isLocale(seg)) {
+    return NextResponse.next()
+  }
+
+  const url = req.nextUrl.clone()
+  url.pathname = `/${DEFAULT_LOCALE}${path === '/' ? '' : path}` || `/${DEFAULT_LOCALE}`
+  if (url.pathname === '') url.pathname = `/${DEFAULT_LOCALE}`
+  return NextResponse.rewrite(url)
 }
 
 export const config = {
-  // Exclude Next internals, API proxying, admin panel, and uploaded static
-  // files from middleware processing.
-  matcher: ['/((?!_next|api|admin|uploads|favicon.ico).*)'],
+  // Exclude Next internals, API proxying, admin panel, uploaded static
+  // files, AMP variant routes, and root-level feeds (robots/sitemap/yml/
+  // turbo/llms). Everything else is public, localizable, and potentially
+  // redirect-targeted.
+  matcher: [
+    '/((?!_next|api|admin|uploads|amp|favicon\\.ico|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml).*)',
+  ],
 }
 
 // Exported for tests — lets them reset the module cache between cases.

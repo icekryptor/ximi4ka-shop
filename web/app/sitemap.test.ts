@@ -111,6 +111,60 @@ describe('sitemap', () => {
     expect(urls).not.toContain('https://shop.ximi4ka.ru/home')
   })
 
+  it('emits hreflang alternates on every entry for ru + en', async () => {
+    vi.mocked(listPublishedProducts).mockResolvedValue({
+      data: [
+        {
+          id: 'p1',
+          slug: 'kit',
+          sku: null,
+          name: 'N',
+          shortDescription: null,
+          longDescriptionBlocks: [],
+          priceRub: 100,
+          compareAtPriceRub: null,
+          stockStatus: 'in_stock',
+          isPublished: true,
+          sortOrder: 0,
+          metaTitle: null,
+          metaDescription: null,
+          ogImage: null,
+          canonicalUrl: null,
+          noindex: false,
+          translations: {},
+          images: [],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-02-01T00:00:00.000Z',
+        },
+      ],
+      pagination: { limit: 1000, offset: 0, total: 1 },
+    })
+    vi.mocked(listCategories).mockResolvedValue({
+      data: [],
+      pagination: { limit: 1000, offset: 0, total: 0 },
+    })
+    vi.mocked(listPages).mockResolvedValue({
+      data: [],
+      pagination: { limit: 1000, offset: 0, total: 0 },
+    })
+
+    const out = await sitemap()
+    // Home entry.
+    const home = out.find((e) => e.url === 'https://shop.ximi4ka.ru/')
+    expect(home?.alternates?.languages).toEqual({
+      ru: 'https://shop.ximi4ka.ru/',
+      en: 'https://shop.ximi4ka.ru/en',
+    })
+    // Product entry.
+    const product = out.find(
+      (e) => e.url === 'https://shop.ximi4ka.ru/product/kit',
+    )
+    expect(product?.alternates?.languages).toEqual({
+      ru: 'https://shop.ximi4ka.ru/product/kit',
+      en: 'https://shop.ximi4ka.ru/en/product/kit',
+    })
+  })
+
   it('degrades to an empty-but-valid sitemap when the API is down', async () => {
     vi.mocked(listPublishedProducts).mockRejectedValue(new Error('down'))
     vi.mocked(listCategories).mockRejectedValue(new Error('down'))

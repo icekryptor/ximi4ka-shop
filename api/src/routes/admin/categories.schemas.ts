@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TranslationsSchema } from './i18n.js'
 
 export const CreateCategorySchema = z.object({
   slug: z
@@ -11,7 +12,7 @@ export const CreateCategorySchema = z.object({
   metaTitle: z.string().max(255).nullable().optional(),
   metaDescription: z.string().max(2000).nullable().optional(),
   sortOrder: z.number().int().default(0),
-  translations: z.record(z.string(), z.unknown()).default({}),
+  translations: TranslationsSchema.default({}),
 })
 
 export const UpdateCategorySchema = CreateCategorySchema.partial()

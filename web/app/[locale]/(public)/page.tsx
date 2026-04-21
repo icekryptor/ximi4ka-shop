@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
 import { getPage, listPublishedProducts } from '@/lib/api'
 import type { Page, Product } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
@@ -6,8 +7,25 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
+import {
+  DEFAULT_LOCALE,
+  SUPPORTED_LOCALES,
+  isLocale,
+  pickField,
+  type Locale,
+} from '@/lib/i18n'
 
 export const revalidate = 60
+
+export function generateStaticParams() {
+  // One root page per locale. Middleware rewrites unprefixed `/` to
+  // `/${DEFAULT_LOCALE}` so RU is served at a clean URL.
+  return SUPPORTED_LOCALES.map((locale) => ({ locale }))
+}
+
+interface Props {
+  params: Promise<{ locale: string }>
+}
 
 async function fetchHome(): Promise<{ page: Page | null; products: Product[] }> {
   const [pageResult, productsResult] = await Promise.allSettled([
@@ -20,26 +38,57 @@ async function fetchHome(): Promise<{ page: Page | null; products: Product[] }> 
   }
 }
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { locale: rawLocale } = await params
+  if (!isLocale(rawLocale)) notFound()
+  const locale = rawLocale
   const home = await getPage('home').catch(() => null)
+  const title =
+    pickField<string>(home as unknown as Record<string, unknown>, 'title', locale) ??
+    home?.title ??
+    'Ximi4ka — наборы для химических экспериментов'
+  const metaTitle = pickField<string>(
+    home as unknown as Record<string, unknown>,
+    'metaTitle',
+    locale,
+  )
+  const metaDescription = pickField<string>(
+    home as unknown as Record<string, unknown>,
+    'metaDescription',
+    locale,
+  )
   return buildMetadata({
-    title: home?.title ?? 'Ximi4ka — наборы для химических экспериментов',
+    title,
     description:
       'Химические наборы для детей и подростков. Научные эксперименты дома.',
-    metaTitle: home?.metaTitle ?? null,
-    metaDescription: home?.metaDescription ?? null,
+    metaTitle,
+    metaDescription,
     ogImage: home?.ogImage ?? null,
     canonicalUrl: home?.canonicalUrl ?? null,
     noindex: home?.noindex ?? false,
-    pathname: '/',
+    pathname: locale === DEFAULT_LOCALE ? '/' : `/${locale}`,
     type: 'website',
+    locale,
   })
 }
 
-export default async function HomePage() {
+export default async function HomePage({ params }: Props) {
+  const { locale: rawLocale } = await params
+  if (!isLocale(rawLocale)) notFound()
+  const locale: Locale = rawLocale
   const { page, products } = await fetchHome()
-  const title = page?.title ?? 'Магазин Ximi4ka'
-  const blocks = page?.blocks ?? []
+  const title =
+    pickField<string>(page as unknown as Record<string, unknown>, 'title', locale) ??
+    page?.title ??
+    'Магазин Ximi4ka'
+  const blocks =
+    (pickField<unknown[]>(
+      page as unknown as Record<string, unknown>,
+      'blocks',
+      locale,
+    ) ??
+      page?.blocks ??
+      []) as unknown[]
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">

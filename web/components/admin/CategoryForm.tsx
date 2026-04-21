@@ -9,6 +9,10 @@ import {
   buildCategoryTree,
   type CategoryTreeNode,
 } from '@/lib/categoryTree'
+import { LanguageTabs, countFilled } from './LanguageTabs'
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n'
+
+const EN_TRACKED_FIELDS = ['name', 'metaTitle', 'metaDescription'] as const
 
 interface Props {
   mode: 'create' | 'edit'
@@ -38,6 +42,20 @@ export function CategoryForm({
   const [sortOrder, setSortOrder] = useState<number>(initialValue?.sortOrder ?? 0)
   const [metaTitle, setMetaTitle] = useState(initialValue?.metaTitle ?? '')
   const [metaDescription, setMetaDescription] = useState(initialValue?.metaDescription ?? '')
+  // i18n — see ProductForm for rationale.
+  const [activeLocale, setActiveLocale] = useState<Locale>(DEFAULT_LOCALE)
+  const initialEn = (initialValue?.translations as
+    | { en?: Record<string, unknown> }
+    | undefined)?.en
+  const [enName, setEnName] = useState<string>(
+    typeof initialEn?.name === 'string' ? initialEn.name : '',
+  )
+  const [enMetaTitle, setEnMetaTitle] = useState<string>(
+    typeof initialEn?.metaTitle === 'string' ? initialEn.metaTitle : '',
+  )
+  const [enMetaDescription, setEnMetaDescription] = useState<string>(
+    typeof initialEn?.metaDescription === 'string' ? initialEn.metaDescription : '',
+  )
   const [formError, setFormError] = useState<string | null>(null)
 
   const slugInvalid = slug !== '' && !SLUG_RE.test(slug)
@@ -79,10 +97,30 @@ export function CategoryForm({
       metaDescription: metaDescription.trim() || null,
     }
 
+    // EN translation block, only when at least one field is filled.
+    const enBlock: Record<string, unknown> = {}
+    if (enName.trim()) enBlock.name = enName.trim()
+    if (enMetaTitle.trim()) enBlock.metaTitle = enMetaTitle.trim()
+    if (enMetaDescription.trim())
+      enBlock.metaDescription = enMetaDescription.trim()
+
+    const nextTranslations: Record<string, unknown> = {
+      ...((initialValue?.translations as Record<string, unknown> | undefined) ?? {}),
+    }
+    if (Object.keys(enBlock).length > 0) {
+      nextTranslations.en = enBlock
+    } else {
+      delete nextTranslations.en
+    }
+    if (Object.keys(nextTranslations).length > 0) {
+      input.translations = nextTranslations
+    }
+
     await onSubmit(input)
   }
 
   const slugConflictError = error?.code === 'slug_conflict'
+  const enFilled = countFilled([enName, enMetaTitle, enMetaDescription])
 
   return (
     <form
@@ -90,6 +128,19 @@ export function CategoryForm({
       aria-label={mode === 'create' ? 'Создание категории' : 'Редактирование категории'}
       className="space-y-8"
     >
+      <div className="flex items-center justify-between">
+        <LanguageTabs
+          active={activeLocale}
+          onChange={setActiveLocale}
+          completeness={{
+            en: { filled: enFilled, total: EN_TRACKED_FIELDS.length },
+          }}
+        />
+        <span className="text-xs text-brand-text-secondary">
+          RU — основная версия, EN — перевод с фолбэком
+        </span>
+      </div>
+
       <Section title="Основные">
         <Field
           label="Slug"
@@ -111,15 +162,27 @@ export function CategoryForm({
             className="input"
           />
         </Field>
-        <Field label="Название" htmlFor="name">
-          <input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            className="input"
-          />
-        </Field>
+        {activeLocale === DEFAULT_LOCALE ? (
+          <Field label="Название" htmlFor="name">
+            <input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="input"
+            />
+          </Field>
+        ) : (
+          <Field label="Название (EN)" htmlFor="name-en">
+            <input
+              id="name-en"
+              value={enName}
+              onChange={(e) => setEnName(e.target.value)}
+              placeholder={name || 'RU fallback'}
+              className="input"
+            />
+          </Field>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <Field label="Родительская категория" htmlFor="parent">
             <select
@@ -150,25 +213,53 @@ export function CategoryForm({
       </Section>
 
       <Section title="SEO">
-        <Field label="Meta title" htmlFor="meta-title">
-          <input
-            id="meta-title"
-            value={metaTitle ?? ''}
-            onChange={(e) => setMetaTitle(e.target.value)}
-            maxLength={255}
-            className="input"
-          />
-        </Field>
-        <Field label="Meta description" htmlFor="meta-desc">
-          <textarea
-            id="meta-desc"
-            value={metaDescription ?? ''}
-            onChange={(e) => setMetaDescription(e.target.value)}
-            rows={3}
-            maxLength={2000}
-            className="input"
-          />
-        </Field>
+        {activeLocale === DEFAULT_LOCALE ? (
+          <>
+            <Field label="Meta title" htmlFor="meta-title">
+              <input
+                id="meta-title"
+                value={metaTitle ?? ''}
+                onChange={(e) => setMetaTitle(e.target.value)}
+                maxLength={255}
+                className="input"
+              />
+            </Field>
+            <Field label="Meta description" htmlFor="meta-desc">
+              <textarea
+                id="meta-desc"
+                value={metaDescription ?? ''}
+                onChange={(e) => setMetaDescription(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                className="input"
+              />
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label="Meta title (EN)" htmlFor="meta-title-en">
+              <input
+                id="meta-title-en"
+                value={enMetaTitle}
+                onChange={(e) => setEnMetaTitle(e.target.value)}
+                maxLength={255}
+                placeholder={metaTitle ?? ''}
+                className="input"
+              />
+            </Field>
+            <Field label="Meta description (EN)" htmlFor="meta-desc-en">
+              <textarea
+                id="meta-desc-en"
+                value={enMetaDescription}
+                onChange={(e) => setEnMetaDescription(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder={metaDescription ?? ''}
+                className="input"
+              />
+            </Field>
+          </>
+        )}
       </Section>
 
       {formError || (error && !slugConflictError) ? (

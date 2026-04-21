@@ -5,6 +5,10 @@ import type { Page } from '@ximi4ka-shop/shared'
 import { ImageUploadField } from './ImageUploadField'
 import { BlockEditor } from './block-editor/BlockEditor'
 import { ApiError, type AdminPageInput } from '@/lib/adminApi'
+import { LanguageTabs, countFilled } from './LanguageTabs'
+import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n'
+
+const EN_TRACKED_FIELDS = ['title', 'metaTitle', 'metaDescription'] as const
 
 interface Props {
   mode: 'create' | 'edit'
@@ -46,6 +50,21 @@ export function PageForm({
     initialValue?.noindex ?? false,
   )
 
+  // i18n state (see ProductForm for rationale).
+  const [activeLocale, setActiveLocale] = useState<Locale>(DEFAULT_LOCALE)
+  const initialEn = (initialValue?.translations as
+    | { en?: Record<string, unknown> }
+    | undefined)?.en
+  const [enTitle, setEnTitle] = useState<string>(
+    typeof initialEn?.title === 'string' ? initialEn.title : '',
+  )
+  const [enMetaTitle, setEnMetaTitle] = useState<string>(
+    typeof initialEn?.metaTitle === 'string' ? initialEn.metaTitle : '',
+  )
+  const [enMetaDescription, setEnMetaDescription] = useState<string>(
+    typeof initialEn?.metaDescription === 'string' ? initialEn.metaDescription : '',
+  )
+
   const [formError, setFormError] = useState<string | null>(null)
 
   const slugInvalid = slug !== '' && !SLUG_RE.test(slug)
@@ -76,10 +95,30 @@ export function PageForm({
       noindex,
     }
 
+    // EN translation block, only when at least one field is filled.
+    const enBlock: Record<string, unknown> = {}
+    if (enTitle.trim()) enBlock.title = enTitle.trim()
+    if (enMetaTitle.trim()) enBlock.metaTitle = enMetaTitle.trim()
+    if (enMetaDescription.trim())
+      enBlock.metaDescription = enMetaDescription.trim()
+
+    const nextTranslations: Record<string, unknown> = {
+      ...((initialValue?.translations as Record<string, unknown> | undefined) ?? {}),
+    }
+    if (Object.keys(enBlock).length > 0) {
+      nextTranslations.en = enBlock
+    } else {
+      delete nextTranslations.en
+    }
+    if (Object.keys(nextTranslations).length > 0) {
+      input.translations = nextTranslations
+    }
+
     await onSubmit(input)
   }
 
   const slugConflictError = error?.code === 'slug_conflict'
+  const enFilled = countFilled([enTitle, enMetaTitle, enMetaDescription])
 
   return (
     <form
@@ -87,6 +126,19 @@ export function PageForm({
       aria-label={mode === 'create' ? 'Создание страницы' : 'Редактирование страницы'}
       className="space-y-8"
     >
+      <div className="flex items-center justify-between">
+        <LanguageTabs
+          active={activeLocale}
+          onChange={setActiveLocale}
+          completeness={{
+            en: { filled: enFilled, total: EN_TRACKED_FIELDS.length },
+          }}
+        />
+        <span className="text-xs text-brand-text-secondary">
+          RU — основная версия, EN — перевод с фолбэком
+        </span>
+      </div>
+
       <Section title="Основные">
         <Field
           label="Slug"
@@ -111,15 +163,27 @@ export function PageForm({
             Страница со slug «home» становится главной.
           </p>
         </Field>
-        <Field label="Заголовок" htmlFor="title">
-          <input
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            required
-            className="input"
-          />
-        </Field>
+        {activeLocale === DEFAULT_LOCALE ? (
+          <Field label="Заголовок" htmlFor="title">
+            <input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+              className="input"
+            />
+          </Field>
+        ) : (
+          <Field label="Заголовок (EN)" htmlFor="title-en">
+            <input
+              id="title-en"
+              value={enTitle}
+              onChange={(e) => setEnTitle(e.target.value)}
+              placeholder={title || 'RU fallback'}
+              className="input"
+            />
+          </Field>
+        )}
       </Section>
 
       <Section title="Блоки">
@@ -127,25 +191,53 @@ export function PageForm({
       </Section>
 
       <Section title="SEO">
-        <Field label="Meta title" htmlFor="meta-title">
-          <input
-            id="meta-title"
-            value={metaTitle ?? ''}
-            onChange={(e) => setMetaTitle(e.target.value)}
-            maxLength={255}
-            className="input"
-          />
-        </Field>
-        <Field label="Meta description" htmlFor="meta-desc">
-          <textarea
-            id="meta-desc"
-            value={metaDescription ?? ''}
-            onChange={(e) => setMetaDescription(e.target.value)}
-            rows={3}
-            maxLength={2000}
-            className="input"
-          />
-        </Field>
+        {activeLocale === DEFAULT_LOCALE ? (
+          <>
+            <Field label="Meta title" htmlFor="meta-title">
+              <input
+                id="meta-title"
+                value={metaTitle ?? ''}
+                onChange={(e) => setMetaTitle(e.target.value)}
+                maxLength={255}
+                className="input"
+              />
+            </Field>
+            <Field label="Meta description" htmlFor="meta-desc">
+              <textarea
+                id="meta-desc"
+                value={metaDescription ?? ''}
+                onChange={(e) => setMetaDescription(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                className="input"
+              />
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label="Meta title (EN)" htmlFor="meta-title-en">
+              <input
+                id="meta-title-en"
+                value={enMetaTitle}
+                onChange={(e) => setEnMetaTitle(e.target.value)}
+                maxLength={255}
+                placeholder={metaTitle ?? ''}
+                className="input"
+              />
+            </Field>
+            <Field label="Meta description (EN)" htmlFor="meta-desc-en">
+              <textarea
+                id="meta-desc-en"
+                value={enMetaDescription}
+                onChange={(e) => setEnMetaDescription(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder={metaDescription ?? ''}
+                className="input"
+              />
+            </Field>
+          </>
+        )}
         <ImageUploadField
           id="og-image"
           label="OG-изображение (для соцсетей)"

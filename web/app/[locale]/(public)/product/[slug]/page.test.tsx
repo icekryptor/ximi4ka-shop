@@ -66,7 +66,7 @@ describe('ProductPage', () => {
       })
 
       const meta = await generateMetadata({
-        params: Promise.resolve({ slug: 'kit' }),
+        params: Promise.resolve({ locale: 'ru', slug: 'kit' }),
       })
 
       expect(meta.title).toBe('Custom SEO Title')
@@ -99,7 +99,7 @@ describe('ProductPage', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
       })
       const meta = await generateMetadata({
-        params: Promise.resolve({ slug: 'kit' }),
+        params: Promise.resolve({ locale: 'ru', slug: 'kit' }),
       })
       expect(meta.title).toBe('Kit')
     })
@@ -128,7 +128,7 @@ describe('ProductPage', () => {
         updatedAt: '2026-01-01T00:00:00.000Z',
       })
       const meta = await generateMetadata({
-        params: Promise.resolve({ slug: 'kit' }),
+        params: Promise.resolve({ locale: 'ru', slug: 'kit' }),
       })
       expect(meta.other).toEqual({
         amphtml: 'https://shop.ximi4ka.ru/amp/product/kit',
@@ -138,9 +138,80 @@ describe('ProductPage', () => {
     it('returns a safe fallback when the product fetch fails', async () => {
       vi.mocked(getPublishedProduct).mockRejectedValue(new Error('down'))
       const meta = await generateMetadata({
-        params: Promise.resolve({ slug: 'missing' }),
+        params: Promise.resolve({ locale: 'ru', slug: 'missing' }),
       })
       expect(meta.title).toBe('Товар — Ximi4ka')
+    })
+
+    it('uses the EN translation for title + meta when locale=en', async () => {
+      vi.mocked(getPublishedProduct).mockResolvedValue({
+        id: 'p1',
+        slug: 'kit',
+        sku: null,
+        name: 'Набор',
+        shortDescription: 'Короткое описание',
+        longDescriptionBlocks: [],
+        priceRub: 100,
+        compareAtPriceRub: null,
+        stockStatus: 'in_stock',
+        isPublished: true,
+        sortOrder: 0,
+        metaTitle: 'RU meta',
+        metaDescription: null,
+        ogImage: null,
+        canonicalUrl: null,
+        noindex: false,
+        translations: {
+          en: { name: 'Kit', metaTitle: 'EN meta', metaDescription: 'EN desc' },
+        },
+        images: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      })
+      const meta = await generateMetadata({
+        params: Promise.resolve({ locale: 'en', slug: 'kit' }),
+      })
+      expect(meta.title).toBe('EN meta')
+      expect(meta.description).toBe('EN desc')
+      // Canonical for the EN variant is the /en-prefixed URL.
+      expect(meta.alternates?.canonical).toBe(
+        'https://shop.ximi4ka.ru/en/product/kit',
+      )
+      // hreflang alternates include RU unprefixed, EN prefixed, x-default=RU.
+      expect(meta.alternates?.languages).toEqual({
+        ru: 'https://shop.ximi4ka.ru/product/kit',
+        en: 'https://shop.ximi4ka.ru/en/product/kit',
+        'x-default': 'https://shop.ximi4ka.ru/product/kit',
+      })
+    })
+
+    it('falls back to RU content when EN translation is missing', async () => {
+      vi.mocked(getPublishedProduct).mockResolvedValue({
+        id: 'p1',
+        slug: 'kit',
+        sku: null,
+        name: 'Набор',
+        shortDescription: 'Короткое',
+        longDescriptionBlocks: [],
+        priceRub: 100,
+        compareAtPriceRub: null,
+        stockStatus: 'in_stock',
+        isPublished: true,
+        sortOrder: 0,
+        metaTitle: 'RU meta',
+        metaDescription: null,
+        ogImage: null,
+        canonicalUrl: null,
+        noindex: false,
+        translations: {},
+        images: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      })
+      const meta = await generateMetadata({
+        params: Promise.resolve({ locale: 'en', slug: 'kit' }),
+      })
+      expect(meta.title).toBe('RU meta')
     })
   })
 })

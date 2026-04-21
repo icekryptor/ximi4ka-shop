@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TranslationsSchema } from './i18n.js'
 
 export const CreateProductSchema = z.object({
   slug: z
@@ -19,7 +20,7 @@ export const CreateProductSchema = z.object({
   ogImage: z.string().max(500).nullable().optional(),
   canonicalUrl: z.string().max(500).nullable().optional(),
   noindex: z.boolean().default(false),
-  translations: z.record(z.string(), z.unknown()).default({}),
+  translations: TranslationsSchema.default({}),
 })
 
 export const UpdateProductSchema = CreateProductSchema.partial()
