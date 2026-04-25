@@ -44,6 +44,13 @@ describe('redirect middleware', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('skips /fonts/* without locale-rewriting (so /fonts/foo.woff2 hits the static handler)', async () => {
+    const res = await middleware(makeRequest('/fonts/MazzardH-ExtraBold.woff2'))
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+    expect(res.headers.get('location')).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('skips /_next, /uploads, /favicon.ico', async () => {
     for (const p of ['/_next/static/foo', '/uploads/x.jpg', '/favicon.ico']) {
       const res = await middleware(makeRequest(p))

@@ -1,7 +1,15 @@
 import type { Metadata } from 'next'
+import { IBM_Plex_Sans } from 'next/font/google'
 import './globals.css'
 import { getPublicSettings, type PublicSettings } from '@/lib/api'
 import { MetrikaScript, Ga4Script } from '@/lib/analytics'
+
+const plexSans = IBM_Plex_Sans({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-plex',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Ximi4ka — наборы для химических экспериментов',
@@ -35,7 +43,7 @@ export default async function RootLayout({
 }>) {
   const settings = await loadPublicSettings()
   return (
-    <html lang="ru" className="h-full antialiased">
+    <html lang="ru" className={`${plexSans.variable} h-full antialiased`}>
       <head>
         {settings?.yandexWebmasterVerification ? (
           <meta

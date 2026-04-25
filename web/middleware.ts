@@ -79,7 +79,7 @@ async function getRedirects(baseUrl: string): Promise<Redirect[]> {
 // the DB (e.g. via a lax migration or direct SQL), we still won't apply it.
 // Also covers feed/route-handler paths that ship XML/plain-text and have
 // no locale concept.
-const EXCLUDED_PREFIXES = ['/_next', '/api', '/admin', '/uploads', '/amp']
+const EXCLUDED_PREFIXES = ['/_next', '/api', '/admin', '/fonts', '/uploads', '/amp']
 
 const EXCLUDED_EXACT = new Set([
   '/favicon.ico',
@@ -147,11 +147,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
 export const config = {
   // Exclude Next internals, API proxying, admin panel, uploaded static
-  // files, AMP variant routes, and root-level feeds (robots/sitemap/yml/
-  // turbo/llms). Everything else is public, localizable, and potentially
-  // redirect-targeted.
+  // files, bundled font assets, AMP variant routes, and root-level feeds
+  // (robots/sitemap/yml/turbo/llms). Everything else is public,
+  // localizable, and potentially redirect-targeted.
   matcher: [
-    '/((?!_next|api|admin|uploads|amp|favicon\\.ico|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml).*)',
+    '/((?!_next|api|admin|fonts|uploads|amp|favicon\\.ico|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml).*)',
   ],
 }
 

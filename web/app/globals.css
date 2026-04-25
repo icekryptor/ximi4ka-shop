@@ -1,5 +1,14 @@
 @import 'tailwindcss';
 
+@font-face {
+  font-family: 'Mazzard H';
+  src: url('/fonts/MazzardH-ExtraBold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #1c1528;
@@ -14,13 +23,14 @@
   --color-brand-text-secondary: #524667;
   --color-brand-border: #e8e5ef;
   --color-brand-bg-soft: #eeebf3;
-  --font-sans: Arial, Helvetica, sans-serif;
+  --font-sans: var(--font-plex), 'IBM Plex Sans', system-ui, sans-serif;
+  --font-display: 'Mazzard H', 'IBM Plex Sans', system-ui, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* Shared admin input styling. Used by ProductForm/ImageUploadField and any
