@@ -8,6 +8,7 @@ interface Props {
   size?: SectionSize
   surface?: SectionSurface
   className?: string
+  id?: string
   as?: 'section' | 'div' | 'header' | 'footer'
 }
 
@@ -29,10 +30,14 @@ export function Section({
   size = 'md',
   surface = 'base',
   className = '',
+  id,
   as: Tag = 'section',
 }: Props) {
   return (
-    <Tag className={`${sizeClass[size]} ${surfaceClass[surface]} ${className}`}>
+    <Tag
+      id={id}
+      className={`${sizeClass[size]} ${surfaceClass[surface]} ${className}`}
+    >
       {children}
     </Tag>
   )
