@@ -43,3 +43,23 @@ if (
     } as DOMRect
   }
 }
+
+// jsdom doesn't implement IntersectionObserver, but framer-motion's
+// `whileInView` mounts an observer when motion components render. Provide a
+// no-op stub so motion primitives can render in tests without crashing. Real
+// viewport behavior is verified in browser smoke checks, not unit tests.
+if (typeof globalThis.IntersectionObserver === 'undefined') {
+  class IntersectionObserverStub {
+    readonly root: Element | Document | null = null
+    readonly rootMargin: string = ''
+    readonly thresholds: ReadonlyArray<number> = []
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+    takeRecords(): IntersectionObserverEntry[] {
+      return []
+    }
+  }
+  ;(globalThis as { IntersectionObserver: typeof IntersectionObserver }).IntersectionObserver =
+    IntersectionObserverStub as unknown as typeof IntersectionObserver
+}
