@@ -25,6 +25,64 @@
   --color-brand-bg-soft: #eeebf3;
   --font-sans: var(--font-plex), 'IBM Plex Sans', system-ui, sans-serif;
   --font-display: 'Mazzard H', 'IBM Plex Sans', system-ui, sans-serif;
+
+  /* Typography scale */
+  --text-display: clamp(2.5rem, 5vw + 1rem, 5.5rem);
+  --text-h1: clamp(2rem, 3vw + 1rem, 3.5rem);
+  --text-h2: clamp(1.5rem, 2vw + 0.75rem, 2.25rem);
+  --text-h3: clamp(1.25rem, 1.5vw + 0.5rem, 1.625rem);
+  --text-lead: 1.125rem;
+  --text-body: 1rem;
+  --text-small: 0.875rem;
+  --text-micro: 0.75rem;
+
+  /* Tracking + line height */
+  --tracking-tight: -0.02em;
+  --leading-tight: 1.05;
+  --leading-body: 1.5;
+
+  /* Color extensions */
+  --gradient-brand: linear-gradient(135deg, rgba(141,103,255,1) 0%, rgba(200,86,255,1) 100%);
+  --color-surface-base: #ffffff;
+  --color-surface-soft: #eeebf3;
+  --color-surface-elevated: #ffffff;
+  --color-surface-glass: rgba(255, 255, 255, 0.7);
+  --color-text-muted: rgba(82, 70, 103, 0.6);
+  --color-text-on-brand: #ffffff;
+  --color-border-strong: #d0c8e0;
+  --color-border-subtle: #e8e5ef;
+  --color-stock-success: #2f9e44;
+  --color-stock-warning: #e6a23c;
+  --color-stock-danger: #d6336c;
+  --color-stock-success-soft: #d3f9d8;
+  --color-stock-warning-soft: #fff3bf;
+  --color-stock-danger-soft: #ffdeeb;
+
+  /* Spacing (extends Tailwind defaults; explicit for clarity) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+  --space-32: 8rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(28, 21, 40, 0.05);
+  --shadow-md: 0 4px 12px -2px rgba(28, 21, 40, 0.08), 0 2px 6px -1px rgba(28, 21, 40, 0.05);
+  --shadow-lg: 0 10px 32px -8px rgba(28, 21, 40, 0.12), 0 4px 16px -4px rgba(28, 21, 40, 0.06);
+  --shadow-glow-brand: 0 8px 24px -4px rgba(131, 110, 254, 0.4), 0 4px 12px -2px rgba(200, 86, 255, 0.25);
+
+  /* Border radii */
+  --radius-sm: 12px;
+  --radius-md: 24px;
+  --radius-lg: 36px;
+  --radius-xl: 48px;
+  --radius-full: 9999px;
 }
 
 body {
