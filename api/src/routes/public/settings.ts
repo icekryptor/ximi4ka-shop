@@ -6,6 +6,8 @@ import { getSettings } from '../../lib/settings.js'
 // /llms.txt routes on the web app). YML shop metadata (name, company, url,
 // currency, delivery note) is ALSO public-safe — it describes the shop
 // externally and is the same data that appears in the Yandex Market feed.
+// Marketing fields (header promo, trust strip, testimonials) are by
+// definition meant to render to every visitor, so they're public-safe too.
 // Admin-only toggles (Yandex Pay) stay out of this response; payment
 // credentials themselves never live in the DB.
 export const publicSettingsRouter: Router = Router()
@@ -30,6 +32,9 @@ publicSettingsRouter.get('/', async (_req, res, next) => {
         ymlUrl: s.ymlUrl,
         ymlCurrency: s.ymlCurrency,
         ymlDeliveryNote: s.ymlDeliveryNote,
+        headerPromoText: s.headerPromoText,
+        trustStripItems: s.trustStripItems,
+        testimonials: s.testimonials,
       },
     })
   } catch (err) {

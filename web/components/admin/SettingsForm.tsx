@@ -6,7 +6,14 @@ import {
   adminUpdateSettings,
   type AdminSettingsPatch,
   type SiteSettings,
+  type Testimonial,
+  type TrustStripItem,
 } from '@/lib/adminApi'
+
+// Hard caps mirror the zod schema in api/src/routes/admin/settings.ts so the
+// admin form can pre-emptively hide the "+" buttons when they'd be rejected.
+const TRUST_STRIP_MAX = 8
+const TESTIMONIALS_MAX = 20
 
 interface Props {
   initial: SiteSettings
@@ -68,6 +75,18 @@ export function SettingsForm({ initial }: Props) {
   const [yandexPayMode, setYandexPayMode] = useState<'sandbox' | 'production'>(
     initial.yandexPayMode,
   )
+  // Marketing fields. headerPromoText is a single nullable text blob; the
+  // two list editors keep their state as plain arrays of objects, with
+  // helpers below to add / update / remove rows.
+  const [headerPromoText, setHeaderPromoText] = useState(
+    initial.headerPromoText ?? '',
+  )
+  const [trustStripItems, setTrustStripItems] = useState<TrustStripItem[]>(
+    initial.trustStripItems ?? [],
+  )
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(
+    initial.testimonials ?? [],
+  )
 
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -99,6 +118,9 @@ export function SettingsForm({ initial }: Props) {
       ymlDeliveryNote: nullifyBlank(ymlDeliveryNote),
       yandexPayEnabled,
       yandexPayMode,
+      headerPromoText: nullifyBlank(headerPromoText),
+      trustStripItems,
+      testimonials,
     }
 
     setSubmitting(true)
@@ -339,6 +361,202 @@ export function SettingsForm({ initial }: Props) {
             не в базе.
           </p>
         </Field>
+      </Section>
+
+      <Section title="Маркетинг">
+        <Field
+          label="Текст промо-полосы в шапке (оставьте пустым, чтобы скрыть)"
+          htmlFor="header-promo-text"
+        >
+          <textarea
+            id="header-promo-text"
+            value={headerPromoText}
+            onChange={(e) => setHeaderPromoText(e.target.value)}
+            rows={2}
+            className="input"
+            placeholder="Бесплатная доставка от 3000 ₽"
+          />
+        </Field>
+
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-brand-text">
+            Доверие в шапке
+          </h3>
+          {trustStripItems.length === 0 ? (
+            <p className="text-xs text-brand-text-secondary">
+              Список пуст — добавьте первый элемент.
+            </p>
+          ) : (
+            <ul className="space-y-2" data-testid="trust-strip-list">
+              {trustStripItems.map((item, idx) => (
+                <li
+                  key={idx}
+                  className="flex items-start gap-2"
+                  data-testid={`trust-strip-row-${idx}`}
+                >
+                  <input
+                    aria-label={`Иконка ${idx + 1}`}
+                    value={item.icon}
+                    onChange={(e) => {
+                      const next = [...trustStripItems]
+                      next[idx] = { ...next[idx], icon: e.target.value }
+                      setTrustStripItems(next)
+                    }}
+                    placeholder="🚚"
+                    maxLength={64}
+                    className="input w-20"
+                  />
+                  <input
+                    aria-label={`Подпись ${idx + 1}`}
+                    value={item.label}
+                    onChange={(e) => {
+                      const next = [...trustStripItems]
+                      next[idx] = { ...next[idx], label: e.target.value }
+                      setTrustStripItems(next)
+                    }}
+                    placeholder="Доставка по России"
+                    maxLength={255}
+                    className="input flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTrustStripItems(
+                        trustStripItems.filter((_, i) => i !== idx),
+                      )
+                    }
+                    className="px-3 py-2 rounded-full border border-brand-border text-sm text-brand-text-secondary"
+                  >
+                    Удалить
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {trustStripItems.length < TRUST_STRIP_MAX && (
+            <button
+              type="button"
+              onClick={() =>
+                setTrustStripItems([
+                  ...trustStripItems,
+                  { icon: '', label: '' },
+                ])
+              }
+              className="px-3 py-2 rounded-full border border-brand text-brand text-sm"
+            >
+              + Добавить
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-3">
+          <h3 className="text-sm font-semibold text-brand-text">Отзывы</h3>
+          {testimonials.length === 0 ? (
+            <p className="text-xs text-brand-text-secondary">
+              Список пуст — добавьте первый отзыв.
+            </p>
+          ) : (
+            <ul className="space-y-3" data-testid="testimonials-list">
+              {testimonials.map((t, idx) => (
+                <li
+                  key={idx}
+                  className="rounded-xl border border-brand-border p-3 space-y-2"
+                  data-testid={`testimonial-row-${idx}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-medium text-brand-text">
+                      {`Отзыв ${idx + 1}`}
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTestimonials(
+                          testimonials.filter((_, i) => i !== idx),
+                        )
+                      }
+                      className="px-3 py-1 rounded-full border border-brand-border text-xs text-brand-text-secondary"
+                    >
+                      Удалить
+                    </button>
+                  </div>
+                  <textarea
+                    aria-label={`Цитата ${idx + 1}`}
+                    value={t.quote}
+                    onChange={(e) => {
+                      const next = [...testimonials]
+                      next[idx] = { ...next[idx], quote: e.target.value }
+                      setTestimonials(next)
+                    }}
+                    rows={3}
+                    maxLength={2000}
+                    className="input w-full"
+                  />
+                  <input
+                    aria-label={`Автор ${idx + 1}`}
+                    value={t.author}
+                    onChange={(e) => {
+                      const next = [...testimonials]
+                      next[idx] = { ...next[idx], author: e.target.value }
+                      setTestimonials(next)
+                    }}
+                    placeholder="Анна"
+                    maxLength={255}
+                    className="input w-full"
+                  />
+                  <input
+                    aria-label={`Город ${idx + 1}`}
+                    value={t.location}
+                    onChange={(e) => {
+                      const next = [...testimonials]
+                      next[idx] = { ...next[idx], location: e.target.value }
+                      setTestimonials(next)
+                    }}
+                    placeholder="Москва"
+                    maxLength={255}
+                    className="input w-full"
+                  />
+                  <input
+                    aria-label={`Рейтинг ${idx + 1}`}
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={t.rating ?? ''}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const next = [...testimonials]
+                      // Empty input clears the optional rating; otherwise
+                      // coerce to int and clamp via the schema on the server.
+                      if (raw === '') {
+                        const copy = { ...next[idx] }
+                        delete copy.rating
+                        next[idx] = copy
+                      } else {
+                        next[idx] = { ...next[idx], rating: Number(raw) }
+                      }
+                      setTestimonials(next)
+                    }}
+                    placeholder="5"
+                    className="input w-24"
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+          {testimonials.length < TESTIMONIALS_MAX && (
+            <button
+              type="button"
+              onClick={() =>
+                setTestimonials([
+                  ...testimonials,
+                  { quote: '', author: '', location: '' },
+                ])
+              }
+              className="px-3 py-2 rounded-full border border-brand text-brand text-sm"
+            >
+              + Добавить
+            </button>
+          )}
+        </div>
       </Section>
 
       {formError || apiError ? (

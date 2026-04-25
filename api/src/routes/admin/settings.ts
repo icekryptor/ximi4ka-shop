@@ -38,6 +38,36 @@ const UpdateSchema = z.object({
   ymlDeliveryNote: z.string().max(2000).nullable().optional(),
   yandexPayEnabled: z.boolean().optional(),
   yandexPayMode: z.enum(['sandbox', 'production']).optional(),
+  // --- Marketing fields (homepage redesign) ---
+  // Header promo strip text — null hides the strip in the header. 500 chars
+  // is generous; the admin form is a single-line textarea so a paste of
+  // unbounded length doesn't blow up the row.
+  headerPromoText: z.string().max(500).nullable().optional(),
+  // Trust-strip items shown under the header. Cap at 8 so the row stays
+  // readable on narrow viewports; `icon` accepts emoji or short glyphs.
+  trustStripItems: z
+    .array(
+      z.object({
+        icon: z.string().max(64),
+        label: z.string().max(255),
+      }),
+    )
+    .max(8)
+    .optional(),
+  // Customer testimonials. Optional integer rating 1..5 powers a star row;
+  // absent rating means no stars are rendered for that testimonial. Cap of
+  // 20 keeps the section paginatable client-side.
+  testimonials: z
+    .array(
+      z.object({
+        quote: z.string().max(2000),
+        author: z.string().max(255),
+        location: z.string().max(255),
+        rating: z.number().int().min(1).max(5).optional(),
+      }),
+    )
+    .max(20)
+    .optional(),
 })
 
 export const adminSettingsRouter: Router = Router()

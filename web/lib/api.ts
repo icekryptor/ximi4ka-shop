@@ -131,6 +131,18 @@ export async function listPages(
 
 // ---------- Public site settings ----------
 
+export interface PublicTrustStripItem {
+  icon: string
+  label: string
+}
+
+export interface PublicTestimonial {
+  quote: string
+  author: string
+  location: string
+  rating?: number
+}
+
 export interface PublicSettings {
   metrikaId: string | null
   ga4Id: string | null
@@ -143,6 +155,9 @@ export interface PublicSettings {
   ymlUrl: string | null
   ymlCurrency: 'RUB' | 'RUR'
   ymlDeliveryNote: string | null
+  headerPromoText: string | null
+  trustStripItems: PublicTrustStripItem[]
+  testimonials: PublicTestimonial[]
 }
 
 export async function getPublicSettings(): Promise<PublicSettings> {

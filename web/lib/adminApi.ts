@@ -381,6 +381,18 @@ export async function adminImportRedirectsCsv(
 
 // --- settings (singleton) ---
 
+export interface TrustStripItem {
+  icon: string
+  label: string
+}
+
+export interface Testimonial {
+  quote: string
+  author: string
+  location: string
+  rating?: number
+}
+
 export interface SiteSettings {
   id: string
   metrikaId: string | null
@@ -396,6 +408,9 @@ export interface SiteSettings {
   ymlDeliveryNote: string | null
   yandexPayEnabled: boolean
   yandexPayMode: 'sandbox' | 'production'
+  headerPromoText: string | null
+  trustStripItems: TrustStripItem[]
+  testimonials: Testimonial[]
   updatedAt: string
 }
 

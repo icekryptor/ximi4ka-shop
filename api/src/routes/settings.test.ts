@@ -42,7 +42,10 @@ describe('Site settings', () => {
         yml_currency = 'RUB',
         yml_delivery_note = NULL,
         yandex_pay_enabled = false,
-        yandex_pay_mode = 'sandbox'
+        yandex_pay_mode = 'sandbox',
+        header_promo_text = NULL,
+        trust_strip_items = '[]'::jsonb,
+        testimonials = '[]'::jsonb
       WHERE id = 'default'
     `)
     auth = await loginAsAdmin(app)
@@ -61,6 +64,9 @@ describe('Site settings', () => {
       llmsTxt: '',
       yandexPayEnabled: false,
       yandexPayMode: 'sandbox',
+      headerPromoText: null,
+      trustStripItems: [],
+      testimonials: [],
     })
   })
 
@@ -213,5 +219,113 @@ describe('Site settings', () => {
     expect(res.status).toBe(200)
     expect(res.headers['content-type']).toMatch(/^text\/plain/)
     expect(res.text).toBe('')
+  })
+
+  // --- Marketing fields (homepage redesign): header promo + trust strip + testimonials ---
+
+  it('PATCH accepts headerPromoText + trustStripItems + testimonials and round-trips them', async () => {
+    const patch = {
+      headerPromoText: 'Бесплатная доставка от 3000 ₽',
+      trustStripItems: [
+        { icon: '🚚', label: 'Доставка по России' },
+        { icon: '🔒', label: 'Безопасная оплата' },
+      ],
+      testimonials: [
+        {
+          quote: 'Сын в восторге, всё работает!',
+          author: 'Анна',
+          location: 'Москва',
+          rating: 5,
+        },
+        {
+          quote: 'Качественный набор, рекомендую',
+          author: 'Иван',
+          location: 'СПб',
+        },
+      ],
+    }
+    const res = await request(app)
+      .patch('/api/admin/settings')
+      .set(authHeaders(auth))
+      .send(patch)
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject(patch)
+
+    // Round-trip via a fresh GET — proves the values landed in the row.
+    const reGet = await request(app)
+      .get('/api/admin/settings')
+      .set(authHeaders(auth))
+    expect(reGet.body.data.headerPromoText).toBe('Бесплатная доставка от 3000 ₽')
+    expect(reGet.body.data.trustStripItems).toHaveLength(2)
+    expect(reGet.body.data.testimonials).toHaveLength(2)
+    expect(reGet.body.data.testimonials[0].rating).toBe(5)
+    // Optional `rating` survives as undefined / missing for the 2nd entry.
+    expect(reGet.body.data.testimonials[1].rating).toBeUndefined()
+  })
+
+  it('PATCH rejects trustStripItems missing label with 400 validation_error', async () => {
+    const res = await request(app)
+      .patch('/api/admin/settings')
+      .set(authHeaders(auth))
+      .send({ trustStripItems: [{ icon: '🚚' }] })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('validation_error')
+  })
+
+  it('PATCH rejects testimonials with rating > 5 with 400 validation_error', async () => {
+    const res = await request(app)
+      .patch('/api/admin/settings')
+      .set(authHeaders(auth))
+      .send({
+        testimonials: [
+          { quote: 'Great', author: 'A', location: 'Москва', rating: 6 },
+        ],
+      })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('validation_error')
+  })
+
+  it('GET /api/public/settings exposes the three marketing fields after PATCH', async () => {
+    await request(app)
+      .patch('/api/admin/settings')
+      .set(authHeaders(auth))
+      .send({
+        headerPromoText: 'Промо-текст',
+        trustStripItems: [{ icon: '⭐', label: 'Гарантия качества' }],
+        testimonials: [
+          {
+            quote: 'Отличный набор',
+            author: 'Мария',
+            location: 'Казань',
+            rating: 4,
+          },
+        ],
+      })
+      .expect(200)
+
+    const res = await request(app).get('/api/public/settings')
+    expect(res.status).toBe(200)
+    expect(res.body.data.headerPromoText).toBe('Промо-текст')
+    expect(res.body.data.trustStripItems).toEqual([
+      { icon: '⭐', label: 'Гарантия качества' },
+    ])
+    expect(res.body.data.testimonials).toEqual([
+      {
+        quote: 'Отличный набор',
+        author: 'Мария',
+        location: 'Казань',
+        rating: 4,
+      },
+    ])
+  })
+
+  it('GET /api/admin/settings returns the three marketing fields with default empty arrays / null', async () => {
+    const res = await request(app)
+      .get('/api/admin/settings')
+      .set(authHeaders(auth))
+    expect(res.status).toBe(200)
+    expect(res.body.data.headerPromoText).toBeNull()
+    expect(res.body.data.trustStripItems).toEqual([])
+    expect(res.body.data.testimonials).toEqual([])
   })
 })

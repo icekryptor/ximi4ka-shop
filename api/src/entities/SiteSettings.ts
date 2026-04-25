@@ -95,6 +95,35 @@ export class SiteSettings {
   })
   yandexPayMode!: 'sandbox' | 'production'
 
+  // --- Marketing (homepage redesign) ---
+  // Free-text promo strip rendered in the site header. Null hides the strip.
+  @Column({ type: 'text', name: 'header_promo_text', nullable: true })
+  headerPromoText!: string | null
+
+  // Repeatable list of small icon+label items shown under the header to build
+  // trust ("free shipping", "secure payment", etc.). Free-string `icon` so we
+  // can use emoji or short glyphs without locking into a typed icon system.
+  @Column({
+    type: 'jsonb',
+    name: 'trust_strip_items',
+    default: () => "'[]'::jsonb",
+  })
+  trustStripItems!: Array<{ icon: string; label: string }>
+
+  // Customer testimonials shown on the homepage. Optional integer rating 1..5
+  // is rendered as stars; absent rating means no star row.
+  @Column({
+    type: 'jsonb',
+    name: 'testimonials',
+    default: () => "'[]'::jsonb",
+  })
+  testimonials!: Array<{
+    quote: string
+    author: string
+    location: string
+    rating?: number
+  }>
+
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt!: Date
 }

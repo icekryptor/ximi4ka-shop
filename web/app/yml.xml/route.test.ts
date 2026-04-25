@@ -77,6 +77,9 @@ describe('GET /yml.xml', () => {
       ymlUrl: 'https://ximi4ka.ru',
       ymlCurrency: 'RUB',
       ymlDeliveryNote: null,
+      headerPromoText: null,
+      trustStripItems: [],
+      testimonials: [],
     })
 
     const res = await GET()
