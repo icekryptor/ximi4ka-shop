@@ -13,6 +13,10 @@ import {
   pickField,
   type Locale,
 } from '@/lib/i18n'
+import { Container, Section, DisplayHeading } from '@/components/ui'
+import { Reveal } from '@/components/motion'
+import { PreFooterCta } from '@/components/marketing'
+import { GradientBlob } from '@/components/decor'
 
 export const revalidate = 60
 export const dynamicParams = true
@@ -100,11 +104,12 @@ export default async function CmsPage({ params }: Props) {
 
   const page = await fetchPage(slug)
   const title = pickField<string>(page, 'title', locale) ?? page.title
+  const metaDescription = pickField<string>(page, 'metaDescription', locale)
   const blocks =
     (pickField<unknown[]>(page, 'blocks', locale) ?? page.blocks ?? []) as unknown[]
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+    <>
       {/* AMP discovery link — see product page for rationale. */}
       <link rel="amphtml" href={`${siteUrl()}/amp/article/${slug}`} />
       <JsonLd data={articleJsonLd(page)} />
@@ -115,12 +120,50 @@ export default async function CmsPage({ params }: Props) {
         ])}
       />
 
-      <h1 className="text-4xl font-bold text-brand-text mb-6">{title}</h1>
+      {/* Hero band */}
+      <Section size="md" surface="soft" className="relative overflow-hidden">
+        <GradientBlob className="pointer-events-none absolute -right-32 top-0 h-[140%] w-[40%] opacity-30" />
+        <Container>
+          <div className="relative z-10 max-w-3xl">
+            <Reveal>
+              <DisplayHeading className="mb-4">{title}</DisplayHeading>
+            </Reveal>
+            {metaDescription && (
+              <Reveal delay={0.05}>
+                <p className="text-[length:var(--text-lead)] text-[var(--color-brand-text-secondary)]">
+                  {metaDescription}
+                </p>
+              </Reveal>
+            )}
+          </div>
+        </Container>
+      </Section>
+
+      {/* Body */}
       {blocks.length > 0 ? (
-        <BlockRenderer blocks={blocks} />
+        <Section size="md" surface="base">
+          <Container>
+            <div className="mx-auto max-w-3xl">
+              <BlockRenderer blocks={blocks} />
+            </div>
+          </Container>
+        </Section>
       ) : (
-        <p className="text-brand-text-secondary">Страница пока пуста.</p>
+        <Section size="md" surface="base">
+          <Container>
+            <p className="mx-auto max-w-3xl text-[var(--color-brand-text-secondary)]">
+              Страница пока пуста.
+            </p>
+          </Container>
+        </Section>
       )}
-    </div>
+
+      {/* Pre-footer CTA */}
+      <PreFooterCta
+        title="Готовы начать эксперимент?"
+        lead="В каталоге собраны наборы для разных возрастов и научных направлений."
+        cta={{ label: 'Открыть каталог', href: '/categories' }}
+      />
+    </>
   )
 }
