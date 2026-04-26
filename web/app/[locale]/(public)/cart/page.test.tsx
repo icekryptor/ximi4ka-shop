@@ -19,26 +19,27 @@ const seed: CartItem[] = [
 describe('/cart page', () => {
   it('renders empty state when cart is empty', () => {
     render(<CartPage />)
-    expect(screen.getByRole('heading', { name: 'Корзина' })).toBeInTheDocument()
-    expect(screen.getByText('Корзина пуста')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Вернуться на главную' })).toHaveAttribute(
+    expect(screen.getByRole('heading', { name: 'Корзина пуста' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'В каталог' })).toHaveAttribute(
       'href',
-      '/',
+      '/categories',
     )
   })
 
-  it('renders items and subtotal when cart has items', () => {
+  it('renders items and total when cart has items', () => {
     act(() => {
       saveCart(seed)
     })
     render(<CartPage />)
+    expect(screen.getByRole('heading', { name: 'Ваш заказ' })).toBeInTheDocument()
     expect(screen.getByText('Набор A')).toBeInTheDocument()
     expect(screen.getByText('Набор B')).toBeInTheDocument()
-    // 2*1000 + 1*2500 = 4500
-    expect(screen.getByText(/4[\s ]?500 ₽/)).toBeInTheDocument()
+    // 2*1000 + 1*2500 = 4500 — appears as both subtotal and total in the summary
+    const totals = screen.getAllByText(/4[\s ]?500 ₽/)
+    expect(totals.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows delivery placeholder message', () => {
+  it('shows delivery placeholder message in summary', () => {
     act(() => {
       saveCart(seed)
     })
@@ -81,13 +82,15 @@ describe('/cart page', () => {
     expect(loadCart()).toEqual([])
   })
 
-  it('updates quantity', () => {
+  it('updates quantity via the stepper', () => {
     act(() => {
       saveCart(seed)
     })
     render(<CartPage />)
+    // The QuantityStepper exposes generic aria-labels — there's one stepper per item
+    const incButtons = screen.getAllByRole('button', { name: 'Увеличить количество' })
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Увеличить количество Набор A' }))
+      fireEvent.click(incButtons[0]!)
     })
     expect(loadCart().find((i) => i.productId === 'a')?.quantity).toBe(3)
   })
