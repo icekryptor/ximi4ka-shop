@@ -2,13 +2,30 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import type { Product } from '@ximi4ka-shop/shared'
-import { ApiError, getPublishedProduct, listPublishedProducts } from '@/lib/api'
-import { formatRub, stockLabel } from '@/lib/stockLabel'
-import { AddToCartButton } from '@/components/AddToCartButton'
+import {
+  ApiError,
+  getPublishedProduct,
+  listPublishedProducts,
+  type ProductWithCategories,
+} from '@/lib/api'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata, siteUrl } from '@/lib/metadata'
 import { breadcrumbJsonLd, productJsonLd } from '@/lib/jsonLd'
+import {
+  Container,
+  Section,
+  DisplayHeading,
+  Eyebrow,
+  SectionHeading,
+  Button,
+  MicroTrustRow,
+} from '@/components/ui'
+import { Reveal } from '@/components/motion'
+import { PriceBlock, StockPill } from '@/components/product'
+import { ProductCard } from '@/components/ProductCard'
+import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
+import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
 import {
   DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
@@ -79,6 +96,41 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
+/**
+ * Pull up to 4 related products. Strategy:
+ *  1. Fetch the published product list with `?include=categories` so each
+ *     entry carries `categoryIds`.
+ *  2. Find products sharing a category with the current one.
+ *  3. If fewer than 4, top up with any other published products so the
+ *     section is never empty when there's stock to show.
+ */
+async function fetchRelatedProducts(
+  currentProductId: string,
+): Promise<Product[]> {
+  try {
+    const res = await listPublishedProducts({ limit: 100, include: 'categories' })
+    const all = res.data as ProductWithCategories[]
+    const current = all.find((p) => p.id === currentProductId)
+    const currentCategoryIds = new Set(current?.categoryIds ?? [])
+
+    const sameCategory = all.filter((p) => {
+      if (p.id === currentProductId) return false
+      const ids = p.categoryIds ?? []
+      return ids.some((id) => currentCategoryIds.has(id))
+    })
+
+    if (sameCategory.length >= 4) return sameCategory.slice(0, 4)
+
+    const others = all.filter(
+      (p) =>
+        p.id !== currentProductId && !sameCategory.some((s) => s.id === p.id),
+    )
+    return [...sameCategory, ...others].slice(0, 4)
+  } catch {
+    return []
+  }
+}
+
 export default async function ProductPage({ params }: Props) {
   const { locale: rawLocale, slug } = await params
   if (!isLocale(rawLocale)) notFound()
@@ -94,9 +146,8 @@ export default async function ProductPage({ params }: Props) {
   }
 
   // Display values — fall back to RU top-level column when the EN
-  // translation is missing. Static UI strings ("Главная", "Каталог",
-  // "Описание", etc.) stay Russian for now; translating them is out of
-  // scope for Phase 8.
+  // translation is missing. Static UI strings stay Russian for now;
+  // translating them is out of scope for Phase 8.
   const name = pickField<string>(product, 'name', locale) ?? product.name
   const shortDescription = pickField<string>(
     product,
@@ -107,8 +158,10 @@ export default async function ProductPage({ params }: Props) {
     (pickField<unknown[]>(product, 'longDescriptionBlocks', locale) ??
       product.longDescriptionBlocks) as unknown[]
 
+  const related = await fetchRelatedProducts(product.id)
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+    <>
       {/* AMP discovery: search engines expect <link rel="amphtml"> on the
           canonical page. Next's Metadata API can emit the meta-tag form but
           not this link directly, so we render it inline alongside JSON-LD. */}
@@ -121,78 +174,179 @@ export default async function ProductPage({ params }: Props) {
           { name, url: pathForLocale(locale, product.slug) },
         ])}
       />
-      <nav aria-label="breadcrumbs" className="text-sm mb-6 text-brand-text-secondary">
-        <Link href="/" className="hover:text-black">
-          Главная
-        </Link>
-        <span className="mx-2">/</span>
-        <Link href="/categories" className="hover:text-black">
-          Каталог
-        </Link>
-        <span className="mx-2">/</span>
-        <span className="text-gray-900">{name}</span>
-      </nav>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Gallery */}
-        <div>
-          {product.images && product.images.length > 0 ? (
-            <div className="space-y-4">
-              {product.images.map((img) => (
+      {/* Hero / info area */}
+      <Section size="lg">
+        <Container>
+          <nav
+            aria-label="breadcrumbs"
+            className="mb-8 text-[length:var(--text-small)] text-[var(--color-text-muted)]"
+          >
+            <Link href="/" className="hover:text-[var(--color-brand-text)]">
+              Главная
+            </Link>
+            <span className="mx-2" aria-hidden="true">
+              ·
+            </span>
+            <Link
+              href="/categories"
+              className="hover:text-[var(--color-brand-text)]"
+            >
+              Каталог
+            </Link>
+            <span className="mx-2" aria-hidden="true">
+              ·
+            </span>
+            <span className="text-[var(--color-brand-text)]">{name}</span>
+          </nav>
+
+          {/* 5-column grid: gallery (3 cols) + info (2 cols) on md+ */}
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-5">
+            {/* Gallery — sticky on md+ */}
+            <div className="md:col-span-3">
+              <div className="space-y-4 md:sticky md:top-24">
                 <div
-                  key={img.id}
-                  className="aspect-square bg-gray-100 rounded-2xl overflow-hidden"
+                  className="relative aspect-square overflow-hidden rounded-[var(--radius-lg)]"
+                  style={{
+                    background:
+                      'radial-gradient(circle at 30% 30%, rgba(141,103,255,0.10) 0%, rgba(200,86,255,0.05) 50%, rgba(238,235,243,1) 100%)',
+                  }}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={img.url}
-                    alt={img.alt}
-                    className="w-full h-full object-cover"
-                  />
+                  {product.images && product.images.length > 0 ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={product.images[0].url}
+                      alt={product.images[0].alt || name}
+                      className="absolute inset-0 h-full w-full object-contain p-12"
+                    />
+                  ) : (
+                    <div
+                      aria-hidden="true"
+                      className="absolute inset-0 flex items-center justify-center"
+                    >
+                      <span className="font-[var(--font-display)] text-[length:var(--text-h1)] text-[var(--color-brand)] opacity-30 px-12 text-center leading-tight">
+                        {name}
+                      </span>
+                    </div>
+                  )}
                 </div>
+
+                {/* Thumbnail strip — purely visual stack for v1 */}
+                {product.images && product.images.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto">
+                    {product.images.map((img) => (
+                      <div
+                        key={img.id}
+                        className="aspect-square w-20 shrink-0 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-soft)]"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={img.url}
+                          alt={img.alt}
+                          className="h-full w-full object-contain p-1"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Info column */}
+            <div className="flex flex-col gap-6 md:col-span-2">
+              <div>
+                <Eyebrow>Каталог</Eyebrow>
+                <DisplayHeading as="h1" className="mt-3">
+                  {name}
+                </DisplayHeading>
+              </div>
+
+              {shortDescription && (
+                <p className="text-[length:var(--text-lead)] leading-[var(--leading-body)] text-[var(--color-brand-text-secondary)]">
+                  {shortDescription}
+                </p>
+              )}
+
+              <StockPill status={product.stockStatus} className="self-start" />
+
+              <PriceBlock
+                priceRub={product.priceRub}
+                compareAtPriceRub={product.compareAtPriceRub}
+                size="lg"
+              />
+
+              <AddToCartWithQuantity product={product} />
+
+              <MicroTrustRow
+                items={[
+                  { icon: '🛡️', label: 'Безопасные реактивы' },
+                  { icon: '🚚', label: 'Доставка от 3 дней' },
+                  { icon: '↩️', label: 'Возврат 14 дней' },
+                ]}
+              />
+            </div>
+          </div>
+        </Container>
+      </Section>
+
+      {/* Long description — constrained width for readability */}
+      {Array.isArray(longDescriptionBlocks) &&
+        longDescriptionBlocks.length > 0 && (
+          <Section size="md" surface="base">
+            <Container>
+              <div className="mx-auto max-w-3xl">
+                <SectionHeading title="Описание" />
+                <BlockRenderer blocks={longDescriptionBlocks} />
+              </div>
+            </Container>
+          </Section>
+        )}
+
+      {/* Related products */}
+      {related.length > 0 && (
+        <Section size="lg" surface="soft">
+          <Container>
+            <Reveal>
+              <SectionHeading title="С этим набором покупают" />
+            </Reveal>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              {related.map((p) => (
+                <ProductCard key={p.id} product={p} />
               ))}
             </div>
-          ) : (
-            <div
-              aria-hidden
-              className="aspect-square bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400"
-            >
-              Нет изображения
+          </Container>
+        </Section>
+      )}
+
+      {/* Pre-footer CTA */}
+      <Section size="lg" surface="gradient">
+        <Container>
+          <Reveal>
+            <div className="flex flex-col items-center gap-6 text-center">
+              <DisplayHeading
+                as="h2"
+                className="text-[var(--color-text-on-brand)]"
+              >
+                Не нашли подходящий набор?
+              </DisplayHeading>
+              <p className="max-w-2xl text-[length:var(--text-lead)] text-[var(--color-text-on-brand)] opacity-90">
+                В каталоге собраны наборы для разных возрастов и научных направлений.
+              </p>
+              <Button
+                href="/categories"
+                variant="secondary"
+                size="lg"
+                className="border-white bg-white text-[var(--color-brand)] hover:bg-white hover:opacity-95"
+              >
+                Все категории
+              </Button>
             </div>
-          )}
-        </div>
+          </Reveal>
+        </Container>
+      </Section>
 
-        {/* Info */}
-        <div>
-          <h1 className="text-3xl font-bold mb-2">{name}</h1>
-          <p className="text-sm text-gray-500 mb-4">
-            {stockLabel(product.stockStatus)}
-          </p>
-
-          <div className="mb-6">
-            <span className="text-3xl font-bold">{formatRub(product.priceRub)}</span>
-            {product.compareAtPriceRub != null && (
-              <span className="ml-3 text-gray-400 line-through">
-                {formatRub(product.compareAtPriceRub)}
-              </span>
-            )}
-          </div>
-
-          {shortDescription && (
-            <p className="mb-6 text-gray-700">{shortDescription}</p>
-          )}
-
-          <AddToCartButton product={product} />
-
-          {Array.isArray(longDescriptionBlocks) &&
-            longDescriptionBlocks.length > 0 && (
-              <section className="mt-12 pt-8 border-t border-gray-200">
-                <h2 className="text-xl font-semibold mb-4">Описание</h2>
-                <BlockRenderer blocks={longDescriptionBlocks} />
-              </section>
-            )}
-        </div>
-      </div>
-    </div>
+      {/* Mobile sticky buy bar */}
+      <MobileBuyBarMount product={product} />
+    </>
   )
 }
