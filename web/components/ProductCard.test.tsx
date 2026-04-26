@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect } from 'vitest'
 import { cleanup, render, within } from '@testing-library/react'
 import { ProductCard } from './ProductCard'
-import type { Product } from '@ximi4ka-shop/shared'
+import type { Product, ProductImage } from '@ximi4ka-shop/shared'
 
 afterEach(() => {
   cleanup()
@@ -30,11 +30,21 @@ const fixture: Product = {
   updatedAt: '2026-01-01T00:00:00Z',
 }
 
+const sampleImage: ProductImage = {
+  id: 'img-1',
+  productId: '1',
+  url: 'https://cdn.example.com/test.jpg',
+  alt: 'Тестовое фото',
+  sortOrder: 0,
+}
+
 describe('ProductCard', () => {
   it('renders product name, price, and stock label', () => {
     const { container } = render(<ProductCard product={fixture} />)
     const scope = within(container)
-    expect(scope.getByText('Test Kit')).toBeInTheDocument()
+    // Name appears in <h3>; with no image, the placeholder also shows the name decoratively.
+    // Use getAllByText to tolerate either case and assert at least one occurrence.
+    expect(scope.getAllByText('Test Kit').length).toBeGreaterThan(0)
     expect(scope.getByText('В наличии')).toBeInTheDocument()
     // Russian currency format: "2 490 ₽" (with narrow no-break space). Match digits and ₽.
     expect(scope.getByText(/2\D490\D*₽/u)).toBeInTheDocument()
@@ -61,5 +71,73 @@ describe('ProductCard', () => {
   it('omits compareAtPriceRub when null', () => {
     const { container } = render(<ProductCard product={{ ...fixture, compareAtPriceRub: null }} />)
     expect(within(container).queryByText(/2\D990\D*₽/u)).not.toBeInTheDocument()
+  })
+
+  it('renders <img> when product.images[0] exists', () => {
+    const { container } = render(
+      <ProductCard product={{ ...fixture, images: [sampleImage] }} />
+    )
+    const img = container.querySelector('img')
+    expect(img).not.toBeNull()
+    expect(img).toHaveAttribute('src', sampleImage.url)
+    expect(img).toHaveAttribute('alt', sampleImage.alt)
+  })
+
+  it('does not render <img> when images is empty', () => {
+    const { container } = render(<ProductCard product={{ ...fixture, images: [] }} />)
+    expect(container.querySelector('img')).toBeNull()
+  })
+
+  it('renders discount pill when compareAtPriceRub > priceRub', () => {
+    // 1500 → 1000 = 33% off
+    const { container } = render(
+      <ProductCard
+        product={{ ...fixture, priceRub: 1000, compareAtPriceRub: 1500 }}
+      />
+    )
+    expect(within(container).getByText('−33%')).toBeInTheDocument()
+  })
+
+  it('does not render discount pill when compareAtPriceRub <= priceRub', () => {
+    const { container } = render(
+      <ProductCard
+        product={{ ...fixture, priceRub: 1500, compareAtPriceRub: 1000 }}
+      />
+    )
+    expect(within(container).queryByText(/^−\d+%$/u)).not.toBeInTheDocument()
+  })
+
+  it('uses success pill variant for in_stock', () => {
+    const { container } = render(<ProductCard product={{ ...fixture, stockStatus: 'in_stock' }} />)
+    const pill = within(container).getByText('В наличии')
+    expect(pill.className).toMatch(/stock-success/)
+  })
+
+  it('uses warning pill variant for preorder', () => {
+    const { container } = render(<ProductCard product={{ ...fixture, stockStatus: 'preorder' }} />)
+    const pill = within(container).getByText('Предзаказ')
+    expect(pill.className).toMatch(/stock-warning/)
+  })
+
+  it('uses danger pill variant for out_of_stock', () => {
+    const { container } = render(<ProductCard product={{ ...fixture, stockStatus: 'out_of_stock' }} />)
+    const pill = within(container).getByText('Нет в наличии')
+    expect(pill.className).toMatch(/stock-danger/)
+  })
+
+  it('applies opacity-70 to image area when out_of_stock', () => {
+    const { container } = render(
+      <ProductCard
+        product={{ ...fixture, stockStatus: 'out_of_stock', images: [sampleImage] }}
+      />
+    )
+    expect(container.querySelector('.opacity-70')).not.toBeNull()
+  })
+
+  it('does not apply opacity-70 when in_stock', () => {
+    const { container } = render(
+      <ProductCard product={{ ...fixture, stockStatus: 'in_stock', images: [sampleImage] }} />
+    )
+    expect(container.querySelector('.opacity-70')).toBeNull()
   })
 })
