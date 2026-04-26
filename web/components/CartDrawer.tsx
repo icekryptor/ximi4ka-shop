@@ -2,8 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { useCart } from '@/lib/cart'
-import { OPEN_CART_EVENT } from '@/components/CartButton'
+import { OPEN_CART_EVENT, useCart } from '@/lib/cart'
 
 function formatRub(value: number): string {
   return `${value.toLocaleString('ru-RU')} ₽`

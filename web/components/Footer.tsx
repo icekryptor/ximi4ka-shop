@@ -1,117 +1,85 @@
 import Link from 'next/link'
 
-interface FooterLink {
-  href: string
-  label: string
+interface FooterColumn {
+  heading: string
+  links: { href: string; label: string }[]
 }
 
-const shopLinks: FooterLink[] = [
-  { href: '/categories', label: 'Каталог' },
-  { href: '/', label: 'Все товары' },
-]
-
-const companyLinks: FooterLink[] = [
-  { href: '/o-nas', label: 'О нас' },
-  { href: '/dostavka', label: 'Доставка и оплата' },
-  { href: '/kontakty', label: 'Контакты' },
-]
-
-const legalLinks: FooterLink[] = [
-  { href: '#', label: 'Политика конфиденциальности' },
-  { href: '#', label: 'Согласие на обработку данных' },
-]
-
-const socialLinks: FooterLink[] = [
-  { href: '#', label: 'Telegram' },
-  { href: '#', label: 'ВКонтакте' },
-  { href: '#', label: 'Instagram' },
+const COLUMNS: FooterColumn[] = [
+  {
+    heading: 'Магазин',
+    links: [{ href: '/categories', label: 'Каталог' }],
+  },
+  {
+    heading: 'Компания',
+    links: [
+      { href: '/o-nas', label: 'О нас' },
+      { href: '/dostavka', label: 'Доставка и оплата' },
+      { href: '/kontakty', label: 'Контакты' },
+    ],
+  },
+  {
+    heading: 'Правовое',
+    links: [
+      { href: '#', label: 'Политика конфиденциальности' },
+      { href: '#', label: 'Согласие на обработку данных' },
+    ],
+  },
 ]
 
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-brand-border bg-brand-bg-soft">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div>
-            <Link
-              href="/"
-              className="text-xl font-bold text-brand hover:text-brand-dark transition-colors"
-            >
+    <footer className="mt-16 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-soft)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
+        <div className="grid gap-12 md:grid-cols-4">
+          <div className="md:col-span-1 flex flex-col gap-3">
+            <span className="font-[family-name:var(--font-display)] text-[length:var(--text-h3)] font-extrabold tracking-[var(--tracking-tight)] text-[var(--color-brand-text)]">
               Ximi4ka
-            </Link>
-            <p className="mt-3 text-sm text-brand-text-secondary">
+            </span>
+            <p className="text-[length:var(--text-small)] text-[var(--color-brand-text-secondary)]">
               Наборы для химических экспериментов
             </p>
-            <p className="mt-2 text-sm text-brand-text-secondary">Москва, Россия</p>
+            <div
+              aria-hidden="true"
+              className="h-[2px] w-[60px] mt-1"
+              style={{ background: 'var(--gradient-brand)' }}
+            />
+            <p className="mt-2 text-[length:var(--text-small)] text-[var(--color-text-muted)]">
+              Москва, Россия
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-            <div>
-              <h3 className="text-sm font-semibold text-brand-text mb-3">Магазин</h3>
-              <ul className="space-y-2">
-                {shopLinks.map((l) => (
-                  <li key={l.label}>
+          {COLUMNS.map((col) => (
+            <div key={col.heading} className="flex flex-col gap-3">
+              <h3 className="text-[length:var(--text-micro)] font-semibold uppercase tracking-wider text-[var(--color-brand-text-secondary)]">
+                {col.heading}
+              </h3>
+              <ul className="flex flex-col gap-2">
+                {col.links.map((link) => (
+                  <li key={link.label}>
                     <Link
-                      href={l.href}
-                      className="text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
+                      href={link.href}
+                      className="text-[length:var(--text-small)] text-[var(--color-brand-text)] hover:text-[var(--color-brand)] transition-colors"
                     >
-                      {l.label}
+                      {link.label}
                     </Link>
                   </li>
                 ))}
               </ul>
             </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-brand-text mb-3">Компания</h3>
-              <ul className="space-y-2">
-                {companyLinks.map((l) => (
-                  <li key={l.href}>
-                    <Link
-                      href={l.href}
-                      className="text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
-                    >
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-brand-text mb-3">Правовая</h3>
-              <ul className="space-y-2">
-                {legalLinks.map((l) => (
-                  <li key={l.label}>
-                    <Link
-                      href={l.href}
-                      className="text-sm text-brand-text-secondary hover:text-brand-text transition-colors"
-                    >
-                      {l.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <div className="mt-12 pt-6 border-t border-brand-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <p className="text-xs text-brand-text-secondary">
+        <div className="mt-12 pt-6 border-t border-[var(--color-border-subtle)] flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-[length:var(--text-micro)] text-[var(--color-text-muted)]">
             © 2026 Ximi4ka. Все права защищены.
           </p>
-          <ul className="flex items-center gap-4">
-            {socialLinks.map((l) => (
-              <li key={l.label}>
-                <Link
-                  href={l.href}
-                  className="text-xs text-brand-text-secondary hover:text-brand-text transition-colors"
-                >
-                  {l.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <span
+            aria-label="Язык: русский"
+            className="text-[length:var(--text-micro)] text-[var(--color-text-muted)]"
+          >
+            RU
+          </span>
         </div>
       </div>
     </footer>

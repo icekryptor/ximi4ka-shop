@@ -13,6 +13,12 @@ export interface CartItem {
 const STORAGE_KEY = 'ximi4ka-shop-cart'
 const EVENT_NAME = 'cart-updated'
 
+// Custom event used by the header cart button to signal CartDrawer to open.
+// Lives here (next to cart state) rather than in the button component so the
+// drawer doesn't have to import from a chrome component just to grab the
+// event name.
+export const OPEN_CART_EVENT = 'open-cart'
+
 function isCartItem(value: unknown): value is CartItem {
   if (typeof value !== 'object' || value === null) return false
   const v = value as Record<string, unknown>

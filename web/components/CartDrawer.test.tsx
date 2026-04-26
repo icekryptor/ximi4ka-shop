@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { CartDrawer } from './CartDrawer'
-import { OPEN_CART_EVENT } from './CartButton'
-import { loadCart, saveCart, type CartItem } from '@/lib/cart'
+import { OPEN_CART_EVENT, loadCart, saveCart, type CartItem } from '@/lib/cart'
 
 beforeEach(() => {
   window.localStorage.clear()

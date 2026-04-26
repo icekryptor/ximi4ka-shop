@@ -16,17 +16,18 @@ describe('Footer', () => {
     expect(screen.getByText('Москва, Россия')).toBeInTheDocument()
   })
 
-  it('renders Магазин links', () => {
+  it('renders Магазин column with catalog link', () => {
     render(<Footer />)
+    expect(screen.getByRole('heading', { name: 'Магазин' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Каталог' })).toHaveAttribute(
       'href',
       '/categories',
     )
-    expect(screen.getByRole('link', { name: 'Все товары' })).toHaveAttribute('href', '/')
   })
 
-  it('renders Компания links', () => {
+  it('renders Компания column links', () => {
     render(<Footer />)
+    expect(screen.getByRole('heading', { name: 'Компания' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'О нас' })).toHaveAttribute('href', '/o-nas')
     expect(screen.getByRole('link', { name: 'Доставка и оплата' })).toHaveAttribute(
       'href',
@@ -38,8 +39,9 @@ describe('Footer', () => {
     )
   })
 
-  it('renders Правовая links (placeholder href)', () => {
+  it('renders Правовое column links (placeholder href)', () => {
     render(<Footer />)
+    expect(screen.getByRole('heading', { name: 'Правовое' })).toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'Политика конфиденциальности' }),
     ).toHaveAttribute('href', '#')
@@ -55,10 +57,8 @@ describe('Footer', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders social placeholder links', () => {
+  it('renders RU language placeholder', () => {
     render(<Footer />)
-    expect(screen.getByRole('link', { name: 'Telegram' })).toHaveAttribute('href', '#')
-    expect(screen.getByRole('link', { name: 'ВКонтакте' })).toHaveAttribute('href', '#')
-    expect(screen.getByRole('link', { name: 'Instagram' })).toHaveAttribute('href', '#')
+    expect(screen.getByLabelText('Язык: русский')).toHaveTextContent('RU')
   })
 })

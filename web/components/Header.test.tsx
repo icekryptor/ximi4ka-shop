@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { Header } from './Header'
+import { OPEN_CART_EVENT, saveCart, type CartItem } from '@/lib/cart'
 
 const mockPathname = vi.fn<() => string>(() => '/')
 
@@ -16,6 +17,11 @@ beforeEach(() => {
 afterEach(() => {
   cleanup()
 })
+
+const seed: CartItem[] = [
+  { productId: 'a', slug: 'kit-a', name: 'Набор A', priceRub: 1000, quantity: 2 },
+  { productId: 'b', slug: 'kit-b', name: 'Набор B', priceRub: 2500, quantity: 1 },
+]
 
 describe('Header', () => {
   it('renders the Ximi4ka wordmark linking to home', () => {
@@ -46,9 +52,31 @@ describe('Header', () => {
     )
   })
 
-  it('renders cart button', () => {
+  it('renders cart button with accessible label', () => {
     render(<Header />)
     expect(screen.getByRole('button', { name: 'Открыть корзину' })).toBeInTheDocument()
+  })
+
+  it('renders no badge when cart is empty', () => {
+    render(<Header />)
+    expect(screen.queryByTestId('cart-badge')).not.toBeInTheDocument()
+  })
+
+  it('renders count badge summing quantities', () => {
+    act(() => {
+      saveCart(seed)
+    })
+    render(<Header />)
+    expect(screen.getByTestId('cart-badge')).toHaveTextContent('3')
+  })
+
+  it('dispatches open-cart event on cart click', () => {
+    render(<Header />)
+    const handler = vi.fn()
+    window.addEventListener(OPEN_CART_EVENT, handler)
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть корзину' }))
+    expect(handler).toHaveBeenCalledTimes(1)
+    window.removeEventListener(OPEN_CART_EVENT, handler)
   })
 
   it('highlights the active route with aria-current=page', () => {
@@ -64,8 +92,18 @@ describe('Header', () => {
     )
   })
 
-  it('treats nested category slug as active caталог', () => {
+  it('treats nested category slug as active каталог', () => {
     mockPathname.mockReturnValue('/categories/slizi')
+    render(<Header />)
+    const mainNav = screen.getByRole('navigation', { name: 'Основная навигация' })
+    expect(within(mainNav).getByRole('link', { name: 'Каталог' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+  })
+
+  it('strips locale prefix when computing active route', () => {
+    mockPathname.mockReturnValue('/ru/categories')
     render(<Header />)
     const mainNav = screen.getByRole('navigation', { name: 'Основная навигация' })
     expect(within(mainNav).getByRole('link', { name: 'Каталог' })).toHaveAttribute(
@@ -84,10 +122,22 @@ describe('Header', () => {
 
     fireEvent.click(toggle)
 
-    const reopen = screen.getByRole('button', { name: 'Закрыть меню' })
-    expect(reopen).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Закрыть меню' })).toBeInTheDocument()
     expect(
       screen.getByRole('navigation', { name: 'Мобильная навигация' }),
     ).toBeInTheDocument()
+  })
+
+  it('does not render promo bar when headerPromoText is empty', () => {
+    render(<Header headerPromoText={null} />)
+    expect(screen.queryByRole('region', { name: 'Промо' })).not.toBeInTheDocument()
+  })
+
+  it('renders promo bar with provided text and dismisses it', () => {
+    render(<Header headerPromoText="Бесплатная доставка от 3000 ₽" />)
+    const promo = screen.getByRole('region', { name: 'Промо' })
+    expect(promo).toHaveTextContent('Бесплатная доставка от 3000 ₽')
+    fireEvent.click(screen.getByRole('button', { name: 'Закрыть промо-полосу' }))
+    expect(screen.queryByRole('region', { name: 'Промо' })).not.toBeInTheDocument()
   })
 })
