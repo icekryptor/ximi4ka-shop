@@ -5,3 +5,8 @@ build
 coverage
 *.log
 package-lock.json
+
+# Playwright artefacts and binary snapshot baselines
+web/tests/visual/.results
+web/tests/visual/__screenshots__
+playwright-report
