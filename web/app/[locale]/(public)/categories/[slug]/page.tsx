@@ -9,6 +9,10 @@ import {
 } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
+import { Container, Section, DisplayHeading } from '@/components/ui'
+import { Reveal } from '@/components/motion'
+import { PreFooterCta } from '@/components/marketing'
+import { GradientBlob } from '@/components/decor/GradientBlob'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonLd'
@@ -97,37 +101,88 @@ export default async function CategoryDetailPage({ params }: Props) {
   const locale: Locale = rawLocale
   const { category, products } = await fetchCategoryAndProducts(slug)
   const name = pickField<string>(category, 'name', locale) ?? category.name
+  const description =
+    pickField<string>(category, 'metaDescription', locale) ??
+    category.metaDescription ??
+    null
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+    <>
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Главная', url: '/' },
-          { name: 'Категории', url: '/categories' },
+          { name: 'Каталог', url: '/categories' },
           { name, url: pathForLocale(locale, category.slug) },
         ])}
       />
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
 
-      <nav aria-label="breadcrumbs" className="text-sm text-brand-text-secondary mb-4">
-        <Link href="/categories" className="hover:underline">
-          Категории
-        </Link>
-        <span className="mx-2">/</span>
-        <span>{name}</span>
-      </nav>
+      {/* Hero band */}
+      <Section size="md" surface="soft" className="relative overflow-hidden">
+        <GradientBlob className="pointer-events-none absolute -right-32 top-0 h-[140%] w-[40%] opacity-30" />
+        <Container>
+          <nav
+            aria-label="breadcrumbs"
+            className="relative z-10 mb-6 text-[length:var(--text-small)] text-[var(--color-text-muted)]"
+          >
+            <Link href="/" className="hover:text-[var(--color-brand-text)]">
+              Главная
+            </Link>
+            <span className="mx-2" aria-hidden="true">·</span>
+            <Link
+              href="/categories"
+              className="hover:text-[var(--color-brand-text)]"
+            >
+              Каталог
+            </Link>
+            <span className="mx-2" aria-hidden="true">·</span>
+            <span className="text-[var(--color-brand-text)]">{name}</span>
+          </nav>
+          <div className="relative z-10 max-w-2xl">
+            <Reveal>
+              <DisplayHeading className="mb-4">{name}</DisplayHeading>
+            </Reveal>
+            {description && (
+              <Reveal delay={0.05}>
+                <p className="text-[length:var(--text-lead)] text-[var(--color-brand-text-secondary)]">
+                  {description}
+                </p>
+              </Reveal>
+            )}
+          </div>
+        </Container>
+      </Section>
 
-      <h1 className="text-4xl font-bold mb-8 text-brand-text">{name}</h1>
+      {/* Product grid */}
+      <Section size="lg" surface="base">
+        <Container>
+          {products.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-[length:var(--text-lead)] text-[var(--color-brand-text-secondary)] mb-6">
+                В этой категории пока нет товаров
+              </p>
+              <Link
+                href="/categories"
+                className="inline-flex items-center text-[var(--color-brand)] font-medium hover:text-[var(--color-brand-dark)]"
+              >
+                ← Все категории
+              </Link>
+            </div>
+          )}
+        </Container>
+      </Section>
 
-      {products.length === 0 ? (
-        <p className="text-brand-text-secondary">В этой категории пока нет товаров</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      )}
-    </div>
+      {/* Pre-footer CTA */}
+      <PreFooterCta
+        title="Изучите другие категории"
+        cta={{ label: 'Все категории', href: '/categories' }}
+      />
+    </>
   )
 }
