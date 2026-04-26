@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
   getPage,
@@ -7,8 +6,6 @@ import {
   listCategories,
   listPublishedProducts,
   type PublicSettings,
-  type PublicTestimonial,
-  type PublicTrustStripItem,
 } from '@/lib/api'
 import type { Block, Page, Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
@@ -16,18 +13,18 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
+import { Container, Section, SectionHeading } from '@/components/ui'
+import { Reveal, Stagger } from '@/components/motion'
 import {
-  Container,
-  Section,
-  Eyebrow,
-  DisplayHeading,
-  SectionHeading,
-  Button,
-  GlassCard,
-} from '@/components/ui'
-import { Reveal, Fade, Stagger } from '@/components/motion'
-import { MoleculeMotif, GradientBlob } from '@/components/decor'
-import { HeroProductStack } from './_components/HeroProductStack'
+  Hero,
+  TrustStrip,
+  CategoryTile,
+  HowItWorksStep,
+  TestimonialCard,
+  PreFooterCta,
+  DEFAULT_TRUST_STRIP,
+  DEFAULT_TESTIMONIALS,
+} from '@/components/marketing'
 import {
   DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
@@ -37,37 +34,6 @@ import {
 } from '@/lib/i18n'
 
 export const revalidate = 60
-
-export const DEFAULT_TRUST_STRIP: PublicTrustStripItem[] = [
-  { icon: '🚚', label: 'Доставка по России' },
-  { icon: '🛡️', label: 'Безопасные реактивы' },
-  { icon: '📚', label: 'Методические материалы' },
-  { icon: '⭐', label: 'Более 1000 довольных семей' },
-]
-
-const DEFAULT_TESTIMONIALS: PublicTestimonial[] = [
-  {
-    quote:
-      'Сын в восторге от набора с кристаллами. Делаем эксперимент за экспериментом, я и сама втянулась.',
-    author: 'Анна',
-    location: 'Москва',
-    rating: 5,
-  },
-  {
-    quote:
-      'Безопасно, понятно, интересно. Дочь (11 лет) делает эксперименты сама, я только подсказываю.',
-    author: 'Михаил',
-    location: 'Санкт-Петербург',
-    rating: 5,
-  },
-  {
-    quote:
-      'Первый набор купили на день рождения, теперь покупаем регулярно. Дети уже спрашивают про химфак!',
-    author: 'Елена',
-    location: 'Казань',
-    rating: 5,
-  },
-]
 
 export function generateStaticParams() {
   // One root page per locale. Middleware rewrites unprefixed `/` to
@@ -193,70 +159,23 @@ export default async function HomePage({ params }: Props) {
       <JsonLd data={websiteJsonLd()} />
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
 
-      {/* Hero */}
-      <Section size="lg" surface="soft" className="relative overflow-hidden min-h-[70vh] md:min-h-[85vh] flex items-center">
-        {/* Decorative gradient blob clipped to right edge */}
-        <GradientBlob className="pointer-events-none absolute -right-40 top-0 h-[140%] w-[60%] opacity-50" />
+      <Hero
+        eyebrow="Химия дома"
+        title={heroTitle}
+        lead={heroLead}
+        primaryCta={{ label: 'Смотреть наборы', href: '/categories' }}
+        secondaryCta={{ label: 'Как это работает', href: '#how-it-works' }}
+        products={products.slice(0, 3)}
+      />
 
-        {/* Decorative molecule motif behind the right column */}
-        <MoleculeMotif
-          className="pointer-events-none absolute right-8 top-1/2 h-[320px] w-[320px] -translate-y-1/2 opacity-20 hidden md:block"
-        />
-
-        <Container>
-          <div className="relative z-10 grid gap-12 md:grid-cols-5 md:gap-16">
-            {/* Left column — copy + CTAs (3/5 columns) */}
-            <div className="md:col-span-3 flex flex-col justify-center">
-              <Fade>
-                <Eyebrow className="mb-4">Химия дома</Eyebrow>
-              </Fade>
-              <Fade delay={0.05}>
-                <DisplayHeading className="mb-6">{heroTitle}</DisplayHeading>
-              </Fade>
-              <Fade delay={0.1}>
-                <p className="mb-8 max-w-prose text-[length:var(--text-lead)] text-[var(--color-brand-text-secondary)]">
-                  {heroLead}
-                </p>
-              </Fade>
-              <Fade delay={0.15}>
-                <div className="flex flex-wrap gap-4">
-                  <Button href="/categories" size="lg">
-                    Смотреть наборы
-                  </Button>
-                  <Button href="#how-it-works" variant="secondary" size="lg">
-                    Как это работает
-                  </Button>
-                </div>
-              </Fade>
-            </div>
-
-            {/* Right column — product cutout collage (2/5 columns) */}
-            <div className="md:col-span-2 relative min-h-[400px] md:min-h-[500px]">
-              <HeroProductStack products={products.slice(0, 3)} />
-            </div>
-          </div>
-        </Container>
-      </Section>
-
-      {/* Trust strip */}
       <Section size="sm" surface="soft">
         <Container>
           <Reveal>
-            <Stagger className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-[length:var(--text-small)] font-medium text-[var(--color-brand-text-secondary)]">
-              {trustStripItems.map((item, i) => (
-                <span key={i} className="inline-flex items-center gap-2">
-                  <span className="text-lg" aria-hidden="true">
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </span>
-              ))}
-            </Stagger>
+            <TrustStrip items={trustStripItems} />
           </Reveal>
         </Container>
       </Section>
 
-      {/* Featured products */}
       <Section size="lg">
         <Container>
           <Reveal>
@@ -282,7 +201,6 @@ export default async function HomePage({ params }: Props) {
         </Container>
       </Section>
 
-      {/* Category showcase */}
       <Section size="lg" surface="base">
         <Container>
           <Reveal>
@@ -300,7 +218,7 @@ export default async function HomePage({ params }: Props) {
             <div className="grid gap-6 md:grid-cols-3">
               {categories.slice(0, 3).map((category, i) => (
                 <Reveal key={category.id} delay={i * 0.05}>
-                  <CategoryTilePlaceholder category={category} tintIndex={i} />
+                  <CategoryTile category={category} tintIndex={i} />
                 </Reveal>
               ))}
             </div>
@@ -312,7 +230,6 @@ export default async function HomePage({ params }: Props) {
         </Container>
       </Section>
 
-      {/* How it works */}
       <Section size="lg" surface="soft" id="how-it-works">
         <Container>
           <Reveal>
@@ -338,7 +255,6 @@ export default async function HomePage({ params }: Props) {
         </Container>
       </Section>
 
-      {/* Testimonials */}
       <Section size="lg" surface="base">
         <Container>
           <Reveal>
@@ -347,33 +263,13 @@ export default async function HomePage({ params }: Props) {
           <div className="grid gap-6 md:grid-cols-3">
             {testimonials.slice(0, 3).map((testimonial, i) => (
               <Reveal key={i} delay={i * 0.05}>
-                <GlassCard className="h-full">
-                  {testimonial.rating !== undefined && (
-                    <div
-                      className="mb-3 flex gap-0.5 text-[var(--color-brand)]"
-                      aria-label={`Оценка ${testimonial.rating} из 5`}
-                    >
-                      {Array.from({ length: 5 }).map((_, idx) => (
-                        <span key={idx} aria-hidden="true">
-                          {idx < testimonial.rating! ? '★' : '☆'}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <blockquote className="mb-4 italic text-[length:var(--text-body)] text-[var(--color-brand-text)] leading-[var(--leading-body)]">
-                    «{testimonial.quote}»
-                  </blockquote>
-                  <footer className="text-[length:var(--text-small)] font-medium text-[var(--color-brand-text-secondary)]">
-                    {testimonial.author}, {testimonial.location}
-                  </footer>
-                </GlassCard>
+                <TestimonialCard testimonial={testimonial} />
               </Reveal>
             ))}
           </div>
         </Container>
       </Section>
 
-      {/* FAQ teaser */}
       {faqBlocks.length > 0 && (
         <Section size="lg" surface="soft">
           <Container>
@@ -391,7 +287,6 @@ export default async function HomePage({ params }: Props) {
         </Section>
       )}
 
-      {/* Other CMS-driven blocks (non-FAQ) */}
       {otherBlocks.length > 0 && (
         <Section size="md" surface="base">
           <Container>
@@ -402,88 +297,11 @@ export default async function HomePage({ params }: Props) {
         </Section>
       )}
 
-      {/* Pre-footer CTA */}
-      <Section size="lg" surface="gradient">
-        <Container>
-          <Reveal>
-            <div className="flex flex-col items-center gap-6 text-center">
-              <DisplayHeading
-                as="h2"
-                className="text-[var(--color-text-on-brand)]"
-              >
-                Готовы начать эксперимент?
-              </DisplayHeading>
-              <p className="max-w-2xl text-[length:var(--text-lead)] text-[var(--color-text-on-brand)] opacity-90">
-                Начните с любого набора — все инструкции и материалы внутри.
-              </p>
-              <Button
-                href="/categories"
-                variant="secondary"
-                size="lg"
-                className="bg-white text-[var(--color-brand)] border-white hover:bg-white hover:opacity-95"
-              >
-                Открыть каталог
-              </Button>
-            </div>
-          </Reveal>
-        </Container>
-      </Section>
+      <PreFooterCta
+        title="Готовы начать эксперимент?"
+        lead="Начните с любого набора — все инструкции и материалы внутри."
+        cta={{ label: 'Открыть каталог', href: '/categories' }}
+      />
     </>
-  )
-}
-
-function CategoryTilePlaceholder({
-  category,
-  tintIndex,
-}: {
-  category: ProductCategory
-  tintIndex: number
-}) {
-  const tints = [
-    'from-[rgba(141,103,255,0.15)] to-[rgba(141,103,255,0.05)]',
-    'from-[rgba(200,86,255,0.15)] to-[rgba(200,86,255,0.05)]',
-    'from-[rgba(170,100,255,0.15)] to-[rgba(170,100,255,0.05)]',
-  ]
-  const tint = tints[tintIndex % tints.length]
-  return (
-    <Link
-      href={`/categories/${category.slug}`}
-      className={`block rounded-[var(--radius-lg)] bg-gradient-to-br ${tint} p-8 min-h-[220px] transition hover:shadow-[var(--shadow-lg)]`}
-    >
-      <div className="flex flex-col gap-3">
-        <h3 className="font-[var(--font-display)] text-[length:var(--text-h3)] text-[var(--color-brand-text)] tracking-[var(--tracking-tight)]">
-          {category.name}
-        </h3>
-        {category.metaDescription && (
-          <p className="text-[length:var(--text-small)] text-[var(--color-brand-text-secondary)]">
-            {category.metaDescription}
-          </p>
-        )}
-      </div>
-    </Link>
-  )
-}
-
-function HowItWorksStep({
-  number,
-  title,
-  body,
-}: {
-  number: string
-  title: string
-  body: string
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      <span className="font-[var(--font-display)] text-[length:var(--text-display)] text-[var(--color-brand)] leading-none">
-        {number}
-      </span>
-      <h3 className="font-[var(--font-display)] text-[length:var(--text-h3)] text-[var(--color-brand-text)] tracking-[var(--tracking-tight)]">
-        {title}
-      </h3>
-      <p className="text-[length:var(--text-body)] text-[var(--color-brand-text-secondary)] leading-[var(--leading-body)]">
-        {body}
-      </p>
-    </div>
   )
 }

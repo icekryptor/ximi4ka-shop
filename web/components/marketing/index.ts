@@ -1,0 +1,8 @@
+export { Hero } from './Hero'
+export { HeroProductStack } from './HeroProductStack'
+export { TrustStrip } from './TrustStrip'
+export { CategoryTile } from './CategoryTile'
+export { HowItWorksStep } from './HowItWorksStep'
+export { TestimonialCard } from './TestimonialCard'
+export { PreFooterCta } from './PreFooterCta'
+export { DEFAULT_TRUST_STRIP, DEFAULT_TESTIMONIALS } from './defaults'
