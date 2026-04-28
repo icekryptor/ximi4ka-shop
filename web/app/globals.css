@@ -147,3 +147,15 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-sticker-wobble { animation: none; }
 }
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.animate-ticker-scroll {
+  animation: ticker-scroll 30s linear infinite;
+  width: max-content;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-ticker-scroll { animation: none; }
+}
