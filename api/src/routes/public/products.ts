@@ -18,10 +18,10 @@ publicProductsRouter.get('/', async (req, res, next) => {
       order: { sortOrder: 'ASC', createdAt: 'DESC' },
       skip: offset,
       take: limit,
-      // Eager-load the category link rows only when asked. The feed
-      // generator (YML) relies on this to build <categoryId> entries
-      // without N+1'ing the link table.
-      relations: wantsCategories ? { categories: true } : undefined,
+      // Always eager-load images so storefront cards and the YML feed
+      // can render product photos without N+1 fetches. Categories are
+      // optional (only needed by the YML feed generator).
+      relations: { images: true, categories: wantsCategories },
     })
     // Shape the include output as a flat `categoryIds` array per product —
     // feeds only need the id strings, and keeping the DB rows private
@@ -50,7 +50,15 @@ publicProductsRouter.get('/:slug', async (req, res, next) => {
         isPublished: true,
         deletedAt: IsNull(),
       },
+      relations: { images: true },
     })
+    if (product?.images) {
+      // Sort gallery thumbnails by their stored order in JS — `findOne`
+      // doesn't accept an `order` clause on relations.
+      product.images = [...product.images].sort(
+        (a, b) => a.sortOrder - b.sortOrder,
+      )
+    }
     if (!product) throw notFound('product_not_found', 'Product not found')
     res.json({ data: product })
   } catch (err) {
