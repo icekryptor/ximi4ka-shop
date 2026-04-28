@@ -46,3 +46,6 @@ api/uploads/*
 # Imported product photos (long-term repo asset, ~10MB total)
 !api/uploads/imported/
 !api/uploads/imported/**
+
+# Local Claude Code config
+.claude/
