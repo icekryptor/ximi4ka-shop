@@ -249,3 +249,19 @@ body {
 @keyframes lj-rotate-slow { to { transform: translateY(-50%) rotate(360deg); } }
 @keyframes lj-rotate-slow-reverse { to { transform: translate(-50%, -50%) rotate(-360deg); } }
 @keyframes lj-ticker { to { transform: translateX(-50%); } }
+
+/* === v3 Lab Journal — reduced-motion accommodations ===
+   Disables decorative animations and snaps stat-bar fills to their final width
+   for users who request reduced motion. Hover-state transitions still fire
+   (those are intentional interactions, not ambient motion). */
+@media (prefers-reduced-motion: reduce) {
+  .lj-num-cell::before,
+  [data-statbar],
+  [class*="lj-rotate"],
+  [class*="lj-ticker"] {
+    animation: none !important;
+    transition: none !important;
+  }
+  /* Snap stat bars to their final width without the 1.2s width transition */
+  [data-statbar] { width: var(--w) !important; }
+}
