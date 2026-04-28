@@ -88,23 +88,49 @@ describe('ProductCard', () => {
     expect(container.querySelector('img')).toBeNull()
   })
 
-  it('renders discount pill when compareAtPriceRub > priceRub', () => {
+  it('renders discount sticker when compareAtPriceRub > priceRub', () => {
     // 1500 → 1000 = 33% off
     const { container } = render(
       <ProductCard
         product={{ ...fixture, priceRub: 1000, compareAtPriceRub: 1500 }}
       />
     )
-    expect(within(container).getByText('−33%')).toBeInTheDocument()
+    const sticker = within(container).getByText('−33%')
+    expect(sticker).toBeInTheDocument()
+    // New Sticker primitive uses -rotate-3 class for the tilted look
+    expect(sticker.className).toMatch(/-rotate-3/)
   })
 
-  it('does not render discount pill when compareAtPriceRub <= priceRub', () => {
+  it('does not render discount sticker when compareAtPriceRub <= priceRub', () => {
     const { container } = render(
       <ProductCard
         product={{ ...fixture, priceRub: 1500, compareAtPriceRub: 1000 }}
       />
     )
     expect(within(container).queryByText(/^−\d+%$/u)).not.toBeInTheDocument()
+  })
+
+  it('renders «Хит» sticker when sortOrder is in top 3', () => {
+    const { container } = render(
+      <ProductCard product={{ ...fixture, sortOrder: 1 }} />
+    )
+    const sticker = within(container).getByText('Хит')
+    expect(sticker).toBeInTheDocument()
+    expect(sticker.className).toMatch(/-rotate-3/)
+  })
+
+  it('does not render «Хит» sticker when sortOrder > 3', () => {
+    const { container } = render(
+      <ProductCard product={{ ...fixture, sortOrder: 4 }} />
+    )
+    expect(within(container).queryByText('Хит')).not.toBeInTheDocument()
+  })
+
+  it('does not render «Хит» sticker when sortOrder is 0 (default)', () => {
+    const { container } = render(
+      <ProductCard product={{ ...fixture, sortOrder: 0 }} />
+    )
+    expect(within(container).queryByText('Хит')).not.toBeInTheDocument()
   })
 
   it('uses success pill variant for in_stock', () => {
