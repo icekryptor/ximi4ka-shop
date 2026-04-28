@@ -3,8 +3,8 @@ import { test, expect, type Page } from '@playwright/test'
 const ROUTES: Array<{ name: string; path: string }> = [
   { name: 'home', path: '/' },
   { name: 'categories', path: '/categories' },
-  { name: 'category-detail', path: '/categories/himicheskie-nabory' },
-  { name: 'product-detail', path: '/product/nabor-yunogo-himika' },
+  { name: 'category-detail', path: '/categories/nabory-dlya-opytov' },
+  { name: 'product-detail', path: '/product/himichka-30' },
   { name: 'cart-empty', path: '/cart' },
   { name: 'cms-about', path: '/o-nas' },
   { name: 'cms-delivery', path: '/dostavka' },
