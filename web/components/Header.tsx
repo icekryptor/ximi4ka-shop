@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { LayoutGroup, motion } from 'framer-motion'
 import { OPEN_CART_EVENT, useCart } from '@/lib/cart'
+import { Ticker } from '@/components/ui'
 
 interface NavItem {
   href: string
@@ -32,13 +33,18 @@ export function Header({ headerPromoText = null }: HeaderProps) {
   const pathnameRaw = usePathname()
   const { itemCount } = useCart()
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [promoDismissed, setPromoDismissed] = useState(false)
 
   // Strip locale prefix so /ru/categories matches the same active state as /categories.
   const pathname =
     pathnameRaw?.replace(/^\/(ru|en)(?=\/|$)/, '') || '/'
 
-  const showPromo = Boolean(headerPromoText) && !promoDismissed
+  const promoItems = headerPromoText
+    ? headerPromoText
+        .split(/[,·•|]/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : []
+  const showPromo = promoItems.length > 0
 
   function openCart() {
     window.dispatchEvent(new CustomEvent(OPEN_CART_EVENT))
@@ -47,24 +53,8 @@ export function Header({ headerPromoText = null }: HeaderProps) {
   return (
     <>
       {showPromo ? (
-        <div
-          role="region"
-          aria-label="Промо"
-          className="bg-[var(--color-brand-text)] text-[var(--color-text-on-brand)]"
-        >
-          <div className="max-w-6xl mx-auto flex items-center gap-4 px-4 sm:px-6 py-2">
-            <span className="flex-1 text-center text-[length:var(--text-small)]">
-              {headerPromoText}
-            </span>
-            <button
-              type="button"
-              aria-label="Закрыть промо-полосу"
-              onClick={() => setPromoDismissed(true)}
-              className="opacity-70 hover:opacity-100 transition-opacity text-[length:var(--text-small)]"
-            >
-              ✕
-            </button>
-          </div>
+        <div role="region" aria-label="Промо">
+          <Ticker surface="dark" items={promoItems} />
         </div>
       ) : null}
 
@@ -93,7 +83,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
                     aria-current={active ? 'page' : undefined}
                     className={`relative text-[length:var(--text-small)] font-medium transition-colors ${
                       active
-                        ? 'text-[var(--color-brand)]'
+                        ? 'text-[var(--color-accent)]'
                         : 'text-[var(--color-text-muted)] hover:text-[var(--color-brand-text)]'
                     }`}
                   >
@@ -101,7 +91,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
                     {active ? (
                       <motion.span
                         layoutId="header-active-underline"
-                        className="absolute -bottom-1 left-0 right-0 h-[2px] bg-[var(--color-brand)]"
+                        className="absolute -bottom-1 left-0 right-0 h-[2px] bg-[var(--color-accent)]"
                         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                       />
                     ) : null}
@@ -183,7 +173,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
                       onClick={() => setMobileOpen(false)}
                       className={`flex items-center justify-between border-b border-[var(--color-border-subtle)] px-6 py-4 text-[length:var(--text-body,1rem)] transition-colors ${
                         active
-                          ? 'text-[var(--color-brand)] bg-[var(--color-surface-soft)]'
+                          ? 'text-[var(--color-accent)] bg-[var(--color-surface-soft)]'
                           : 'text-[var(--color-brand-text)] hover:bg-[var(--color-surface-soft)]'
                       }`}
                     >

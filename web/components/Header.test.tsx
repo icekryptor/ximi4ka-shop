@@ -133,11 +133,32 @@ describe('Header', () => {
     expect(screen.queryByRole('region', { name: 'Промо' })).not.toBeInTheDocument()
   })
 
-  it('renders promo bar with provided text and dismisses it', () => {
-    render(<Header headerPromoText="Бесплатная доставка от 3000 ₽" />)
+  it('renders promo bar as a ticker with provided text', () => {
+    const { container } = render(
+      <Header headerPromoText="Бесплатная доставка от 3000 ₽" />,
+    )
     const promo = screen.getByRole('region', { name: 'Промо' })
     expect(promo).toHaveTextContent('Бесплатная доставка от 3000 ₽')
-    fireEvent.click(screen.getByRole('button', { name: 'Закрыть промо-полосу' }))
-    expect(screen.queryByRole('region', { name: 'Промо' })).not.toBeInTheDocument()
+    expect(container.querySelector('.animate-ticker-scroll')).not.toBeNull()
+    expect(
+      screen.queryByRole('button', { name: 'Закрыть промо-полосу' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('splits comma-separated promo text into multiple ticker items', () => {
+    render(
+      <Header headerPromoText="Доставка по России, Безопасно для детей" />,
+    )
+    const promo = screen.getByRole('region', { name: 'Промо' })
+    expect(promo).toHaveTextContent('Доставка по России')
+    expect(promo).toHaveTextContent('Безопасно для детей')
+  })
+
+  it('uses orange accent for active route underline', () => {
+    mockPathname.mockReturnValue('/categories')
+    const { container } = render(<Header />)
+    expect(
+      container.querySelector('.bg-\\[var\\(--color-accent\\)\\]'),
+    ).not.toBeNull()
   })
 })

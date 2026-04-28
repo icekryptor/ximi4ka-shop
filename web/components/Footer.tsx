@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { MoleculeMotif } from '@/components/decor'
 
 interface FooterColumn {
   heading: string
@@ -32,7 +33,13 @@ export function Footer() {
     <footer className="mt-16 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-soft)]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
         <div className="grid gap-12 md:grid-cols-4">
-          <div className="md:col-span-1 flex flex-col gap-3">
+          <div className="relative md:col-span-1 flex flex-col gap-3">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -left-8 -top-8 -z-10 h-[200px] w-[200px] opacity-20"
+            >
+              <MoleculeMotif variant="vivid" />
+            </div>
             <span className="font-[family-name:var(--font-display)] text-[length:var(--text-h3)] font-extrabold tracking-[var(--tracking-tight)] text-[var(--color-brand-text)]">
               Ximi4ka
             </span>
