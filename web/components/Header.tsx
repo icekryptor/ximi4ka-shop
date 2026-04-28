@@ -83,7 +83,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
                     aria-current={active ? 'page' : undefined}
                     className={`relative text-[length:var(--text-small)] font-medium transition-colors ${
                       active
-                        ? 'text-[var(--color-accent)]'
+                        ? 'text-[var(--color-lj-brand)]'
                         : 'text-[var(--color-text-muted)] hover:text-[var(--color-brand-text)]'
                     }`}
                   >
@@ -91,7 +91,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
                     {active ? (
                       <motion.span
                         layoutId="header-active-underline"
-                        className="absolute -bottom-1 left-0 right-0 h-[2px] bg-[var(--color-accent)]"
+                        className="absolute -bottom-1 left-0 right-0 h-[2px] bg-[var(--color-lj-brand)]"
                         transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                       />
                     ) : null}
@@ -173,7 +173,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
                       onClick={() => setMobileOpen(false)}
                       className={`flex items-center justify-between border-b border-[var(--color-border-subtle)] px-6 py-4 text-[length:var(--text-body,1rem)] transition-colors ${
                         active
-                          ? 'text-[var(--color-accent)] bg-[var(--color-surface-soft)]'
+                          ? 'text-[var(--color-lj-brand)] bg-[var(--color-surface-soft)]'
                           : 'text-[var(--color-brand-text)] hover:bg-[var(--color-surface-soft)]'
                       }`}
                     >

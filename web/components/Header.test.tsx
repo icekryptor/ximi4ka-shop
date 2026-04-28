@@ -154,11 +154,11 @@ describe('Header', () => {
     expect(promo).toHaveTextContent('Безопасно для детей')
   })
 
-  it('uses orange accent for active route underline', () => {
+  it('uses brand-purple for active route underline (v3)', () => {
     mockPathname.mockReturnValue('/categories')
     const { container } = render(<Header />)
     expect(
-      container.querySelector('.bg-\\[var\\(--color-accent\\)\\]'),
+      container.querySelector('.bg-\\[var\\(--color-lj-brand\\)\\]'),
     ).not.toBeNull()
   })
 })
