@@ -87,42 +87,13 @@
 
   /* === v2 additions === */
 
-  /* Accent layer */
+  /* v2 residual — consumers remain inside migrated ink LabSections (prose-on-dark styles, etc) */
   --color-accent: #FF6B35;
-  --color-accent-soft: #FFE4D6;
-  --color-accent-deep: #C9491E;
-
-  /* Dark surface family */
   --color-dark-base: #0F0A1F;
-  --color-dark-elevated: #1A1430;
-  --color-dark-border: #2A2347;
   --color-text-on-dark: #F4F1FF;
   --color-text-muted-on-dark: rgba(244, 241, 255, 0.55);
-
-  /* Gradient extensions */
-  --gradient-brand-deep: linear-gradient(135deg, #6703ff 0%, #c856ff 100%);
   --gradient-accent: linear-gradient(135deg, #FF6B35 0%, #FF9558 100%);
-  --gradient-dark-glow: radial-gradient(circle at 30% 20%, rgba(141,103,255,0.3) 0%, transparent 60%);
-
-  /* Mega typography */
   --text-mega: clamp(3.5rem, 8vw + 1rem, 9rem);
-  --text-display-tight: clamp(2.5rem, 5vw + 1rem, 5.5rem);
-  --tracking-mega: -0.04em;
-
-  /* Density tokens */
-  --space-card-tight: 0.75rem;
-  --space-card-relaxed: 1.5rem;
-  --space-section-cinematic: 8rem;
-
-  /* === v3 preview tokens (gold accent + deeper dark + glass) === */
-  --color-gold: #CA8A04;
-  --color-gold-soft: #FEF3C7;
-  --color-gold-deep: #92400E;
-  --color-dark-deep: #0A0613;
-  --gradient-gold: linear-gradient(135deg, #CA8A04 0%, #F59E0B 100%);
-  --color-glass-dark: rgba(255, 255, 255, 0.06);
-  --color-glass-dark-border: rgba(255, 255, 255, 0.1);
-  --color-glass-light: rgba(255, 255, 255, 0.72);
 
   /* === v3 — Лабораторный Журнал === */
 
