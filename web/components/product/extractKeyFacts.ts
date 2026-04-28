@@ -32,3 +32,58 @@ export function extractKeyFacts(
   }
   return facts
 }
+
+import type { Product } from '@ximi4ka-shop/shared'
+
+export interface UseFact {
+  key: 'age' | 'time' | 'lead' | 'warranty'
+  label: string
+  big: string
+  bottomLeft: string
+  bottomRight: string
+}
+
+const USE_FACT_DEFINITIONS: ReadonlyArray<{
+  key: UseFact['key']
+  label: string
+  bottomLeft: string
+  bottomRight: string
+  charKeys: readonly string[]
+}> = [
+  { key: 'age',      label: 'возраст',  bottomLeft: 'от 10 лет',    bottomRight: 'рекомендуется',     charKeys: ['Возраст', 'Age'] },
+  { key: 'time',     label: 'время',    bottomLeft: 'минут',         bottomRight: 'на один опыт',     charKeys: ['Время опыта', 'Время'] },
+  { key: 'lead',     label: 'срок',     bottomLeft: 'готовность',    bottomRight: 'к отправке',       charKeys: ['Срок изготовления', 'Срок'] },
+  { key: 'warranty', label: 'гарантия', bottomLeft: 'на компоненты', bottomRight: 'возврат 30 дней',  charKeys: ['Гарантия'] },
+]
+
+/**
+ * Extracts up to 4 "use-facts" (age, time, lead, warranty) for the v3
+ * Characteristics section's NumberCell row. Each cell hides individually
+ * when its characteristic is missing — the row auto-collapses.
+ */
+export function extractUseFacts(
+  characteristics: Record<string, string>,
+): UseFact[] {
+  const out: UseFact[] = []
+  for (const def of USE_FACT_DEFINITIONS) {
+    const value = def.charKeys.map((k) => characteristics[k]).find(Boolean)
+    if (value) {
+      out.push({
+        key: def.key,
+        label: def.label,
+        big: value,
+        bottomLeft: def.bottomLeft,
+        bottomRight: def.bottomRight,
+      })
+    }
+  }
+  return out
+}
+
+/**
+ * Returns product images sorted by sortOrder ascending. Empty array when
+ * the product has no images — caller is responsible for fallback rendering.
+ */
+export function extractGalleryImages(product: Product): Product['images'] {
+  return [...product.images].sort((a, b) => a.sortOrder - b.sortOrder)
+}
