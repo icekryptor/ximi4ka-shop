@@ -18,12 +18,21 @@ import {
   DisplayHeading,
   Eyebrow,
   SectionHeading,
-  Button,
   MicroTrustRow,
+  Pill,
+  Sticker,
 } from '@/components/ui'
 import { Reveal } from '@/components/motion'
-import { PriceBlock, StockPill } from '@/components/product'
+import {
+  PriceBlock,
+  StockPill,
+  KeyFactsList,
+  CharacteristicsTable,
+  ContentsSection,
+} from '@/components/product'
 import { ProductCard } from '@/components/ProductCard'
+import { PreFooterCta } from '@/components/marketing/PreFooterCta'
+import { parseCharacteristics } from '@/lib/parseCharacteristics'
 import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
 import {
@@ -131,6 +140,10 @@ async function fetchRelatedProducts(
   }
 }
 
+// Priority list of characteristic keys to surface as quick-scan pills in
+// the info column. We pick the first few that are present on this product.
+const PILL_KEYS = ['Концентрация', 'Объем', 'Возраст', 'Масса', 'Квалификация']
+
 export default async function ProductPage({ params }: Props) {
   const { locale: rawLocale, slug } = await params
   if (!isLocale(rawLocale)) notFound()
@@ -157,6 +170,29 @@ export default async function ProductPage({ params }: Props) {
   const longDescriptionBlocks =
     (pickField<unknown[]>(product, 'longDescriptionBlocks', locale) ??
       product.longDescriptionBlocks) as unknown[]
+
+  const characteristics = parseCharacteristics(longDescriptionBlocks)
+
+  // Sticker badge data — all conditional. Computed once at render time.
+  const discount = (() => {
+    if (
+      product.compareAtPriceRub == null ||
+      product.compareAtPriceRub <= product.priceRub
+    )
+      return null
+    return Math.round(
+      (1 - product.priceRub / product.compareAtPriceRub) * 100,
+    )
+  })()
+  const isHit = product.sortOrder > 0 && product.sortOrder <= 3
+  const ageRange = characteristics['Возраст'] ?? null
+
+  // Quick-scan pills row — first 4 priority keys present on this product.
+  const pillItems = PILL_KEYS.map((k) =>
+    characteristics[k] ? characteristics[k] : null,
+  )
+    .filter((v): v is string => Boolean(v))
+    .slice(0, 4)
 
   const related = await fetchRelatedProducts(product.id)
 
@@ -200,9 +236,9 @@ export default async function ProductPage({ params }: Props) {
             <span className="text-[var(--color-brand-text)]">{name}</span>
           </nav>
 
-          {/* 5-column grid: gallery (3 cols) + info (2 cols) on md+ */}
+          {/* 5-column grid: gallery (3 cols ≈ 60%) + info (2 cols ≈ 40%) on md+ */}
           <div className="grid grid-cols-1 gap-12 md:grid-cols-5">
-            {/* Gallery — sticky on md+ */}
+            {/* Gallery — sticky on md+, with floating sticker badges */}
             <div className="md:col-span-3">
               <div className="space-y-4 md:sticky md:top-24">
                 <div
@@ -228,6 +264,26 @@ export default async function ProductPage({ params }: Props) {
                         {name}
                       </span>
                     </div>
+                  )}
+
+                  {/* Floating sticker badges — conditional on data. */}
+                  {isHit && (
+                    <Sticker variant="brand" className="absolute top-4 left-4">
+                      Хит
+                    </Sticker>
+                  )}
+                  {discount != null && (
+                    <Sticker variant="accent" className="absolute top-4 right-4">
+                      −{discount}%
+                    </Sticker>
+                  )}
+                  {ageRange && (
+                    <Sticker
+                      variant="dark"
+                      className="absolute bottom-4 left-4"
+                    >
+                      {ageRange}
+                    </Sticker>
                   )}
                 </div>
 
@@ -267,6 +323,17 @@ export default async function ProductPage({ params }: Props) {
                 </p>
               )}
 
+              {/* Quick-scan characteristic pills */}
+              {pillItems.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {pillItems.map((p, i) => (
+                    <Pill key={`${p}-${i}`} variant="soft-brand">
+                      {p}
+                    </Pill>
+                  ))}
+                </div>
+              )}
+
               <StockPill status={product.stockStatus} className="self-start" />
 
               <PriceBlock
@@ -284,12 +351,20 @@ export default async function ProductPage({ params }: Props) {
                   { icon: '↩️', label: 'Возврат 14 дней' },
                 ]}
               />
+
+              {/* Spec sheet — renders nothing when no priority key matches. */}
+              <KeyFactsList characteristics={characteristics} />
             </div>
           </div>
         </Container>
       </Section>
 
-      {/* Long description — constrained width for readability */}
+      {/* «Что внутри» — DarkSection. Renders only when «Состав» content
+          is present in longDescriptionBlocks (e.g. Химичка 3.0). */}
+      <ContentsSection blocks={longDescriptionBlocks} />
+
+      {/* Long description — constrained width for readability. Appends
+          a CharacteristicsTable below for products with 4+ characteristics. */}
       {Array.isArray(longDescriptionBlocks) &&
         longDescriptionBlocks.length > 0 && (
           <Section size="md" surface="base">
@@ -297,19 +372,23 @@ export default async function ProductPage({ params }: Props) {
               <div className="mx-auto max-w-3xl">
                 <SectionHeading title="Описание" />
                 <BlockRenderer blocks={longDescriptionBlocks} />
+                <CharacteristicsTable
+                  characteristics={characteristics}
+                  className="mt-12"
+                />
               </div>
             </Container>
           </Section>
         )}
 
-      {/* Related products */}
+      {/* Related products — 4-up on desktop. */}
       {related.length > 0 && (
         <Section size="lg" surface="soft">
           <Container>
             <Reveal>
               <SectionHeading title="С этим набором покупают" />
             </Reveal>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {related.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
@@ -318,32 +397,12 @@ export default async function ProductPage({ params }: Props) {
         </Section>
       )}
 
-      {/* Pre-footer CTA */}
-      <Section size="lg" surface="gradient">
-        <Container>
-          <Reveal>
-            <div className="flex flex-col items-center gap-6 text-center">
-              <DisplayHeading
-                as="h2"
-                className="text-[var(--color-text-on-brand)]"
-              >
-                Не нашли подходящий набор?
-              </DisplayHeading>
-              <p className="max-w-2xl text-[length:var(--text-lead)] text-[var(--color-text-on-brand)] opacity-90">
-                В каталоге собраны наборы для разных возрастов и научных направлений.
-              </p>
-              <Button
-                href="/categories"
-                variant="secondary"
-                size="lg"
-                className="border-white bg-white text-[var(--color-brand)] hover:bg-white hover:opacity-95"
-              >
-                Все категории
-              </Button>
-            </div>
-          </Reveal>
-        </Container>
-      </Section>
+      {/* Pre-footer dark CTA. */}
+      <PreFooterCta
+        title="Не нашли подходящий набор?"
+        lead="В каталоге собраны наборы для разных возрастов и научных направлений."
+        cta={{ label: 'Все категории', href: '/categories' }}
+      />
 
       {/* Mobile sticky buy bar */}
       <MobileBuyBarMount product={product} />

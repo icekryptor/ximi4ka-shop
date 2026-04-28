@@ -76,7 +76,7 @@ export function MobileBuyBar({ product, sentinelRef, quantity = 1 }: Props) {
           type="button"
           disabled={isOutOfStock}
           onClick={handleAdd}
-          className="rounded-full bg-[var(--gradient-brand)] px-6 py-2.5 text-[length:var(--text-small)] font-semibold text-[var(--color-text-on-brand)] shadow-[var(--shadow-glow-brand)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-full bg-[var(--gradient-accent)] px-6 py-2.5 text-[length:var(--text-small)] font-semibold text-white shadow-[var(--shadow-glow-brand)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isOutOfStock ? 'Нет в наличии' : 'В корзину'}
         </button>
