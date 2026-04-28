@@ -61,4 +61,12 @@ describe('Footer', () => {
     render(<Footer />)
     expect(screen.getByLabelText('Язык: русский')).toHaveTextContent('RU')
   })
+
+  it('renders a decorative methane MoleculeMotif accent (v3)', () => {
+    const { container } = render(<Footer />)
+    // methane variant has exactly 4 lines from a central point
+    const svgs = container.querySelectorAll('svg')
+    const methane = Array.from(svgs).find((s) => s.querySelectorAll('line').length === 4)
+    expect(methane).toBeDefined()
+  })
 })

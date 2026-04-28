@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { MoleculeMotif } from '@/components/decor'
+import { MoleculeMotifLJ } from '@/components/decor/MoleculeMotif.lj'
 
 interface FooterColumn {
   heading: string
@@ -40,9 +41,15 @@ export function Footer() {
             >
               <MoleculeMotif variant="vivid" />
             </div>
-            <span className="font-[family-name:var(--font-display)] text-[length:var(--text-h3)] font-extrabold tracking-[var(--tracking-tight)] text-[var(--color-brand-text)]">
-              Ximi4ka
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="font-[family-name:var(--font-display)] text-[length:var(--text-h3)] font-extrabold tracking-[var(--tracking-tight)] text-[var(--color-brand-text)]">
+                Ximi4ka
+              </span>
+              <MoleculeMotifLJ
+                variant="methane"
+                className="w-12 h-12 text-[var(--color-lj-ink)] opacity-40"
+              />
+            </div>
             <p className="text-[length:var(--text-small)] text-[var(--color-brand-text-secondary)]">
               Наборы для химических экспериментов
             </p>
