@@ -147,6 +147,17 @@
   --color-lj-rule-soft:     rgba(10, 10, 10, 0.08);
   --color-lj-rule-on-ink:   rgba(239, 237, 230, 0.18);
 
+  /* Font families — wired in app/layout.tsx via next/font/google.
+     `var(--font-lj-*)` references the same token name that the layout
+     declares on <html className={ljDisplay.variable ...}> — Tailwind 4
+     resolves the loop by reading the inherited custom property, so the
+     fallback chain only kicks in pre-hydration or if the JS download
+     fails. Keep these alongside the v2 --font-display / --font-sans /
+     --font-mono tokens above; both coexist until Stage 6 cleanup. */
+  --font-lj-display: var(--font-lj-display), 'Unbounded', system-ui, sans-serif;
+  --font-lj-body:    var(--font-lj-body), 'Inter', system-ui, sans-serif;
+  --font-lj-mono:    var(--font-lj-mono), 'JetBrains Mono', ui-monospace, monospace;
+
   /* Type scale (additive — old --text-* stay until Stage 5) */
   --text-lj-mega:    clamp(2.75rem, 9vw, 9.5rem);
   --text-lj-display: clamp(2.25rem, 5.5vw, 5.5rem);

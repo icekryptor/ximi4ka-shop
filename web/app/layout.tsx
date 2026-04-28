@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { IBM_Plex_Sans, IBM_Plex_Mono, Roboto_Mono, Syne, Manrope, JetBrains_Mono } from 'next/font/google'
+import { IBM_Plex_Sans, IBM_Plex_Mono, Roboto_Mono, Syne, Manrope, JetBrains_Mono, Unbounded, Inter } from 'next/font/google'
 import './globals.css'
 import { getPublicSettings, type PublicSettings } from '@/lib/api'
 import { MetrikaScript, Ga4Script } from '@/lib/analytics'
@@ -61,6 +61,37 @@ const plexMono = IBM_Plex_Mono({
   display: 'swap',
 })
 
+// === v3 — Лабораторный Журнал font pair (Task 0.2) ===
+// Unbounded + Inter + JetBrains Mono drive the lj typography scale wired up in
+// globals.css's @theme inline `--font-lj-*` tokens. Old Mazzard / Plex / Roboto
+// Mono setups above stay until Stage 6 cleanup so v2 surfaces keep rendering
+// while v3 components migrate.
+const ljDisplay = Unbounded({
+  subsets: ['cyrillic', 'latin'],
+  weight: ['400', '700', '900'],
+  variable: '--font-lj-display',
+  display: 'swap',
+})
+
+const ljBody = Inter({
+  subsets: ['cyrillic', 'latin'],
+  weight: ['400', '500', '700'],
+  variable: '--font-lj-body',
+  display: 'swap',
+})
+
+// Distinct JetBrains_Mono instance from the unprefixed `jetbrainsMono` above
+// (which targets /v3-preview-c via --font-jetbrains). next/font de-dupes the
+// underlying woff2 download by (font, subsets, weights, style) — these two
+// configs differ only in `variable`, so the request goes to the same URL and
+// no extra bytes are shipped.
+const ljMono = JetBrains_Mono({
+  subsets: ['cyrillic', 'latin'],
+  weight: ['400', '500'],
+  variable: '--font-lj-mono',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
   title: 'Ximi4ka — наборы для химических экспериментов',
   description:
@@ -93,7 +124,7 @@ export default async function RootLayout({
 }>) {
   const settings = await loadPublicSettings()
   return (
-    <html lang="ru" className={`${plexSans.variable} ${robotoMono.variable} ${syne.variable} ${manrope.variable} ${jetbrainsMono.variable} ${plexMono.variable} h-full antialiased`}>
+    <html lang="ru" className={`${plexSans.variable} ${robotoMono.variable} ${syne.variable} ${manrope.variable} ${jetbrainsMono.variable} ${plexMono.variable} ${ljDisplay.variable} ${ljBody.variable} ${ljMono.variable} h-full antialiased`}>
       <head>
         {settings?.yandexWebmasterVerification ? (
           <meta
