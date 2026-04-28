@@ -1,5 +1,6 @@
 export { Container } from './Container'
 export { Section } from './Section'
+export { DarkSection } from './DarkSection'
 export { Bleed } from './Bleed'
 export { Eyebrow } from './Eyebrow'
 export { DisplayHeading } from './DisplayHeading'
