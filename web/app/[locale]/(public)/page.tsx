@@ -113,24 +113,10 @@ export default async function HomePage({ params }: Props) {
   const locale: Locale = rawLocale
   const { page, products, settings, categories } = await fetchHome()
 
-  const heroEyebrow =
-    pickField<string>(page as unknown as Record<string, unknown>, 'eyebrow', locale) ??
-    (page as unknown as { eyebrow?: string } | null)?.eyebrow ??
-    'Химия дома · С 2017 года'
-
-  const heroTitle =
-    pickField<string>(page as unknown as Record<string, unknown>, 'title', locale) ??
-    page?.title ??
-    'Настоящая химия. Безопасно для детей.'
-
-  const heroLead =
-    pickField<string>(
-      page as unknown as Record<string, unknown>,
-      'metaDescription',
-      locale,
-    ) ??
-    page?.metaDescription ??
-    'Наборы для безопасных научных экспериментов с подробными методическими материалами для детей и подростков.'
+  // Hero copy is hard-coded in v3 (Lab Journal direction). The CMS-driven
+  // eyebrow/title/lead path was retired with the v2 dark hero. If the editorial
+  // story needs to vary again, reintroduce pickField() here and pass the values
+  // through the v3 Hero's headlineRows/trailLine/lead props.
 
   const blocks =
     (pickField<unknown[]>(
@@ -162,15 +148,18 @@ export default async function HomePage({ params }: Props) {
       <JsonLd data={websiteJsonLd()} />
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
 
-      {/* 1. Hero (DARK) */}
+      {/* 1. Hero (LAB CREAM) */}
       <Hero
-        eyebrow={heroEyebrow}
-        title={heroTitle}
-        emphasisWord="химия"
-        lead={heroLead}
-        primaryCta={{ label: 'Смотреть наборы', href: '/categories' }}
-        secondaryCta={{ label: 'Как это работает', href: '#how-it-works' }}
-        products={products.slice(0, 3)}
+        eyebrow="Опыты в коробке · Москва, с 2017"
+        headlineRows={[
+          { text: 'Опыт', emphasis: true },
+          { text: 'вместо', offset: true },
+          { text: 'объяснений' },
+        ]}
+        trailLine="— химия, которую держат в руках, а не учат наизусть."
+        lead="3 набора. От реакций меди до электролиза — настоящие реагенты, посуда, понятные протоколы. То, что школа показывает на видео, вы делаете руками."
+        primaryCta={{ label: 'Открыть каталог', href: '/catalog' }}
+        secondaryCta={{ label: 'Что мы делаем', href: '#manifesto' }}
       />
 
       {/* 2. Бестселлеры (LIGHT) */}

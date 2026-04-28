@@ -1,5 +1,4 @@
 export { Hero } from './Hero'
-export { HeroProductStack } from './HeroProductStack'
 export { TrustStrip } from './TrustStrip'
 export { CategoryTile } from './CategoryTile'
 export { HowItWorksStep } from './HowItWorksStep'

@@ -1,124 +1,157 @@
 import Link from 'next/link'
-import type { Product } from '@ximi4ka-shop/shared'
-import { Container, DarkSection, Ticker } from '@/components/ui'
-import { Fade } from '@/components/motion'
-import { MoleculeMotif } from '@/components/decor'
-import { HeroProductStack } from './HeroProductStack'
+import { LabSection } from '@/components/ui/LabSection'
+import { GridOverlay } from '@/components/ui/GridOverlay'
+import { NotebookHeader } from '@/components/ui/NotebookHeader'
+import { MoleculeMotifLJ } from '@/components/decor/MoleculeMotif.lj'
+import { HeroFigtag } from './HeroFigtag'
+import { HeroScale } from './HeroScale'
+import { HeroAnnotation } from './HeroAnnotation'
+import { HeroDetailMolecule } from './HeroDetailMolecule'
 
 interface CtaProps {
   label: string
   href: string
 }
 
+interface HeadlineRow {
+  text: string
+  emphasis?: boolean
+  offset?: boolean
+}
+
 interface Props {
   eyebrow: string
-  title: string
+  headlineRows: HeadlineRow[]
+  trailLine: string
   lead: string
   primaryCta: CtaProps
   secondaryCta?: CtaProps
-  products?: Product[]
-  emphasisWord?: string
   tickerItems?: string[]
 }
 
-const DEFAULT_TICKER_ITEMS = [
-  'Доставка по России',
-  'Безопасно для детей',
-  'Сертифицировано',
-  '17+ опытов',
-  '161 эксперимент',
-  'Методичка в комплекте',
+const DEFAULT_TICKER = [
+  'H₂O · вода',
+  'NaCl · соль',
+  'CuSO₄ · медь',
+  'pH 7.0 · нейтрально',
+  'C₆H₁₂O₆ · глюкоза',
+  'HCl · соляная',
+  'Fe + S → FeS',
+  'NH₃ · аммиак',
+  '2 H₂O₂ → 2 H₂O + O₂',
+  'K · калий',
 ]
-
-function renderTitle(title: string, emphasisWord?: string) {
-  if (!emphasisWord) return title
-  const idx = title.indexOf(emphasisWord)
-  if (idx === -1) return title
-  const prefix = title.slice(0, idx)
-  const suffix = title.slice(idx + emphasisWord.length)
-  return (
-    <>
-      {prefix}
-      <span
-        className="bg-clip-text text-transparent"
-        style={{ backgroundImage: 'var(--gradient-accent)' }}
-      >
-        {emphasisWord}
-      </span>
-      {suffix}
-    </>
-  )
-}
 
 export function Hero({
   eyebrow,
-  title,
+  headlineRows,
+  trailLine,
   lead,
   primaryCta,
   secondaryCta,
-  products = [],
-  emphasisWord,
-  tickerItems = DEFAULT_TICKER_ITEMS,
+  tickerItems = DEFAULT_TICKER,
 }: Props) {
   return (
-    <DarkSection size="lg" glow className="relative">
-      {/* Decorative drifting molecule motif behind everything */}
-      <MoleculeMotif
-        variant="vivid"
-        className="pointer-events-none absolute -right-32 top-1/3 h-[640px] w-[640px] opacity-10 hidden md:block"
+    <LabSection
+      variant="cream"
+      className="min-h-screen px-6 pt-24 pb-20 flex flex-col justify-center"
+    >
+      <GridOverlay />
+      <NotebookHeader
+        section="001"
+        label="Лабораторный журнал"
+        page={1}
+        total={3}
+        edition="Ред. 2026.04 / v3"
+      />
+      <HeroFigtag figNumber="001-A" arr="C₆H₆" />
+      <HeroDetailMolecule variant="water" />
+
+      {/* Pinned rotating benzene */}
+      <MoleculeMotifLJ
+        variant="benzene"
+        className="absolute z-[1] pointer-events-none text-[var(--color-lj-ink)] [animation:lj-rotate-slow_80s_linear_infinite] [mix-blend-mode:multiply]"
+        style={{
+          top: '48%',
+          right: '-10vw',
+          transform: 'translateY(-50%)',
+          width: 'clamp(360px, 52vh, 620px)',
+          height: 'clamp(360px, 52vh, 620px)',
+          opacity: 0.42,
+        }}
       />
 
-      <Container>
-        <div className="relative z-10 grid gap-12 md:grid-cols-5 md:gap-16">
-          {/* Left column — copy + CTAs (3/5 columns) */}
-          <div className="md:col-span-3 flex flex-col justify-center">
-            <Fade>
-              <span className="mb-4 inline-block uppercase tracking-wider text-[length:var(--text-micro)] font-semibold text-[var(--color-accent)]">
-                {eyebrow}
-              </span>
-            </Fade>
-            <Fade delay={0.05}>
-              <h1 className="mb-6 font-[var(--font-display)] tracking-[var(--tracking-mega)] leading-[0.9] text-[length:var(--text-mega)] text-[var(--color-text-on-dark)]">
-                {renderTitle(title, emphasisWord)}
-              </h1>
-            </Fade>
-            <Fade delay={0.1}>
-              <p className="mb-8 max-w-prose text-[length:var(--text-lead)] text-[var(--color-text-muted-on-dark)]">
-                {lead}
-              </p>
-            </Fade>
-            <Fade delay={0.15}>
-              <div className="flex flex-wrap gap-4">
-                <Link
-                  href={primaryCta.href}
-                  className="inline-flex items-center justify-center rounded-full px-10 py-4 text-[length:var(--text-lead)] font-semibold text-[var(--color-text-on-brand)] shadow-[var(--shadow-glow-brand)] transition hover:opacity-95"
-                  style={{ backgroundImage: 'var(--gradient-brand-deep)' }}
-                >
-                  {primaryCta.label}
-                </Link>
-                {secondaryCta && (
-                  <Link
-                    href={secondaryCta.href}
-                    className="inline-flex items-center justify-center rounded-full border-2 border-[var(--color-accent)] px-10 py-4 text-[length:var(--text-lead)] font-semibold text-[var(--color-accent)] transition hover:bg-[var(--color-accent)] hover:text-white"
-                  >
-                    {secondaryCta.label}
-                  </Link>
-                )}
-              </div>
-            </Fade>
-          </div>
+      <div className="relative z-[2] max-w-[var(--max-lj-content)] mx-auto w-full">
+        <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-10 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+          {eyebrow}
+        </p>
 
-          {/* Right column — product stack (2/5 columns) */}
-          <div className="md:col-span-2 relative min-h-[400px] md:min-h-[500px]">
-            <HeroProductStack products={products} />
-          </div>
+        <h1 className="font-[var(--font-lj-display)] font-[900] text-[length:var(--text-lj-mega)] leading-[0.88] tracking-[-0.045em] uppercase mb-10 relative z-[2]">
+          {headlineRows.map((row, i) => (
+            <span key={i} className={`block ${row.offset ? 'pl-[9vw]' : ''}`}>
+              {row.emphasis ? (
+                <em className="lj-headline-emphasis text-[var(--color-lj-brand)] italic font-[900]">
+                  {row.text}
+                </em>
+              ) : (
+                row.text
+              )}
+            </span>
+          ))}
+          <span className="block font-[var(--font-lj-mono)] font-normal text-[clamp(0.875rem,1vw,1.125rem)] normal-case tracking-[0.02em] opacity-55 mt-6 pl-[9vw] max-w-[36ch] leading-snug">
+            {trailLine}
+          </span>
+        </h1>
+
+        <p className="max-w-[540px] text-xl leading-snug opacity-78 mb-12 relative z-[2]">
+          {lead}
+        </p>
+
+        <div className="flex gap-4 items-center flex-wrap relative z-[2]">
+          <Link
+            href={primaryCta.href}
+            className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
+          >
+            {primaryCta.label}
+            <svg width="14" height="14" viewBox="0 0 16 16">
+              <path
+                d="M2 8h12M9 3l5 5-5 5"
+                stroke="currentColor"
+                fill="none"
+                strokeWidth={1.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
+          {secondaryCta && (
+            <Link
+              href={secondaryCta.href}
+              className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-transparent text-[var(--color-lj-ink)] transition-all duration-400 hover:bg-[var(--color-lj-ink)] hover:text-[var(--color-lj-bone)]"
+            >
+              {secondaryCta.label}
+            </Link>
+          )}
         </div>
-      </Container>
-
-      {/* Bottom ticker strip */}
-      <div className="relative z-10 mt-16 -mb-32">
-        <Ticker items={tickerItems} surface="accent" />
       </div>
-    </DarkSection>
+
+      <HeroScale caption="scale 1 : 1 · 200 mm" />
+      <HeroAnnotation primary="рабочая область" secondary="1080 × 1920 mm" />
+
+      {/* Ticker */}
+      <div className="absolute bottom-0 left-0 right-0 border-t border-[var(--color-lj-rule)] bg-[var(--color-lj-cream)] overflow-hidden h-14 flex items-center z-[4]">
+        <div
+          className="flex gap-12 whitespace-nowrap font-[var(--font-lj-mono)] text-[0.8125rem] uppercase tracking-[0.08em] [animation:lj-ticker_50s_linear_infinite] pl-12 shrink-0"
+          aria-hidden="true"
+        >
+          {[...tickerItems, ...tickerItems].map((item, i) => (
+            <span key={i} className="inline-flex items-center gap-3.5 shrink-0">
+              <span className="w-1 h-1 rounded-full bg-[var(--color-lj-brand)]" />
+              {item}
+            </span>
+          ))}
+        </div>
+      </div>
+    </LabSection>
   )
 }

@@ -244,3 +244,8 @@ body {
   color: var(--color-accent);
   font-weight: 600;
 }
+
+/* === v3 Lab Journal animations === */
+@keyframes lj-rotate-slow { to { transform: translateY(-50%) rotate(360deg); } }
+@keyframes lj-rotate-slow-reverse { to { transform: translate(-50%, -50%) rotate(-360deg); } }
+@keyframes lj-ticker { to { transform: translateX(-50%); } }
