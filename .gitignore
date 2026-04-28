@@ -43,3 +43,6 @@ test-results/
 # Uploaded files (runtime artifact; directory kept via .gitkeep)
 api/uploads/*
 !api/uploads/.gitkeep
+# Imported product photos (long-term repo asset, ~10MB total)
+!api/uploads/imported/
+!api/uploads/imported/**

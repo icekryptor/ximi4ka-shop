@@ -12,7 +12,8 @@
     "migration:generate": "tsx ./node_modules/typeorm/cli.js migration:generate -d src/config/dataSource.ts",
     "migration:run": "tsx ./node_modules/typeorm/cli.js migration:run -d src/config/dataSource.ts",
     "migration:revert": "tsx ./node_modules/typeorm/cli.js migration:revert -d src/config/dataSource.ts",
-    "seed": "tsx src/seeds/seed.ts"
+    "seed": "tsx src/seeds/seed.ts",
+    "import:tilda": "tsx src/seeds/import-tilda-csv.ts"
   },
   "dependencies": {
     "@ximi4ka-shop/shared": "^0.0.0",
@@ -22,6 +23,7 @@
     "csv-parse": "^6.2.1",
     "dotenv": "^16.6.1",
     "express": "^4.21.1",
+    "isomorphic-dompurify": "^3.10.0",
     "multer": "^2.1.1",
     "pg": "^8.20.0",
     "pino": "^9.5.0",
