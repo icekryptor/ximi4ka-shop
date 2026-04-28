@@ -146,13 +146,19 @@ export default function CartPage() {
                   <span className="text-[length:var(--text-lead)] text-[var(--color-brand-text)]">
                     Итого
                   </span>
-                  <span className="font-[var(--font-display)] text-[length:var(--text-h2)] text-[var(--color-brand-text)] tracking-[var(--tracking-tight)]">
+                  <span
+                    className="font-[var(--font-display)] text-[length:var(--text-h2)] text-[var(--color-accent)] tracking-[var(--tracking-tight)]"
+                  >
                     {formatRub(subtotal)}
                   </span>
                 </div>
-                <Button href="/checkout" size="lg" fullWidth>
+                <Link
+                  href="/checkout"
+                  className="inline-flex w-full items-center justify-center rounded-full px-8 py-4 text-[length:var(--text-lead)] font-semibold text-white shadow-[var(--shadow-md)] transition hover:opacity-95"
+                  style={{ backgroundImage: 'var(--gradient-accent)' }}
+                >
                   Оформить заказ
-                </Button>
+                </Link>
               </div>
             </GlassCard>
 
