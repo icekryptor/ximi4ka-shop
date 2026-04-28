@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { IBM_Plex_Sans } from 'next/font/google'
+import { IBM_Plex_Sans, Roboto_Mono } from 'next/font/google'
 import './globals.css'
 import { getPublicSettings, type PublicSettings } from '@/lib/api'
 import { MetrikaScript, Ga4Script } from '@/lib/analytics'
@@ -8,6 +8,16 @@ const plexSans = IBM_Plex_Sans({
   subsets: ['latin', 'cyrillic'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-plex',
+  display: 'swap',
+})
+
+// Roboto Mono — used by the v3-preview route for monospaced labels/SKUs.
+// Kept here (root layout) so the CSS variable is available everywhere via
+// globals.css's @theme `--font-mono` mapping.
+const robotoMono = Roboto_Mono({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '700'],
+  variable: '--font-mono-google',
   display: 'swap',
 })
 
@@ -43,7 +53,7 @@ export default async function RootLayout({
 }>) {
   const settings = await loadPublicSettings()
   return (
-    <html lang="ru" className={`${plexSans.variable} h-full antialiased`}>
+    <html lang="ru" className={`${plexSans.variable} ${robotoMono.variable} h-full antialiased`}>
       <head>
         {settings?.yandexWebmasterVerification ? (
           <meta

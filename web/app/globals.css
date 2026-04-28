@@ -25,6 +25,7 @@
   --color-brand-bg-soft: #eeebf3;
   --font-sans: var(--font-plex), 'IBM Plex Sans', system-ui, sans-serif;
   --font-display: 'Mazzard H', 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: var(--font-mono-google), 'Roboto Mono', 'Courier New', monospace;
 
   /* Typography scale */
   --text-display: clamp(2.5rem, 5vw + 1rem, 5.5rem);
@@ -112,6 +113,16 @@
   --space-card-tight: 0.75rem;
   --space-card-relaxed: 1.5rem;
   --space-section-cinematic: 8rem;
+
+  /* === v3 preview tokens (gold accent + deeper dark + glass) === */
+  --color-gold: #CA8A04;
+  --color-gold-soft: #FEF3C7;
+  --color-gold-deep: #92400E;
+  --color-dark-deep: #0A0613;
+  --gradient-gold: linear-gradient(135deg, #CA8A04 0%, #F59E0B 100%);
+  --color-glass-dark: rgba(255, 255, 255, 0.06);
+  --color-glass-dark-border: rgba(255, 255, 255, 0.1);
+  --color-glass-light: rgba(255, 255, 255, 0.72);
 }
 
 body {

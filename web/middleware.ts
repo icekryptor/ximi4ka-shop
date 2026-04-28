@@ -79,7 +79,7 @@ async function getRedirects(baseUrl: string): Promise<Redirect[]> {
 // the DB (e.g. via a lax migration or direct SQL), we still won't apply it.
 // Also covers feed/route-handler paths that ship XML/plain-text and have
 // no locale concept.
-const EXCLUDED_PREFIXES = ['/_next', '/api', '/admin', '/fonts', '/uploads', '/amp']
+const EXCLUDED_PREFIXES = ['/_next', '/api', '/admin', '/fonts', '/uploads', '/amp', '/v3-preview']
 
 const EXCLUDED_EXACT = new Set([
   '/favicon.ico',
@@ -151,7 +151,7 @@ export const config = {
   // (robots/sitemap/yml/turbo/llms). Everything else is public,
   // localizable, and potentially redirect-targeted.
   matcher: [
-    '/((?!_next|api|admin|fonts|uploads|amp|favicon\\.ico|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml).*)',
+    '/((?!_next|api|admin|fonts|uploads|amp|v3-preview|favicon\\.ico|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml).*)',
   ],
 }
 
