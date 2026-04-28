@@ -103,4 +103,65 @@ describe('Hero', () => {
     )
     expect(screen.getByText('Alpha Kit')).toBeInTheDocument()
   })
+
+  it('wraps content in a dark section surface', () => {
+    const { container } = render(
+      <Hero
+        eyebrow="e"
+        title="t"
+        lead="l"
+        primaryCta={{ label: 'go', href: '/x' }}
+      />,
+    )
+    const section = container.querySelector('section')
+    expect(section).not.toBeNull()
+    expect(section!.className).toContain('bg-[var(--color-dark-base)]')
+  })
+
+  it('includes a Ticker strip at the bottom', () => {
+    const { container } = render(
+      <Hero
+        eyebrow="e"
+        title="t"
+        lead="l"
+        primaryCta={{ label: 'go', href: '/x' }}
+      />,
+    )
+    const tickerTrack = container.querySelector('.animate-ticker-scroll')
+    expect(tickerTrack).not.toBeNull()
+  })
+
+  it('highlights an emphasis word with gradient text fill when present', () => {
+    const { container } = render(
+      <Hero
+        eyebrow="e"
+        title="Настоящая химия здесь"
+        emphasisWord="химия"
+        lead="l"
+        primaryCta={{ label: 'go', href: '/x' }}
+      />,
+    )
+    const h1 = container.querySelector('h1')
+    expect(h1).not.toBeNull()
+    // The whole title should still be present
+    expect(h1!.textContent).toBe('Настоящая химия здесь')
+    const accent = h1!.querySelector('.bg-clip-text')
+    expect(accent).not.toBeNull()
+    expect(accent!.textContent).toBe('химия')
+  })
+
+  it('renders the title verbatim when emphasisWord is not in the title', () => {
+    const { container } = render(
+      <Hero
+        eyebrow="e"
+        title="Hello world"
+        emphasisWord="missing"
+        lead="l"
+        primaryCta={{ label: 'go', href: '/x' }}
+      />,
+    )
+    const h1 = container.querySelector('h1')
+    expect(h1!.textContent).toBe('Hello world')
+    expect(h1!.querySelector('.bg-clip-text')).toBeNull()
+  })
 })
