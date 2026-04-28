@@ -13,16 +13,15 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
-import { Container, Section, SectionHeading } from '@/components/ui'
+import { Container, Section, DarkSection, SectionHeading } from '@/components/ui'
 import { Reveal, Stagger } from '@/components/motion'
 import {
   Hero,
-  TrustStrip,
   CategoryTile,
   HowItWorksStep,
   TestimonialCard,
   PreFooterCta,
-  DEFAULT_TRUST_STRIP,
+  Manifesto,
   DEFAULT_TESTIMONIALS,
 } from '@/components/marketing'
 import {
@@ -114,6 +113,11 @@ export default async function HomePage({ params }: Props) {
   const locale: Locale = rawLocale
   const { page, products, settings, categories } = await fetchHome()
 
+  const heroEyebrow =
+    pickField<string>(page as unknown as Record<string, unknown>, 'eyebrow', locale) ??
+    (page as unknown as { eyebrow?: string } | null)?.eyebrow ??
+    'Химия дома · С 2017 года'
+
   const heroTitle =
     pickField<string>(page as unknown as Record<string, unknown>, 'title', locale) ??
     page?.title ??
@@ -143,15 +147,14 @@ export default async function HomePage({ params }: Props) {
     (b) => b && (b as Block).type !== 'faq',
   )
 
-  const trustStripItems =
-    settings?.trustStripItems && settings.trustStripItems.length > 0
-      ? settings.trustStripItems
-      : DEFAULT_TRUST_STRIP
-
   const testimonials =
     settings?.testimonials && settings.testimonials.length > 0
       ? settings.testimonials
       : DEFAULT_TESTIMONIALS
+
+  // Asymmetric span pattern across the 3-column grid produces a
+  // varied, magazine-like rhythm rather than a strict grid.
+  const categorySpans: Array<1 | 2> = [1, 2, 2, 1, 1, 2]
 
   return (
     <>
@@ -159,23 +162,18 @@ export default async function HomePage({ params }: Props) {
       <JsonLd data={websiteJsonLd()} />
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
 
+      {/* 1. Hero (DARK) */}
       <Hero
-        eyebrow="Химия дома"
+        eyebrow={heroEyebrow}
         title={heroTitle}
+        emphasisWord="химия"
         lead={heroLead}
         primaryCta={{ label: 'Смотреть наборы', href: '/categories' }}
         secondaryCta={{ label: 'Как это работает', href: '#how-it-works' }}
         products={products.slice(0, 3)}
       />
 
-      <Section size="sm" surface="soft">
-        <Container>
-          <Reveal>
-            <TrustStrip items={trustStripItems} />
-          </Reveal>
-        </Container>
-      </Section>
-
+      {/* 2. Бестселлеры (LIGHT) */}
       <Section size="lg">
         <Container>
           <Reveal>
@@ -187,7 +185,7 @@ export default async function HomePage({ params }: Props) {
           </Reveal>
           {products.length > 0 ? (
             <Reveal>
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {products.slice(0, 8).map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
@@ -201,6 +199,10 @@ export default async function HomePage({ params }: Props) {
         </Container>
       </Section>
 
+      {/* 3. Manifesto (DARK) */}
+      <Manifesto />
+
+      {/* 4. Каталог по интересам (LIGHT) — asymmetric tile masonry */}
       <Section size="lg" surface="base">
         <Container>
           <Reveal>
@@ -208,7 +210,7 @@ export default async function HomePage({ params }: Props) {
               eyebrow="Каталог"
               title="Каталог по интересам"
               action={
-                categories.length > 3
+                categories.length > 6
                   ? { label: 'Все категории', href: '/categories' }
                   : undefined
               }
@@ -216,9 +218,13 @@ export default async function HomePage({ params }: Props) {
           </Reveal>
           {categories.length > 0 ? (
             <div className="grid gap-6 md:grid-cols-3">
-              {categories.slice(0, 3).map((category, i) => (
-                <Reveal key={category.id} delay={i * 0.05}>
-                  <CategoryTile category={category} tintIndex={i} />
+              {categories.slice(0, 6).map((category, i) => (
+                <Reveal key={category.id} delay={(i % 3) * 0.05}>
+                  <CategoryTile
+                    category={category}
+                    tintIndex={i}
+                    span={categorySpans[i] ?? 1}
+                  />
                 </Reveal>
               ))}
             </div>
@@ -230,31 +236,43 @@ export default async function HomePage({ params }: Props) {
         </Container>
       </Section>
 
-      <Section size="lg" surface="soft" id="how-it-works">
+      {/* 5. Как это работает (DARK) */}
+      <DarkSection size="lg" id="how-it-works" glow>
         <Container>
           <Reveal>
-            <SectionHeading eyebrow="Просто" title="Как это работает" />
+            <div className="mb-12 flex flex-col items-center gap-3 text-center">
+              <span className="text-[length:var(--text-micro)] font-semibold uppercase tracking-wider text-[var(--color-accent)]">
+                Просто
+              </span>
+              <h2 className="font-[var(--font-display)] text-[length:var(--text-h2)] tracking-[var(--tracking-tight)] leading-[1.05] text-[var(--color-text-on-dark)]">
+                Как это работает
+              </h2>
+            </div>
           </Reveal>
-          <Stagger className="grid gap-8 md:grid-cols-3">
+          <Stagger className="grid gap-12 md:grid-cols-3">
             <HowItWorksStep
+              theme="dark"
               number="01"
               title="Выберите набор"
               body="Подберите эксперимент по возрасту и интересам ребёнка. Все наборы безопасны и продуманы."
             />
             <HowItWorksStep
+              theme="dark"
               number="02"
               title="Распакуйте и проведите эксперимент"
               body="Внутри — все необходимые реактивы и понятная инструкция. Можно проводить дома вместе с детьми."
             />
             <HowItWorksStep
+              theme="dark"
               number="03"
               title="Получите полезные знания"
               body="Каждый набор сопровождается методическими материалами — научите детей думать как учёные."
             />
           </Stagger>
         </Container>
-      </Section>
+      </DarkSection>
 
+      {/* 6. Что говорят родители (LIGHT) */}
       <Section size="lg" surface="base">
         <Container>
           <Reveal>
@@ -270,6 +288,7 @@ export default async function HomePage({ params }: Props) {
         </Container>
       </Section>
 
+      {/* 7. Частые вопросы (LIGHT) */}
       {faqBlocks.length > 0 && (
         <Section size="lg" surface="soft">
           <Container>
@@ -287,6 +306,7 @@ export default async function HomePage({ params }: Props) {
         </Section>
       )}
 
+      {/* 8. Other CMS blocks (LIGHT) */}
       {otherBlocks.length > 0 && (
         <Section size="md" surface="base">
           <Container>
@@ -297,6 +317,7 @@ export default async function HomePage({ params }: Props) {
         </Section>
       )}
 
+      {/* 9. Pre-footer (DARK) */}
       <PreFooterCta
         title="Готовы начать эксперимент?"
         lead="Начните с любого набора — все инструкции и материалы внутри."

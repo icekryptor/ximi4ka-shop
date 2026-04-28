@@ -38,4 +38,9 @@ describe('DarkSection', () => {
     const { container } = render(<DarkSection size="lg">x</DarkSection>)
     expect(container.firstChild).toHaveClass('py-32')
   })
+
+  it('forwards id prop for anchor targeting', () => {
+    const { container } = render(<DarkSection id="how-it-works">x</DarkSection>)
+    expect(container.firstChild).toHaveAttribute('id', 'how-it-works')
+  })
 })

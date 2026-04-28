@@ -7,6 +7,7 @@ interface Props {
   size?: DarkSize
   glow?: boolean
   className?: string
+  id?: string
   as?: 'section' | 'div' | 'header' | 'footer'
 }
 
@@ -20,10 +21,12 @@ export function DarkSection({
   size = 'md',
   glow = false,
   className = '',
+  id,
   as: Tag = 'section',
 }: Props) {
   return (
     <Tag
+      id={id}
       className={`relative overflow-hidden bg-[var(--color-dark-base)] text-[var(--color-text-on-dark)] ${sizeClass[size]} ${className}`}
     >
       {glow && (
