@@ -32,3 +32,20 @@ export const SPRING_HEAVY = {
 
 /** Full-cycle duration of the infinite-scroll Ticker marquee. */
 export const TICKER_DURATION_S = 30
+
+// === v3 — Лабораторный Журнал ===
+
+/** CSS easing strings for use in `transition` / `animation` shorthand. */
+export const EASE_OUT_QUART_CSS = 'cubic-bezier(0.25, 1, 0.5, 1)'
+export const EASE_OUT_EXPO_CSS = 'cubic-bezier(0.19, 1, 0.22, 1)'
+
+/** Hero formula ticker full loop, seconds. */
+export const TICKER_DURATION_S_LJ = 50
+/** Hero benzene wireframe rotation, seconds. */
+export const ROTATE_SLOW_S = 80
+/** Manifesto background ghost molecule rotation (reverse direction), seconds. */
+export const ROTATE_GHOST_S = 200
+/** Count-up animation total duration, milliseconds. */
+export const COUNTUP_DURATION_MS = 1800
+/** Stat-bar fill animation, seconds. */
+export const STATBAR_DURATION_S = 1.2
