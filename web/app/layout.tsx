@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { IBM_Plex_Sans, Roboto_Mono } from 'next/font/google'
+import { IBM_Plex_Sans, Roboto_Mono, Syne, Manrope, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { getPublicSettings, type PublicSettings } from '@/lib/api'
 import { MetrikaScript, Ga4Script } from '@/lib/analytics'
@@ -18,6 +18,35 @@ const robotoMono = Roboto_Mono({
   subsets: ['latin', 'cyrillic'],
   weight: ['400', '500', '700'],
   variable: '--font-mono-google',
+  display: 'swap',
+})
+
+// Syne — display headings for /v3-preview-c (Lab-Tech / Acid direction).
+// Syne on Google Fonts does NOT ship Cyrillic — only latin / latin-ext /
+// greek. Russian display headings fall through to Manrope ExtraBold via the
+// font stack defined inline in /v3-preview-c/page.tsx (.display rule lists
+// var(--font-syne) first then var(--font-manrope)).
+const syne = Syne({
+  subsets: ['latin', 'latin-ext'],
+  weight: ['600', '700', '800'],
+  variable: '--font-syne',
+  display: 'swap',
+})
+
+// Manrope — body copy for /v3-preview-c. Cyrillic supported on Google Fonts.
+const manrope = Manrope({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['300', '400', '500', '600', '700', '800'],
+  variable: '--font-manrope',
+  display: 'swap',
+})
+
+// JetBrains Mono — mono labels/formula ticker for /v3-preview-c. Cyrillic
+// supported on Google Fonts.
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '600'],
+  variable: '--font-jetbrains',
   display: 'swap',
 })
 
@@ -53,7 +82,7 @@ export default async function RootLayout({
 }>) {
   const settings = await loadPublicSettings()
   return (
-    <html lang="ru" className={`${plexSans.variable} ${robotoMono.variable} h-full antialiased`}>
+    <html lang="ru" className={`${plexSans.variable} ${robotoMono.variable} ${syne.variable} ${manrope.variable} ${jetbrainsMono.variable} h-full antialiased`}>
       <head>
         {settings?.yandexWebmasterVerification ? (
           <meta
