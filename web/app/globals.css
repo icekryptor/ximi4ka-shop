@@ -159,3 +159,28 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .animate-ticker-scroll { animation: none; }
 }
+
+/* === prose-on-dark ===
+ * Styling for sanitized rich-text rendered inside DarkSection contexts
+ * (e.g. ContentsSection «Что внутри»). Replaces default bullet markers with
+ * accent-coloured checkmarks and tints <strong> with the accent. */
+.prose-on-dark ul {
+  list-style: none;
+  padding-left: 0;
+}
+.prose-on-dark ul li {
+  position: relative;
+  padding-left: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+.prose-on-dark ul li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--color-accent);
+  font-weight: bold;
+}
+.prose-on-dark strong {
+  color: var(--color-accent);
+  font-weight: 600;
+}
