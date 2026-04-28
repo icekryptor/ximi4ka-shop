@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { IBM_Plex_Sans, Roboto_Mono, Syne, Manrope, JetBrains_Mono } from 'next/font/google'
+import { IBM_Plex_Sans, IBM_Plex_Mono, Roboto_Mono, Syne, Manrope, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { getPublicSettings, type PublicSettings } from '@/lib/api'
 import { MetrikaScript, Ga4Script } from '@/lib/analytics'
@@ -50,6 +50,17 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 })
 
+// IBM Plex Mono — mono labels/SKU/formula ticker for /v3-preview-e (final
+// synthesis). Cyrillic supported on Google Fonts. Distinct from Roboto Mono
+// (--font-mono-google) used by earlier previews so each direction can be
+// compared on its own typographic merits.
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin', 'cyrillic'],
+  weight: ['400', '500', '600'],
+  variable: '--font-plex-mono',
+  display: 'swap',
+})
+
 export const metadata: Metadata = {
   title: 'Ximi4ka — наборы для химических экспериментов',
   description:
@@ -82,7 +93,7 @@ export default async function RootLayout({
 }>) {
   const settings = await loadPublicSettings()
   return (
-    <html lang="ru" className={`${plexSans.variable} ${robotoMono.variable} ${syne.variable} ${manrope.variable} ${jetbrainsMono.variable} h-full antialiased`}>
+    <html lang="ru" className={`${plexSans.variable} ${robotoMono.variable} ${syne.variable} ${manrope.variable} ${jetbrainsMono.variable} ${plexMono.variable} h-full antialiased`}>
       <head>
         {settings?.yandexWebmasterVerification ? (
           <meta
