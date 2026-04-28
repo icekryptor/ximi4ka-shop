@@ -189,7 +189,15 @@ export default async function HomePage({ params }: Props) {
       </Section>
 
       {/* 3. Manifesto (DARK) */}
-      <Manifesto />
+      <Manifesto
+        eyebrow="02.0 / Принципы лаборатории"
+        statementParts={[
+          { text: 'Мы делаем ' },
+          { text: 'химию', emphasis: true },
+          { text: ', а не урок.' },
+        ]}
+        body="Каждый набор — запечатанный комплект реагентов, лабораторной посуды и понятных протоколов. Без воды, без слайдов, без «представьте, что произойдёт». Только реакция, наблюдение и вывод."
+      />
 
       {/* 4. Каталог по интересам (LIGHT) — asymmetric tile masonry */}
       <Section size="lg" surface="base">
