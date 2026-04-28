@@ -26,7 +26,13 @@ export async function ProductGridBlock({ block }: Props) {
       ) : null}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+          /* TODO(Task 4.4): replace with real catalog data + asymmetric grid */
+          <ProductCard
+            key={product.id}
+            product={product}
+            stats={{ reagents: 0, instruments: 0, reactions: 0 }}
+            statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+          />
         ))}
       </div>
     </section>

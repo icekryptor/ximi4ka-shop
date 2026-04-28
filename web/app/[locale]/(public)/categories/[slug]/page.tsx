@@ -9,7 +9,8 @@ import {
 } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
-import { Container, Section, DisplayHeading, Sticker, Ticker } from '@/components/ui'
+import { Container, Section, DisplayHeading, Ticker } from '@/components/ui'
+import { Chip } from '@/components/ui/Chip'
 import { Reveal } from '@/components/motion'
 import { PreFooterCta } from '@/components/marketing'
 import { GradientBlob } from '@/components/decor/GradientBlob'
@@ -143,7 +144,7 @@ export default async function CategoryDetailPage({ params }: Props) {
               <div className="mb-4 flex flex-wrap items-center gap-4">
                 <DisplayHeading>{name}</DisplayHeading>
                 {products.length > 0 && (
-                  <Sticker variant="accent">{products.length} товаров</Sticker>
+                  <Chip>{products.length} товаров</Chip>
                 )}
               </div>
             </Reveal>
@@ -177,7 +178,13 @@ export default async function CategoryDetailPage({ params }: Props) {
           {products.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                /* TODO(Task 4.4): replace with real catalog data + asymmetric grid */
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  stats={{ reagents: 0, instruments: 0, reactions: 0 }}
+                  statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+                />
               ))}
             </div>
           ) : (

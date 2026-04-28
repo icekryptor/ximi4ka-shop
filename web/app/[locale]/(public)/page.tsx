@@ -176,7 +176,13 @@ export default async function HomePage({ params }: Props) {
             <Reveal>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {products.slice(0, 8).map((product) => (
-                  <ProductCard key={product.id} product={product} />
+                  /* TODO(Task 4.4): replace with real catalog data + asymmetric grid */
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    stats={{ reagents: 0, instruments: 0, reactions: 0 }}
+                    statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+                  />
                 ))}
               </div>
             </Reveal>

@@ -1,104 +1,154 @@
 import Link from 'next/link'
 import type { Product } from '@ximi4ka-shop/shared'
-import { formatRub, stockLabel } from '@/lib/stockLabel'
-import { Pill, Sticker } from '@/components/ui'
+import { Callout } from '@/components/ui/Callout'
+import { Chip } from '@/components/ui/Chip'
+import { StatBar } from '@/components/ui/StatBar'
 
-type StockVariant = 'success' | 'warning' | 'danger'
+interface Stats {
+  reagents: number
+  instruments: number
+  reactions: number
+}
 
-function stockVariant(status: Product['stockStatus']): StockVariant {
-  switch (status) {
-    case 'in_stock':
-      return 'success'
-    case 'preorder':
-      return 'warning'
-    case 'out_of_stock':
-      return 'danger'
+interface Props {
+  product: Product
+  emphasisWord?: string
+  elementSymbol?: string
+  badge?: string
+  badgeVariant?: 'brand' | 'ink' | 'outline'
+  stats: Stats
+  statMaxes: Stats // per-stat-type max across all visible cards in a row
+  chips?: string[]
+  callout?: { text: string; position: 'right' | 'left'; topPercent?: number }
+  imageArt?: React.ReactNode // SVG illustration or <Image />
+  hoverFormula?: string
+  cornerMark?: string
+}
+
+export function ProductCard({
+  product,
+  emphasisWord,
+  elementSymbol,
+  badge,
+  badgeVariant = 'brand',
+  stats,
+  statMaxes,
+  chips = [],
+  callout,
+  imageArt,
+  hoverFormula,
+  cornerMark,
+}: Props) {
+  const sku = product.sku || product.slug
+  const skuLabel = elementSymbol ? `№ ${sku} / ${elementSymbol}` : `№ ${sku}`
+  const badgeClass =
+    badgeVariant === 'brand'
+      ? 'bg-[var(--color-lj-brand)] border-[var(--color-lj-brand)] text-[var(--color-lj-bone)]'
+      : badgeVariant === 'ink'
+        ? 'bg-[var(--color-lj-ink)] border-[var(--color-lj-ink)] text-[var(--color-lj-bone)]'
+        : 'bg-transparent border-[var(--color-lj-ink)] text-[var(--color-lj-ink)]'
+
+  const renderName = () => {
+    if (!emphasisWord || !product.name.includes(emphasisWord)) return product.name
+    const idx = product.name.indexOf(emphasisWord)
+    return (
+      <>
+        {product.name.slice(0, idx)}
+        <em className="italic text-[var(--color-lj-brand)] font-[700]">{emphasisWord}</em>
+        {product.name.slice(idx + emphasisWord.length)}
+      </>
+    )
   }
-}
 
-function discountPercent(price: number, compareAt: number | null | undefined): number | null {
-  if (!compareAt || compareAt <= price) return null
-  return Math.round((1 - price / compareAt) * 100)
-}
+  const formattedPrice = product.priceRub.toLocaleString('ru-RU').replace(/,/g, ' ')
 
-const HIT_THRESHOLD_SORT_ORDER = 3
-
-export function ProductCard({ product }: { product: Product }) {
-  const image = product.images?.[0]
-  const isOutOfStock = product.stockStatus === 'out_of_stock'
-  const discount = discountPercent(product.priceRub, product.compareAtPriceRub)
-  const isHit = product.sortOrder > 0 && product.sortOrder <= HIT_THRESHOLD_SORT_ORDER
+  // Guard against divide-by-zero when caller passes 0 maxes.
+  const pct = (value: number, max: number) =>
+    max > 0 ? Math.round((value / max) * 100) : 0
 
   return (
-    <Link
-      href={`/product/${product.slug}`}
-      className="group flex flex-col gap-3 rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] border border-[var(--color-border-subtle)] p-3 shadow-[var(--shadow-md)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lg)]"
-    >
-      {/* Image area — tinted backdrop, sticker badges, optional desat */}
-      <div
-        className={`relative aspect-square overflow-hidden rounded-[var(--radius-md)] ${
-          isOutOfStock ? 'opacity-70' : ''
-        }`}
-        style={{
-          background:
-            'radial-gradient(circle at 30% 30%, rgba(141,103,255,0.10) 0%, rgba(200,86,255,0.05) 50%, rgba(238,235,243,1) 100%)',
-        }}
-      >
-        {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={image.url}
-            alt={image.alt || product.name}
-            className="absolute inset-0 h-full w-full object-contain p-3 transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <span className="font-[var(--font-display)] text-[length:var(--text-h3)] text-[var(--color-brand)] opacity-30 px-6 text-center leading-tight">
-              {product.name}
-            </span>
-          </div>
-        )}
-
-        {/* Hit sticker — top-left */}
-        {isHit && (
-          <Sticker variant="brand" className="absolute top-3 left-3">
-            Хит
-          </Sticker>
-        )}
-
-        {/* Discount sticker — top-right */}
-        {discount != null && (
-          <Sticker variant="accent" className="absolute top-3 right-3">
-            −{discount}%
-          </Sticker>
-        )}
-      </div>
-
-      {/* Stock pill */}
-      <Pill variant={stockVariant(product.stockStatus)} className="self-start">
-        {stockLabel(product.stockStatus)}
-      </Pill>
-
-      {/* Name */}
-      <h3 className="text-[length:var(--text-body)] font-semibold text-[var(--color-brand-text)] leading-tight">
-        {product.name}
-      </h3>
-
-      {/* Price */}
-      <div className="mt-auto flex items-baseline gap-2">
-        <span className="font-[var(--font-display)] text-[length:var(--text-h3)] text-[var(--color-brand-text)] tracking-[var(--tracking-tight)]">
-          {formatRub(product.priceRub)}
-        </span>
-        {product.compareAtPriceRub != null && product.compareAtPriceRub > product.priceRub && (
-          <span className="text-[length:var(--text-small)] text-[var(--color-text-muted)] line-through">
-            {formatRub(product.compareAtPriceRub)}
+    <article className="callout-host group/pcard relative cursor-pointer bg-transparent">
+      <div className="flex justify-between items-center mb-3 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em]">
+        <span className="text-[var(--color-lj-ink)] opacity-60">{skuLabel}</span>
+        {badge && (
+          <span className={`px-2.5 py-1 border rounded-full text-[0.625rem] tracking-[0.1em] ${badgeClass}`}>
+            {badge}
           </span>
         )}
       </div>
-    </Link>
+
+      <Link href={`/product/${product.slug}`} className="block">
+        <div className="relative aspect-[4/5] bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color] duration-500 group-hover/pcard:border-[var(--color-lj-ink)]">
+          {cornerMark && (
+            <span className="absolute top-3.5 left-3.5 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
+              {cornerMark}
+            </span>
+          )}
+          <div className="absolute inset-0 flex items-center justify-center transition-transform duration-700 group-hover/pcard:scale-[1.04]">
+            {imageArt}
+          </div>
+          {hoverFormula && (
+            <div className="absolute bottom-3.5 left-3.5 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] tracking-[0.04em] text-[var(--color-lj-ink)] bg-[var(--color-lj-cream)] px-2.5 py-1.5 border border-[var(--color-lj-ink)] opacity-0 translate-y-2 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:translate-y-0">
+              {hoverFormula}
+            </div>
+          )}
+        </div>
+      </Link>
+
+      <div className="pt-5">
+        <h3 className="font-[var(--font-lj-display)] font-[700] text-[clamp(1.5rem,2.1vw,2rem)] leading-[0.95] tracking-[-0.035em] mb-3.5">
+          <Link href={`/product/${product.slug}`}>{renderName()}</Link>
+        </h3>
+        {product.shortDescription && (
+          <p className="text-[0.9375rem] leading-[1.45] text-[var(--color-lj-ink)] opacity-72 mb-5 max-w-[32ch]">
+            {product.shortDescription}
+          </p>
+        )}
+
+        <ul className="list-none p-0 m-0 mb-5 flex flex-col gap-2 border-t border-[var(--color-lj-rule)] pt-4">
+          <StatBar
+            index="01"
+            label="реактивов"
+            value={stats.reagents}
+            fillPercent={pct(stats.reagents, statMaxes.reagents)}
+          />
+          <StatBar
+            index="02"
+            label="инструментов"
+            value={stats.instruments}
+            fillPercent={pct(stats.instruments, statMaxes.instruments)}
+          />
+          <StatBar
+            index="03"
+            label="реакций"
+            value={stats.reactions}
+            fillPercent={pct(stats.reactions, statMaxes.reactions)}
+          />
+        </ul>
+
+        {chips.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-6">
+            {chips.map((c, i) => (
+              <Chip key={i}>{c}</Chip>
+            ))}
+          </div>
+        )}
+
+        <div className="flex justify-between items-center border-t border-[var(--color-lj-rule)] pt-5 gap-4 flex-wrap">
+          <span className="font-[var(--font-lj-display)] font-[900] text-3xl tracking-[-0.04em] leading-none">
+            {formattedPrice}
+            <span className="font-[var(--font-lj-mono)] font-normal text-base ml-1 opacity-70">₽</span>
+          </span>
+          <Link
+            href={`/product/${product.slug}`}
+            className="inline-flex items-center gap-2 px-4 py-3 border border-[var(--color-lj-ink)] rounded-full font-[var(--font-lj-mono)] text-[0.6875rem] uppercase tracking-[0.08em] bg-transparent text-[var(--color-lj-ink)] transition-all duration-400 group-hover/pcard:bg-[var(--color-lj-ink)] group-hover/pcard:text-[var(--color-lj-bone)]"
+          >
+            Заказать набор →
+          </Link>
+        </div>
+      </div>
+
+      {callout && <Callout text={callout.text} position={callout.position} topPercent={callout.topPercent} />}
+    </article>
   )
 }

@@ -20,7 +20,6 @@ import {
   SectionHeading,
   MicroTrustRow,
   Pill,
-  Sticker,
 } from '@/components/ui'
 import { Reveal } from '@/components/motion'
 import {
@@ -173,20 +172,6 @@ export default async function ProductPage({ params }: Props) {
 
   const characteristics = parseCharacteristics(longDescriptionBlocks)
 
-  // Sticker badge data — all conditional. Computed once at render time.
-  const discount = (() => {
-    if (
-      product.compareAtPriceRub == null ||
-      product.compareAtPriceRub <= product.priceRub
-    )
-      return null
-    return Math.round(
-      (1 - product.priceRub / product.compareAtPriceRub) * 100,
-    )
-  })()
-  const isHit = product.sortOrder > 0 && product.sortOrder <= 3
-  const ageRange = characteristics['Возраст'] ?? null
-
   // Quick-scan pills row — first 4 priority keys present on this product.
   const pillItems = PILL_KEYS.map((k) =>
     characteristics[k] ? characteristics[k] : null,
@@ -266,25 +251,7 @@ export default async function ProductPage({ params }: Props) {
                     </div>
                   )}
 
-                  {/* Floating sticker badges — conditional on data. */}
-                  {isHit && (
-                    <Sticker variant="brand" className="absolute top-4 left-4">
-                      Хит
-                    </Sticker>
-                  )}
-                  {discount != null && (
-                    <Sticker variant="accent" className="absolute top-4 right-4">
-                      −{discount}%
-                    </Sticker>
-                  )}
-                  {ageRange && (
-                    <Sticker
-                      variant="dark"
-                      className="absolute bottom-4 left-4"
-                    >
-                      {ageRange}
-                    </Sticker>
-                  )}
+                  {/* TODO(v3): re-evaluate product detail badge positioning vs v3 lab-journal aesthetic */}
                 </div>
 
                 {/* Thumbnail strip — purely visual stack for v1 */}
@@ -390,7 +357,13 @@ export default async function ProductPage({ params }: Props) {
             </Reveal>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {related.map((p) => (
-                <ProductCard key={p.id} product={p} />
+                /* TODO(Task 4.4): replace with real catalog data + asymmetric grid */
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  stats={{ reagents: 0, instruments: 0, reactions: 0 }}
+                  statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+                />
               ))}
             </div>
           </Container>
