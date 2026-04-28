@@ -1,4 +1,4 @@
-import { Container, Section, DisplayHeading, Button } from '@/components/ui'
+import { Container, DarkSection, DisplayHeading } from '@/components/ui'
 import { Reveal } from '@/components/motion'
 
 interface Props {
@@ -9,32 +9,25 @@ interface Props {
 
 export function PreFooterCta({ title, lead, cta }: Props) {
   return (
-    <Section size="lg" surface="gradient">
+    <DarkSection size="lg" glow>
       <Container>
         <Reveal>
           <div className="flex flex-col items-center gap-6 text-center">
-            <DisplayHeading
-              as="h2"
-              className="text-[var(--color-text-on-brand)]"
-            >
-              {title}
-            </DisplayHeading>
+            <DisplayHeading as="h2">{title}</DisplayHeading>
             {lead && (
-              <p className="max-w-2xl text-[length:var(--text-lead)] text-[var(--color-text-on-brand)] opacity-90">
+              <p className="max-w-2xl text-[length:var(--text-lead)] text-[var(--color-text-muted-on-dark)]">
                 {lead}
               </p>
             )}
-            <Button
+            <a
               href={cta.href}
-              variant="secondary"
-              size="lg"
-              className="bg-white text-[var(--color-brand)] border-white hover:bg-white hover:opacity-95"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--gradient-accent)] px-10 py-4 text-[length:var(--text-lead)] font-semibold text-white shadow-[var(--shadow-glow-brand)] transition hover:opacity-95"
             >
               {cta.label}
-            </Button>
+            </a>
           </div>
         </Reveal>
       </Container>
-    </Section>
+    </DarkSection>
   )
 }

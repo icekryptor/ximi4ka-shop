@@ -56,4 +56,36 @@ describe('CategoryTile', () => {
     const linkB = b.querySelector('a')!
     expect(linkA.className).not.toBe(linkB.className)
   })
+
+  it('applies md:col-span-2 when span={2}', () => {
+    const { container } = render(
+      <CategoryTile category={baseCategory} tintIndex={0} span={2} />,
+    )
+    const link = container.querySelector('a')!
+    expect(link.className).toContain('md:col-span-2')
+  })
+
+  it('does not apply md:col-span-2 by default', () => {
+    const { container } = render(
+      <CategoryTile category={baseCategory} tintIndex={0} />,
+    )
+    const link = container.querySelector('a')!
+    expect(link.className).not.toContain('md:col-span-2')
+  })
+
+  it('renders a sticker with productCount when provided', () => {
+    render(
+      <CategoryTile
+        category={baseCategory}
+        tintIndex={0}
+        productCount={29}
+      />,
+    )
+    expect(screen.getByText('29 товаров')).toBeInTheDocument()
+  })
+
+  it('omits the sticker when productCount is not provided', () => {
+    render(<CategoryTile category={baseCategory} tintIndex={0} />)
+    expect(screen.queryByText(/товаров/)).not.toBeInTheDocument()
+  })
 })

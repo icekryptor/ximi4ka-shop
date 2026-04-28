@@ -46,4 +46,28 @@ describe('PreFooterCta', () => {
     const link = screen.getByRole('link', { name: 'Открыть каталог' })
     expect(link).toHaveAttribute('href', '/categories')
   })
+
+  it('wraps content in a dark section surface', () => {
+    const { container } = render(
+      <PreFooterCta
+        title="t"
+        cta={{ label: 'Открыть каталог', href: '/categories' }}
+      />,
+    )
+    const section = container.querySelector('section')
+    expect(section).not.toBeNull()
+    expect(section!.className).toContain('bg-[var(--color-dark-base)]')
+  })
+
+  it('renders the CTA with an orange accent gradient pill', () => {
+    render(
+      <PreFooterCta
+        title="t"
+        cta={{ label: 'Открыть каталог', href: '/categories' }}
+      />,
+    )
+    const link = screen.getByRole('link', { name: 'Открыть каталог' })
+    expect(link.className).toContain('bg-[var(--gradient-accent)]')
+    expect(link.className).toContain('shadow-[var(--shadow-glow-brand)]')
+  })
 })
