@@ -34,6 +34,71 @@ import {
 
 export const revalidate = 60
 
+// v3 Lab Journal — hardcoded catalog of 3 flagship sets. The hero/manifesto/
+// products copy is hardcoded in v3 (per design plan §9). Future CMS work can
+// re-route this to a DB query; for now SITE_CATALOG ships the v3 design clean.
+const SITE_CATALOG = [
+  {
+    sku: 'X-30',
+    slug: 'himichka-3',
+    name: 'Химичка 3.0',
+    shortDescription:
+      'Флагман: настоящая лаборатория у вас дома. От реакций меди до выращивания кристаллов.',
+    priceRub: 3399,
+    badge: 'Хит',
+    badgeVariant: 'brand' as const,
+    elementSymbol: 'Cu',
+    emphasisWord: 'Химичка',
+    cornerMark: 'arr. 01',
+    hoverFormula: 'Cu + 2 AgNO₃ → Cu(NO₃)₂ + 2 Ag↓',
+    chips: ['безопасно', 'ярко', 'от 10 лет'],
+    stats: { reagents: 18, instruments: 12, reactions: 161 },
+    callout: { text: '161 реакция', position: 'right' as const, topPercent: 28 },
+    staggerOffset: 0,
+  },
+  {
+    sku: 'X-MINI',
+    slug: 'mini-himichka',
+    name: 'Мини-Химичка',
+    shortDescription:
+      'Те же реакции, компактнее. Базовая посуда, идеален как первый набор или подарок.',
+    priceRub: 1799,
+    badge: 'Старт',
+    badgeVariant: 'outline' as const,
+    elementSymbol: 'NaCl',
+    emphasisWord: 'Мини-',
+    cornerMark: 'arr. 02',
+    hoverFormula: 'Pocket lab · 18 реактивов',
+    chips: ['подарок', 'от 8 лет'],
+    stats: { reagents: 18, instruments: 4, reactions: 161 },
+    callout: { text: 'от 1 799 ₽', position: 'left' as const, topPercent: 60 },
+    staggerOffset: 4, // rem
+  },
+  {
+    sku: 'X-EL',
+    slug: 'electrohimichka',
+    name: 'Электрохимичка',
+    shortDescription:
+      'Электролиз, гальваника, батарея. Полный комплект для опытов с током.',
+    priceRub: 3299,
+    badge: 'Pro',
+    badgeVariant: 'ink' as const,
+    elementSymbol: 'e⁻',
+    emphasisWord: 'Электро',
+    cornerMark: 'arr. 03',
+    hoverFormula: '2 H₂O → 2 H₂↑ + O₂↑',
+    chips: ['ток', 'гальваника', 'от 12 лет'],
+    stats: { reagents: 14, instruments: 20, reactions: 74 },
+    callout: { text: '20 инструментов', position: 'right' as const, topPercent: 18 },
+    staggerOffset: 8, // rem
+  },
+]
+
+// Per-stat-type max across the whole catalog row, so each card's bars tell a
+// comparative story (e.g. Электрохимичка's instruments=20 fills 100%, while
+// Химичка 3.0's instruments=12 fills ~60% of the same scale).
+const SITE_CATALOG_STAT_MAXES = { reagents: 18, instruments: 20, reactions: 161 }
+
 export function generateStaticParams() {
   // One root page per locale. Middleware rewrites unprefixed `/` to
   // `/${DEFAULT_LOCALE}` so RU is served at a clean URL.
@@ -162,37 +227,64 @@ export default async function HomePage({ params }: Props) {
         secondaryCta={{ label: 'Что мы делаем', href: '#manifesto' }}
       />
 
-      {/* 2. Бестселлеры (LIGHT) */}
-      <Section size="lg">
-        <Container>
-          <Reveal>
-            <SectionHeading
-              eyebrow="Каталог"
-              title="Бестселлеры"
-              action={{ label: 'Смотреть всё', href: '/categories' }}
-            />
-          </Reveal>
-          {products.length > 0 ? (
-            <Reveal>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {products.slice(0, 8).map((product) => (
-                  /* TODO(Task 4.4): replace with real catalog data + asymmetric grid */
+      {/* 2. v3 Catalog — asymmetric 3-card row (LAB CREAM) */}
+      <section className="bg-[var(--color-lj-cream)] px-6 py-32 relative">
+        <div className="max-w-[var(--max-lj-content)] mx-auto">
+          <div className="flex justify-between items-end mb-24 gap-8 flex-wrap">
+            <div>
+              <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+                03.0 / Что собрать сегодня
+              </p>
+              <h2 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4.75rem)] leading-[0.92] tracking-[-0.045em]">
+                Готовые<br />
+                <em className="italic text-[var(--color-lj-brand)] font-[900]">наборы</em>
+              </h2>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr_1.1fr] gap-8">
+            {SITE_CATALOG.map((p) => {
+              const stagger =
+                p.staggerOffset === 0
+                  ? 'lg:mt-0'
+                  : p.staggerOffset === 4
+                    ? 'lg:mt-16'
+                    : 'lg:mt-32'
+              return (
+                <div key={p.sku} className={stagger}>
                   <ProductCard
-                    key={product.id}
-                    product={product}
-                    stats={{ reagents: 0, instruments: 0, reactions: 0 }}
-                    statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+                    product={
+                      {
+                        id: p.slug,
+                        slug: p.slug,
+                        sku: p.sku,
+                        name: p.name,
+                        shortDescription: p.shortDescription,
+                        priceRub: p.priceRub,
+                        compareAtPriceRub: null,
+                        stockStatus: 'in_stock',
+                        isPublished: true,
+                        longDescriptionBlocks: [],
+                        images: [],
+                      } as unknown as Product
+                    }
+                    emphasisWord={p.emphasisWord}
+                    elementSymbol={p.elementSymbol}
+                    badge={p.badge}
+                    badgeVariant={p.badgeVariant}
+                    cornerMark={p.cornerMark}
+                    hoverFormula={p.hoverFormula}
+                    chips={p.chips}
+                    stats={p.stats}
+                    statMaxes={SITE_CATALOG_STAT_MAXES}
+                    callout={p.callout}
                   />
-                ))}
-              </div>
-            </Reveal>
-          ) : (
-            <p className="text-center text-[var(--color-brand-text-secondary)]">
-              Контент загружается...
-            </p>
-          )}
-        </Container>
-      </Section>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
 
       {/* 3. Manifesto (DARK) */}
       <Manifesto
