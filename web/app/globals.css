@@ -123,6 +123,44 @@
   --color-glass-dark: rgba(255, 255, 255, 0.06);
   --color-glass-dark-border: rgba(255, 255, 255, 0.1);
   --color-glass-light: rgba(255, 255, 255, 0.72);
+
+  /* === v3 — Лабораторный Журнал === */
+
+  /* Cream Lab — daylight surface family */
+  --color-lj-cream:        #F2EFE8;
+  --color-lj-cream-shade:  #E8E3D7;
+  --color-lj-cream-line:   rgba(10, 10, 10, 0.05);
+
+  /* Ink Lab — nocturnal surface family */
+  --color-lj-ink:           #0A0A0A;
+  --color-lj-ink-elevated:  #141414;
+  --color-lj-bone:          #EFEDE6;
+  --color-lj-bone-mute:     rgba(239, 237, 230, 0.60);
+  --color-lj-ink-line:      rgba(239, 237, 230, 0.06);
+
+  /* Brand precision accent (re-exposed under lj- prefix for clarity) */
+  --color-lj-brand:         #836efe;
+  --color-lj-brand-deep:    #6703ff;
+
+  /* Rules */
+  --color-lj-rule:          rgba(10, 10, 10, 0.14);
+  --color-lj-rule-soft:     rgba(10, 10, 10, 0.08);
+  --color-lj-rule-on-ink:   rgba(239, 237, 230, 0.18);
+
+  /* Type scale (additive — old --text-* stay until Stage 5) */
+  --text-lj-mega:    clamp(2.75rem, 9vw, 9.5rem);
+  --text-lj-display: clamp(2.25rem, 5.5vw, 5.5rem);
+  --text-lj-mono-xs: 0.6875rem;
+  --text-lj-mono-sm: 0.75rem;
+
+  /* Easings — intentionally unprefixed: these are generic curves
+     reusable by any design version, not lab-journal-specific. */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo:  cubic-bezier(0.19, 1, 0.22, 1);
+
+  /* Layout */
+  --max-lj-content: 1600px;
+  --max-lj-narrow:  1400px;
 }
 
 body {
