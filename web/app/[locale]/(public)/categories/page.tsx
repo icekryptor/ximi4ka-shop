@@ -57,6 +57,10 @@ async function fetchCategories(): Promise<ProductCategory[]> {
   }
 }
 
+// Asymmetric span pattern matching the homepage masonry — keeps the
+// magazine-like rhythm consistent across the catalog surface area.
+const CATEGORY_SPANS: Array<1 | 2> = [1, 2, 2, 1, 1, 2]
+
 export default async function CategoriesListPage({ params }: Props) {
   const { locale: rawLocale } = await params
   if (!isLocale(rawLocale)) notFound()
@@ -77,7 +81,15 @@ export default async function CategoriesListPage({ params }: Props) {
         <Container>
           <div className="relative z-10 max-w-2xl">
             <Reveal>
-              <DisplayHeading className="mb-4">Каталог</DisplayHeading>
+              <DisplayHeading className="mb-4">
+                <span
+                  aria-hidden="true"
+                  className="mr-3 text-[var(--color-accent)]"
+                >
+                  ·
+                </span>
+                Каталог
+              </DisplayHeading>
             </Reveal>
             <Reveal delay={0.05}>
               <p className="text-[length:var(--text-lead)] text-[var(--color-brand-text-secondary)]">
@@ -92,10 +104,14 @@ export default async function CategoriesListPage({ params }: Props) {
       <Section size="lg" surface="base">
         <Container>
           {categories.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3">
               {categories.map((category, i) => (
                 <Reveal key={category.id} delay={(i % 3) * 0.05}>
-                  <CategoryTile category={category} tintIndex={i} />
+                  <CategoryTile
+                    category={category}
+                    tintIndex={i}
+                    span={CATEGORY_SPANS[i % CATEGORY_SPANS.length] ?? 1}
+                  />
                 </Reveal>
               ))}
             </div>

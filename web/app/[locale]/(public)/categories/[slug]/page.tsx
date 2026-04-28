@@ -9,7 +9,7 @@ import {
 } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
-import { Container, Section, DisplayHeading } from '@/components/ui'
+import { Container, Section, DisplayHeading, Sticker, Ticker } from '@/components/ui'
 import { Reveal } from '@/components/motion'
 import { PreFooterCta } from '@/components/marketing'
 import { GradientBlob } from '@/components/decor/GradientBlob'
@@ -140,7 +140,12 @@ export default async function CategoryDetailPage({ params }: Props) {
           </nav>
           <div className="relative z-10 max-w-2xl">
             <Reveal>
-              <DisplayHeading className="mb-4">{name}</DisplayHeading>
+              <div className="mb-4 flex flex-wrap items-center gap-4">
+                <DisplayHeading>{name}</DisplayHeading>
+                {products.length > 0 && (
+                  <Sticker variant="accent">{products.length} товаров</Sticker>
+                )}
+              </div>
             </Reveal>
             {description && (
               <Reveal delay={0.05}>
@@ -153,11 +158,24 @@ export default async function CategoryDetailPage({ params }: Props) {
         </Container>
       </Section>
 
+      {/* Reassurance ticker */}
+      {products.length > 0 && (
+        <Ticker
+          surface="soft"
+          items={[
+            'Сертифицировано',
+            'Безопасно для образования',
+            'Подробные инструкции',
+            'Доставка по России',
+          ]}
+        />
+      )}
+
       {/* Product grid */}
       <Section size="lg" surface="base">
         <Container>
           {products.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
