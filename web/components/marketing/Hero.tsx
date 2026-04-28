@@ -98,10 +98,10 @@ export function Hero({
               )}
             </span>
           ))}
-          <span className="block font-[var(--font-lj-mono)] font-normal text-[clamp(0.875rem,1vw,1.125rem)] normal-case tracking-[0.02em] opacity-55 mt-6 pl-[9vw] max-w-[36ch] leading-snug">
-            {trailLine}
-          </span>
         </h1>
+        <p className="block font-[var(--font-lj-mono)] font-normal text-[clamp(0.875rem,1vw,1.125rem)] normal-case tracking-[0.02em] opacity-55 -mt-4 mb-10 pl-[9vw] max-w-[36ch] leading-snug">
+          {trailLine}
+        </p>
 
         <p className="max-w-[540px] text-xl leading-snug opacity-78 mb-12 relative z-[2]">
           {lead}

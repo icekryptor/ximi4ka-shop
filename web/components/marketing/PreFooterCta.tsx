@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Container, DisplayHeading } from '@/components/ui'
 import { LabSection } from '@/components/ui/LabSection'
 import { Reveal } from '@/components/motion'
@@ -20,12 +21,12 @@ export function PreFooterCta({ title, lead, cta }: Props) {
                 {lead}
               </p>
             )}
-            <a
+            <Link
               href={cta.href}
-              className="inline-flex items-center justify-center rounded-full bg-[var(--gradient-accent)] px-10 py-4 text-[length:var(--text-lead)] font-semibold text-white shadow-[var(--shadow-glow-brand)] transition hover:opacity-95"
+              className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-bone)] rounded-full bg-transparent text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-bone)] hover:text-[var(--color-lj-ink)]"
             >
               {cta.label}
-            </a>
+            </Link>
           </div>
         </Reveal>
       </Container>

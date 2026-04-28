@@ -26,7 +26,7 @@ export function CategoryTile({
   return (
     <Link
       href={`/categories/${category.slug}`}
-      className={`relative block rounded-[var(--radius-lg)] bg-gradient-to-br ${tint} p-8 min-h-[220px] transition hover:shadow-[var(--shadow-lg)] ${spanClass}`}
+      className={`group/pcard relative block rounded-[var(--radius-lg)] bg-gradient-to-br ${tint} p-8 min-h-[220px] transition hover:shadow-[var(--shadow-lg)] ${spanClass}`}
     >
       {productCount !== undefined && (
         <span className="absolute top-4 right-4">

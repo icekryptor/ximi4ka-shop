@@ -59,7 +59,7 @@ describe('PreFooterCta', () => {
     expect(section!.className).toContain('bg-[var(--color-lj-ink)]')
   })
 
-  it('renders the CTA with an orange accent gradient pill', () => {
+  it('renders the CTA as a v3 outlined pill (bone border, transparent bg) on the ink surface', () => {
     render(
       <PreFooterCta
         title="t"
@@ -67,7 +67,10 @@ describe('PreFooterCta', () => {
       />,
     )
     const link = screen.getByRole('link', { name: 'Открыть каталог' })
-    expect(link.className).toContain('bg-[var(--gradient-accent)]')
-    expect(link.className).toContain('shadow-[var(--shadow-glow-brand)]')
+    expect(link.className).toContain('border-[var(--color-lj-bone)]')
+    expect(link.className).toContain('text-[var(--color-lj-bone)]')
+    expect(link.className).toContain('bg-transparent')
+    expect(link.className).not.toContain('bg-[var(--gradient-accent)]')
+    expect(link.className).not.toContain('shadow-[var(--shadow-glow-brand)]')
   })
 })
