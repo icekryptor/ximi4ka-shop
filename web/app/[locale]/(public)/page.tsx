@@ -13,7 +13,8 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
-import { Container, Section, DarkSection, SectionHeading } from '@/components/ui'
+import { Container, Section, SectionHeading } from '@/components/ui'
+import { LabSection } from '@/components/ui/LabSection'
 import { Reveal, Stagger } from '@/components/motion'
 import {
   Hero,
@@ -332,7 +333,7 @@ export default async function HomePage({ params }: Props) {
       </Section>
 
       {/* 5. Как это работает (DARK) */}
-      <DarkSection size="lg" id="how-it-works" glow>
+      <LabSection variant="ink" id="how-it-works" className="px-6 py-32">
         <Container>
           <Reveal>
             <div className="mb-12 flex flex-col items-center gap-3 text-center">
@@ -365,7 +366,7 @@ export default async function HomePage({ params }: Props) {
             />
           </Stagger>
         </Container>
-      </DarkSection>
+      </LabSection>
 
       {/* 6. Что говорят родители (LIGHT) */}
       <Section size="lg" surface="base">

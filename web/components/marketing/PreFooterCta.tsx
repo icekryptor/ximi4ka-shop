@@ -1,4 +1,5 @@
-import { Container, DarkSection, DisplayHeading } from '@/components/ui'
+import { Container, DisplayHeading } from '@/components/ui'
+import { LabSection } from '@/components/ui/LabSection'
 import { Reveal } from '@/components/motion'
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
 
 export function PreFooterCta({ title, lead, cta }: Props) {
   return (
-    <DarkSection size="lg" glow>
+    <LabSection variant="ink" className="px-6 py-32">
       <Container>
         <Reveal>
           <div className="flex flex-col items-center gap-6 text-center">
@@ -28,6 +29,6 @@ export function PreFooterCta({ title, lead, cta }: Props) {
           </div>
         </Reveal>
       </Container>
-    </DarkSection>
+    </LabSection>
   )
 }

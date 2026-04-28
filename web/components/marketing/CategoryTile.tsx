@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { ProductCategory } from '@ximi4ka-shop/shared'
-import { Sticker } from '@/components/ui'
+import { Chip } from '@/components/ui/Chip'
 
 interface Props {
   category: ProductCategory
@@ -29,9 +29,9 @@ export function CategoryTile({
       className={`relative block rounded-[var(--radius-lg)] bg-gradient-to-br ${tint} p-8 min-h-[220px] transition hover:shadow-[var(--shadow-lg)] ${spanClass}`}
     >
       {productCount !== undefined && (
-        <Sticker variant="accent" className="absolute top-4 right-4">
-          {productCount} товаров
-        </Sticker>
+        <span className="absolute top-4 right-4">
+          <Chip>{productCount} товаров</Chip>
+        </span>
       )}
       <div className="flex flex-col gap-3">
         <h3 className="font-[var(--font-display)] text-[length:var(--text-h3)] text-[var(--color-brand-text)] tracking-[var(--tracking-tight)]">

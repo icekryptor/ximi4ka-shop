@@ -326,7 +326,7 @@ export default async function ProductPage({ params }: Props) {
         </Container>
       </Section>
 
-      {/* «Что внутри» — DarkSection. Renders only when «Состав» content
+      {/* «Что внутри» — ink LabSection. Renders only when «Состав» content
           is present in longDescriptionBlocks (e.g. Химичка 3.0). */}
       <ContentsSection blocks={longDescriptionBlocks} />
 

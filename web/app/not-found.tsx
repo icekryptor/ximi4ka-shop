@@ -1,13 +1,14 @@
 import Link from 'next/link'
-import { Container, DarkSection } from '@/components/ui'
+import { Container } from '@/components/ui'
+import { LabSection } from '@/components/ui/LabSection'
 import { MoleculeMotif } from '@/components/decor'
 
 export default function NotFound() {
   return (
-    <DarkSection size="lg" glow>
+    <LabSection variant="ink" className="px-6 py-32">
       {/* Decorative motif sits BEHIND the numeral on a low z-index. The
-          DarkSection already wraps content in a `relative z-10` div, so the
-          motif here is positioned absolutely with `z-0` to stay underneath. */}
+          motif is positioned absolutely with `z-0` and the foreground content
+          uses `relative z-10` to stay above. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center opacity-30"
@@ -45,6 +46,6 @@ export default function NotFound() {
           </div>
         </div>
       </Container>
-    </DarkSection>
+    </LabSection>
   )
 }

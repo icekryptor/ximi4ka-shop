@@ -66,7 +66,7 @@ describe('ContentsSection', () => {
     expect(screen.getByText('safe')).toBeInTheDocument()
   })
 
-  it('forwards className onto the DarkSection root', () => {
+  it('forwards className onto the LabSection root', () => {
     const { container } = render(
       <ContentsSection
         blocks={[{ type: 'paragraph', html: sostavHtml }]}

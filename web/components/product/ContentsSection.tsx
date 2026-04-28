@@ -1,7 +1,8 @@
 import type { Block } from '@ximi4ka-shop/shared'
 import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
-import { DarkSection, Container, DisplayHeading } from '@/components/ui'
+import { Container, DisplayHeading } from '@/components/ui'
+import { LabSection } from '@/components/ui/LabSection'
 import { MoleculeMotif } from '@/components/decor'
 
 const CONTENTS_HEADING_RE = /<h3[^>]*>\s*Состав\s*<\/h3>/i
@@ -13,9 +14,9 @@ interface Props {
 
 /**
  * Detects whether the long-description has a structured «Состав» paragraph
- * block (typical for kit products imported from Tilda) and renders a
- * DarkSection «Что внутри» with the parsed list. Returns null otherwise so
- * the consuming page can render this unconditionally.
+ * block (typical for kit products imported from Tilda) and renders an
+ * ink LabSection «Что внутри» with the parsed list. Returns null otherwise
+ * so the consuming page can render this unconditionally.
  */
 export function ContentsSection({ blocks, className = '' }: Props) {
   if (!Array.isArray(blocks)) return null
@@ -35,7 +36,7 @@ export function ContentsSection({ blocks, className = '' }: Props) {
   const cleaned = sanitizeHtml(bodyHtml)
 
   return (
-    <DarkSection size="lg" glow className={className}>
+    <LabSection variant="ink" className={`px-6 py-32 ${className}`.trim()}>
       <Container>
         <div className="relative grid gap-12 md:grid-cols-[1fr_2fr] md:gap-16">
           <div
@@ -55,6 +56,6 @@ export function ContentsSection({ blocks, className = '' }: Props) {
           />
         </div>
       </Container>
-    </DarkSection>
+    </LabSection>
   )
 }

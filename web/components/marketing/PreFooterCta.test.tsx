@@ -47,7 +47,7 @@ describe('PreFooterCta', () => {
     expect(link).toHaveAttribute('href', '/categories')
   })
 
-  it('wraps content in a dark section surface', () => {
+  it('wraps content in an ink LabSection surface', () => {
     const { container } = render(
       <PreFooterCta
         title="t"
@@ -56,7 +56,7 @@ describe('PreFooterCta', () => {
     )
     const section = container.querySelector('section')
     expect(section).not.toBeNull()
-    expect(section!.className).toContain('bg-[var(--color-dark-base)]')
+    expect(section!.className).toContain('bg-[var(--color-lj-ink)]')
   })
 
   it('renders the CTA with an orange accent gradient pill', () => {
