@@ -126,7 +126,15 @@ export default async function CmsPage({ params }: Props) {
         <Container>
           <div className="relative z-10 max-w-3xl">
             <Reveal>
-              <DisplayHeading className="mb-4">{title}</DisplayHeading>
+              <DisplayHeading className="mb-4">
+                <span
+                  aria-hidden="true"
+                  className="mr-3 text-[var(--color-accent)]"
+                >
+                  ·
+                </span>
+                {title}
+              </DisplayHeading>
             </Reveal>
             {metaDescription && (
               <Reveal delay={0.05}>
