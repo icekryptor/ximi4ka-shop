@@ -12,22 +12,20 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata, siteUrl } from '@/lib/metadata'
 import { breadcrumbJsonLd, productJsonLd } from '@/lib/jsonLd'
+import { MicroTrustRow, type MicroTrustItem } from '@/components/ui/MicroTrustRow'
+import { LabSection } from '@/components/ui/LabSection'
+import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import {
-  Container,
-  Section,
-  DisplayHeading,
-  Eyebrow,
-  SectionHeading,
-  MicroTrustRow,
-  Pill,
-} from '@/components/ui'
-import { Reveal } from '@/components/motion'
-import {
-  PriceBlock,
-  StockPill,
-  KeyFactsList,
-  CharacteristicsTable,
   ContentsSection,
+  ProductHeroImage,
+  ProductPriceBlockLJ,
+  StockChip,
+  KeyFactsListLJ,
+  CharacteristicsTableLJ,
+  CharacteristicsCellRow,
+  extractGalleryImages,
+  extractKeyFacts,
+  extractUseFacts,
 } from '@/components/product'
 import { ProductCard } from '@/components/ProductCard'
 import { PreFooterCta } from '@/components/marketing/PreFooterCta'
@@ -43,6 +41,15 @@ import {
 } from '@/lib/i18n'
 
 export const revalidate = 60
+
+// Static trust signals for the v3 hero column. Lab-journal vocabulary
+// drops the emoji icons that v2 used — bullets render as brand-purple
+// `•` per MicroTrustRow's restyled `before:` pseudo.
+const MICRO_TRUST_ITEMS: MicroTrustItem[] = [
+  { icon: null, label: 'Безопасные реактивы' },
+  { icon: null, label: 'Доставка от 3 дней' },
+  { icon: null, label: 'Возврат 14 дней' },
+]
 
 export async function generateStaticParams() {
   try {
@@ -105,12 +112,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 /**
- * Pull up to 4 related products. Strategy:
+ * Pull up to 3 related products. Strategy:
  *  1. Fetch the published product list with `?include=categories` so each
  *     entry carries `categoryIds`.
  *  2. Find products sharing a category with the current one.
- *  3. If fewer than 4, top up with any other published products so the
+ *  3. If fewer than 3, top up with any other published products so the
  *     section is never empty when there's stock to show.
+ *
+ * v3 trims to a 3-up grid (was 4-up in v2) to match the lab-journal
+ * asymmetric catalog rhythm used on the homepage.
  */
 async function fetchRelatedProducts(
   currentProductId: string,
@@ -127,21 +137,17 @@ async function fetchRelatedProducts(
       return ids.some((id) => currentCategoryIds.has(id))
     })
 
-    if (sameCategory.length >= 4) return sameCategory.slice(0, 4)
+    if (sameCategory.length >= 3) return sameCategory.slice(0, 3)
 
     const others = all.filter(
       (p) =>
         p.id !== currentProductId && !sameCategory.some((s) => s.id === p.id),
     )
-    return [...sameCategory, ...others].slice(0, 4)
+    return [...sameCategory, ...others].slice(0, 3)
   } catch {
     return []
   }
 }
-
-// Priority list of characteristic keys to surface as quick-scan pills in
-// the info column. We pick the first few that are present on this product.
-const PILL_KEYS = ['Концентрация', 'Объем', 'Возраст', 'Масса', 'Квалификация']
 
 export default async function ProductPage({ params }: Props) {
   const { locale: rawLocale, slug } = await params
@@ -171,15 +177,21 @@ export default async function ProductPage({ params }: Props) {
       product.longDescriptionBlocks) as unknown[]
 
   const characteristics = parseCharacteristics(longDescriptionBlocks)
-
-  // Quick-scan pills row — first 4 priority keys present on this product.
-  const pillItems = PILL_KEYS.map((k) =>
-    characteristics[k] ? characteristics[k] : null,
-  )
-    .filter((v): v is string => Boolean(v))
-    .slice(0, 4)
+  const keyFacts = extractKeyFacts(characteristics)
+  const useFacts = extractUseFacts(characteristics)
+  const galleryImages = extractGalleryImages(product)
 
   const related = await fetchRelatedProducts(product.id)
+
+  // SKU suffix used for hero corner-mark + section coordinate. Falls back
+  // to `XX` when the editor hasn't set a SKU on this product.
+  const skuSuffix = (product.sku ?? 'XX').slice(-2)
+
+  // Split the product name on whitespace so the hero H1 can render an
+  // off-grid stagger: even-indexed words flush left, odd-indexed words
+  // indented `pl-[6vw]` for the hand-typeset journal feel. The first
+  // word lights up brand-purple italic.
+  const nameWords = name.split(/\s+/)
 
   return (
     <>
@@ -196,168 +208,170 @@ export default async function ProductPage({ params }: Props) {
         ])}
       />
 
-      {/* Hero / info area */}
-      <Section size="lg">
-        <Container>
-          <nav
-            aria-label="breadcrumbs"
-            className="mb-8 text-[length:var(--text-small)] text-[var(--color-text-muted)]"
-          >
-            <Link href="/" className="hover:text-[var(--color-brand-text)]">
-              Главная
-            </Link>
-            <span className="mx-2" aria-hidden="true">
-              ·
-            </span>
-            <Link
-              href="/categories"
-              className="hover:text-[var(--color-brand-text)]"
-            >
-              Каталог
-            </Link>
-            <span className="mx-2" aria-hidden="true">
-              ·
-            </span>
-            <span className="text-[var(--color-brand-text)]">{name}</span>
-          </nav>
+      {/* Mono breadcrumb trail — sits above SECTION 1, on the page bg
+          (cream is the section, this nav is on the body's bone-ish bg). */}
+      <nav
+        aria-label="breadcrumbs"
+        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-70"
+      >
+        <Link href="/" className="hover:opacity-100">
+          Главная
+        </Link>
+        <span className="mx-2" aria-hidden="true">
+          /
+        </span>
+        <Link href="/categories" className="hover:opacity-100">
+          Каталог
+        </Link>
+        <span className="mx-2" aria-hidden="true">
+          /
+        </span>
+        <span className="opacity-100">{name}</span>
+      </nav>
 
-          {/* 5-column grid: gallery (3 cols ≈ 60%) + info (2 cols ≈ 40%) on md+ */}
-          <div className="grid grid-cols-1 gap-12 md:grid-cols-5">
-            {/* Gallery — sticky on md+, with floating sticker badges */}
-            <div className="md:col-span-3">
-              <div className="space-y-4 md:sticky md:top-24">
-                <div
-                  className="relative aspect-square overflow-hidden rounded-[var(--radius-lg)]"
-                  style={{
-                    background:
-                      'radial-gradient(circle at 30% 30%, rgba(141,103,255,0.10) 0%, rgba(200,86,255,0.05) 50%, rgba(238,235,243,1) 100%)',
-                  }}
-                >
-                  {product.images && product.images.length > 0 ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={product.images[0].url}
-                      alt={product.images[0].alt || name}
-                      className="absolute inset-0 h-full w-full object-contain p-12"
-                    />
-                  ) : (
-                    <div
-                      aria-hidden="true"
-                      className="absolute inset-0 flex items-center justify-center"
-                    >
-                      <span className="font-[var(--font-display)] text-[length:var(--text-h1)] text-[var(--color-brand)] opacity-30 px-12 text-center leading-tight">
-                        {name}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* TODO(v3): re-evaluate product detail badge positioning vs v3 lab-journal aesthetic */}
-                </div>
-
-                {/* Thumbnail strip — purely visual stack for v1 */}
-                {product.images && product.images.length > 1 && (
-                  <div className="flex gap-2 overflow-x-auto">
-                    {product.images.map((img) => (
-                      <div
-                        key={img.id}
-                        className="aspect-square w-20 shrink-0 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-soft)]"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={img.url}
-                          alt={img.alt}
-                          className="h-full w-full object-contain p-1"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Info column */}
-            <div className="flex flex-col gap-6 md:col-span-2">
-              <div>
-                <Eyebrow>Каталог</Eyebrow>
-                <DisplayHeading as="h1" className="mt-3">
-                  {name}
-                </DisplayHeading>
-              </div>
-
-              {shortDescription && (
-                <p className="text-[length:var(--text-lead)] leading-[var(--leading-body)] text-[var(--color-brand-text-secondary)]">
-                  {shortDescription}
-                </p>
-              )}
-
-              {/* Quick-scan characteristic pills */}
-              {pillItems.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {pillItems.map((p, i) => (
-                    <Pill key={`${p}-${i}`} variant="soft-brand">
-                      {p}
-                    </Pill>
-                  ))}
-                </div>
-              )}
-
-              <StockPill status={product.stockStatus} className="self-start" />
-
-              <PriceBlock
-                priceRub={product.priceRub}
-                compareAtPriceRub={product.compareAtPriceRub}
-                size="lg"
-              />
-
-              <AddToCartWithQuantity product={product} />
-
-              <MicroTrustRow
-                items={[
-                  { icon: '🛡️', label: 'Безопасные реактивы' },
-                  { icon: '🚚', label: 'Доставка от 3 дней' },
-                  { icon: '↩️', label: 'Возврат 14 дней' },
-                ]}
-              />
-
-              {/* Spec sheet — renders nothing when no priority key matches. */}
-              <KeyFactsList characteristics={characteristics} />
-            </div>
+      {/* SECTION 1 — HERO (cream). Two-column desktop: gallery + info. */}
+      <LabSection variant="cream" className="px-6 pt-12 pb-20 relative">
+        <NotebookHeader
+          section={`P-${skuSuffix}`}
+          label="Карточка набора"
+          page={1}
+          total={6}
+          edition="Ред. 2026.04 / v3"
+        />
+        <div className="max-w-[var(--max-lj-content)] mx-auto grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-20">
+          {/* IMAGE COLUMN */}
+          <div>
+            <ProductHeroImage
+              images={galleryImages}
+              cornerMark={`arr. P-${skuSuffix}`}
+              alt={name}
+            />
           </div>
-        </Container>
-      </Section>
 
-      {/* «Что внутри» — ink LabSection. Renders only when «Состав» content
-          is present in longDescriptionBlocks (e.g. Химичка 3.0). */}
+          {/* INFO COLUMN */}
+          <div className="flex flex-col gap-6 pt-4">
+            {/* SKU header — brand-purple bullet then mono SKU label */}
+            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] inline-flex items-center gap-2 before:content-[''] before:w-1.5 before:h-1.5 before:bg-[var(--color-lj-brand)] before:rounded-full">
+              № {product.sku ?? product.slug}
+            </p>
+
+            {/* OFF-GRID H1 — even words flush, odd words indented for the
+                hand-typeset journal stagger. First word lights up brand. */}
+            <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] uppercase">
+              {nameWords.map((word, i) => (
+                <span key={i} className={`block ${i % 2 === 1 ? 'pl-[6vw]' : ''}`}>
+                  {i === 0 ? (
+                    <em className="not-italic-fix italic text-[var(--color-lj-brand)] font-[900]">
+                      {word}
+                    </em>
+                  ) : (
+                    word
+                  )}
+                </span>
+              ))}
+            </h1>
+
+            {/* Trail line — small mono follow-up under the headline */}
+            <p className="font-[var(--font-lj-mono)] text-sm text-[var(--color-lj-ink)] opacity-55 max-w-[36ch]">
+              — настоящие реактивы, без подделок
+            </p>
+
+            {shortDescription && (
+              <p className="text-[1.0625rem] leading-[1.5] text-[var(--color-lj-ink)] opacity-78 max-w-[48ch]">
+                {shortDescription}
+              </p>
+            )}
+
+            <ProductPriceBlockLJ
+              priceRub={product.priceRub}
+              compareAtPriceRub={product.compareAtPriceRub}
+            />
+
+            <StockChip status={product.stockStatus} />
+
+            <AddToCartWithQuantity product={product} />
+
+            <MicroTrustRow items={MICRO_TRUST_ITEMS} />
+
+            {/* Spec sheet — KeyFactsListLJ no-renders when keyFacts is empty */}
+            <KeyFactsListLJ facts={keyFacts} />
+          </div>
+        </div>
+      </LabSection>
+
+      {/* SECTION 2 — «Что внутри». Self-no-renders when «Состав» block
+          isn't present in the long description. */}
       <ContentsSection blocks={longDescriptionBlocks} />
 
-      {/* Long description — constrained width for readability. Appends
-          a CharacteristicsTable below for products with 4+ characteristics. */}
+      {/* SECTION 3 — Характеристики (ink data sheet). Always shown — the
+          `useFacts` row + full table both no-render when empty. */}
+      <LabSection variant="ink" className="px-6 py-32 relative">
+        <NotebookHeader section="02" label="Характеристики" page={3} total={6} />
+        <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
+          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+            02.0 / Технические данные
+          </p>
+          <h2 className="font-[var(--font-lj-display)] font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
+            Что у вас будет в{' '}
+            <em className="italic text-[var(--color-lj-brand)] font-[700]">руках</em>
+          </h2>
+          <div className="mb-16">
+            <CharacteristicsCellRow facts={useFacts} />
+          </div>
+          {Object.keys(characteristics).length > 0 && (
+            <div className="mt-16">
+              <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-6">
+                Полный список характеристик
+              </p>
+              <CharacteristicsTableLJ characteristics={characteristics} />
+            </div>
+          )}
+        </div>
+      </LabSection>
+
+      {/* SECTION 4 — Описание (cream prose). Renders when CMS provided
+          long-description blocks. */}
       {Array.isArray(longDescriptionBlocks) &&
         longDescriptionBlocks.length > 0 && (
-          <Section size="md" surface="base">
-            <Container>
-              <div className="mx-auto max-w-3xl">
-                <SectionHeading title="Описание" />
-                <BlockRenderer blocks={longDescriptionBlocks} />
-                <CharacteristicsTable
-                  characteristics={characteristics}
-                  className="mt-12"
-                />
-              </div>
-            </Container>
-          </Section>
+          <LabSection variant="cream" className="px-6 py-24">
+            <NotebookHeader section="03" label="Описание" page={4} total={6} />
+            <div className="max-w-[var(--max-lj-narrow)] mx-auto">
+              <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+                03.0 / Полное описание
+              </p>
+              <BlockRenderer blocks={longDescriptionBlocks} />
+            </div>
+          </LabSection>
         )}
 
-      {/* Related products — 4-up on desktop. */}
+      {/* SECTION 5 — Related products (cream). 3-up grid mirroring the
+          asymmetric homepage catalog. Stats are placeholders pending a
+          future `kit_stats` admin field; this is the same pattern Task 4.3
+          uses on the homepage. */}
       {related.length > 0 && (
-        <Section size="lg" surface="soft">
-          <Container>
-            <Reveal>
-              <SectionHeading title="С этим набором покупают" />
-            </Reveal>
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <LabSection variant="cream" className="px-6 py-24">
+          <NotebookHeader
+            section="04"
+            label="Связанные наборы"
+            page={5}
+            total={6}
+          />
+          <div className="max-w-[var(--max-lj-content)] mx-auto">
+            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+              04.0 / С этим набором покупают
+            </p>
+            <h2 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2rem,4vw,3.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
+              Совместимые
+              <br />
+              <em className="italic text-[var(--color-lj-brand)] font-[900]">
+                наборы
+              </em>
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {related.map((p) => (
-                /* TODO(Task 4.4): replace with real catalog data + asymmetric grid */
+                /* TODO(Task 4.4 follow-up): wire real stats once admin
+                   `kit_stats` field lands. Mirrors the homepage placeholder
+                   pattern. */
                 <ProductCard
                   key={p.id}
                   product={p}
@@ -366,18 +380,19 @@ export default async function ProductPage({ params }: Props) {
                 />
               ))}
             </div>
-          </Container>
-        </Section>
+          </div>
+        </LabSection>
       )}
 
-      {/* Pre-footer dark CTA. */}
+      {/* SECTION 6 — Pre-footer dark CTA. Already migrated to ink LJ. */}
       <PreFooterCta
         title="Не нашли подходящий набор?"
         lead="В каталоге собраны наборы для разных возрастов и научных направлений."
         cta={{ label: 'Все категории', href: '/categories' }}
       />
 
-      {/* Mobile sticky buy bar */}
+      {/* MOBILE BUY BAR — sticky bottom on mobile, IO-driven via the
+          `data-add-to-cart-row` sentinel inside AddToCartWithQuantity. */}
       <MobileBuyBarMount product={product} />
     </>
   )
