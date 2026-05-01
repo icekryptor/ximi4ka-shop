@@ -1,4 +1,5 @@
 import type { FaqBlock as FaqBlockType } from '@ximi4ka-shop/shared'
+import { FaqAccordion } from '@/components/ui/FaqAccordion'
 
 interface Props {
   block: FaqBlockType
@@ -6,6 +7,9 @@ interface Props {
 
 export function FaqBlock({ block }: Props) {
   if (block.items.length === 0) return null
+
+  // Shared FaqItem is { question, answer } — adapt to FaqAccordion's { q, a }
+  const items = block.items.map((item) => ({ q: item.question, a: item.answer }))
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -21,25 +25,12 @@ export function FaqBlock({ block }: Props) {
   }
 
   return (
-    <section data-block="faq" className="my-8">
-      {block.items.map((item, i) => (
-        <details
-          key={i}
-          className="border-b border-gray-200 py-4 group"
-        >
-          <summary className="cursor-pointer font-semibold list-none flex justify-between items-center">
-            <span>{item.question}</span>
-            <span aria-hidden className="text-gray-400 group-open:rotate-45 transition-transform">
-              +
-            </span>
-          </summary>
-          <p className="mt-3 text-gray-700 whitespace-pre-line">{item.answer}</p>
-        </details>
-      ))}
+    <div data-block="faq" className="max-w-[var(--max-lj-narrow)] mx-auto">
+      <FaqAccordion items={items} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-    </section>
+    </div>
   )
 }
