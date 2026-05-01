@@ -3,171 +3,118 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useCart } from '@/lib/cart'
-import {
-  Container,
-  Section,
-  DisplayHeading,
-  Eyebrow,
-  Button,
-  GlassCard,
-  MicroTrustRow,
-  type MicroTrustItem,
-} from '@/components/ui'
 import { QuantityStepperLJ } from '@/components/product/QuantityStepperLJ'
 import { formatRub } from '@/lib/stockLabel'
+import { pluralizeRu } from '@/lib/i18n'
 
-const TRUST_ITEMS: MicroTrustItem[] = [
-  { icon: '🛡️', label: 'Безопасные реактивы' },
-  { icon: '🚚', label: 'Доставка от 3 дней' },
-  { icon: '↩️', label: 'Возврат 14 дней' },
-]
+const SHIPPING_RUB = 400
 
 export default function CartPage() {
-  const { items, setQty, remove, subtotal, clear } = useCart()
+  const { items, setQty, remove, subtotal } = useCart()
   const [hydrated, setHydrated] = useState(false)
-  // Standard SSR/CSR hydration guard — set after mount so server-rendered
-  // markup matches the first client render before the localStorage read kicks in.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setHydrated(true), [])
 
-  // Avoid SSR/CSR hydration mismatch — cart state lives in localStorage,
-  // so the server renders an empty placeholder until the client mounts.
-  if (!hydrated) {
-    return (
-      <Section size="md" surface="base">
-        <Container>
-          <div className="min-h-[40vh]" />
-        </Container>
-      </Section>
-    )
-  }
-
-  if (items.length === 0) {
-    return (
-      <Section size="lg" surface="base">
-        <Container>
-          <div className="flex flex-col items-center justify-center text-center py-16 gap-6">
-            <Eyebrow>Корзина</Eyebrow>
-            <DisplayHeading>Корзина пуста</DisplayHeading>
-            <p className="max-w-md text-[length:var(--text-lead)] text-[var(--color-brand-text-secondary)]">
-              Добавьте набор из каталога, чтобы оформить заказ.
-            </p>
-            <Button href="/categories" size="lg">
-              В каталог
-            </Button>
-          </div>
-        </Container>
-      </Section>
-    )
-  }
+  const itemTypeCount = items.length
+  const totalRub = subtotal + (itemTypeCount > 0 ? SHIPPING_RUB : 0)
 
   return (
-    <Section size="md" surface="base">
-      <Container>
-        <Eyebrow className="mb-3">Корзина</Eyebrow>
-        <DisplayHeading className="mb-10">Ваш заказ</DisplayHeading>
+    <section className="bg-[var(--color-lj-cream)] px-6 py-16 min-h-[80vh]">
+      <div className="max-w-[var(--max-lj-narrow)] mx-auto">
+        {hydrated && itemTypeCount > 0 ? (
+          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
+            КОРЗИНА · {itemTypeCount}{' '}
+            {pluralizeRu(itemTypeCount, ['НАБОР', 'НАБОРА', 'НАБОРОВ'])}
+          </p>
+        ) : (
+          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
+            КОРЗИНА
+          </p>
+        )}
 
-        <div className="grid gap-12 lg:grid-cols-[1.5fr_1fr]">
-          {/* Items list */}
-          <div className="flex flex-col">
-            {items.map((item, i) => (
-              <div
-                key={item.productId}
-                data-testid={`cart-page-item-${item.productId}`}
-                className={`flex flex-wrap items-center gap-4 py-6 ${
-                  i > 0 ? 'border-t border-[var(--color-border-subtle)]' : ''
-                }`}
-              >
-                {/* Cutout-style thumbnail placeholder — cart items don't carry image URLs */}
-                <div
-                  aria-hidden="true"
-                  className="h-20 w-20 shrink-0 rounded-[var(--radius-md)]"
-                  style={{
-                    background:
-                      'radial-gradient(circle at 30% 30%, rgba(141,103,255,0.10), rgba(238,235,243,1))',
-                  }}
-                />
+        <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] mb-12 text-[var(--color-lj-ink)]">
+          Корзина
+        </h1>
 
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/product/${item.slug}`}
-                    className="font-semibold text-[var(--color-brand-text)] hover:text-[var(--color-brand)]"
-                  >
-                    {item.name}
-                  </Link>
-                  <p className="text-[length:var(--text-small)] text-[var(--color-text-muted)]">
-                    {formatRub(item.priceRub)} за шт.
-                  </p>
-                </div>
-
-                <QuantityStepperLJ
-                  value={item.quantity}
-                  onChange={(qty) => setQty(item.productId, qty)}
-                />
-
-                <p className="font-[var(--font-display)] text-[length:var(--text-h3)] text-[var(--color-brand-text)] tracking-[var(--tracking-tight)] min-w-[100px] text-right">
-                  {formatRub(item.priceRub * item.quantity)}
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => remove(item.productId)}
-                  aria-label={`Удалить ${item.name}`}
-                  className="rounded-full p-2 text-[var(--color-text-muted)] hover:text-[var(--color-stock-danger)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)]"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={clear}
-              className="mt-6 self-start text-[length:var(--text-small)] text-[var(--color-text-muted)] hover:text-[var(--color-stock-danger)] underline underline-offset-4"
+        {!hydrated ? (
+          <div className="min-h-[40vh]" />
+        ) : itemTypeCount === 0 ? (
+          <div className="flex flex-col items-start gap-6">
+            <p className="text-xl text-[var(--color-lj-ink)] opacity-70">Корзина пуста</p>
+            <Link
+              href="/categories"
+              className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
             >
-              Очистить корзину
-            </button>
+              Открыть каталог →
+            </Link>
           </div>
-
-          {/* Summary */}
-          <div className="lg:sticky lg:top-24 self-start">
-            <GlassCard>
-              <div className="flex flex-col gap-4">
-                <div className="flex justify-between text-[var(--color-brand-text)]">
-                  <span>Подытог</span>
-                  <span className="font-medium">{formatRub(subtotal)}</span>
-                </div>
-                <div className="flex justify-between text-[length:var(--text-small)] text-[var(--color-text-muted)]">
-                  <span>Доставка</span>
-                  <span>Расчёт доставки — на следующем шаге</span>
-                </div>
-                <hr className="border-[var(--color-border-subtle)]" />
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[length:var(--text-lead)] text-[var(--color-brand-text)]">
-                    Итого
-                  </span>
-                  <span
-                    className="font-[var(--font-display)] text-[length:var(--text-h2)] text-[var(--color-accent)] tracking-[var(--tracking-tight)]"
-                  >
-                    {formatRub(subtotal)}
-                  </span>
-                </div>
-                <Link
-                  href="/checkout"
-                  className="inline-flex w-full items-center justify-center rounded-full px-8 py-4 text-[length:var(--text-lead)] font-semibold text-white shadow-[var(--shadow-md)] transition hover:opacity-95"
-                  style={{ backgroundImage: 'var(--gradient-accent)' }}
+        ) : (
+          <>
+            <ul className="list-none p-0 m-0 flex flex-col gap-0 mb-12">
+              {items.map((item) => (
+                <li
+                  key={item.productId}
+                  data-testid={`cart-page-item-${item.productId}`}
+                  className="grid grid-cols-[1fr_auto] gap-6 py-6 border-b border-[var(--color-lj-rule)] items-center"
                 >
-                  Оформить заказ
-                </Link>
-              </div>
-            </GlassCard>
+                  <div className="flex flex-col gap-2 min-w-0">
+                    <Link
+                      href={`/product/${item.slug}`}
+                      className="font-[var(--font-lj-display)] font-[700] text-xl tracking-[-0.025em] text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand-deep)] truncate"
+                    >
+                      {item.name}
+                    </Link>
+                    <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60">
+                      {formatRub(item.priceRub)} за шт.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 flex-wrap justify-end">
+                    <QuantityStepperLJ
+                      value={item.quantity}
+                      onChange={(qty) => setQty(item.productId, qty)}
+                    />
+                    <span className="font-[var(--font-lj-display)] font-[900] text-2xl tracking-[-0.04em] min-w-[7rem] text-right text-[var(--color-lj-ink)]">
+                      {formatRub(item.priceRub * item.quantity)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => remove(item.productId)}
+                      aria-label={`Удалить ${item.name}`}
+                      className="font-[var(--font-lj-mono)] text-[var(--color-lj-ink)] opacity-60 hover:opacity-100 hover:text-[var(--color-stock-danger)] text-2xl leading-none px-2"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
 
-            <div className="mt-6">
-              <MicroTrustRow items={TRUST_ITEMS} />
+            <div className="flex flex-col gap-3 mb-8 max-w-md ml-auto">
+              <div className="flex justify-between font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
+                <span>Подытог</span>
+                <span>{formatRub(subtotal)}</span>
+              </div>
+              <div className="flex justify-between font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
+                <span>Доставка</span>
+                <span>{formatRub(SHIPPING_RUB)}</span>
+              </div>
+              <div className="flex justify-between border-t border-[var(--color-lj-rule)] pt-4 font-[var(--font-lj-display)] font-[900] text-2xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
+                <span>Итого</span>
+                <span>{formatRub(totalRub)}</span>
+              </div>
             </div>
-          </div>
-        </div>
-      </Container>
-    </Section>
+
+            <div className="flex justify-end">
+              <Link
+                href="/checkout"
+                className="inline-flex items-center gap-3 px-8 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
+              >
+                Оформить заказ →
+              </Link>
+            </div>
+          </>
+        )}
+      </div>
+    </section>
   )
 }

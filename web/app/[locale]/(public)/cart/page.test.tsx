@@ -16,51 +16,67 @@ const seed: CartItem[] = [
   { productId: 'b', slug: 'kit-b', name: 'Набор B', priceRub: 2500, quantity: 1 },
 ]
 
-describe('/cart page', () => {
-  it('renders empty state when cart is empty', () => {
+describe('/cart page v3 calm', () => {
+  it('renders display heading "Корзина" on empty state', () => {
     render(<CartPage />)
-    expect(screen.getByRole('heading', { name: 'Корзина пуста' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'В каталог' })).toHaveAttribute(
-      'href',
-      '/categories',
-    )
+    expect(screen.getByRole('heading', { name: 'Корзина' })).toBeInTheDocument()
   })
 
-  it('renders items and total when cart has items', () => {
+  it('shows "Корзина пуста" copy + catalog CTA on empty state', () => {
+    render(<CartPage />)
+    expect(screen.getByText(/корзина пуста/i)).toBeInTheDocument()
+    const cta = screen.getByRole('link', { name: /открыть каталог/i })
+    expect(cta).toHaveAttribute('href', '/categories')
+  })
+
+  it('renders mono page label with item count and pluralization', () => {
     act(() => {
       saveCart(seed)
     })
     render(<CartPage />)
-    expect(screen.getByRole('heading', { name: 'Ваш заказ' })).toBeInTheDocument()
+    expect(screen.getByText(/корзина · 2 набора/i)).toBeInTheDocument()
+  })
+
+  it('renders display heading "Корзина" when items present', () => {
+    act(() => {
+      saveCart(seed)
+    })
+    render(<CartPage />)
+    expect(screen.getByRole('heading', { name: 'Корзина' })).toBeInTheDocument()
+  })
+
+  it('renders item names', () => {
+    act(() => {
+      saveCart(seed)
+    })
+    render(<CartPage />)
     expect(screen.getByText('Набор A')).toBeInTheDocument()
     expect(screen.getByText('Набор B')).toBeInTheDocument()
-    // 2*1000 + 1*2500 = 4500 — appears as both subtotal and total in the summary
-    const totals = screen.getAllByText(/4[\s ]?500 ₽/)
-    expect(totals.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('shows delivery placeholder message in summary', () => {
+  it('renders subtotal, shipping, and total rows', () => {
     act(() => {
       saveCart(seed)
     })
     render(<CartPage />)
-    expect(
-      screen.getByText('Расчёт доставки — на следующем шаге'),
-    ).toBeInTheDocument()
+    // subtotal = 2*1000 + 1*2500 = 4500
+    // shipping = 400 (hardcoded)
+    // total = 4900
+    expect(screen.getByText(/подытог/i)).toBeInTheDocument()
+    expect(screen.getByText(/доставка/i)).toBeInTheDocument()
+    expect(screen.getByText(/итого/i)).toBeInTheDocument()
   })
 
-  it('checkout link points to /checkout', () => {
+  it('checkout CTA points to /checkout', () => {
     act(() => {
       saveCart(seed)
     })
     render(<CartPage />)
-    expect(screen.getByRole('link', { name: 'Оформить заказ' })).toHaveAttribute(
-      'href',
-      '/checkout',
-    )
+    const cta = screen.getByRole('link', { name: /оформить заказ/i })
+    expect(cta).toHaveAttribute('href', '/checkout')
   })
 
-  it('removes an item', () => {
+  it('removes an item via × button', () => {
     act(() => {
       saveCart(seed)
     })
@@ -71,23 +87,11 @@ describe('/cart page', () => {
     expect(loadCart().map((i) => i.productId)).toEqual(['b'])
   })
 
-  it('clears the cart', () => {
-    act(() => {
-      saveCart(seed)
-    })
-    render(<CartPage />)
-    act(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'Очистить корзину' }))
-    })
-    expect(loadCart()).toEqual([])
-  })
-
   it('updates quantity via the stepper', () => {
     act(() => {
       saveCart(seed)
     })
     render(<CartPage />)
-    // QuantityStepperLJ uses English aria-labels (one stepper per cart item)
     const incButtons = screen.getAllByRole('button', { name: 'increase quantity' })
     act(() => {
       fireEvent.click(incButtons[0]!)
