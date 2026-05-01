@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { VideoBlock, videoEmbedUrl } from './VideoBlock'
 
 afterEach(() => {
@@ -24,31 +24,70 @@ describe('videoEmbedUrl', () => {
   })
 })
 
-describe('VideoBlock', () => {
-  it('renders an iframe with the YouTube embed src', () => {
+describe('<VideoBlock> v3', () => {
+  it('renders an iframe inside MediaFrame', () => {
     const { container } = render(
       <VideoBlock block={{ type: 'video', provider: 'youtube', videoId: 'abc' }} />,
     )
-    const iframe = container.querySelector('iframe')
-    expect(iframe).not.toBeNull()
-    expect(iframe?.getAttribute('src')).toBe('https://www.youtube.com/embed/abc')
+    expect(container.querySelector('iframe')).not.toBeNull()
+    expect(container.querySelector('[data-frame]')).not.toBeNull()
   })
 
-  it('renders a figcaption and iframe title when title is provided', () => {
+  it('renders the iframe with the provider-built embed src', () => {
+    const { container } = render(
+      <VideoBlock block={{ type: 'video', provider: 'youtube', videoId: 'abc' }} />,
+    )
+    expect(container.querySelector('iframe')?.getAttribute('src')).toBe(
+      'https://www.youtube.com/embed/abc',
+    )
+  })
+
+  it('preserves data-block="video" marker', () => {
+    const { container } = render(
+      <VideoBlock block={{ type: 'video', provider: 'youtube', videoId: 'abc' }} />,
+    )
+    expect(container.querySelector('[data-block="video"]')).not.toBeNull()
+  })
+
+  it('uses 16/9 aspect ratio', () => {
+    const { container } = render(
+      <VideoBlock block={{ type: 'video', provider: 'youtube', videoId: 'abc' }} />,
+    )
+    const frame = container.querySelector('[data-frame]') as HTMLElement
+    expect(frame.style.aspectRatio).toBe('16 / 9')
+  })
+
+  it('renders mono corner mark "arr. vid"', () => {
+    render(<VideoBlock block={{ type: 'video', provider: 'youtube', videoId: 'abc' }} />)
+    expect(screen.getByText(/arr\. vid/i)).toBeInTheDocument()
+  })
+
+  it('renders [data-caption] when title is provided and sets iframe title', () => {
     const { container } = render(
       <VideoBlock
         block={{ type: 'video', provider: 'rutube', videoId: 'abc', title: 'Название' }}
       />,
     )
-    expect(container.querySelector('figcaption')?.textContent).toBe('Название')
+    const caption = container.querySelector('[data-caption]')
+    expect(caption).not.toBeNull()
+    expect(caption?.textContent).toContain('Название')
     expect(container.querySelector('iframe')?.getAttribute('title')).toBe('Название')
   })
 
-  it('uses a default Russian title when none is provided', () => {
+  it('uses default Russian iframe title and omits [data-caption] when title missing', () => {
     const { container } = render(
       <VideoBlock block={{ type: 'video', provider: 'vk', videoId: 'oid=-1&id=1' }} />,
     )
     expect(container.querySelector('iframe')?.getAttribute('title')).toBe('Видео')
-    expect(container.querySelector('figcaption')).toBeNull()
+    expect(container.querySelector('[data-caption]')).toBeNull()
+  })
+
+  it('omits [data-caption] when title is null (DB default)', () => {
+    const { container } = render(
+      <VideoBlock
+        block={{ type: 'video', provider: 'youtube', videoId: 'abc', title: null }}
+      />,
+    )
+    expect(container.querySelector('[data-caption]')).toBeNull()
   })
 })
