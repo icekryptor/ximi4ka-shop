@@ -11,6 +11,7 @@ import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
 import { LabSection } from '@/components/ui/LabSection'
 import { NotebookHeader } from '@/components/ui/NotebookHeader'
+import { PaginationLJ } from '@/components/ui/PaginationLJ'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
@@ -26,6 +27,8 @@ import type { SortKey } from '@/components/marketing/CategoryFilterBar'
 import { CategoryFilterBarMount } from './_components/CategoryFilterBarMount'
 
 export const revalidate = 60
+
+const PAGE_SIZE = 12
 
 export async function generateStaticParams() {
   try {
@@ -85,7 +88,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 async function fetchCategoryAndProducts(
   slug: string,
-): Promise<{ category: ProductCategory; products: Product[] }> {
+  opts: { limit: number; offset: number },
+): Promise<{
+  category: ProductCategory
+  products: Product[]
+  totalCount: number
+}> {
   let category: ProductCategory
   try {
     category = await getCategory(slug)
@@ -96,13 +104,19 @@ async function fetchCategoryAndProducts(
     throw err
   }
   let products: Product[] = []
+  let totalCount = 0
   try {
-    const res = await listProductsByCategory(slug, { limit: 50 })
+    const res = await listProductsByCategory(slug, {
+      limit: opts.limit,
+      offset: opts.offset,
+    })
     products = res.data
+    totalCount = res.pagination.total
   } catch {
     products = []
+    totalCount = 0
   }
-  return { category, products }
+  return { category, products, totalCount }
 }
 
 // Server-side sort. The public products API does not yet accept a sort
@@ -135,9 +149,25 @@ export default async function CategoryDetailPage({
   const locale: Locale = rawLocale
   const sp = (await searchParams) ?? {}
   const currentSort = parseSort(sp.sort)
+  const pageRaw = sp.page
+  const page = Math.max(
+    1,
+    parseInt(typeof pageRaw === 'string' ? pageRaw : '1', 10) || 1,
+  )
 
-  const { category, products: unsorted } = await fetchCategoryAndProducts(slug)
+  const {
+    category,
+    products: unsorted,
+    totalCount,
+  } = await fetchCategoryAndProducts(slug, {
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
+  })
+  // NOTE: sortProducts orders only the current page in memory. Once the public
+  // products API supports a sort param, lift this into the API call so that
+  // ordering applies across the full result set rather than just the page slice.
   const products = sortProducts(unsorted, currentSort)
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE)
   const name = pickField<string>(category, 'name', locale) ?? category.name
   const description =
     pickField<string>(category, 'metaDescription', locale) ??
@@ -242,6 +272,18 @@ export default async function CategoryDetailPage({
               ))}
             </div>
           )}
+          {/* Pagination — PaginationLJ renders null when totalPages <= 1 */}
+          <PaginationLJ
+            currentPage={page}
+            totalPages={totalPages}
+            totalResults={totalCount}
+            resultsPerPage={PAGE_SIZE}
+            basePath={pathForLocale(locale, slug)}
+            preserveParams={['sort']}
+            currentParams={{
+              sort: typeof sp.sort === 'string' ? sp.sort : undefined,
+            }}
+          />
         </div>
       </LabSection>
 
