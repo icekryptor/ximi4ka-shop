@@ -9,11 +9,9 @@ import {
 } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
-import { Container, Section, DisplayHeading, Ticker } from '@/components/ui'
-import { Chip } from '@/components/ui/Chip'
-import { Reveal } from '@/components/motion'
+import { LabSection } from '@/components/ui/LabSection'
+import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { PreFooterCta } from '@/components/marketing'
-import { GradientBlob } from '@/components/decor/GradientBlob'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonLd'
@@ -24,6 +22,8 @@ import {
   pickField,
   type Locale,
 } from '@/lib/i18n'
+import type { SortKey } from '@/components/marketing/CategoryFilterBar'
+import { CategoryFilterBarMount } from './_components/CategoryFilterBarMount'
 
 export const revalidate = 60
 
@@ -40,6 +40,15 @@ export async function generateStaticParams() {
 
 interface Props {
   params: Promise<{ locale: string; slug: string }>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}
+
+const SORT_KEYS = ['newest', 'price-asc', 'price-desc', 'name-asc'] as const
+
+function parseSort(raw: unknown): SortKey {
+  return (SORT_KEYS as readonly string[]).includes(raw as string)
+    ? (raw as SortKey)
+    : 'newest'
 }
 
 function pathForLocale(locale: Locale, slug: string): string {
@@ -96,19 +105,57 @@ async function fetchCategoryAndProducts(
   return { category, products }
 }
 
-export default async function CategoryDetailPage({ params }: Props) {
+// Server-side sort. The public products API does not yet accept a sort
+// parameter, so we order in memory after fetch. Once the API supports it the
+// sort key can be forwarded via opts and this becomes a noop.
+function sortProducts(products: Product[], sort: SortKey): Product[] {
+  const arr = [...products]
+  switch (sort) {
+    case 'price-asc':
+      return arr.sort((a, b) => a.priceRub - b.priceRub)
+    case 'price-desc':
+      return arr.sort((a, b) => b.priceRub - a.priceRub)
+    case 'name-asc':
+      return arr.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+    case 'newest':
+    default:
+      return arr.sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )
+  }
+}
+
+export default async function CategoryDetailPage({
+  params,
+  searchParams,
+}: Props) {
   const { locale: rawLocale, slug } = await params
   if (!isLocale(rawLocale)) notFound()
   const locale: Locale = rawLocale
-  const { category, products } = await fetchCategoryAndProducts(slug)
+  const sp = (await searchParams) ?? {}
+  const currentSort = parseSort(sp.sort)
+
+  const { category, products: unsorted } = await fetchCategoryAndProducts(slug)
+  const products = sortProducts(unsorted, currentSort)
   const name = pickField<string>(category, 'name', locale) ?? category.name
   const description =
     pickField<string>(category, 'metaDescription', locale) ??
     category.metaDescription ??
     null
 
+  const categoriesPath =
+    locale === DEFAULT_LOCALE ? '/categories' : `/${locale}/categories`
+  const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
+
+  // First word of the category name is emphasised in brand colour, mirroring
+  // the v3 hero pattern used elsewhere in Stage 8.
+  const nameWords = name.split(/\s+/).filter(Boolean)
+
   return (
     <>
+      {/* PRESERVED: breadcrumb + product list JsonLd — search engines and
+          editors depend on these schemas. */}
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Главная', url: '/' },
@@ -118,90 +165,85 @@ export default async function CategoryDetailPage({ params }: Props) {
       />
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
 
-      {/* Hero band */}
-      <Section size="md" surface="soft" className="relative overflow-hidden">
-        <GradientBlob className="pointer-events-none absolute -right-32 top-0 h-[140%] w-[40%] opacity-30" />
-        <Container>
-          <nav
-            aria-label="breadcrumbs"
-            className="relative z-10 mb-6 text-[length:var(--text-small)] text-[var(--color-text-muted)]"
-          >
-            <Link href="/" className="hover:text-[var(--color-brand-text)]">
-              Главная
-            </Link>
-            <span className="mx-2" aria-hidden="true">·</span>
-            <Link
-              href="/categories"
-              className="hover:text-[var(--color-brand-text)]"
-            >
-              Каталог
-            </Link>
-            <span className="mx-2" aria-hidden="true">·</span>
-            <span className="text-[var(--color-brand-text)]">{name}</span>
-          </nav>
-          <div className="relative z-10 max-w-2xl">
-            <Reveal>
-              <div className="mb-4 flex flex-wrap items-center gap-4">
-                <DisplayHeading>{name}</DisplayHeading>
-                {products.length > 0 && (
-                  <Chip>{products.length} товаров</Chip>
-                )}
-              </div>
-            </Reveal>
-            {description && (
-              <Reveal delay={0.05}>
-                <p className="text-[length:var(--text-lead)] text-[var(--color-brand-text-secondary)]">
-                  {description}
-                </p>
-              </Reveal>
-            )}
-          </div>
-        </Container>
-      </Section>
+      {/* Mono breadcrumb trail — restyled from v2 dot-separated list */}
+      <nav
+        aria-label="breadcrumbs"
+        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70"
+      >
+        <Link href={homePath} className="hover:opacity-100">
+          Главная
+        </Link>
+        <span className="mx-2" aria-hidden="true">
+          /
+        </span>
+        <Link href={categoriesPath} className="hover:opacity-100">
+          Каталог
+        </Link>
+        <span className="mx-2" aria-hidden="true">
+          /
+        </span>
+        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">
+          {name}
+        </span>
+      </nav>
 
-      {/* Reassurance ticker */}
-      {products.length > 0 && (
-        <Ticker
-          surface="soft"
-          items={[
-            'Сертифицировано',
-            'Безопасно для образования',
-            'Подробные инструкции',
-            'Доставка по России',
-          ]}
-        />
-      )}
+      {/* C. Категория (LAB CREAM) — v3 LJ hero */}
+      <LabSection variant="cream" className="px-6 pt-12 pb-16">
+        <NotebookHeader section="C" label={name} page={1} total={3} />
+        <div className="max-w-[var(--max-lj-content)] mx-auto">
+          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+            C.0 / Категория
+          </p>
+          <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,6vw,5rem)] leading-[0.92] tracking-[-0.045em] mb-6">
+            {nameWords.length > 0 ? (
+              nameWords.map((w, i) => (
+                <span key={i} className="block">
+                  {i === 0 ? (
+                    <em className="italic text-[var(--color-lj-brand)] font-[900]">
+                      {w}
+                    </em>
+                  ) : (
+                    w
+                  )}
+                </span>
+              ))
+            ) : (
+              <span className="block">{name}</span>
+            )}
+          </h1>
+          {description && (
+            <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch]">
+              {description}
+            </p>
+          )}
+        </div>
+      </LabSection>
+
+      {/* Sticky filter bar — client island for sort + reset */}
+      <CategoryFilterBarMount currentSort={currentSort} />
 
       {/* Product grid */}
-      <Section size="lg" surface="base">
-        <Container>
-          {products.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {products.map((product) => (
-                /* TODO(Task 4.4): replace with real catalog data + asymmetric grid */
+      <LabSection variant="cream" className="px-6 py-16">
+        <div className="max-w-[var(--max-lj-content)] mx-auto">
+          {products.length === 0 ? (
+            <p className="text-center opacity-60 py-32 font-[var(--font-lj-mono)] uppercase tracking-[0.06em]">
+              Ничего не найдено
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {products.map((p) => (
+                /* TODO(Task 4.4): wire real catalog stats + asymmetric grid */
                 <ProductCard
-                  key={product.id}
-                  product={product}
+                  key={p.id}
+                  product={p}
                   stats={{ reagents: 0, instruments: 0, reactions: 0 }}
                   statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
                 />
               ))}
             </div>
-          ) : (
-            <div className="text-center py-16">
-              <p className="text-[length:var(--text-lead)] text-[var(--color-brand-text-secondary)] mb-6">
-                В этой категории пока нет товаров
-              </p>
-              <Link
-                href="/categories"
-                className="inline-flex items-center text-[var(--color-brand)] font-medium hover:text-[var(--color-brand-dark)]"
-              >
-                ← Все категории
-              </Link>
-            </div>
           )}
-        </Container>
-      </Section>
+        </div>
+      </LabSection>
 
       {/* Pre-footer CTA */}
       <PreFooterCta
