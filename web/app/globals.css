@@ -152,6 +152,7 @@
   /* Layout */
   --max-lj-content: 1600px;
   --max-lj-narrow:  1400px;
+  --lj-header-height: 80px;
 }
 
 body {

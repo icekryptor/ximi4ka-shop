@@ -2,22 +2,23 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
-import { LayoutGroup, motion } from 'framer-motion'
-import { OPEN_CART_EVENT, useCart } from '@/lib/cart'
+import { useEffect, useRef, useState } from 'react'
+import { useCart } from '@/lib/cart'
 import { Ticker } from '@/components/ui'
+import { HeaderLogo } from './HeaderLogo'
+import { MobileMenuOverlay } from './MobileMenuOverlay'
 
 interface NavItem {
   href: string
   label: string
+  desc: string
 }
 
 const NAV: NavItem[] = [
-  { href: '/', label: 'Главная' },
-  { href: '/categories', label: 'Каталог' },
-  { href: '/o-nas', label: 'О нас' },
-  { href: '/dostavka', label: 'Доставка' },
-  { href: '/kontakty', label: 'Контакты' },
+  { href: '/categories', label: 'Каталог', desc: 'найти набор' },
+  { href: '/o-nas', label: 'О нас', desc: 'наша лаборатория' },
+  { href: '/dostavka', label: 'Доставка', desc: 'сроки и тарифы' },
+  { href: '/kontakty', label: 'Контакты', desc: 'связь с нами' },
 ]
 
 function isActive(pathname: string, href: string): boolean {
@@ -34,7 +35,6 @@ export function Header({ headerPromoText = null }: HeaderProps) {
   const { itemCount } = useCart()
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  // Strip locale prefix so /ru/categories matches the same active state as /categories.
   const pathname =
     pathnameRaw?.replace(/^\/(ru|en)(?=\/|$)/, '') || '/'
 
@@ -46,9 +46,24 @@ export function Header({ headerPromoText = null }: HeaderProps) {
     : []
   const showPromo = promoItems.length > 0
 
-  function openCart() {
-    window.dispatchEvent(new CustomEvent(OPEN_CART_EVENT))
-  }
+  const headerRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const el = headerRef.current
+    if (!el) return
+    const update = () => {
+      const h = el.getBoundingClientRect().height
+      document.documentElement.style.setProperty('--lj-header-height', `${h}px`)
+    }
+    update()
+    if (typeof ResizeObserver === 'undefined') return
+    const obs = new ResizeObserver(update)
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  const cartLabel =
+    itemCount > 0 ? `КОРЗИНА · ${itemCount}` : 'КОРЗИНА (0)'
 
   return (
     <>
@@ -58,135 +73,79 @@ export function Header({ headerPromoText = null }: HeaderProps) {
         </div>
       ) : null}
 
-      <header className="sticky top-0 z-30 w-full border-b border-[var(--color-border-subtle)] bg-[var(--color-surface-base)]/90 backdrop-blur">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4 px-4 sm:px-6 py-4">
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-[50] w-full border-b border-[var(--color-lj-rule)] bg-[var(--color-lj-cream)]/95 backdrop-blur"
+      >
+        <div className="max-w-[var(--max-lj-content)] mx-auto flex items-center justify-between gap-4 px-6 py-4">
           <Link
             href="/"
-            aria-label="Ximi4ka — на главную"
-            className="font-[family-name:var(--font-display)] text-[length:var(--text-h3)] font-extrabold tracking-[var(--tracking-tight)] text-[var(--color-brand-text)] hover:text-[var(--color-brand)] transition-colors"
-            onClick={() => setMobileOpen(false)}
+            aria-label="ХИМИЧКА — на главную"
+            className="text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand-deep)] transition-colors"
           >
-            Ximi4ka
+            <HeaderLogo size={1.75} />
           </Link>
 
-          <LayoutGroup id="header-nav">
-            <nav
-              aria-label="Основная навигация"
-              className="hidden md:flex items-center gap-8"
-            >
-              {NAV.map((item) => {
-                const active = isActive(pathname, item.href)
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={active ? 'page' : undefined}
-                    className={`relative text-[length:var(--text-small)] font-medium transition-colors ${
-                      active
-                        ? 'text-[var(--color-lj-brand)]'
-                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-brand-text)]'
-                    }`}
-                  >
-                    {item.label}
-                    {active ? (
-                      <motion.span
-                        layoutId="header-active-underline"
-                        className="absolute -bottom-1 left-0 right-0 h-[2px] bg-[var(--color-lj-brand)]"
-                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                      />
-                    ) : null}
-                  </Link>
-                )
-              })}
-            </nav>
-          </LayoutGroup>
+          <nav
+            aria-label="Основная навигация"
+            className="hidden md:flex items-center gap-8"
+          >
+            {NAV.map((item) => {
+              const active = isActive(pathname, item.href)
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`relative font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] transition-colors ${
+                    active
+                      ? 'text-[var(--color-lj-brand)]'
+                      : 'text-[var(--color-lj-ink)] opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  {item.label}
+                  {active ? (
+                    <span
+                      aria-hidden="true"
+                      className="absolute -bottom-1 left-0 right-0 h-[2px] bg-[var(--color-lj-brand)]"
+                    />
+                  ) : null}
+                </Link>
+              )
+            })}
+          </nav>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/cart"
+              className={`hidden md:inline-flex font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] transition-colors ${
+                itemCount > 0
+                  ? 'text-[var(--color-lj-brand)]'
+                  : 'text-[var(--color-lj-ink)] opacity-70 hover:opacity-100'
+              }`}
+            >
+              {cartLabel}
+            </Link>
+
             <button
               type="button"
-              onClick={openCart}
-              aria-label="Открыть корзину"
-              className="relative inline-flex items-center gap-2 rounded-full bg-[var(--color-surface-soft)] px-4 py-2 text-[length:var(--text-small)] font-medium text-[var(--color-brand-text)] transition hover:bg-[var(--color-surface-elevated)] hover:shadow-[var(--shadow-md)]"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Открыть меню"
+              className="md:hidden font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]"
             >
-              <span aria-hidden="true">🛒</span>
-              <span>Корзина</span>
-              {itemCount > 0 ? (
-                <motion.span
-                  data-testid="cart-badge"
-                  key={itemCount}
-                  initial={{ scale: 0.6 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 380, damping: 22 }}
-                  className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[var(--color-brand)] px-1.5 text-[length:var(--text-micro)] font-semibold text-[var(--color-text-on-brand)]"
-                >
-                  {itemCount}
-                </motion.span>
-              ) : null}
+              МЕНЮ
             </button>
-
-            {!mobileOpen ? (
-              <button
-                type="button"
-                aria-label="Открыть меню"
-                aria-expanded={mobileOpen}
-                onClick={() => setMobileOpen(true)}
-                className="md:hidden w-10 h-10 inline-flex items-center justify-center rounded-full text-[var(--color-brand-text)] hover:bg-[var(--color-surface-soft)] transition-colors"
-              >
-                <span aria-hidden className="text-xl leading-none">☰</span>
-              </button>
-            ) : null}
           </div>
         </div>
-
-        {mobileOpen ? (
-          <div className="md:hidden fixed inset-0 z-40">
-            <div
-              aria-hidden="true"
-              onClick={() => setMobileOpen(false)}
-              className="absolute inset-0 bg-black/30 backdrop-blur-sm"
-            />
-            <div className="absolute right-0 top-0 h-full w-72 bg-[var(--color-surface-glass)] backdrop-blur-md border-l border-[var(--color-border-subtle)] flex flex-col shadow-[var(--shadow-md)]">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border-subtle)]">
-                <span className="font-[family-name:var(--font-display)] text-[length:var(--text-h3)] font-extrabold tracking-[var(--tracking-tight)] text-[var(--color-brand-text)]">
-                  Меню
-                </span>
-                <button
-                  type="button"
-                  aria-label="Закрыть меню"
-                  onClick={() => setMobileOpen(false)}
-                  className="w-10 h-10 inline-flex items-center justify-center rounded-full text-[var(--color-brand-text)] hover:bg-[var(--color-surface-soft)]"
-                >
-                  <span aria-hidden className="text-xl leading-none">×</span>
-                </button>
-              </div>
-              <nav
-                aria-label="Мобильная навигация"
-                className="flex flex-col"
-              >
-                {NAV.map((item) => {
-                  const active = isActive(pathname, item.href)
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      aria-current={active ? 'page' : undefined}
-                      onClick={() => setMobileOpen(false)}
-                      className={`flex items-center justify-between border-b border-[var(--color-border-subtle)] px-6 py-4 text-[length:var(--text-body,1rem)] transition-colors ${
-                        active
-                          ? 'text-[var(--color-lj-brand)] bg-[var(--color-surface-soft)]'
-                          : 'text-[var(--color-brand-text)] hover:bg-[var(--color-surface-soft)]'
-                      }`}
-                    >
-                      <span>{item.label}</span>
-                      <span aria-hidden="true">›</span>
-                    </Link>
-                  )
-                })}
-              </nav>
-            </div>
-          </div>
-        ) : null}
       </header>
+
+      <MobileMenuOverlay
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        pathname={pathname}
+        navItems={NAV}
+        cartCount={itemCount}
+      />
     </>
   )
 }
