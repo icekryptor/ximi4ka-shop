@@ -9,19 +9,27 @@ describe('MicroTrustRow', () => {
     { icon: <span data-testid="icon-return">↩️</span>, label: 'Возврат 14 дней' },
   ]
 
-  it('renders all items with icon and label', () => {
+  it('renders all item labels', () => {
     render(<MicroTrustRow items={items} />)
     expect(screen.getByText('Безопасные реактивы')).toBeInTheDocument()
     expect(screen.getByText('Доставка от 3 дней')).toBeInTheDocument()
     expect(screen.getByText('Возврат 14 дней')).toBeInTheDocument()
-    expect(screen.getByTestId('icon-shield')).toBeInTheDocument()
-    expect(screen.getByTestId('icon-truck')).toBeInTheDocument()
-    expect(screen.getByTestId('icon-return')).toBeInTheDocument()
   })
 
-  it('uses flex-wrap layout', () => {
+  it('uses flex-wrap layout on a ul', () => {
     const { container } = render(<MicroTrustRow items={items} />)
     expect(container.firstChild).toHaveClass('flex', 'flex-wrap')
+    expect((container.firstChild as HTMLElement).tagName).toBe('UL')
+  })
+
+  it('renders brand-purple bullets via :before pseudo-element class', () => {
+    const { container } = render(<MicroTrustRow items={items} />)
+    const lis = container.querySelectorAll('li')
+    expect(lis.length).toBe(items.length)
+    lis.forEach((li) => {
+      expect(li.className).toContain("before:content-['•']")
+      expect(li.className).toContain('before:text-[var(--color-lj-brand)]')
+    })
   })
 
   it('renders nothing when items is empty', () => {
