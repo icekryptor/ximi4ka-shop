@@ -3,10 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { OPEN_CART_EVENT, useCart } from '@/lib/cart'
-
-function formatRub(value: number): string {
-  return `${value.toLocaleString('ru-RU')} ₽`
-}
+import { formatRub } from '@/lib/stockLabel'
 
 export function CartDrawer() {
   const { items, subtotal, remove, setQty } = useCart()
@@ -32,78 +29,80 @@ export function CartDrawer() {
   if (!open) return null
 
   return (
-    <div
-      role="dialog"
-      aria-label="Корзина"
-      aria-modal="true"
-      className="fixed inset-0 z-50 flex"
-    >
+    <div role="dialog" aria-label="Корзина" aria-modal="true" className="fixed inset-0 z-[56] flex">
       <button
         type="button"
         aria-label="Закрыть корзину"
         onClick={() => setOpen(false)}
-        className="flex-1 bg-black/40"
+        className="flex-1 bg-[var(--color-lj-ink)]/40"
       />
-      <div className="w-full max-w-md bg-white h-full shadow-xl flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-brand-border">
-          <h2 className="text-lg font-semibold text-brand-text">Корзина</h2>
+
+      <aside className="w-full max-w-md bg-[var(--color-lj-cream)] border-l border-[var(--color-lj-rule)] h-full flex flex-col">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-lj-rule)] font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em]">
+          <span className="text-[var(--color-lj-ink)]">
+            {items.length > 0 ? `КОРЗИНА · ${items.length}` : 'КОРЗИНА (0)'}
+          </span>
           <button
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Закрыть"
-            className="text-2xl leading-none px-2 text-brand-text-secondary hover:text-brand-text"
+            className="font-[var(--font-lj-mono)] text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand-deep)]"
           >
-            ×
+            × ЗАКРЫТЬ
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-6">
           {items.length === 0 ? (
-            <p className="text-sm text-brand-text-secondary">Корзина пуста</p>
+            <p className="text-center font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-60 mt-8">
+              Корзина пуста
+            </p>
           ) : (
-            <ul className="space-y-4">
+            <ul className="list-none p-0 m-0 flex flex-col gap-0">
               {items.map((item) => (
                 <li
                   key={item.productId}
                   data-testid={`cart-item-${item.productId}`}
-                  className="flex items-start gap-3 border-b border-brand-border pb-4"
+                  className="flex items-start gap-3 border-b border-[var(--color-lj-rule)] py-4"
                 >
-                  <div className="flex-1">
-                    <div className="font-medium text-sm text-brand-text">{item.name}</div>
-                    <div className="text-xs text-brand-text-secondary">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-[var(--font-lj-display)] font-[700] text-base tracking-[-0.02em] text-[var(--color-lj-ink)] truncate">
+                      {item.name}
+                    </div>
+                    <div className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60 mt-1">
                       {formatRub(item.priceRub)} за шт.
                     </div>
-                    <div className="mt-2 inline-flex items-center gap-2">
+                    <div className="mt-3 inline-flex items-center gap-2">
                       <button
                         type="button"
                         aria-label={`Уменьшить количество ${item.name}`}
                         onClick={() => setQty(item.productId, item.quantity - 1)}
-                        className="w-7 h-7 rounded-full border border-brand-border text-sm"
+                        className="w-7 h-7 rounded-full border border-[var(--color-lj-ink)] text-sm text-[var(--color-lj-ink)] hover:bg-[var(--color-lj-ink)] hover:text-[var(--color-lj-bone)] transition-colors"
                       >
                         −
                       </button>
-                      <span className="min-w-[2ch] text-center text-sm">
+                      <span className="min-w-[2ch] text-center font-[var(--font-lj-mono)] text-sm text-[var(--color-lj-ink)]">
                         {item.quantity}
                       </span>
                       <button
                         type="button"
                         aria-label={`Увеличить количество ${item.name}`}
                         onClick={() => setQty(item.productId, item.quantity + 1)}
-                        className="w-7 h-7 rounded-full border border-brand-border text-sm"
+                        className="w-7 h-7 rounded-full border border-[var(--color-lj-ink)] text-sm text-[var(--color-lj-ink)] hover:bg-[var(--color-lj-ink)] hover:text-[var(--color-lj-bone)] transition-colors"
                       >
                         +
                       </button>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <div className="font-semibold text-sm text-brand-text">
+                    <div className="font-[var(--font-lj-display)] font-[900] text-base tracking-[-0.03em] text-[var(--color-lj-ink)]">
                       {formatRub(item.priceRub * item.quantity)}
                     </div>
                     <button
                       type="button"
                       onClick={() => remove(item.productId)}
                       aria-label={`Удалить ${item.name}`}
-                      className="text-xs text-red-600 hover:underline"
+                      className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60 hover:opacity-100 hover:text-[var(--color-stock-danger)]"
                     >
                       Удалить
                     </button>
@@ -115,21 +114,21 @@ export function CartDrawer() {
         </div>
 
         {items.length > 0 ? (
-          <div className="px-6 py-4 border-t border-brand-border space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-brand-text-secondary">Итого</span>
-              <span className="font-semibold text-brand-text">{formatRub(subtotal)}</span>
+          <div className="border-t border-[var(--color-lj-rule)] px-6 py-5 flex flex-col gap-3">
+            <div className="flex items-baseline justify-between font-[var(--font-lj-display)] font-[900] text-xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
+              <span>Итого</span>
+              <span>{formatRub(subtotal)}</span>
             </div>
             <Link
               href="/cart"
               onClick={() => setOpen(false)}
-              className="block w-full text-center bg-brand hover:bg-brand-dark text-white rounded-full py-3 font-semibold transition-colors"
+              className="inline-flex items-center justify-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
             >
-              Перейти к оформлению
+              К оформлению →
             </Link>
           </div>
         ) : null}
-      </div>
+      </aside>
     </div>
   )
 }
