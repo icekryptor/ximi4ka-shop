@@ -17,7 +17,7 @@ interface Props {
 
 export function CategoryFilterBar({ sort, onSortChange, onReset }: Props) {
   return (
-    <div className="sticky top-20 z-20 bg-[var(--color-lj-cream)]/95 backdrop-blur-sm border-y border-[var(--color-lj-rule)] py-3 px-6">
+    <div className="sticky top-[var(--lj-header-height)] z-20 bg-[var(--color-lj-cream)]/95 backdrop-blur-sm border-y border-[var(--color-lj-rule)] py-3 px-6">
       <div className="max-w-[var(--max-lj-content)] mx-auto flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70 mr-2">
