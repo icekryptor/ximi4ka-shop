@@ -32,4 +32,16 @@ describe('<LabSection>', () => {
     expect(el).not.toBeNull()
     expect(el?.getAttribute('aria-labelledby')).toBe('manifesto-h')
   })
+
+  it('exposes --lj-prose-color CSS variable: ink for cream variant', () => {
+    render(<LabSection variant="cream" data-testid="lab-section">x</LabSection>)
+    const el = screen.getByTestId('lab-section')
+    expect(el.style.getPropertyValue('--lj-prose-color')).toBe('var(--color-lj-ink)')
+  })
+
+  it('exposes --lj-prose-color CSS variable: bone for ink variant', () => {
+    render(<LabSection variant="ink" data-testid="lab-section">x</LabSection>)
+    const el = screen.getByTestId('lab-section')
+    expect(el.style.getPropertyValue('--lj-prose-color')).toBe('var(--color-lj-bone)')
+  })
 })

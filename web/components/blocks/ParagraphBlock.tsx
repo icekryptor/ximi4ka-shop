@@ -29,7 +29,7 @@ export function ParagraphBlock({ block }: Props) {
   const safeHtml = sanitizeHtml(block.html)
   return (
     <div
-      className="lj-prose font-[var(--font-lj-body)] text-[1.0625rem] leading-[1.6] text-[var(--color-lj-ink)] max-w-[60ch] [&_strong]:italic [&_strong]:text-[var(--color-lj-brand)] [&_strong]:font-[700] [&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:text-[var(--color-lj-brand-deep)] [&_code]:font-[var(--font-lj-mono)] [&_code]:text-[var(--color-lj-brand-deep)] [&_p]:mb-4 [&_p:last-child]:mb-0"
+      className="lj-prose font-[var(--font-lj-body)] text-[1.0625rem] leading-[1.6] text-[var(--lj-prose-color,var(--color-lj-ink))] max-w-[60ch] [&_strong]:italic [&_strong]:text-[var(--color-lj-brand)] [&_strong]:font-[700] [&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:text-[var(--color-lj-brand-deep)] [&_code]:font-[var(--font-lj-mono)] [&_code]:text-[var(--color-lj-brand-deep)] [&_p]:mb-4 [&_p:last-child]:mb-0"
       data-block="paragraph"
       dangerouslySetInnerHTML={{ __html: safeHtml }}
     />
