@@ -12,6 +12,7 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata, siteUrl } from '@/lib/metadata'
 import { breadcrumbJsonLd, productJsonLd } from '@/lib/jsonLd'
+import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 import { MicroTrustRow, type MicroTrustItem } from '@/components/ui/MicroTrustRow'
 import { LabSection } from '@/components/ui/LabSection'
 import { NotebookHeader } from '@/components/ui/NotebookHeader'
@@ -44,12 +45,26 @@ export const revalidate = 60
 
 // Static trust signals for the v3 hero column. Lab-journal vocabulary
 // drops the emoji icons that v2 used — bullets render as brand-purple
-// `•` per MicroTrustRow's restyled `before:` pseudo.
+// `•` via MicroTrustRow's `before:` pseudo when no icon is provided.
 const MICRO_TRUST_ITEMS: MicroTrustItem[] = [
-  { icon: null, label: 'Безопасные реактивы' },
-  { icon: null, label: 'Доставка от 3 дней' },
-  { icon: null, label: 'Возврат 14 дней' },
+  { label: 'Безопасные реактивы' },
+  { label: 'Доставка от 3 дней' },
+  { label: 'Возврат 14 дней' },
 ]
+
+// Headings that ContentsSection (Section 2) and CharacteristicsTableLJ
+// (Section 3) already render. Section 4's BlockRenderer must skip the
+// blocks containing these headings so the same content isn't shown three
+// times. Both block types use the `<h3>…</h3>` paragraph wrapper convention
+// that ContentsSection / parseCharacteristics match against.
+const EXCLUDED_HEADING_RE = /<h3[^>]*>\s*(?:состав|что внутри|характеристики)\s*<\/h3>/i
+
+function isDuplicatedSectionBlock(block: unknown): boolean {
+  if (!isBlock(block)) return false
+  if (block.type !== 'paragraph') return false
+  const html = (block as { html?: string }).html ?? ''
+  return EXCLUDED_HEADING_RE.test(html)
+}
 
 export async function generateStaticParams() {
   try {
@@ -180,6 +195,14 @@ export default async function ProductPage({ params }: Props) {
   const keyFacts = extractKeyFacts(characteristics)
   const useFacts = extractUseFacts(characteristics)
   const galleryImages = extractGalleryImages(product)
+
+  // Section 4 (Описание) re-renders the long description as prose. Drop
+  // the «Состав» and «Характеристики» blocks here so they're not shown
+  // three times — Section 2 (ContentsSection) and Section 3 (Характеристики
+  // table) already render that content with bespoke v3 typography.
+  const filteredDescriptionBlocks = Array.isArray(longDescriptionBlocks)
+    ? longDescriptionBlocks.filter((b) => !isDuplicatedSectionBlock(b))
+    : []
 
   const related = await fetchRelatedProducts(product.id)
 
@@ -330,19 +353,19 @@ export default async function ProductPage({ params }: Props) {
       </LabSection>
 
       {/* SECTION 4 — Описание (cream prose). Renders when CMS provided
-          long-description blocks. */}
-      {Array.isArray(longDescriptionBlocks) &&
-        longDescriptionBlocks.length > 0 && (
-          <LabSection variant="cream" className="px-6 py-24">
-            <NotebookHeader section="03" label="Описание" page={4} total={6} />
-            <div className="max-w-[var(--max-lj-narrow)] mx-auto">
-              <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-                03.0 / Полное описание
-              </p>
-              <BlockRenderer blocks={longDescriptionBlocks} />
-            </div>
-          </LabSection>
-        )}
+          long-description blocks remain after stripping content already
+          shown in Sections 2 (Что внутри) and 3 (Характеристики). */}
+      {filteredDescriptionBlocks.length > 0 && (
+        <LabSection variant="cream" className="px-6 py-24">
+          <NotebookHeader section="03" label="Описание" page={4} total={6} />
+          <div className="max-w-[var(--max-lj-narrow)] mx-auto">
+            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+              03.0 / Полное описание
+            </p>
+            <BlockRenderer blocks={filteredDescriptionBlocks} />
+          </div>
+        </LabSection>
+      )}
 
       {/* SECTION 5 — Related products (cream). 3-up grid mirroring the
           asymmetric homepage catalog. Stats are placeholders pending a
@@ -367,18 +390,26 @@ export default async function ProductPage({ params }: Props) {
                 наборы
               </em>
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {related.map((p) => (
-                /* TODO(Task 4.4 follow-up): wire real stats once admin
-                   `kit_stats` field lands. Mirrors the homepage placeholder
-                   pattern. */
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  stats={{ reagents: 0, instruments: 0, reactions: 0 }}
-                  statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
-                />
-              ))}
+            <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr_1.1fr] gap-8">
+              {related.slice(0, 3).map((p, i) => {
+                /* Asymmetric stagger mirrors the homepage catalog row
+                   (Task 4.4): first card flush, second offset 16, third
+                   offset 32. */
+                const stagger =
+                  i === 0 ? 'lg:mt-0' : i === 1 ? 'lg:mt-16' : 'lg:mt-32'
+                return (
+                  <div key={p.id} className={stagger}>
+                    {/* TODO(Task 4.4 follow-up): wire real stats once admin
+                        `kit_stats` field lands. Mirrors the homepage
+                        placeholder pattern. */}
+                    <ProductCard
+                      product={p}
+                      stats={{ reagents: 0, instruments: 0, reactions: 0 }}
+                      statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+                    />
+                  </div>
+                )
+              })}
             </div>
           </div>
         </LabSection>
