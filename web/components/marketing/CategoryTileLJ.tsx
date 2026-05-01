@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { ProductCategory } from '@ximi4ka-shop/shared'
 import { MoleculeMotifLJ } from '@/components/decor/MoleculeMotif.lj'
+import { pluralizeRu } from '@/lib/i18n'
 
 type MoleculeVariant = 'benzene' | 'anthracene' | 'water' | 'methane'
 
@@ -40,7 +41,7 @@ export function CategoryTileLJ({ category, index, productCount }: Props) {
           {category.name}
         </h3>
         <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-65">
-          {productCount} товаров →
+          {productCount} {pluralizeRu(productCount, ['товар', 'товара', 'товаров'])} →
         </span>
       </div>
     </Link>

@@ -82,3 +82,26 @@ export function pickField<T>(
   const top = (entity as unknown as Record<string, unknown>)[field]
   return (top as T | undefined) ?? null
 }
+
+/**
+ * Russian plural rule: 1 / 2-4 / 5+ → forms[0] / forms[1] / forms[2].
+ *
+ * Numbers in the "teens" range (11-19, regardless of hundreds digit)
+ * always take the 3rd form (5+); otherwise the last digit determines
+ * the form. Examples:
+ *
+ *   pluralizeRu(1, ['товар', 'товара', 'товаров'])   → 'товар'
+ *   pluralizeRu(2, ['товар', 'товара', 'товаров'])   → 'товара'
+ *   pluralizeRu(5, ['товар', 'товара', 'товаров'])   → 'товаров'
+ *   pluralizeRu(11, ['товар', 'товара', 'товаров'])  → 'товаров'  // 11-14 always 3rd form
+ *   pluralizeRu(21, ['товар', 'товара', 'товаров'])  → 'товар'
+ *   pluralizeRu(42, ['товар', 'товара', 'товаров'])  → 'товара'
+ */
+export function pluralizeRu(n: number, forms: [string, string, string]): string {
+  const abs = Math.abs(n) % 100
+  const tens = abs % 10
+  if (abs > 10 && abs < 20) return forms[2]
+  if (tens > 1 && tens < 5) return forms[1]
+  if (tens === 1) return forms[0]
+  return forms[2]
+}

@@ -4,6 +4,7 @@ import {
   SUPPORTED_LOCALES,
   isLocale,
   pickField,
+  pluralizeRu,
   type Locale,
 } from './i18n'
 
@@ -101,5 +102,35 @@ describe('pickField', () => {
   it('returns null when the entity is null/undefined', () => {
     expect(pickField(null, 'name', 'en')).toBeNull()
     expect(pickField(undefined, 'name', 'en')).toBeNull()
+  })
+})
+
+describe('pluralizeRu', () => {
+  const forms: [string, string, string] = ['товар', 'товара', 'товаров']
+
+  it('uses 1st form for n=1, 21, 31, ...', () => {
+    expect(pluralizeRu(1, forms)).toBe('товар')
+    expect(pluralizeRu(21, forms)).toBe('товар')
+    expect(pluralizeRu(101, forms)).toBe('товар')
+  })
+
+  it('uses 2nd form for n=2..4, 22..24, ...', () => {
+    expect(pluralizeRu(2, forms)).toBe('товара')
+    expect(pluralizeRu(3, forms)).toBe('товара')
+    expect(pluralizeRu(4, forms)).toBe('товара')
+    expect(pluralizeRu(22, forms)).toBe('товара')
+    expect(pluralizeRu(42, forms)).toBe('товара')
+  })
+
+  it('uses 3rd form for n=5..20, 25..30, ...', () => {
+    expect(pluralizeRu(5, forms)).toBe('товаров')
+    expect(pluralizeRu(11, forms)).toBe('товаров')
+    expect(pluralizeRu(15, forms)).toBe('товаров')
+    expect(pluralizeRu(20, forms)).toBe('товаров')
+    expect(pluralizeRu(25, forms)).toBe('товаров')
+  })
+
+  it('handles 0', () => {
+    expect(pluralizeRu(0, forms)).toBe('товаров')
   })
 })

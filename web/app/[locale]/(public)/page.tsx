@@ -13,10 +13,8 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
-import { Container, Section, SectionHeading } from '@/components/ui'
 import { LabSection } from '@/components/ui/LabSection'
 import { NotebookHeader } from '@/components/ui/NotebookHeader'
-import { Reveal } from '@/components/motion'
 import {
   Hero,
   PreFooterCta,
@@ -406,33 +404,30 @@ export default async function HomePage({ params }: Props) {
         </div>
       </LabSection>
 
-      {/* 7. Частые вопросы (LIGHT) */}
+      {/* 7. Частые вопросы (LAB CREAM) — v3 LabSection wrapper */}
       {faqBlocks.length > 0 && (
-        <Section size="lg" surface="soft">
-          <Container>
-            <Reveal>
-              <SectionHeading
-                eyebrow="Вопросы"
-                title="Частые вопросы"
-                action={{ label: 'Все ответы', href: '/o-nas' }}
-              />
-            </Reveal>
-            <div className="mx-auto max-w-3xl">
-              <BlockRenderer blocks={faqBlocks} />
-            </div>
-          </Container>
-        </Section>
+        <LabSection variant="cream" className="px-6 py-32" id="faq">
+          <NotebookHeader section="07" label="FAQ" page={7} total={9} />
+          <div className="max-w-[var(--max-lj-narrow)] mx-auto">
+            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+              07.0 / Вопросы
+            </p>
+            <h2 className="font-[var(--font-lj-display)] font-[700] text-[clamp(2rem,4vw,3rem)] leading-[1.05] tracking-[-0.035em] mb-12 max-w-[20ch]">
+              Частые <em className="italic text-[var(--color-lj-brand)] font-[700]">вопросы</em>
+            </h2>
+            <BlockRenderer blocks={faqBlocks} />
+          </div>
+        </LabSection>
       )}
 
-      {/* 8. Other CMS blocks (LIGHT) */}
+      {/* 8. Other CMS blocks (LAB CREAM) — v3 LabSection wrapper */}
       {otherBlocks.length > 0 && (
-        <Section size="md" surface="base">
-          <Container>
-            <div className="mx-auto max-w-3xl">
-              <BlockRenderer blocks={otherBlocks} />
-            </div>
-          </Container>
-        </Section>
+        <LabSection variant="cream" className="px-6 py-24">
+          <NotebookHeader section="08" label="Дополнительно" page={8} total={9} />
+          <div className="max-w-[var(--max-lj-narrow)] mx-auto">
+            <BlockRenderer blocks={otherBlocks} />
+          </div>
+        </LabSection>
       )}
 
       {/* 9. Pre-footer (DARK) */}
