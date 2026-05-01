@@ -22,12 +22,9 @@ import { test, expect } from '@playwright/test'
 // (29 products at the time of writing), so the grid renders enough cards to
 // exercise the full v3 detail layout including the sticky filter rail.
 test.describe('v3 Lab Journal — Stage 8 surfaces', () => {
-  test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== 'desktop',
-      'Stage 8 baselines run only at the 1440×900 desktop viewport',
-    )
-    await page.setViewportSize({ width: 1440, height: 900 })
+  test.beforeEach(async () => {
+    // Project config (mobile/tablet/desktop) drives viewport; Stage 10
+    // dropped the desktop-only restriction to baseline all three.
   })
 
   test('homepage how-it-works section', async ({ page }) => {

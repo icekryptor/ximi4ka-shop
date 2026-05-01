@@ -19,11 +19,9 @@ import { test, expect } from '@playwright/test'
 // surfaces a populated table — both the "use facts" cell row and the full
 // "Полный список характеристик" table render against this seed.
 test.describe('v3 Lab Journal — product detail', () => {
-  test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== 'desktop',
-      'v3 PDP baselines run only at the 1440×900 desktop viewport',
-    )
+  test.beforeEach(async ({ page }) => {
+    // Project config (mobile/tablet/desktop) drives viewport; Stage 10
+    // dropped the desktop-only restriction to baseline all three.
     await page.goto('/ru/product/himichka-30')
     await page.waitForLoadState('networkidle')
     // Ensure web fonts (next/font/google) have finished swapping before the

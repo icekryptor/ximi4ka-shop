@@ -14,11 +14,9 @@ import { test, expect } from '@playwright/test'
 // coverage. Skipping at runtime keeps this file's baseline count to 3 even
 // when someone runs the whole suite with no `--project` flag.
 test.describe('v3 Lab Journal homepage', () => {
-  test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== 'desktop',
-      'v3 homepage baselines run only at the 1440×900 desktop viewport',
-    )
+  test.beforeEach(async ({ page }) => {
+    // Project config (mobile/tablet/desktop) drives viewport; Stage 10
+    // dropped the desktop-only restriction to baseline all three.
     // Locale-prefixed homepage. Middleware will accept both `/` and `/ru`,
     // but using `/ru` makes the intent explicit and avoids relying on a
     // rewrite if the default locale ever changes.

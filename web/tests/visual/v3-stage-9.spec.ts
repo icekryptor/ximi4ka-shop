@@ -15,12 +15,9 @@ import { test, expect } from '@playwright/test'
 // for fonts + a short settle so the Mazzard wordmark renders at its final
 // metrics before capture.
 test.describe('v3 Lab Journal — Stage 9 surfaces', () => {
-  test.beforeEach(async ({ page }, testInfo) => {
-    test.skip(
-      testInfo.project.name !== 'desktop',
-      'Stage 9 baselines run only at the 1440×900 desktop viewport',
-    )
-    await page.setViewportSize({ width: 1440, height: 900 })
+  test.beforeEach(async () => {
+    // Project config (mobile/tablet/desktop) drives viewport; Stage 10
+    // dropped the desktop-only restriction to baseline all three.
   })
 
   test('Header on cream surface', async ({ page }) => {
@@ -63,8 +60,12 @@ test.describe('v3 Lab Journal — Stage 9 surfaces', () => {
     )
   })
 
-  test('Mobile menu overlay', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 812 })
+  test('Mobile menu overlay', async ({ page }, testInfo) => {
+    // Mobile menu only renders at the mobile breakpoint — scope to mobile project.
+    test.skip(
+      testInfo.project.name !== 'mobile',
+      'Mobile menu renders only at the mobile breakpoint',
+    )
     await page.goto('/ru')
     await page.waitForLoadState('networkidle')
     await page.evaluate(() => document.fonts.ready)
