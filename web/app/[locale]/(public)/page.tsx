@@ -15,16 +15,17 @@ import { buildMetadata } from '@/lib/metadata'
 import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
 import { Container, Section, SectionHeading } from '@/components/ui'
 import { LabSection } from '@/components/ui/LabSection'
-import { Reveal, Stagger } from '@/components/motion'
+import { NotebookHeader } from '@/components/ui/NotebookHeader'
+import { Reveal } from '@/components/motion'
 import {
   Hero,
-  CategoryTile,
-  HowItWorksStep,
-  TestimonialCard,
   PreFooterCta,
   Manifesto,
   DEFAULT_TESTIMONIALS,
 } from '@/components/marketing'
+import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
+import { HowItWorksStepLJ } from '@/components/marketing/HowItWorksStepLJ'
+import { TestimonialQuoteLJ } from '@/components/marketing/TestimonialQuoteLJ'
 import {
   DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
@@ -204,9 +205,8 @@ export default async function HomePage({ params }: Props) {
       ? settings.testimonials
       : DEFAULT_TESTIMONIALS
 
-  // Asymmetric span pattern across the 3-column grid produces a
-  // varied, magazine-like rhythm rather than a strict grid.
-  const categorySpans: Array<1 | 2> = [1, 2, 2, 1, 1, 2]
+  // First six categories featured on the homepage; full list lives at /categories.
+  const featuredCategories = categories.slice(0, 6)
 
   return (
     <>
@@ -298,91 +298,113 @@ export default async function HomePage({ params }: Props) {
         body="Каждый набор — запечатанный комплект реагентов, лабораторной посуды и понятных протоколов. Без воды, без слайдов, без «представьте, что произойдёт». Только реакция, наблюдение и вывод."
       />
 
-      {/* 4. Каталог по интересам (LIGHT) — asymmetric tile masonry */}
-      <Section size="lg" surface="base">
-        <Container>
-          <Reveal>
-            <SectionHeading
-              eyebrow="Каталог"
-              title="Каталог по интересам"
-              action={
-                categories.length > 6
-                  ? { label: 'Все категории', href: '/categories' }
-                  : undefined
-              }
-            />
-          </Reveal>
-          {categories.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-3">
-              {categories.slice(0, 6).map((category, i) => (
-                <Reveal key={category.id} delay={(i % 3) * 0.05}>
-                  <CategoryTile
-                    category={category}
-                    tintIndex={i}
-                    span={categorySpans[i] ?? 1}
-                  />
-                </Reveal>
+      {/* 4. Каталог по интересам (LAB CREAM) — v3 LJ tiles with molecule motifs */}
+      <LabSection variant="cream" className="px-6 py-32">
+        <NotebookHeader section="04" label="Каталог" page={4} total={9} />
+        <div className="max-w-[var(--max-lj-content)] mx-auto">
+          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+            04.0 / Каталог
+          </p>
+          <h2 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
+            Каталог по<br />
+            <em className="italic text-[var(--color-lj-brand)] font-[900]">
+              интересам
+            </em>
+          </h2>
+          {featuredCategories.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {featuredCategories.map((cat, i) => (
+                <CategoryTileLJ
+                  key={cat.id}
+                  category={cat}
+                  index={i}
+                  // TODO(productCount): public /api/public/categories does not
+                  // currently return productCount. Stage 8.C.2 (categories
+                  // rewrite) will plumb the count through; for now show 0.
+                  productCount={(cat as { productCount?: number }).productCount ?? 0}
+                />
               ))}
             </div>
           ) : (
-            <p className="text-center text-[var(--color-brand-text-secondary)]">
+            <p className="text-center text-[var(--color-lj-ink)] opacity-65">
               Категории появятся скоро
             </p>
           )}
-        </Container>
-      </Section>
+        </div>
+      </LabSection>
 
-      {/* 5. Как это работает (DARK) */}
-      <LabSection variant="ink" id="how-it-works" className="px-6 py-32">
-        <Container>
-          <Reveal>
-            <div className="mb-12 flex flex-col items-center gap-3 text-center">
-              <span className="text-[length:var(--text-micro)] font-semibold uppercase tracking-wider text-[var(--color-accent)]">
-                Просто
-              </span>
-              <h2 className="font-[var(--font-display)] text-[length:var(--text-h2)] tracking-[var(--tracking-tight)] leading-[1.05] text-[var(--color-text-on-dark)]">
-                Как это работает
-              </h2>
-            </div>
-          </Reveal>
-          <Stagger className="grid gap-12 md:grid-cols-3">
-            <HowItWorksStep
-              theme="dark"
-              number="01"
+      {/* 5. Как это работает (DARK INK) — v3 LJ NumberCell steps */}
+      <LabSection
+        variant="ink"
+        id="how-it-works"
+        className="px-6 py-32 relative"
+      >
+        <NotebookHeader section="05" label="Процесс" page={5} total={9} />
+        <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
+          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+            05.0 / Процесс
+          </p>
+          <h2 className="font-[var(--font-lj-display)] font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
+            От заказа до{' '}
+            <em className="italic text-[var(--color-lj-brand)] font-[700]">
+              опыта
+            </em>{' '}
+            — три шага
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <HowItWorksStepLJ
+              index={1}
+              verb="ВЫБРАТЬ"
               title="Выберите набор"
               body="Подберите эксперимент по возрасту и интересам ребёнка. Все наборы безопасны и продуманы."
             />
-            <HowItWorksStep
-              theme="dark"
-              number="02"
-              title="Распакуйте и проведите эксперимент"
+            <HowItWorksStepLJ
+              index={2}
+              verb="СОБРАТЬ"
+              title="Распакуйте и проведите"
               body="Внутри — все необходимые реактивы и понятная инструкция. Можно проводить дома вместе с детьми."
             />
-            <HowItWorksStep
-              theme="dark"
-              number="03"
-              title="Получите полезные знания"
+            <HowItWorksStepLJ
+              index={3}
+              verb="ВЕСТИ"
+              title="Получите знания"
               body="Каждый набор сопровождается методическими материалами — научите детей думать как учёные."
             />
-          </Stagger>
-        </Container>
+          </div>
+        </div>
       </LabSection>
 
-      {/* 6. Что говорят родители (LIGHT) */}
-      <Section size="lg" surface="base">
-        <Container>
-          <Reveal>
-            <SectionHeading eyebrow="Отзывы" title="Что говорят родители" />
-          </Reveal>
-          <div className="grid gap-6 md:grid-cols-3">
-            {testimonials.slice(0, 3).map((testimonial, i) => (
-              <Reveal key={i} delay={i * 0.05}>
-                <TestimonialCard testimonial={testimonial} />
-              </Reveal>
-            ))}
+      {/* 6. Что говорят родители (LAB CREAM) — v3 LJ lab-citation quotes */}
+      <LabSection variant="cream" className="px-6 py-32">
+        <NotebookHeader section="06" label="Отзывы" page={6} total={9} />
+        <div className="max-w-[var(--max-lj-content)] mx-auto">
+          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+            06.0 / Отзывы
+          </p>
+          <h2 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
+            Что говорят<br />
+            <em className="italic text-[var(--color-lj-brand)] font-[900]">
+              родители
+            </em>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {testimonials.slice(0, 3).map((t, i) => {
+              // PublicTestimonial has shape { quote, author, location, rating? }.
+              // Map to TestimonialQuoteLJ's { body, author, meta[] } —
+              // location goes into the citation meta line.
+              const meta = [t.location].filter(Boolean) as string[]
+              return (
+                <TestimonialQuoteLJ
+                  key={`${t.author}-${i}`}
+                  body={t.quote}
+                  author={t.author.toUpperCase()}
+                  meta={meta}
+                />
+              )
+            })}
           </div>
-        </Container>
-      </Section>
+        </div>
+      </LabSection>
 
       {/* 7. Частые вопросы (LIGHT) */}
       {faqBlocks.length > 0 && (
