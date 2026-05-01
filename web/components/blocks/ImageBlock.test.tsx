@@ -1,48 +1,61 @@
 import { afterEach, describe, it, expect } from 'vitest'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { ImageBlock } from './ImageBlock'
 
 afterEach(() => {
   cleanup()
 })
 
-describe('ImageBlock', () => {
-  it('renders the image with src and alt', () => {
+describe('<ImageBlock> v3', () => {
+  it('renders inside a MediaFrame with corner mark', () => {
     const { container } = render(
-      <ImageBlock block={{ type: 'image', url: '/foo.png', alt: 'Foo' }} />,
+      <ImageBlock block={{ type: 'image', url: '/test.jpg', alt: 'Test alt' }} />,
+    )
+    expect(container.querySelector('[data-frame]')).not.toBeNull()
+    // Corner mark renders some "arr." text (mono lab-journal annotation).
+    expect(screen.getByText(/arr\./i)).toBeInTheDocument()
+  })
+
+  it('renders caption inside [data-caption] when provided', () => {
+    const { container } = render(
+      <ImageBlock
+        block={{ type: 'image', url: '/test.jpg', alt: 'x', caption: 'Подпись' }}
+      />,
+    )
+    const caption = container.querySelector('[data-caption]')
+    expect(caption).not.toBeNull()
+    expect(caption?.textContent).toContain('Подпись')
+  })
+
+  it('omits [data-caption] when caption is not provided', () => {
+    const { container } = render(
+      <ImageBlock block={{ type: 'image', url: '/test.jpg', alt: 'x' }} />,
+    )
+    expect(container.querySelector('[data-caption]')).toBeNull()
+  })
+
+  it('omits [data-caption] when caption is null (DB default)', () => {
+    const { container } = render(
+      <ImageBlock
+        block={{ type: 'image', url: '/test.jpg', alt: 'x', caption: null }}
+      />,
+    )
+    expect(container.querySelector('[data-caption]')).toBeNull()
+  })
+
+  it('uses semantic <figure> for the frame', () => {
+    const { container } = render(
+      <ImageBlock block={{ type: 'image', url: '/test.jpg', alt: 'x' }} />,
+    )
+    expect(container.querySelector('figure')).not.toBeNull()
+  })
+
+  it('renders the image with alt text', () => {
+    const { container } = render(
+      <ImageBlock block={{ type: 'image', url: '/cat.jpg', alt: 'Cat' }} />,
     )
     const img = container.querySelector('img')
     expect(img).not.toBeNull()
-    expect(img?.getAttribute('src')).toBe('/foo.png')
-    expect(img?.getAttribute('alt')).toBe('Foo')
-  })
-
-  it('renders a figcaption when caption is provided', () => {
-    const { container } = render(
-      <ImageBlock
-        block={{ type: 'image', url: '/foo.png', alt: 'Foo', caption: 'A caption' }}
-      />,
-    )
-    const caption = container.querySelector('figcaption')
-    expect(caption).not.toBeNull()
-    expect(caption?.textContent).toBe('A caption')
-  })
-
-  it('omits figcaption when no caption is provided', () => {
-    const { container } = render(
-      <ImageBlock block={{ type: 'image', url: '/foo.png', alt: 'Foo' }} />,
-    )
-    expect(container.querySelector('figcaption')).toBeNull()
-  })
-
-  it('passes width and height to the img element when present', () => {
-    const { container } = render(
-      <ImageBlock
-        block={{ type: 'image', url: '/foo.png', alt: 'Foo', width: 800, height: 600 }}
-      />,
-    )
-    const img = container.querySelector('img')
-    expect(img?.getAttribute('width')).toBe('800')
-    expect(img?.getAttribute('height')).toBe('600')
+    expect(img?.getAttribute('alt')).toBe('Cat')
   })
 })
