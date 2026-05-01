@@ -39,7 +39,12 @@ describe('ContentsSection', () => {
         blocks={[{ type: 'paragraph', html: sostavHtml }]}
       />,
     )
-    expect(screen.getByText('Что внутри')).toBeInTheDocument()
+    // Heading is split into <span>/<em> for v3 typography — assert via role
+    // and normalized text content rather than a single text node.
+    const heading = screen.getByRole('heading', { level: 2 })
+    expect(heading.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Что внутри набора',
+    )
     expect(
       screen.getByText('сульфат алюминия 35 мл 5% р-р'),
     ).toBeInTheDocument()

@@ -1,9 +1,9 @@
 import type { Block } from '@ximi4ka-shop/shared'
 import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 import { sanitizeHtml } from '@/lib/sanitizeHtml'
-import { Container, DisplayHeading } from '@/components/ui'
 import { LabSection } from '@/components/ui/LabSection'
-import { MoleculeMotif } from '@/components/decor'
+import { NotebookHeader } from '@/components/ui/NotebookHeader'
+import { MoleculeMotifLJ } from '@/components/decor/MoleculeMotif.lj'
 
 const CONTENTS_HEADING_RE = /<h3[^>]*>\s*Состав\s*<\/h3>/i
 
@@ -37,25 +37,33 @@ export function ContentsSection({ blocks, className = '' }: Props) {
 
   return (
     <LabSection variant="ink" className={`px-6 py-32 ${className}`.trim()}>
-      <Container>
-        <div className="relative grid gap-12 md:grid-cols-[1fr_2fr] md:gap-16">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -bottom-32 -right-32 -z-10 h-[600px] w-[600px] opacity-20"
-          >
-            <MoleculeMotif variant="vivid" />
-          </div>
-          <div>
-            <DisplayHeading as="h2" className="!text-[var(--color-text-on-dark)]">
-              Что внутри
-            </DisplayHeading>
-          </div>
-          <div
-            className="prose-on-dark text-[length:var(--text-body)] leading-[var(--leading-body)] text-[var(--color-text-on-dark)]"
-            dangerouslySetInnerHTML={{ __html: cleaned }}
-          />
-        </div>
-      </Container>
+      <NotebookHeader section="01" label="Что внутри" page={2} total={6} />
+
+      {/* Background ghost molecule */}
+      <MoleculeMotifLJ
+        variant="anthracene"
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[1] pointer-events-none text-[var(--color-lj-bone)] opacity-[0.05] [animation:lj-rotate-slow-reverse_200s_linear_infinite]"
+        style={{ width: 'clamp(600px, 90vmin, 1100px)', height: 'clamp(600px, 90vmin, 1100px)' }}
+      />
+
+      <div className="relative z-[2] max-w-[var(--max-lj-narrow)] mx-auto">
+        <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+          01.0 / Состав набора
+        </p>
+
+        <h2 className="font-[var(--font-lj-display)] font-[700] text-[length:var(--text-lj-display)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[18ch]">
+          <span>Что </span>
+          <em className="italic text-[var(--color-lj-brand)] font-[700] relative after:absolute after:content-[''] after:left-0 after:right-0 after:bottom-1 after:h-[5px] after:bg-[var(--color-lj-brand)] after:opacity-50 after:rounded-sm">
+            внутри
+          </em>
+          <span> набора</span>
+        </h2>
+
+        <div
+          className="prose-on-dark max-w-[56ch] text-xl leading-[1.55] text-[rgba(239,237,230,0.78)]"
+          dangerouslySetInnerHTML={{ __html: cleaned }}
+        />
+      </div>
     </LabSection>
   )
 }
