@@ -1,98 +1,59 @@
-import Link from 'next/link'
-import { MoleculeMotif } from '@/components/decor'
+import { HeaderLogo } from './HeaderLogo'
 import { MoleculeMotifLJ } from '@/components/decor/MoleculeMotif.lj'
 
-interface FooterColumn {
-  heading: string
-  links: { href: string; label: string }[]
+const ROW_OT = ['Химичка', 'с 2023', 'Москва', '161 опыт', '⌀ 4.9/5']
+const ROW_SVYAZ = ['telegram', 'whatsapp', 'phone', 'email']
+const ROW_STRANITSY = ['каталог', 'о нас', 'доставка', 'оплата', 'возврат']
+
+interface ColophonRowProps {
+  label: string
+  items: string[]
+  className?: string
 }
 
-const COLUMNS: FooterColumn[] = [
-  {
-    heading: 'Магазин',
-    links: [{ href: '/categories', label: 'Каталог' }],
-  },
-  {
-    heading: 'Компания',
-    links: [
-      { href: '/o-nas', label: 'О нас' },
-      { href: '/dostavka', label: 'Доставка и оплата' },
-      { href: '/kontakty', label: 'Контакты' },
-    ],
-  },
-  {
-    heading: 'Правовое',
-    links: [
-      { href: '#', label: 'Политика конфиденциальности' },
-      { href: '#', label: 'Согласие на обработку данных' },
-    ],
-  },
-]
+function ColophonRow({ label, items, className = '' }: ColophonRowProps) {
+  return (
+    <div className={`grid grid-cols-[5rem_1fr] gap-6 items-baseline ${className}`}>
+      <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-brand)]">
+        {label}
+      </span>
+      <div className="flex flex-wrap gap-x-3 gap-y-1 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] tracking-[0.04em] text-[var(--color-lj-ink)] opacity-80">
+        {items.map((item, i) => (
+          <span key={`${item}-${i}`} className="inline-flex items-center gap-3">
+            {item}
+            {i < items.length - 1 && <span className="text-[var(--color-lj-brand)]">·</span>}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-soft)]">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-16">
-        <div className="grid gap-12 md:grid-cols-4">
-          <div className="relative md:col-span-1 flex flex-col gap-3">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -left-8 -top-8 -z-10 h-[200px] w-[200px] opacity-20"
-            >
-              <MoleculeMotif variant="vivid" />
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="font-[family-name:var(--font-display)] text-[length:var(--text-h3)] font-extrabold tracking-[var(--tracking-tight)] text-[var(--color-brand-text)]">
-                Ximi4ka
-              </span>
-              <MoleculeMotifLJ
-                variant="methane"
-                className="w-12 h-12 text-[var(--color-lj-ink)] opacity-40"
-              />
-            </div>
-            <p className="text-[length:var(--text-small)] text-[var(--color-brand-text-secondary)]">
-              Наборы для химических экспериментов
-            </p>
-            <div
-              aria-hidden="true"
-              className="h-[2px] w-[60px] mt-1"
-              style={{ background: 'var(--gradient-brand)' }}
-            />
-            <p className="mt-2 text-[length:var(--text-small)] text-[var(--color-text-muted)]">
-              Москва, Россия
-            </p>
-          </div>
+    <footer className="relative bg-[var(--color-lj-cream)] border-t border-[var(--color-lj-rule)] px-6 py-16 overflow-hidden">
+      <MoleculeMotifLJ
+        variant="methane"
+        className="absolute right-8 bottom-8 w-12 h-12 text-[var(--color-lj-ink)] opacity-40"
+      />
 
-          {COLUMNS.map((col) => (
-            <div key={col.heading} className="flex flex-col gap-3">
-              <h3 className="text-[length:var(--text-micro)] font-semibold uppercase tracking-wider text-[var(--color-brand-text-secondary)]">
-                {col.heading}
-              </h3>
-              <ul className="flex flex-col gap-2">
-                {col.links.map((link) => (
-                  <li key={link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-[length:var(--text-small)] text-[var(--color-brand-text)] hover:text-[var(--color-brand)] transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+      <div className="max-w-[var(--max-lj-content)] mx-auto relative z-[2]">
+        <div className="flex items-center justify-between font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] mb-12 pb-4 border-b border-[var(--color-lj-rule)]">
+          <span className="inline-flex items-center gap-3">
+            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-lj-brand)]" />
+            СТР. ZZ / END · ЛАБОРАТОРНЫЙ ЖУРНАЛ
+          </span>
+          <span className="opacity-70">Ред. 2026.04 · v3</span>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-[var(--color-border-subtle)] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-[length:var(--text-micro)] text-[var(--color-text-muted)]">
-            © 2026 Ximi4ka. Все права защищены.
-          </p>
-          <span
-            aria-label="Язык: русский"
-            className="text-[length:var(--text-micro)] text-[var(--color-text-muted)]"
-          >
-            RU
+        <ColophonRow label="ОТ" items={ROW_OT} className="mb-8" />
+        <ColophonRow label="СВЯЗЬ" items={ROW_SVYAZ} className="mb-8" />
+        <ColophonRow label="СТРАНИЦЫ" items={ROW_STRANITSY} className="mb-16" />
+
+        <div className="border-t border-[var(--color-lj-rule)] pt-12 flex items-end justify-between gap-8 flex-wrap">
+          <HeaderLogo size={4} className="text-[var(--color-lj-ink)]" />
+          <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70">
+            © 2023–2026 · все права защищены
           </span>
         </div>
       </div>
