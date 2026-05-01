@@ -1,9 +1,3 @@
-export { PriceBlock } from './PriceBlock'
-export { StockPill } from './StockPill'
-export { QuantityStepper } from './QuantityStepper'
-export { MobileBuyBar } from './MobileBuyBar'
-export { KeyFactsList } from './KeyFactsList'
-export { CharacteristicsTable } from './CharacteristicsTable'
 export { ContentsSection } from './ContentsSection'
 
 // v3 Lab Journal product surfaces

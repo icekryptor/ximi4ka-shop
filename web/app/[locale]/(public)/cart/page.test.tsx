@@ -87,8 +87,8 @@ describe('/cart page', () => {
       saveCart(seed)
     })
     render(<CartPage />)
-    // The QuantityStepper exposes generic aria-labels — there's one stepper per item
-    const incButtons = screen.getAllByRole('button', { name: 'Увеличить количество' })
+    // QuantityStepperLJ uses English aria-labels (one stepper per cart item)
+    const incButtons = screen.getAllByRole('button', { name: 'increase quantity' })
     act(() => {
       fireEvent.click(incButtons[0]!)
     })

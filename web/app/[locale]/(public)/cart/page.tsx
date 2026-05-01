@@ -13,7 +13,7 @@ import {
   MicroTrustRow,
   type MicroTrustItem,
 } from '@/components/ui'
-import { QuantityStepper } from '@/components/product'
+import { QuantityStepperLJ } from '@/components/product/QuantityStepperLJ'
 import { formatRub } from '@/lib/stockLabel'
 
 const TRUST_ITEMS: MicroTrustItem[] = [
@@ -100,7 +100,7 @@ export default function CartPage() {
                   </p>
                 </div>
 
-                <QuantityStepper
+                <QuantityStepperLJ
                   value={item.quantity}
                   onChange={(qty) => setQty(item.productId, qty)}
                 />
