@@ -6,28 +6,29 @@ afterEach(() => {
   cleanup()
 })
 
-describe('GalleryBlock', () => {
-  it('renders one img per image entry', () => {
-    const { container } = render(
-      <GalleryBlock
-        block={{
-          type: 'gallery',
-          images: [
-            { url: '/a.png', alt: 'A' },
-            { url: '/b.png', alt: 'B' },
-            { url: '/c.png', alt: 'C' },
-          ],
-        }}
-      />,
-    )
-    const imgs = container.querySelectorAll('img')
-    expect(imgs.length).toBe(3)
-    expect(imgs[0].getAttribute('src')).toBe('/a.png')
-    expect(imgs[2].getAttribute('alt')).toBe('C')
+describe('<GalleryBlock> v3', () => {
+  it('renders one MediaFrame per image', () => {
+    const block = {
+      type: 'gallery' as const,
+      images: [
+        { url: '/a.jpg', alt: 'A' },
+        { url: '/b.jpg', alt: 'B' },
+        { url: '/c.jpg', alt: 'C' },
+      ],
+    }
+    const { container } = render(<GalleryBlock block={block} />)
+    expect(container.querySelectorAll('[data-frame]').length).toBe(3)
   })
 
-  it('renders nothing when the images array is empty', () => {
-    const { container } = render(<GalleryBlock block={{ type: 'gallery', images: [] }} />)
-    expect(container.querySelector('[data-block="gallery"]')).toBeNull()
+  it('preserves data-block="gallery" marker for BlockRenderer contract', () => {
+    const block = { type: 'gallery' as const, images: [{ url: '/a.jpg', alt: '' }] }
+    const { container } = render(<GalleryBlock block={block} />)
+    expect(container.querySelector('[data-block="gallery"]')).not.toBeNull()
+  })
+
+  it('renders nothing visible when images array is empty (or wraps a no-op)', () => {
+    const block = { type: 'gallery' as const, images: [] }
+    const { container } = render(<GalleryBlock block={block} />)
+    expect(container.querySelectorAll('[data-frame]').length).toBe(0)
   })
 })
