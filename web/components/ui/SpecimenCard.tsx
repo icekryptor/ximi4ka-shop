@@ -23,7 +23,7 @@ export function SpecimenCard({ sku, size, className = '' }: Props) {
     <div
       className={`relative ${aspectClass} bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden ${className}`}
       role="img"
-      aria-label={`Specimen ${sku} — photo coming soon`}
+      aria-label={`Образец № ${sku} — фото готовится`}
     >
       <span
         className={`absolute top-3.5 left-3.5 font-[var(--font-lj-mono)] uppercase text-[var(--color-lj-ink)] opacity-55 ${eyebrowClass}`}
