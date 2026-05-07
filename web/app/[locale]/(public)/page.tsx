@@ -42,6 +42,11 @@ export const revalidate = 60
 // that doesn't exist in the DB. `export` is required for that test;
 // `as const` preserves literal types so `badgeVariant`/`callout.position`
 // stay narrow without redundant casts.
+// NOTE: `name`, `shortDescription`, and `priceRub` here are FALLBACK-ONLY
+// values used by the synthetic Product literal when a slug doesn't resolve
+// in the DB (drift / outage). In normal operation the DB-resolved product's
+// fields win — editing these strings will NOT change what renders on the
+// homepage. To change the displayed name/price/blurb, edit the DB product.
 export const SITE_CATALOG = [
   {
     sku: 'X-30',
