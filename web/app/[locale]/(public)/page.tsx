@@ -277,6 +277,7 @@ export default async function HomePage({ params }: Props) {
                     stats={p.stats}
                     statMaxes={SITE_CATALOG_STAT_MAXES}
                     callout={p.callout}
+                    images={[]}
                   />
                 </div>
               )

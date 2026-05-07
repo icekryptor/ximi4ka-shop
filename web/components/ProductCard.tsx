@@ -1,8 +1,10 @@
+import Image from 'next/image'
 import Link from 'next/link'
-import type { Product } from '@ximi4ka-shop/shared'
+import type { Product, ProductImage } from '@ximi4ka-shop/shared'
 import { Callout } from '@/components/ui/Callout'
 import { Chip } from '@/components/ui/Chip'
 import { StatBar } from '@/components/ui/StatBar'
+import { SpecimenCard } from './ui/SpecimenCard'
 
 interface Stats {
   reagents: number
@@ -20,7 +22,7 @@ interface Props {
   statMaxes: Stats // per-stat-type max across all visible cards in a row
   chips?: string[]
   callout?: { text: string; position: 'right' | 'left'; topPercent?: number }
-  imageArt?: React.ReactNode // SVG illustration or <Image />
+  images: ProductImage[]
   hoverFormula?: string
   cornerMark?: string
 }
@@ -35,7 +37,7 @@ export function ProductCard({
   statMaxes,
   chips = [],
   callout,
-  imageArt,
+  images,
   hoverFormula,
   cornerMark,
 }: Props) {
@@ -77,23 +79,40 @@ export function ProductCard({
         )}
       </div>
 
-      <Link href={`/product/${product.slug}`} className="block">
-        <div className="relative aspect-[4/5] bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color] duration-500 group-hover/pcard:border-[var(--color-lj-ink)]">
-          {cornerMark && (
-            <span className="absolute top-3.5 left-3.5 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
-              {cornerMark}
-            </span>
-          )}
-          <div className="absolute inset-0 flex items-center justify-center transition-transform duration-700 group-hover/pcard:scale-[1.04]">
-            {imageArt}
+      {images.length === 0 ? (
+        <SpecimenCard sku={product.sku ?? product.slug} size="card" className="border-0" />
+      ) : (
+        <Link href={`/product/${product.slug}`} className="block">
+          <div className="relative aspect-[4/5] bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color] duration-500 group-hover/pcard:border-[var(--color-lj-ink)]">
+            {cornerMark && (
+              <span className="absolute top-3.5 left-3.5 z-10 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
+                {cornerMark}
+              </span>
+            )}
+            <Image
+              src={images[0].url}
+              alt={images[0].alt}
+              fill
+              sizes="(max-width: 768px) 100vw, 33vw"
+              className="object-cover transition-[opacity,transform] duration-500 group-hover/pcard:scale-[1.04] group-hover/pcard:opacity-0"
+            />
+            {images[1] && (
+              <Image
+                src={images[1].url}
+                alt={images[1].alt}
+                fill
+                sizes="(max-width: 768px) 100vw, 33vw"
+                className="absolute inset-0 object-cover opacity-0 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:scale-[1.04]"
+              />
+            )}
+            {hoverFormula && (
+              <div className="absolute bottom-3.5 left-3.5 z-10 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] tracking-[0.04em] text-[var(--color-lj-ink)] bg-[var(--color-lj-cream)] px-2.5 py-1.5 border border-[var(--color-lj-ink)] opacity-0 translate-y-2 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:translate-y-0">
+                {hoverFormula}
+              </div>
+            )}
           </div>
-          {hoverFormula && (
-            <div className="absolute bottom-3.5 left-3.5 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] tracking-[0.04em] text-[var(--color-lj-ink)] bg-[var(--color-lj-cream)] px-2.5 py-1.5 border border-[var(--color-lj-ink)] opacity-0 translate-y-2 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:translate-y-0">
-              {hoverFormula}
-            </div>
-          )}
-        </div>
-      </Link>
+        </Link>
+      )}
 
       <div className="pt-5">
         <h3 className="font-[var(--font-lj-display)] font-[700] text-[clamp(1.5rem,2.1vw,2rem)] leading-[0.95] tracking-[-0.035em] mb-3.5">

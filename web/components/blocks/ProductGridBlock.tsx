@@ -32,6 +32,7 @@ export async function ProductGridBlock({ block }: Props) {
             product={product}
             stats={{ reagents: 0, instruments: 0, reactions: 0 }}
             statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+            images={product.images}
           />
         ))}
       </div>
