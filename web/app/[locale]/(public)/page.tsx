@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import {
   getPage,
+  getPublishedProduct,
   getPublicSettings,
   listCategories,
   listPublishedProducts,
@@ -34,13 +35,17 @@ import {
 
 export const revalidate = 60
 
-// v3 Lab Journal — hardcoded catalog of 3 flagship sets. The hero/manifesto/
-// products copy is hardcoded in v3 (per design plan §9). Future CMS work can
-// re-route this to a DB query; for now SITE_CATALOG ships the v3 design clean.
-const SITE_CATALOG = [
+// v3 Lab Journal — hardcoded catalog of 3 flagship sets. Marketing decoration
+// (callouts, stats, hover formulas, chips, badges) lives here; each `slug`
+// resolves to a real DB product at request time so the cards render real
+// product photos. The drift unit test (page.test.tsx) catches any slug here
+// that doesn't exist in the DB. `export` is required for that test;
+// `as const` preserves literal types so `badgeVariant`/`callout.position`
+// stay narrow without redundant casts.
+export const SITE_CATALOG = [
   {
     sku: 'X-30',
-    slug: 'himichka-3',
+    slug: 'himichka-30',
     name: 'Химичка 3.0',
     shortDescription:
       'Флагман: настоящая лаборатория у вас дома. От реакций меди до выращивания кристаллов.',
@@ -76,7 +81,7 @@ const SITE_CATALOG = [
   },
   {
     sku: 'X-EL',
-    slug: 'electrohimichka',
+    slug: 'elektrohimichka',
     name: 'Электрохимичка',
     shortDescription:
       'Электролиз, гальваника, батарея. Полный комплект для опытов с током.',
@@ -92,7 +97,7 @@ const SITE_CATALOG = [
     callout: { text: '20 инструментов', position: 'right' as const, topPercent: 18 },
     staggerOffset: 8, // rem
   },
-]
+] as const
 
 // Per-stat-type max across the whole catalog row, so each card's bars tell a
 // comparative story (e.g. Электрохимичка's instruments=20 fills 100%, while
@@ -206,6 +211,24 @@ export default async function HomePage({ params }: Props) {
   // First six categories featured on the homepage; full list lives at /categories.
   const featuredCategories = categories.slice(0, 6)
 
+  // Hybrid resolution: SITE_CATALOG keeps the marketing decoration (callouts,
+  // stats, chips, hover formulas) in code, but each flagship slug resolves to
+  // a DB product at request time so the cards render real product photos. If
+  // a slug doesn't resolve (drift), we log + render the SpecimenCard fallback
+  // via empty images[]. The unit test (page.test.tsx) catches drift at CI
+  // time so prod shouldn't see this branch — but we degrade gracefully if it
+  // does. (locale-aware fetch will land when the public products endpoint
+  // gains per-locale resolution; for now getPublishedProduct ignores it.)
+  const flagships = await Promise.all(
+    SITE_CATALOG.map(async (entry) => {
+      const dbProduct = await getPublishedProduct(entry.slug).catch(() => null)
+      if (!dbProduct) {
+        console.warn(`[SITE_CATALOG] Slug not found in DB: ${entry.slug}`)
+      }
+      return { ...entry, dbProduct }
+    }),
+  )
+
   return (
     <>
       <JsonLd data={organizationJsonLd()} />
@@ -242,42 +265,53 @@ export default async function HomePage({ params }: Props) {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr_1.1fr] gap-8">
-            {SITE_CATALOG.map((p) => {
+            {flagships.map((entry) => {
               const stagger =
-                p.staggerOffset === 0
+                entry.staggerOffset === 0
                   ? 'lg:mt-0'
-                  : p.staggerOffset === 4
+                  : entry.staggerOffset === 4
                     ? 'lg:mt-16'
                     : 'lg:mt-32'
+              // Synthetic Product fallback when slug doesn't resolve in DB.
+              // Should be unreachable in prod (drift test catches misses at
+              // CI), but we degrade gracefully here so the page still renders.
+              const product: Product = entry.dbProduct ?? {
+                id: `synthetic-${entry.slug}`,
+                slug: entry.slug,
+                sku: entry.sku,
+                name: entry.name,
+                shortDescription: entry.shortDescription,
+                longDescriptionBlocks: [],
+                priceRub: entry.priceRub,
+                compareAtPriceRub: null,
+                stockStatus: 'in_stock',
+                isPublished: true,
+                sortOrder: 0,
+                metaTitle: null,
+                metaDescription: null,
+                ogImage: null,
+                canonicalUrl: null,
+                noindex: false,
+                translations: {},
+                images: [],
+                createdAt: '',
+                updatedAt: '',
+              }
               return (
-                <div key={p.sku} className={stagger}>
+                <div key={entry.slug} className={stagger}>
                   <ProductCard
-                    product={
-                      {
-                        id: p.slug,
-                        slug: p.slug,
-                        sku: p.sku,
-                        name: p.name,
-                        shortDescription: p.shortDescription,
-                        priceRub: p.priceRub,
-                        compareAtPriceRub: null,
-                        stockStatus: 'in_stock',
-                        isPublished: true,
-                        longDescriptionBlocks: [],
-                        images: [],
-                      } as unknown as Product
-                    }
-                    emphasisWord={p.emphasisWord}
-                    elementSymbol={p.elementSymbol}
-                    badge={p.badge}
-                    badgeVariant={p.badgeVariant}
-                    cornerMark={p.cornerMark}
-                    hoverFormula={p.hoverFormula}
-                    chips={p.chips}
-                    stats={p.stats}
+                    product={product}
+                    emphasisWord={entry.emphasisWord}
+                    elementSymbol={entry.elementSymbol}
+                    badge={entry.badge}
+                    badgeVariant={entry.badgeVariant}
+                    cornerMark={entry.cornerMark}
+                    hoverFormula={entry.hoverFormula}
+                    chips={[...entry.chips]}
+                    stats={entry.stats}
                     statMaxes={SITE_CATALOG_STAT_MAXES}
-                    callout={p.callout}
-                    images={[]}
+                    callout={entry.callout}
+                    images={entry.dbProduct?.images ?? []}
                   />
                 </div>
               )

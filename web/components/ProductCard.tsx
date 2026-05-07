@@ -22,6 +22,9 @@ interface Props {
   statMaxes: Stats // per-stat-type max across all visible cards in a row
   chips?: string[]
   callout?: { text: string; position: 'right' | 'left'; topPercent?: number }
+  // Decoupled from product.images so the homepage hybrid (Task 11.5) can pair
+  // a synthetic Product literal with DB-resolved images. Callers that have a
+  // real DB Product can simply pass `images={product.images}`.
   images: ProductImage[]
   hoverFormula?: string
   cornerMark?: string
