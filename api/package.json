@@ -13,7 +13,8 @@
     "migration:run": "tsx ./node_modules/typeorm/cli.js migration:run -d src/config/dataSource.ts",
     "migration:revert": "tsx ./node_modules/typeorm/cli.js migration:revert -d src/config/dataSource.ts",
     "seed": "tsx src/seeds/seed.ts",
-    "import:tilda": "tsx src/seeds/import-tilda-csv.ts"
+    "import:tilda": "tsx src/seeds/import-tilda-csv.ts",
+    "audit:images": "tsx src/scripts/audit-images.ts"
   },
   "dependencies": {
     "@ximi4ka-shop/shared": "^0.0.0",
