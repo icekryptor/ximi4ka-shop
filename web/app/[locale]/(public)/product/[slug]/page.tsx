@@ -268,6 +268,7 @@ export default async function ProductPage({ params }: Props) {
               images={galleryImages}
               cornerMark={`arr. P-${skuSuffix}`}
               alt={name}
+              sku={product.sku ?? product.slug}
             />
           </div>
 

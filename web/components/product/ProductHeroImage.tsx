@@ -3,17 +3,19 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import type { ProductImage } from '@ximi4ka-shop/shared'
+import { SpecimenCard } from '@/components/ui/SpecimenCard'
 
 interface Props {
   images: ProductImage[]
   cornerMark: string
   alt: string
+  sku: string
   hoverFormula?: string
 }
 
-export function ProductHeroImage({ images, cornerMark, alt, hoverFormula }: Props) {
+export function ProductHeroImage({ images, cornerMark, alt, sku, hoverFormula }: Props) {
   const [activeIdx, setActiveIdx] = useState(0)
-  if (images.length === 0) return null
+  if (images.length === 0) return <SpecimenCard size="pdp" sku={sku} />
   const active = images[activeIdx]
   const pad = (n: number) => String(n).padStart(2, '0')
   return (
