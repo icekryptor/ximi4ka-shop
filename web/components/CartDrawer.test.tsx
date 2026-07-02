@@ -108,6 +108,24 @@ describe('CartDrawer', () => {
     expect(loadCart()).toEqual([])
   })
 
+  it('checkout CTA points to /checkout and the cart link to /cart', () => {
+    act(() => {
+      saveCart(seed)
+    })
+    render(<CartDrawer />)
+    act(() => {
+      openDrawer()
+    })
+    expect(screen.getByRole('link', { name: /оформить заказ/i })).toHaveAttribute(
+      'href',
+      '/checkout',
+    )
+    expect(screen.getByRole('link', { name: /открыть корзину/i })).toHaveAttribute(
+      'href',
+      '/cart',
+    )
+  })
+
   it('shows subtotal', () => {
     act(() => {
       saveCart(seed)

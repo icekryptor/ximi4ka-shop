@@ -120,11 +120,18 @@ export function CartDrawer() {
               <span>{formatRub(subtotal)}</span>
             </div>
             <Link
-              href="/cart"
+              href="/checkout"
               onClick={() => setOpen(false)}
               className="inline-flex items-center justify-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
             >
-              К оформлению →
+              Оформить заказ →
+            </Link>
+            <Link
+              href="/cart"
+              onClick={() => setOpen(false)}
+              className="self-center font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-60 hover:opacity-100 hover:text-[var(--color-lj-brand-deep)]"
+            >
+              Открыть корзину
             </Link>
           </div>
         ) : null}
