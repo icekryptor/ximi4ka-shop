@@ -5,6 +5,7 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  type Relation,
 } from 'typeorm'
 import { Order } from './Order.js'
 
@@ -16,9 +17,11 @@ export class OrderItem {
   @Column({ type: 'uuid', name: 'order_id' })
   orderId!: string
 
+  // `Relation<...>` avoids an eager `design:type` reference to Order — a TDZ
+  // crash on the circular Order ↔ OrderItem import in compiled ESM output.
   @ManyToOne(() => Order, (o) => o.items, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'order_id' })
-  order!: Order
+  order!: Relation<Order>
 
   @Column({ type: 'uuid', name: 'product_id' })
   productId!: string
