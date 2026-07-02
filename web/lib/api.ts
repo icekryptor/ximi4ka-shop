@@ -1,4 +1,4 @@
-import type { Page, Product, ProductCategory } from '@ximi4ka-shop/shared'
+import type { BlogPost, Page, Product, ProductCategory } from '@ximi4ka-shop/shared'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
@@ -127,6 +127,33 @@ export async function listPages(
   opts: { limit?: number; offset?: number } = {},
 ): Promise<Paginated<Page>> {
   return request<Paginated<Page>>(`/api/public/pages${buildListQuery(opts)}`)
+}
+
+// ---------- Blog (public) ----------
+
+// The blog listing is page-based (?page=&limit=) rather than offset-based —
+// the storefront renders numbered pagination. The API echoes the resolved
+// page alongside the standard offset envelope.
+export interface BlogListResponse {
+  data: BlogPost[]
+  pagination: { limit: number; offset: number; page: number; total: number }
+}
+
+export async function listBlogPosts(
+  opts: { page?: number; limit?: number } = {},
+): Promise<BlogListResponse> {
+  const params = new URLSearchParams()
+  if (opts.limit != null) params.set('limit', String(opts.limit))
+  if (opts.page != null) params.set('page', String(opts.page))
+  const qs = params.toString()
+  return request<BlogListResponse>(`/api/public/blog${qs ? `?${qs}` : ''}`)
+}
+
+export async function getBlogPostBySlug(slug: string): Promise<BlogPost> {
+  const body = await request<DataEnvelope<BlogPost>>(
+    `/api/public/blog/${encodeURIComponent(slug)}`,
+  )
+  return body.data
 }
 
 // ---------- Public site settings ----------

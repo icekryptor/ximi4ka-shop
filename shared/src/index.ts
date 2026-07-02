@@ -13,6 +13,8 @@ export type { ProductCategory } from './types/category.js'
 
 export type { Page } from './types/page.js'
 
+export type { BlogPost } from './types/blogPost.js'
+
 export type {
   Block,
   BlockType,

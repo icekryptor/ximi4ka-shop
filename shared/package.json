@@ -11,6 +11,7 @@
     "./types/product": "./src/types/product.ts",
     "./types/category": "./src/types/category.ts",
     "./types/page": "./src/types/page.ts",
+    "./types/blogPost": "./src/types/blogPost.ts",
     "./types/blocks": "./src/types/blocks.ts"
   },
   "scripts": {

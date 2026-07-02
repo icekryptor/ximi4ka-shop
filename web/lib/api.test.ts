@@ -8,6 +8,8 @@ import {
   listProductsByCategory,
   getPage,
   listPages,
+  listBlogPosts,
+  getBlogPostBySlug,
   getPublicSettings,
 } from './api'
 
@@ -341,6 +343,113 @@ describe('api client', () => {
 
       const [url] = fetchMock.mock.calls[0]
       expect(url).toBe('http://localhost:3001/api/public/pages?limit=10&offset=5')
+    })
+  })
+
+  describe('listBlogPosts', () => {
+    it('calls /api/public/blog without query string when no args', async () => {
+      const mockResponse = {
+        data: [],
+        pagination: { limit: 20, offset: 0, page: 1, total: 0 },
+      }
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, mockResponse))
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await listBlogPosts()
+
+      expect(result).toEqual(mockResponse)
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/blog')
+    })
+
+    it('serializes page and limit as a query string', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          data: [],
+          pagination: { limit: 12, offset: 12, page: 2, total: 0 },
+        }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      await listBlogPosts({ page: 2, limit: 12 })
+
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/blog?limit=12&page=2')
+    })
+
+    it('allows passing only limit', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse(200, {
+          data: [],
+          pagination: { limit: 3, offset: 0, page: 1, total: 0 },
+        }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      await listBlogPosts({ limit: 3 })
+
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/blog?limit=3')
+    })
+  })
+
+  describe('getBlogPostBySlug', () => {
+    it('calls /api/public/blog/:slug and unwraps data', async () => {
+      const post = {
+        id: 'bp1',
+        slug: 'pochemu-plamya-sinee',
+        title: 'Почему пламя синее',
+        excerpt: 'Коротко о горении.',
+        coverImageUrl: null,
+        rubric: 'Опыты',
+        blocks: [],
+        metaTitle: null,
+        metaDescription: null,
+        ogImage: null,
+        canonicalUrl: null,
+        noindex: false,
+        translations: {},
+        isPublished: true,
+        publishedAt: '2026-06-01T00:00:00.000Z',
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-06-02T00:00:00.000Z',
+      }
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: post }))
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await getBlogPostBySlug('pochemu-plamya-sinee')
+
+      expect(result).toEqual(post)
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/blog/pochemu-plamya-sinee')
+    })
+
+    it('URL-encodes the post slug', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: {} }))
+      vi.stubGlobal('fetch', fetchMock)
+
+      await getBlogPostBySlug('slug with spaces')
+
+      const [url] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/blog/slug%20with%20spaces')
+    })
+
+    it('throws ApiError on 404', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(
+          jsonResponse(
+            404,
+            { error: { code: 'blog_post_not_found', message: 'Not found' } },
+            false,
+          ),
+        ),
+      )
+
+      await expect(getBlogPostBySlug('nope')).rejects.toMatchObject({
+        status: 404,
+        code: 'blog_post_not_found',
+      })
     })
   })
 
