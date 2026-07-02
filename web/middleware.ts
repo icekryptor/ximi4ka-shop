@@ -88,6 +88,8 @@ const EXCLUDED_EXACT = new Set([
   '/sitemap.xml',
   '/yml.xml',
   '/turbo.xml',
+  // Blog RSS lives under /blog but is an XML feed with no locale concept.
+  '/blog/rss.xml',
 ])
 
 function isExcluded(path: string): boolean {
@@ -151,7 +153,7 @@ export const config = {
   // (robots/sitemap/yml/turbo/llms). Everything else is public,
   // localizable, and potentially redirect-targeted.
   matcher: [
-    '/((?!_next|api|admin|fonts|uploads|amp|v3-preview-e|v3-preview-d|v3-preview-c|v3-preview-b|v3-preview|favicon\\.ico|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml).*)',
+    '/((?!_next|api|admin|fonts|uploads|amp|v3-preview-e|v3-preview-d|v3-preview-c|v3-preview-b|v3-preview|favicon\\.ico|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml|blog/rss\\.xml).*)',
   ],
 }
 

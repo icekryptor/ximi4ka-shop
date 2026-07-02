@@ -36,12 +36,16 @@ describe('Header v3', () => {
     expect(svg).not.toBeNull()
   })
 
-  it('renders all 4 primary nav links with correct hrefs', () => {
+  it('renders all 5 primary nav links with correct hrefs', () => {
     render(<Header />)
     const mainNav = screen.getByRole('navigation', { name: 'Основная навигация' })
     expect(within(mainNav).getByRole('link', { name: 'Каталог' })).toHaveAttribute(
       'href',
       '/categories',
+    )
+    expect(within(mainNav).getByRole('link', { name: 'Блог' })).toHaveAttribute(
+      'href',
+      '/blog',
     )
     expect(within(mainNav).getByRole('link', { name: 'О нас' })).toHaveAttribute('href', '/o-nas')
     expect(within(mainNav).getByRole('link', { name: 'Доставка' })).toHaveAttribute(
@@ -51,6 +55,16 @@ describe('Header v3', () => {
     expect(within(mainNav).getByRole('link', { name: 'Контакты' })).toHaveAttribute(
       'href',
       '/kontakty',
+    )
+  })
+
+  it('marks Блог active on nested article routes', () => {
+    mockPathname.mockReturnValue('/blog/pochemu-plamya-sinee')
+    render(<Header />)
+    const mainNav = screen.getByRole('navigation', { name: 'Основная навигация' })
+    expect(within(mainNav).getByRole('link', { name: 'Блог' })).toHaveAttribute(
+      'aria-current',
+      'page',
     )
   })
 

@@ -1,5 +1,10 @@
 import type { MetadataRoute } from 'next'
-import { listCategories, listPages, listPublishedProducts } from '@/lib/api'
+import {
+  listBlogPosts,
+  listCategories,
+  listPages,
+  listPublishedProducts,
+} from '@/lib/api'
 import { siteUrl } from '@/lib/metadata'
 import {
   DEFAULT_LOCALE,
@@ -32,7 +37,7 @@ function alternatesFor(pathname: string, base: string): Record<string, string> {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl()
 
-  const [products, categories, pages] = await Promise.all([
+  const [products, categories, pages, posts] = await Promise.all([
     listPublishedProducts({ limit: 1000 })
       .then((r) => r.data)
       .catch(() => []),
@@ -40,6 +45,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .then((r) => r.data)
       .catch(() => []),
     listPages({ limit: 1000 })
+      .then((r) => r.data)
+      .catch(() => []),
+    // The public blog endpoint caps limit at 100 — plenty for now; revisit
+    // with a paginated walk when the journal outgrows a hundred entries.
+    listBlogPosts({ limit: 100 })
       .then((r) => r.data)
       .catch(() => []),
   ])
@@ -61,6 +71,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
       alternates: { languages: alternatesFor('/categories', base) },
     },
+    {
+      url: `${base}/blog`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.7,
+      alternates: { languages: alternatesFor('/blog', base) },
+    },
     ...categories.map((c) => ({
       url: `${base}/categories/${c.slug}`,
       lastModified: now,
@@ -74,6 +91,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly' as const,
       priority: 0.6,
       alternates: { languages: alternatesFor(`/product/${p.slug}`, base) },
+    })),
+    ...posts.map((p) => ({
+      url: `${base}/blog/${p.slug}`,
+      lastModified: p.updatedAt,
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+      alternates: { languages: alternatesFor(`/blog/${p.slug}`, base) },
     })),
     // CMS pages — skip `home`, which is rendered at `/`.
     ...pages

@@ -16,6 +16,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: '/categories', label: 'Каталог', desc: 'найти набор' },
+  { href: '/blog', label: 'Блог', desc: 'записи из лаборатории' },
   { href: '/o-nas', label: 'О нас', desc: 'наша лаборатория' },
   { href: '/dostavka', label: 'Доставка', desc: 'сроки и тарифы' },
   { href: '/kontakty', label: 'Контакты', desc: 'связь с нами' },

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import type { Page, Product } from '@ximi4ka-shop/shared'
+import type { BlogPost, Page, Product } from '@ximi4ka-shop/shared'
 import { generateTurboRss } from './turbo'
 
 function makeProduct(overrides: Partial<Product> = {}): Product {
@@ -43,6 +43,29 @@ function makePage(overrides: Partial<Page> = {}): Page {
     isPublished: true,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-04-20T00:00:00.000Z',
+    ...overrides,
+  }
+}
+
+function makeBlogPost(overrides: Partial<BlogPost> = {}): BlogPost {
+  return {
+    id: 'bp-1',
+    slug: 'pochemu-plamya-sinee',
+    title: 'Почему пламя синее',
+    excerpt: 'Разбираем химию горения.',
+    coverImageUrl: null,
+    rubric: 'Опыты',
+    blocks: [{ type: 'paragraph', html: '<p>Ионы меди красят пламя.</p>' }],
+    metaTitle: null,
+    metaDescription: null,
+    ogImage: null,
+    canonicalUrl: null,
+    noindex: false,
+    translations: {},
+    isPublished: true,
+    publishedAt: '2026-06-01T00:00:00.000Z',
+    createdAt: '2026-05-01T00:00:00.000Z',
+    updatedAt: '2026-06-02T00:00:00.000Z',
     ...overrides,
   }
 }
@@ -114,6 +137,36 @@ describe('generateTurboRss', () => {
     })
     expect(xml).not.toContain('new.ximi4ka.ru/home')
     expect(xml).toContain('new.ximi4ka.ru/dostavka')
+  })
+
+  it('emits one <item> per blog post with excerpt + paragraph blocks', () => {
+    const xml = generateTurboRss({
+      products: [],
+      pages: [],
+      posts: [makeBlogPost()],
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    expect(xml).toContain(
+      '<link>https://new.ximi4ka.ru/blog/pochemu-plamya-sinee</link>',
+    )
+    expect(xml).toContain('<title>Почему пламя синее</title>')
+    expect(xml).toContain('<header><h1>Почему пламя синее</h1></header>')
+    expect(xml).toContain('<p>Разбираем химию горения.</p>')
+    expect(xml).toContain('<p>Ионы меди красят пламя.</p>')
+    // pubDate comes from publishedAt (RFC 822).
+    expect(xml).toContain(
+      `<pubDate>${new Date('2026-06-01T00:00:00.000Z').toUTCString()}</pubDate>`,
+    )
+  })
+
+  it('stays backward-compatible when posts are omitted', () => {
+    const xml = generateTurboRss({
+      products: [makeProduct()],
+      pages: [makePage()],
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    expect(xml).toContain('/product/nabor')
+    expect(xml).toContain('/o-nas')
   })
 
   it('escapes product titles with XML special chars', () => {

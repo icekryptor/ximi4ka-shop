@@ -138,12 +138,13 @@ describe('redirect middleware', () => {
     expect(res.headers.get('location')).toBe('https://example.com/landing')
   })
 
-  it('skips locale rewrite for /robots.txt, /sitemap.xml, /yml.xml, /turbo.xml, /llms.txt, /amp/*', async () => {
+  it('skips locale rewrite for /robots.txt, /sitemap.xml, /yml.xml, /turbo.xml, /blog/rss.xml, /llms.txt, /amp/*', async () => {
     for (const p of [
       '/robots.txt',
       '/sitemap.xml',
       '/yml.xml',
       '/turbo.xml',
+      '/blog/rss.xml',
       '/llms.txt',
       '/amp/product/foo',
     ]) {
@@ -153,6 +154,19 @@ describe('redirect middleware', () => {
     }
     // None of those should have hit the redirects endpoint either.
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('still locale-rewrites /blog pages (only the feed is excluded)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const res = await middleware(makeRequest('/blog/pochemu-plamya-sinee'))
+    expect(res.headers.get('x-middleware-rewrite')).toContain(
+      '/ru/blog/pochemu-plamya-sinee',
+    )
   })
 
   it('rewrites unprefixed requests internally to /ru (invisible to user)', async () => {

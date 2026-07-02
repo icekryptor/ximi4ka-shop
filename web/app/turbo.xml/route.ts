@@ -1,4 +1,4 @@
-import { listPages, listPublishedProducts } from '@/lib/api'
+import { listBlogPosts, listPages, listPublishedProducts } from '@/lib/api'
 import { siteUrl } from '@/lib/metadata'
 import { generateTurboRss } from '@/lib/turbo'
 
@@ -9,14 +9,17 @@ export const revalidate = 3600
 
 export async function GET(): Promise<Response> {
   try {
-    const [productsResp, pagesResp] = await Promise.all([
+    const [productsResp, pagesResp, postsResp] = await Promise.all([
       listPublishedProducts({ limit: 5000 }),
       listPages({ limit: 500 }),
+      // Public blog endpoint caps limit at 100.
+      listBlogPosts({ limit: 100 }),
     ])
 
     const xml = generateTurboRss({
       products: productsResp.data,
       pages: pagesResp.data,
+      posts: postsResp.data,
       siteUrl: siteUrl(),
     })
 

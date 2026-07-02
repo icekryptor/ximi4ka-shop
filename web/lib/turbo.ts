@@ -1,16 +1,18 @@
-import type { Page, Product } from '@ximi4ka-shop/shared'
+import type { BlogPost, Page, Product } from '@ximi4ka-shop/shared'
 import { escapeXml } from './ymlFeed'
 
-// Yandex Turbo RSS. One <item> per published product and one per published
-// CMS page. The Turbo-page HTML fragment sits inside <turbo:content> CDATA.
-// Yandex accepts a small tag vocabulary there — <header>, <h1>, <p>,
-// <strong>, <em>, <details>, <summary>. We deliberately stick to that
-// subset; richer components (carousels, forms, embeds) would require
-// additional Turbo tags and namespaces.
+// Yandex Turbo RSS. One <item> per published product, one per published
+// CMS page and one per published blog post. The Turbo-page HTML fragment
+// sits inside <turbo:content> CDATA. Yandex accepts a small tag vocabulary
+// there — <header>, <h1>, <p>, <strong>, <em>, <details>, <summary>. We
+// deliberately stick to that subset; richer components (carousels, forms,
+// embeds) would require additional Turbo tags and namespaces.
 
 interface TurboInput {
   products: Product[]
   pages: Page[]
+  // Optional for backward compatibility with pre-blog callers.
+  posts?: BlogPost[]
   siteUrl: string
   channel?: {
     title?: string
@@ -62,12 +64,13 @@ function productTurboContent(product: Product): string {
   return parts.filter(Boolean).join('\n')
 }
 
-// Render the Turbo-HTML body for a CMS page. We flatten paragraph + FAQ
-// blocks only; video, layout, gallery etc. need richer Turbo markup and
-// are deliberately skipped (SEO preview > pixel-perfect parity).
-function pageTurboContent(page: Page): string {
-  const blocks = Array.isArray(page.blocks) ? page.blocks : []
-  const lines: string[] = [`<header><h1>${escapeXml(page.title)}</h1></header>`]
+// Flatten CMS blocks into Turbo-safe lines. Paragraph + FAQ blocks only;
+// video, layout, gallery etc. need richer Turbo markup and are deliberately
+// skipped (SEO preview > pixel-perfect parity). Shared between CMS pages
+// and blog posts, which use the same 8-type block vocabulary.
+function blocksToTurboLines(rawBlocks: unknown): string[] {
+  const blocks = Array.isArray(rawBlocks) ? rawBlocks : []
+  const lines: string[] = []
   for (const block of blocks) {
     if (typeof block !== 'object' || block === null) continue
     const type = (block as { type?: string }).type
@@ -85,7 +88,28 @@ function pageTurboContent(page: Page): string {
       }
     }
   }
-  return lines.join('\n')
+  return lines
+}
+
+// Render the Turbo-HTML body for a CMS page.
+function pageTurboContent(page: Page): string {
+  return [
+    `<header><h1>${escapeXml(page.title)}</h1></header>`,
+    ...blocksToTurboLines(page.blocks),
+  ].join('\n')
+}
+
+// Render the Turbo-HTML body for a blog post: title, excerpt lead, then
+// the flattened blocks.
+function postTurboContent(post: BlogPost): string {
+  const excerpt = post.excerpt?.trim() ?? ''
+  return [
+    `<header><h1>${escapeXml(post.title)}</h1></header>`,
+    excerpt ? `<p>${escapeXml(excerpt)}</p>` : '',
+    ...blocksToTurboLines(post.blocks),
+  ]
+    .filter(Boolean)
+    .join('\n')
 }
 
 // Build an RFC 822 date for RSS. Turbo's RSS 2.0 profile prefers this
@@ -98,6 +122,7 @@ export function generateTurboRss(input: TurboInput): string {
   const {
     products,
     pages,
+    posts = [],
     siteUrl,
     channel = {
       title: 'Ximi4ka',
@@ -139,6 +164,25 @@ export function generateTurboRss(input: TurboInput): string {
         `      <pubDate>${pubDate}</pubDate>`,
         `      <turbo:content><![CDATA[`,
         pageTurboContent(page),
+        `      ]]></turbo:content>`,
+        `    </item>`,
+      ].join('\n'),
+    )
+  }
+
+  for (const post of posts) {
+    const url = `${siteUrl}/blog/${post.slug}`
+    // publishedAt is the editorial publish date; createdAt is only a
+    // fallback for legacy rows that predate the field.
+    const pubDate = rfc822(new Date(post.publishedAt ?? post.createdAt))
+    items.push(
+      [
+        `    <item turbo="true">`,
+        `      <link>${escapeXml(url)}</link>`,
+        `      <title>${escapeXml(post.title)}</title>`,
+        `      <pubDate>${pubDate}</pubDate>`,
+        `      <turbo:content><![CDATA[`,
+        postTurboContent(post),
         `      ]]></turbo:content>`,
         `    </item>`,
       ].join('\n'),

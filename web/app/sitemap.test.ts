@@ -6,10 +6,23 @@ vi.mock('@/lib/api', () => ({
   listPublishedProducts: vi.fn(),
   listCategories: vi.fn(),
   listPages: vi.fn(),
+  listBlogPosts: vi.fn(),
 }))
 
 import sitemap from './sitemap'
-import { listCategories, listPages, listPublishedProducts } from '@/lib/api'
+import {
+  listBlogPosts,
+  listCategories,
+  listPages,
+  listPublishedProducts,
+} from '@/lib/api'
+
+function emptyBlogResponse() {
+  return {
+    data: [],
+    pagination: { limit: 100, offset: 0, page: 1, total: 0 },
+  }
+}
 
 describe('sitemap', () => {
   beforeEach(() => {
@@ -98,6 +111,30 @@ describe('sitemap', () => {
       ],
       pagination: { limit: 1000, offset: 0, total: 2 },
     })
+    vi.mocked(listBlogPosts).mockResolvedValue({
+      data: [
+        {
+          id: 'bp1',
+          slug: 'pochemu-plamya-sinee',
+          title: 'Почему пламя синее',
+          excerpt: null,
+          coverImageUrl: null,
+          rubric: null,
+          blocks: [],
+          metaTitle: null,
+          metaDescription: null,
+          ogImage: null,
+          canonicalUrl: null,
+          noindex: false,
+          translations: {},
+          isPublished: true,
+          publishedAt: '2026-06-01T00:00:00.000Z',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-06-02T00:00:00.000Z',
+        },
+      ],
+      pagination: { limit: 100, offset: 0, page: 1, total: 1 },
+    })
 
     const out = await sitemap()
     const urls = out.map((e) => e.url)
@@ -107,6 +144,13 @@ describe('sitemap', () => {
     expect(urls).toContain('https://new.ximi4ka.ru/categories/himicheskie-nabory')
     expect(urls).toContain('https://new.ximi4ka.ru/product/nabor-yunogo-himika')
     expect(urls).toContain('https://new.ximi4ka.ru/o-nas')
+    // Blog: static listing entry + one per published post.
+    expect(urls).toContain('https://new.ximi4ka.ru/blog')
+    expect(urls).toContain('https://new.ximi4ka.ru/blog/pochemu-plamya-sinee')
+    const post = out.find(
+      (e) => e.url === 'https://new.ximi4ka.ru/blog/pochemu-plamya-sinee',
+    )
+    expect(post?.lastModified).toBe('2026-06-02T00:00:00.000Z')
     // `home` CMS slug is NOT emitted as /home — it lives at `/`.
     expect(urls).not.toContain('https://new.ximi4ka.ru/home')
   })
@@ -147,6 +191,7 @@ describe('sitemap', () => {
       data: [],
       pagination: { limit: 1000, offset: 0, total: 0 },
     })
+    vi.mocked(listBlogPosts).mockResolvedValue(emptyBlogResponse())
 
     const out = await sitemap()
     // Home entry.
@@ -169,13 +214,15 @@ describe('sitemap', () => {
     vi.mocked(listPublishedProducts).mockRejectedValue(new Error('down'))
     vi.mocked(listCategories).mockRejectedValue(new Error('down'))
     vi.mocked(listPages).mockRejectedValue(new Error('down'))
+    vi.mocked(listBlogPosts).mockRejectedValue(new Error('down'))
 
     const out = await sitemap()
     const urls = out.map((e) => e.url)
-    // Homepage + categories landing always ship, even if no data sourced.
+    // Homepage + categories + blog landings always ship, even without data.
     expect(urls).toContain('https://new.ximi4ka.ru/')
     expect(urls).toContain('https://new.ximi4ka.ru/categories')
-    expect(out.length).toBe(2)
+    expect(urls).toContain('https://new.ximi4ka.ru/blog')
+    expect(out.length).toBe(3)
   })
 
   it('respects NEXT_PUBLIC_SITE_URL when set', async () => {
@@ -191,6 +238,7 @@ describe('sitemap', () => {
       data: [],
       pagination: { limit: 1000, offset: 0, total: 0 },
     })
+    vi.mocked(listBlogPosts).mockResolvedValue(emptyBlogResponse())
     process.env.NEXT_PUBLIC_SITE_URL = 'https://preview.example.com'
     const out = await sitemap()
     expect(out[0].url).toBe('https://preview.example.com/')
