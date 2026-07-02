@@ -29,7 +29,7 @@ afterEach(() => {
 const admin = { id: 'u-1', email: 'admin@example.com', role: 'admin' }
 
 describe('AdminShell', () => {
-  it('renders all 8 sidebar nav items with correct hrefs', () => {
+  it('renders all 9 sidebar nav items with correct hrefs', () => {
     render(
       <AdminShell admin={admin}>
         <div>content</div>
@@ -41,6 +41,7 @@ describe('AdminShell', () => {
       ['Товары', '/admin/products'],
       ['Категории', '/admin/categories'],
       ['Страницы', '/admin/pages'],
+      ['Блог', '/admin/blog'],
       ['Заказы', '/admin/orders'],
       ['Редиректы', '/admin/redirects'],
       ['Медиа', '/admin/media'],

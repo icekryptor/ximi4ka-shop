@@ -25,6 +25,7 @@ const NAV: NavItem[] = [
   { href: '/admin/products', label: 'Товары' },
   { href: '/admin/categories', label: 'Категории' },
   { href: '/admin/pages', label: 'Страницы' },
+  { href: '/admin/blog', label: 'Блог' },
   { href: '/admin/orders', label: 'Заказы' },
   { href: '/admin/redirects', label: 'Редиректы' },
   { href: '/admin/media', label: 'Медиа' },

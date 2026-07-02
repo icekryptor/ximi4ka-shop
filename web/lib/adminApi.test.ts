@@ -1,25 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  adminCreateBlogPost,
   adminCreateCategory,
   adminCreatePage,
   adminCreateProduct,
   adminCreateRedirect,
+  adminDeleteBlogPost,
   adminDeleteCategory,
   adminDeleteMedia,
   adminDeletePage,
   adminDeleteRedirect,
+  adminGetBlogPost,
   adminGetPage,
   adminGetSettings,
   adminImportRedirectsCsv,
+  adminListBlogPosts,
   adminListCategories,
   adminListMedia,
   adminListPages,
   adminListProducts,
   adminListRedirects,
   adminListRevisions,
+  adminPublishBlogPost,
   adminPublishPage,
   adminRestoreRevision,
+  adminUnpublishBlogPost,
   adminUnpublishPage,
+  adminUpdateBlogPost,
   adminUpdateCategory,
   adminUpdatePage,
   adminUpdateRedirect,
@@ -285,6 +292,138 @@ describe('adminApi', () => {
       expect((err as ApiError).status).toBe(404)
       expect((err as ApiError).code).toBe('page_not_found')
     }
+  })
+
+  it('blog: list forwards q + pagination, sends credentials, no CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: [],
+        pagination: { limit: 20, offset: 0, total: 0 },
+      }),
+    )
+    await adminListBlogPosts({ limit: 10, offset: 20, q: 'химия' })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/blog?')
+    expect(String(url)).toContain('limit=10')
+    expect(String(url)).toContain('offset=20')
+    expect(String(url)).toContain('q=')
+    expect(init?.credentials).toBe('include')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBeUndefined()
+  })
+
+  it('blog: get by id returns unwrapped data', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { data: { id: 'b1', slug: 'post', title: 'Пост' } }),
+    )
+    const post = await adminGetBlogPost('b1')
+    expect(post.id).toBe('b1')
+    const [url] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/blog/b1')
+  })
+
+  it('blog: create sends POST with CSRF + JSON body', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(201, {
+        data: { id: 'b1', slug: 'post', title: 'Пост' },
+      }),
+    )
+    const result = await adminCreateBlogPost({
+      slug: 'post',
+      title: 'Пост',
+      rubric: 'Эксперименты',
+    })
+    expect(result.id).toBe('b1')
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init?.method).toBe('POST')
+    expect(init?.credentials).toBe('include')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+    expect(init?.body).toBe(
+      JSON.stringify({ slug: 'post', title: 'Пост', rubric: 'Эксперименты' }),
+    )
+  })
+
+  it('blog: update sends PATCH with CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { data: { id: 'b1', slug: 'post', title: 'Новый' } }),
+    )
+    await adminUpdateBlogPost('b1', { title: 'Новый' })
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/blog/b1')
+    expect(init?.method).toBe('PATCH')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+  })
+
+  it('blog: publish/unpublish POST with CSRF', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { data: { id: 'b1', isPublished: true } }),
+    )
+    await adminPublishBlogPost('b1')
+    expect(String(fetchMock.mock.calls[0][0])).toContain(
+      '/api/admin/blog/b1/publish',
+    )
+    expect(fetchMock.mock.calls[0][1]?.method).toBe('POST')
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, { data: { id: 'b1', isPublished: false } }),
+    )
+    await adminUnpublishBlogPost('b1')
+    expect(String(fetchMock.mock.calls[1][0])).toContain(
+      '/api/admin/blog/b1/unpublish',
+    )
+  })
+
+  it('blog: delete sends DELETE and resolves on 204', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }))
+    await expect(adminDeleteBlogPost('b1')).resolves.toBeUndefined()
+    const [, init] = fetchMock.mock.calls[0]
+    expect(init?.method).toBe('DELETE')
+    const headers = init?.headers as Record<string, string>
+    expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
+  })
+
+  it('blog: surfaces 409 slug_conflict', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(409, { error: { code: 'slug_conflict', message: 'dup' } }),
+    )
+    try {
+      await adminCreateBlogPost({ slug: 'post', title: 'X' })
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as ApiError).code).toBe('slug_conflict')
+      expect((err as ApiError).status).toBe(409)
+    }
+  })
+
+  it('blog: surfaces 404 on get', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(404, {
+        error: { code: 'blog_post_not_found', message: 'nope' },
+      }),
+    )
+    try {
+      await adminGetBlogPost('missing')
+      throw new Error('should have thrown')
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiError)
+      expect((err as ApiError).status).toBe(404)
+      expect((err as ApiError).code).toBe('blog_post_not_found')
+    }
+  })
+
+  it('blog: revisions list accepts blog_post entity type', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, {
+        data: [],
+        pagination: { limit: 20, offset: 0, total: 0 },
+      }),
+    )
+    await adminListRevisions('blog_post', 'b1')
+    const [url] = fetchMock.mock.calls[0]
+    expect(String(url)).toContain('/api/admin/revisions/entity/blog_post/b1')
   })
 
   it('media: list forwards q + mimePrefix, sends credentials, no CSRF', async () => {

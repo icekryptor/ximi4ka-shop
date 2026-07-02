@@ -1,4 +1,4 @@
-import type { Page, Product, ProductCategory } from '@ximi4ka-shop/shared'
+import type { BlogPost, Page, Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ApiError, type Paginated } from './api'
 
 // Admin API client. Mirrors the public client in api.ts but:
@@ -287,6 +287,84 @@ export async function adminDeletePage(id: string): Promise<void> {
   })
 }
 
+// --- blog ---
+
+export interface AdminBlogPostInput {
+  slug: string
+  title: string
+  excerpt?: string | null
+  coverImageUrl?: string | null
+  rubric?: string | null
+  blocks?: unknown[]
+  metaTitle?: string | null
+  metaDescription?: string | null
+  ogImage?: string | null
+  canonicalUrl?: string | null
+  noindex?: boolean
+  translations?: Record<string, unknown>
+}
+
+export async function adminListBlogPosts(
+  opts: { limit?: number; offset?: number; q?: string } = {},
+): Promise<Paginated<BlogPost>> {
+  const params = new URLSearchParams()
+  if (opts.limit != null) params.set('limit', String(opts.limit))
+  if (opts.offset != null) params.set('offset', String(opts.offset))
+  if (opts.q) params.set('q', opts.q)
+  const qs = params.toString()
+  return authedRequest<Paginated<BlogPost>>(`/api/admin/blog${qs ? `?${qs}` : ''}`)
+}
+
+export async function adminGetBlogPost(id: string): Promise<BlogPost> {
+  const body = await authedRequest<{ data: BlogPost }>(
+    `/api/admin/blog/${encodeURIComponent(id)}`,
+  )
+  return body.data
+}
+
+export async function adminCreateBlogPost(
+  input: AdminBlogPostInput,
+): Promise<BlogPost> {
+  const body = await authedRequest<{ data: BlogPost }>(`/api/admin/blog`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+  return body.data
+}
+
+export async function adminUpdateBlogPost(
+  id: string,
+  input: Partial<AdminBlogPostInput>,
+): Promise<BlogPost> {
+  const body = await authedRequest<{ data: BlogPost }>(
+    `/api/admin/blog/${encodeURIComponent(id)}`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
+  return body.data
+}
+
+export async function adminPublishBlogPost(id: string): Promise<BlogPost> {
+  const body = await authedRequest<{ data: BlogPost }>(
+    `/api/admin/blog/${encodeURIComponent(id)}/publish`,
+    { method: 'POST' },
+  )
+  return body.data
+}
+
+export async function adminUnpublishBlogPost(id: string): Promise<BlogPost> {
+  const body = await authedRequest<{ data: BlogPost }>(
+    `/api/admin/blog/${encodeURIComponent(id)}/unpublish`,
+    { method: 'POST' },
+  )
+  return body.data
+}
+
+export async function adminDeleteBlogPost(id: string): Promise<void> {
+  await authedRequest<void>(`/api/admin/blog/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+}
+
 // --- redirects ---
 
 export interface Redirect {
@@ -475,9 +553,15 @@ export async function adminUploadImage(file: File): Promise<UploadResult> {
 
 // --- revisions ---
 
+export type RevisionEntityType =
+  | 'product'
+  | 'page'
+  | 'product_category'
+  | 'blog_post'
+
 export interface RevisionSummary {
   id: string
-  entityType: 'product' | 'page' | 'product_category'
+  entityType: RevisionEntityType
   entityId: string
   editedAt: string
   editedBy: string | null
@@ -485,7 +569,7 @@ export interface RevisionSummary {
 }
 
 export async function adminListRevisions(
-  entityType: 'product' | 'page' | 'product_category',
+  entityType: RevisionEntityType,
   entityId: string,
   opts: { limit?: number; offset?: number } = {},
 ): Promise<Paginated<RevisionSummary>> {
