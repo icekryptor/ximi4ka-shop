@@ -8,6 +8,7 @@ import { adminCategoriesRouter } from './routes/admin/categories.js'
 import { publicPagesRouter } from './routes/public/pages.js'
 import { adminPagesRouter } from './routes/admin/pages.js'
 import { publicBlogRouter } from './routes/public/blog.js'
+import { adminBlogRouter } from './routes/admin/blog.js'
 import { mediaRouter } from './routes/admin/media.js'
 import { adminRedirectsRouter } from './routes/admin/redirects.js'
 import { publicRedirectsRouter } from './routes/public/redirects.js'
@@ -46,6 +47,7 @@ export function createApp(): Express {
   app.use('/api/public/pages', publicPagesRouter)
   app.use('/api/admin/pages', adminPagesRouter)
   app.use('/api/public/blog', publicBlogRouter)
+  app.use('/api/admin/blog', adminBlogRouter)
   app.use('/api/admin/media', mediaRouter)
   app.use('/api/public/redirects', publicRedirectsRouter)
   app.use('/api/admin/redirects', adminRedirectsRouter)

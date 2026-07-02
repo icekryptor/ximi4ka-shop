@@ -4,15 +4,17 @@ import { EntityRevision } from '../entities/EntityRevision.js'
 import { Product } from '../entities/Product.js'
 import { Page } from '../entities/Page.js'
 import { ProductCategory } from '../entities/ProductCategory.js'
+import { BlogPost } from '../entities/BlogPost.js'
 
 // Revision tracking for admin-editable content. We snapshot the prior state
 // of an entity before every update/delete and the initial state on create,
 // so admins can browse a history and restore older versions.
 //
-// Only three entity types are tracked: `product`, `page`, `product_category`.
-// Orders, admin_users, and redirects are intentionally out of scope.
+// Only four entity types are tracked: `product`, `page`, `product_category`,
+// `blog_post`. Orders, admin_users, and redirects are intentionally out of
+// scope.
 
-export type RevisionEntityType = 'product' | 'page' | 'product_category'
+export type RevisionEntityType = 'product' | 'page' | 'product_category' | 'blog_post'
 
 async function snapshotFor(
   entityType: RevisionEntityType,
@@ -39,6 +41,10 @@ async function snapshotFor(
   if (entityType === 'product_category') {
     const cat = await AppDataSource.getRepository(ProductCategory).findOneBy({ id: entityId })
     return cat ? { ...cat } : null
+  }
+  if (entityType === 'blog_post') {
+    const post = await AppDataSource.getRepository(BlogPost).findOneBy({ id: entityId })
+    return post ? { ...post } : null
   }
   return null
 }
@@ -125,6 +131,15 @@ export async function restoreRevision(
     const { id: _id, ...columns } = snapshot as Record<string, unknown>
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await AppDataSource.getRepository(ProductCategory).update({ id: entityId }, columns as any)
+  } else if (et === 'blog_post') {
+    const {
+      id: _id,
+      createdAt: _createdAt,
+      updatedAt: _updatedAt,
+      ...columns
+    } = snapshot as Record<string, unknown>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await AppDataSource.getRepository(BlogPost).update({ id: entityId }, columns as any)
   } else {
     return null
   }

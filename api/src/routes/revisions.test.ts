@@ -11,7 +11,7 @@ import { EntityRevision } from '../entities/EntityRevision.js'
 // revisions behind — harmless because tests always use fresh UUIDs.
 async function truncateAll(): Promise<void> {
   await AppDataSource.query(
-    'TRUNCATE entity_revisions, products, product_images, product_categories, product_category_links, pages, admin_sessions, admin_users RESTART IDENTITY CASCADE',
+    'TRUNCATE entity_revisions, products, product_images, product_categories, product_category_links, pages, blog_posts, admin_sessions, admin_users RESTART IDENTITY CASCADE',
   )
 }
 
@@ -158,6 +158,34 @@ describe('Revision routes', () => {
       where: { entityType: 'product_category', entityId: id },
     })
     expect(revs).toHaveLength(2)
+  })
+
+  it('records revisions on blog post update and lists them by entity', async () => {
+    const {
+      body: {
+        data: { id },
+      },
+    } = await request(app)
+      .post('/api/admin/blog')
+      .set(authHeaders(auth))
+      .send({ slug: 'rev-b', title: 'Orig' })
+    await request(app)
+      .patch(`/api/admin/blog/${id}`)
+      .set(authHeaders(auth))
+      .send({ title: 'Updated' })
+
+    const revs = await AppDataSource.getRepository(EntityRevision).find({
+      where: { entityType: 'blog_post', entityId: id },
+    })
+    expect(revs).toHaveLength(2)
+
+    // The entity-scoped listing must accept blog_post as an entity type —
+    // the admin RevisionsPanel for blog posts reads this endpoint.
+    const res = await request(app)
+      .get(`/api/admin/revisions/entity/blog_post/${id}`)
+      .set(authHeaders(auth))
+    expect(res.status).toBe(200)
+    expect(res.body.data).toHaveLength(2)
   })
 
   it('lists revisions newest-first with editorEmail populated', async () => {

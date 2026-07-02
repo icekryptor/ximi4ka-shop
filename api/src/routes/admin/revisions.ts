@@ -25,7 +25,7 @@ const ListQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 })
 
-const EntityTypeSchema = z.enum(['product', 'page', 'product_category'])
+const EntityTypeSchema = z.enum(['product', 'page', 'product_category', 'blog_post'])
 
 // List revisions for a given entity. Paginated, newest first. The editor's
 // email is joined in-memory rather than changing the entity to hold a
