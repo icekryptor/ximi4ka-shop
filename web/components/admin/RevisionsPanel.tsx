@@ -6,11 +6,12 @@ import {
   ApiError,
   adminListRevisions,
   adminRestoreRevision,
+  type RevisionEntityType,
   type RevisionSummary,
 } from '@/lib/adminApi'
 
 interface Props {
-  entityType: 'product' | 'page' | 'product_category'
+  entityType: RevisionEntityType
   entityId: string
   onRestored?: () => void
 }
