@@ -29,6 +29,14 @@ describe('<Footer> v3 colophon', () => {
     expect(screen.getByText(/©\s*2023.*2026/)).toBeInTheDocument()
   })
 
+  it('links «отследить заказ» to /orders/track in the СТРАНИЦЫ row', () => {
+    render(<Footer />)
+    expect(screen.getByRole('link', { name: /отследить заказ/i })).toHaveAttribute(
+      'href',
+      '/orders/track',
+    )
+  })
+
   it('renders the methane molecule accent (preserved from Stage 5)', () => {
     const { container } = render(<Footer />)
     const svgs = container.querySelectorAll('svg')

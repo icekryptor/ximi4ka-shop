@@ -1,13 +1,24 @@
+import Link from 'next/link'
 import { HeaderLogo } from './HeaderLogo'
 import { MoleculeMotifLJ } from '@/components/decor/MoleculeMotif.lj'
 
-const ROW_OT = ['Химичка', 'с 2023', 'Москва', '161 опыт', '⌀ 4.9/5']
-const ROW_SVYAZ = ['telegram', 'whatsapp', 'phone', 'email']
-const ROW_STRANITSY = ['каталог', 'о нас', 'доставка', 'оплата', 'возврат']
+// Элемент колофона: обычный текст или внутренняя ссылка.
+type ColophonItem = string | { label: string; href: string }
+
+const ROW_OT: ColophonItem[] = ['Химичка', 'с 2023', 'Москва', '161 опыт', '⌀ 4.9/5']
+const ROW_SVYAZ: ColophonItem[] = ['telegram', 'whatsapp', 'phone', 'email']
+const ROW_STRANITSY: ColophonItem[] = [
+  'каталог',
+  'о нас',
+  'доставка',
+  'оплата',
+  'возврат',
+  { label: 'отследить заказ', href: '/orders/track' },
+]
 
 interface ColophonRowProps {
   label: string
-  items: string[]
+  items: ColophonItem[]
   className?: string
 }
 
@@ -18,12 +29,24 @@ function ColophonRow({ label, items, className = '' }: ColophonRowProps) {
         {label}
       </span>
       <div className="flex flex-wrap gap-x-3 gap-y-1 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] tracking-[0.04em] text-[var(--color-lj-ink)] opacity-80">
-        {items.map((item, i) => (
-          <span key={`${item}-${i}`} className="inline-flex items-center gap-3">
-            {item}
-            {i < items.length - 1 && <span className="text-[var(--color-lj-brand)]">·</span>}
-          </span>
-        ))}
+        {items.map((item, i) => {
+          const label = typeof item === 'string' ? item : item.label
+          return (
+            <span key={`${label}-${i}`} className="inline-flex items-center gap-3">
+              {typeof item === 'string' ? (
+                item
+              ) : (
+                <Link
+                  href={item.href}
+                  className="hover:text-[var(--color-lj-brand-deep)] underline-offset-4 hover:underline"
+                >
+                  {item.label}
+                </Link>
+              )}
+              {i < items.length - 1 && <span className="text-[var(--color-lj-brand)]">·</span>}
+            </span>
+          )
+        })}
       </div>
     </div>
   )
