@@ -52,12 +52,53 @@ describe('AddToCartButton', () => {
     ])
   })
 
-  it('shows a confirmation message after click', () => {
+  it('announces «Товар добавлен» via a polite aria-live region after click', () => {
     const { container } = render(<AddToCartButton product={inStock} />)
+    const status = within(container).getByRole('status')
+    // Live-регион смонтирован постоянно (иначе скринридер может не озвучить)
+    expect(status).toHaveAttribute('aria-live', 'polite')
+    expect(status).toHaveTextContent('')
     act(() => {
       fireEvent.click(within(container).getByRole('button'))
     })
-    expect(within(container).getByRole('status')).toHaveTextContent('Добавлено в корзину ✓')
+    expect(status).toHaveTextContent('Товар добавлен')
+  })
+
+  it('fires the CSS reaction burst on click and restarts it on the next click', () => {
+    const { container } = render(<AddToCartButton product={inStock} />)
+    expect(
+      within(container).queryByTestId('add-to-cart-burst'),
+    ).not.toBeInTheDocument()
+    act(() => {
+      fireEvent.click(within(container).getByRole('button'))
+    })
+    const burst = within(container).getByTestId('add-to-cart-burst')
+    expect(burst).toHaveAttribute('aria-hidden', 'true')
+    expect(burst.querySelectorAll('.lj-bubble').length).toBeGreaterThan(2)
+    expect(burst.querySelector('.lj-add-flash')).not.toBeNull()
+  })
+
+  it('stores the first product image in the cart item', () => {
+    const { container } = render(
+      <AddToCartButton
+        product={{
+          ...inStock,
+          images: [
+            {
+              id: 'img1',
+              productId: '1',
+              url: '/uploads/test-kit.webp',
+              alt: 'Test Kit',
+              sortOrder: 0,
+            },
+          ],
+        }}
+      />,
+    )
+    act(() => {
+      fireEvent.click(within(container).getByRole('button'))
+    })
+    expect(loadCart()[0]?.image).toBe('/uploads/test-kit.webp')
   })
 
   it('does nothing when disabled (out_of_stock)', () => {

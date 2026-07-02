@@ -241,6 +241,37 @@ body {
   .animate-lj-badge-pop { animation: none; }
 }
 
+/* === Реакция «химического» добавления в корзину ===
+   Вспышка-кольцо вокруг кнопки + пузырьки, поднимающиеся из «колбы».
+   Чистый CSS, без JS-библиотек; перезапуск — ремоунтом overlay по key
+   (см. AddToCartBurst). */
+@keyframes lj-add-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(131, 110, 254, 0.55); }
+  100% { box-shadow: 0 0 0 16px rgba(131, 110, 254, 0); }
+}
+.lj-add-flash {
+  animation: lj-add-flash 0.55s var(--ease-out-quart) forwards;
+}
+@keyframes lj-bubble-rise {
+  0%   { opacity: 0; transform: translateY(0) scale(0.4); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-1.75rem) scale(1); }
+}
+.lj-bubble {
+  position: absolute;
+  bottom: 85%;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-lj-brand);
+  opacity: 0;
+  animation: lj-bubble-rise 0.7s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lj-add-flash,
+  .lj-bubble { animation: none; }
+}
+
 /* === v3 Lab Journal animations === */
 @keyframes lj-rotate-slow { to { transform: translateY(-50%) rotate(360deg); } }
 @keyframes lj-rotate-slow-reverse { to { transform: translate(-50%, -50%) rotate(-360deg); } }

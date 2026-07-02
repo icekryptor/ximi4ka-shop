@@ -22,9 +22,7 @@ export function CartButton() {
 
   useEffect(() => {
     if (itemCount > prevCount.current) {
-      // Реакция на изменение внешнего стора (localStorage-корзины) — именно
-      // тот случай, ради которого setState в эффекте существует.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // Реакция на изменение внешнего стора (localStorage-корзины).
       setPulseKey((k) => k + 1)
     }
     prevCount.current = itemCount
