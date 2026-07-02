@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useCart } from '@/lib/cart'
 import { Ticker } from '@/components/ui'
+import { CartButton } from './CartButton'
 import { HeaderLogo } from './HeaderLogo'
 import { MobileMenuOverlay } from './MobileMenuOverlay'
 
@@ -63,9 +64,6 @@ export function Header({ headerPromoText = null }: HeaderProps) {
     return () => obs.disconnect()
   }, [])
 
-  const cartLabel =
-    itemCount > 0 ? `КОРЗИНА · ${itemCount}` : 'КОРЗИНА (0)'
-
   return (
     <>
       {showPromo ? (
@@ -116,17 +114,10 @@ export function Header({ headerPromoText = null }: HeaderProps) {
             })}
           </nav>
 
-          <div className="flex items-center gap-4">
-            <Link
-              href="/cart"
-              className={`hidden md:inline-flex font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] transition-colors ${
-                itemCount > 0
-                  ? 'text-[var(--color-lj-brand)]'
-                  : 'text-[var(--color-lj-ink)] opacity-70 hover:opacity-100'
-              }`}
-            >
-              {cartLabel}
-            </Link>
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Кнопка корзины видна ВСЕГДА (и на мобильном) и открывает
+                CartDrawer мгновенно — навигация на /cart только из drawer. */}
+            <CartButton />
 
             <button
               type="button"

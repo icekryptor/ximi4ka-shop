@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useSyncExternalStore } from 'react'
+import { useCallback, useMemo, useSyncExternalStore } from 'react'
 
 export interface CartItem {
   productId: string
@@ -8,6 +8,12 @@ export interface CartItem {
   name: string
   priceRub: number
   quantity: number
+  /**
+   * URL первой картинки товара для миниатюры в drawer. Optional: записи,
+   * сохранённые до введения поля (старый формат localStorage), его не имеют —
+   * normalizeCartItem принимает оба формата.
+   */
+  image?: string
 }
 
 const STORAGE_KEY = 'ximi4ka-shop-cart'
@@ -19,20 +25,50 @@ const EVENT_NAME = 'cart-updated'
 // event name.
 export const OPEN_CART_EVENT = 'open-cart'
 
-function isCartItem(value: unknown): value is CartItem {
-  if (typeof value !== 'object' || value === null) return false
+/**
+ * Мгновенно открывает CartDrawer (чистый клиентский рендер, без навигации).
+ * Кнопка корзины в шапке и любые будущие триггеры зовут этот хелпер вместо
+ * ручного dispatchEvent.
+ */
+export function openCartDrawer(): void {
+  if (typeof window === 'undefined') return
+  window.dispatchEvent(new CustomEvent(OPEN_CART_EVENT))
+}
+
+/**
+ * Валидация + миграция одной записи из localStorage. Возвращает null для
+ * мусора; для валидных записей нормализует поле `image`: строка сохраняется,
+ * любой другой тип отбрасывается (фолбэк на старый формат без картинки),
+ * сам товар при этом не теряется.
+ */
+function normalizeCartItem(value: unknown): CartItem | null {
+  if (typeof value !== 'object' || value === null) return null
   const v = value as Record<string, unknown>
-  return (
-    typeof v.productId === 'string' &&
-    typeof v.slug === 'string' &&
-    typeof v.name === 'string' &&
-    typeof v.priceRub === 'number' &&
-    typeof v.quantity === 'number'
-  )
+  if (
+    typeof v.productId !== 'string' ||
+    typeof v.slug !== 'string' ||
+    typeof v.name !== 'string' ||
+    typeof v.priceRub !== 'number' ||
+    typeof v.quantity !== 'number'
+  ) {
+    return null
+  }
+  const item: CartItem = {
+    productId: v.productId,
+    slug: v.slug,
+    name: v.name,
+    priceRub: v.priceRub,
+    quantity: v.quantity,
+  }
+  if (typeof v.image === 'string' && v.image !== '') {
+    item.image = v.image
+  }
+  return item
 }
 
 const EMPTY_SNAPSHOT: CartItem[] = []
 let cachedSnapshot: CartItem[] | null = null
+let cachedRaw: string | null = null
 
 export function loadCart(): CartItem[] {
   if (typeof window === 'undefined') return []
@@ -41,7 +77,9 @@ export function loadCart(): CartItem[] {
     if (!raw) return []
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed.filter(isCartItem)
+    return parsed
+      .map(normalizeCartItem)
+      .filter((item): item is CartItem => item !== null)
   } catch {
     return []
   }
@@ -50,7 +88,7 @@ export function loadCart(): CartItem[] {
 export function saveCart(items: CartItem[]): void {
   if (typeof window === 'undefined') return
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-  cachedSnapshot = null
+  invalidateSnapshot()
   window.dispatchEvent(new CustomEvent(EVENT_NAME))
 }
 
@@ -85,31 +123,24 @@ export function calculateSubtotal(items: CartItem[]): number {
   return items.reduce((sum, i) => sum + i.priceRub * i.quantity, 0)
 }
 
+// Кэш снапшота ключуется сырой строкой из localStorage: дорогая работа
+// (JSON.parse + пересборка массива + прежнее глубокое сравнение на каждый
+// рендер каждого подписчика) выполняется только когда строка реально
+// изменилась. Дешёвый getItem + сравнение строк остаётся — так кэш не
+// протухает даже при прямой записи в localStorage мимо saveCart.
+// useSyncExternalStore требует стабильной ссылки — кэш её и обеспечивает.
 function getSnapshot(): CartItem[] {
-  const fresh = loadCart()
-  if (
-    cachedSnapshot !== null &&
-    cachedSnapshot.length === fresh.length &&
-    cachedSnapshot.every((item, i) => {
-      const other = fresh[i]
-      return (
-        other !== undefined &&
-        item.productId === other.productId &&
-        item.quantity === other.quantity &&
-        item.priceRub === other.priceRub &&
-        item.slug === other.slug &&
-        item.name === other.name
-      )
-    })
-  ) {
-    return cachedSnapshot
+  const raw = window.localStorage.getItem(STORAGE_KEY)
+  if (cachedSnapshot === null || raw !== cachedRaw) {
+    cachedRaw = raw
+    cachedSnapshot = raw === null ? EMPTY_SNAPSHOT : loadCart()
   }
-  cachedSnapshot = fresh
-  return fresh
+  return cachedSnapshot
 }
 
 function invalidateSnapshot() {
   cachedSnapshot = null
+  cachedRaw = null
 }
 
 function getServerSnapshot(): CartItem[] {
@@ -148,8 +179,11 @@ export function useCart() {
     saveCart(clearCart())
   }, [])
 
-  const subtotal = calculateSubtotal(items)
-  const itemCount = items.reduce((sum, i) => sum + i.quantity, 0)
+  const subtotal = useMemo(() => calculateSubtotal(items), [items])
+  const itemCount = useMemo(
+    () => items.reduce((sum, i) => sum + i.quantity, 0),
+    [items],
+  )
 
   return { items, add, remove, setQty, clear, subtotal, itemCount }
 }

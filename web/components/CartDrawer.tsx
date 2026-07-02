@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { OPEN_CART_EVENT, useCart } from '@/lib/cart'
 import { formatRub } from '@/lib/stockLabel'
@@ -8,6 +9,7 @@ import { formatRub } from '@/lib/stockLabel'
 export function CartDrawer() {
   const { items, subtotal, remove, setQty } = useCart()
   const [open, setOpen] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     function onOpen() {
@@ -16,6 +18,15 @@ export function CartDrawer() {
     window.addEventListener(OPEN_CART_EVENT, onOpen)
     return () => window.removeEventListener(OPEN_CART_EVENT, onOpen)
   }, [])
+
+  // Прогреваем маршруты CTA заранее: в закрытом состоянии drawer рендерит
+  // null, поэтому <Link prefetch> внутри не сработает до открытия. Явный
+  // router.prefetch делает переход «Оформить заказ» / «Открыть корзину»
+  // мгновенным (в dev prefetch — no-op, это нормально).
+  useEffect(() => {
+    router.prefetch('/cart')
+    router.prefetch('/checkout')
+  }, [router])
 
   useEffect(() => {
     if (!open) return

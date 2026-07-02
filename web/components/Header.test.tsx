@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { Header } from './Header'
+import { CartDrawer } from './CartDrawer'
 import { saveCart, type CartItem } from '@/lib/cart'
 
 const mockPathname = vi.fn<() => string>(() => '/')
+const mockPrefetch = vi.fn()
 
 vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname(),
+  useRouter: () => ({ prefetch: mockPrefetch }),
 }))
 
 beforeEach(() => {
@@ -68,19 +71,66 @@ describe('Header v3', () => {
     )
   })
 
-  it('shows cart label КОРЗИНА (0) when cart empty', () => {
+  it('renders the cart control as a BUTTON (no navigation), not a /cart link', () => {
     render(<Header />)
-    const cartLink = screen.getByRole('link', { name: /корзина.*0/i })
-    expect(cartLink).toHaveAttribute('href', '/cart')
+    const cartButton = screen.getByRole('button', { name: /корзина.*0/i })
+    expect(cartButton).toHaveAttribute('type', 'button')
+    // Ссылки на /cart в шапке больше нет — она живёт внутри drawer.
+    expect(screen.queryByRole('link', { name: /корзина/i })).not.toBeInTheDocument()
   })
 
-  it('shows cart count format КОРЗИНА · N when items > 0', () => {
+  it('clicking the cart button instantly opens the CartDrawer dialog', () => {
+    act(() => {
+      saveCart(seed)
+    })
+    render(
+      <>
+        <Header />
+        <CartDrawer />
+      </>,
+    )
+    expect(screen.queryByRole('dialog', { name: 'Корзина' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('header-cart-button'))
+    const dialog = screen.getByRole('dialog', { name: 'Корзина' })
+    expect(within(dialog).getByText('Набор A')).toBeInTheDocument()
+  })
+
+  it('badge counts total quantity of items (2 + 1 = 3)', () => {
     act(() => {
       saveCart(seed)
     })
     render(<Header />)
-    const cartLink = screen.getByRole('link', { name: /корзина.*3/i })
-    expect(cartLink).toHaveAttribute('href', '/cart')
+    expect(screen.getByTestId('header-cart-count')).toHaveTextContent('3')
+    expect(screen.getByRole('button', { name: /корзина.*3/i })).toBeInTheDocument()
+  })
+
+  it('badge updates reactively and pulses when an item is added', () => {
+    render(<Header />)
+    const before = screen.getByTestId('header-cart-count')
+    expect(before).toHaveTextContent('0')
+    expect(before.className).not.toContain('animate-lj-badge-pop')
+
+    act(() => {
+      saveCart(seed)
+    })
+
+    const after = screen.getByTestId('header-cart-count')
+    expect(after).toHaveTextContent('3')
+    expect(after.className).toContain('animate-lj-badge-pop')
+  })
+
+  it('cart button is visible on mobile (not hidden behind md: breakpoint)', () => {
+    render(<Header />)
+    const cartButton = screen.getByTestId('header-cart-button')
+    expect(cartButton.className).not.toMatch(/(^|\s)hidden(\s|$)/)
+    expect(cartButton.className).not.toContain('md:inline-flex')
+  })
+
+  it('cart button uses the brand gradient fill (prominent, white text)', () => {
+    render(<Header />)
+    const cartButton = screen.getByTestId('header-cart-button')
+    expect(cartButton.className).toContain('linear-gradient')
+    expect(cartButton.className).toContain('text-white')
   })
 
   it('highlights the active route with aria-current=page', () => {

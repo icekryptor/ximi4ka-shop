@@ -226,6 +226,21 @@ body {
   font-weight: 600;
 }
 
+/* === Корзина: бейдж-счётчик в шапке ===
+   Короткий pulse при добавлении товара. Перезапуск обеспечивает ремоунт
+   бейджа по key в CartButton. */
+@keyframes lj-badge-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.4); }
+  100% { transform: scale(1); }
+}
+.animate-lj-badge-pop {
+  animation: lj-badge-pop 0.45s var(--ease-out-quart);
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-lj-badge-pop { animation: none; }
+}
+
 /* === v3 Lab Journal animations === */
 @keyframes lj-rotate-slow { to { transform: translateY(-50%) rotate(360deg); } }
 @keyframes lj-rotate-slow-reverse { to { transform: translate(-50%, -50%) rotate(-360deg); } }

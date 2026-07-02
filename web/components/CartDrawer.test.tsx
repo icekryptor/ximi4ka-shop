@@ -1,10 +1,17 @@
-import { afterEach, beforeEach, describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { CartDrawer } from './CartDrawer'
 import { OPEN_CART_EVENT, loadCart, saveCart, type CartItem } from '@/lib/cart'
 
+const mockPrefetch = vi.fn()
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ prefetch: mockPrefetch }),
+}))
+
 beforeEach(() => {
   window.localStorage.clear()
+  mockPrefetch.mockClear()
 })
 
 afterEach(() => {
@@ -29,6 +36,12 @@ describe('CartDrawer', () => {
   it('is closed by default', () => {
     render(<CartDrawer />)
     expect(screen.queryByRole('dialog', { name: 'Корзина' })).not.toBeInTheDocument()
+  })
+
+  it('prefetches /cart and /checkout on mount so CTA navigation is instant', () => {
+    render(<CartDrawer />)
+    expect(mockPrefetch).toHaveBeenCalledWith('/cart')
+    expect(mockPrefetch).toHaveBeenCalledWith('/checkout')
   })
 
   it('opens drawer on open-cart custom event', () => {
