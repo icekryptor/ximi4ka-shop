@@ -1,4 +1,12 @@
-import type { BlogPost, Page, Product, ProductCategory } from '@ximi4ka-shop/shared'
+import type {
+  BlogPost,
+  CheckoutRequest,
+  CheckoutResponse,
+  Page,
+  Product,
+  ProductCategory,
+  PublicOrderStatus,
+} from '@ximi4ka-shop/shared'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
@@ -152,6 +160,37 @@ export async function listBlogPosts(
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost> {
   const body = await request<DataEnvelope<BlogPost>>(
     `/api/public/blog/${encodeURIComponent(slug)}`,
+  )
+  return body.data
+}
+
+// ---------- Checkout & orders (public) ----------
+
+/**
+ * Create an order from the cart. The Idempotency-Key makes retries safe:
+ * a re-submit with the same key returns the order created by the first
+ * successful attempt instead of creating a duplicate.
+ */
+export async function submitCheckout(
+  payload: CheckoutRequest,
+  idempotencyKey: string,
+): Promise<CheckoutResponse> {
+  const body = await request<DataEnvelope<CheckoutResponse>>(`/api/checkout`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(payload),
+  })
+  return body.data
+}
+
+export async function getOrderStatus(
+  orderNumber: string,
+): Promise<PublicOrderStatus> {
+  const body = await request<DataEnvelope<PublicOrderStatus>>(
+    `/api/public/orders/${encodeURIComponent(orderNumber)}/status`,
+    // The status page polls this endpoint while a payment is in flight —
+    // never serve a cached snapshot.
+    { cache: 'no-store' },
   )
   return body.data
 }

@@ -11,6 +11,8 @@ import {
   listBlogPosts,
   getBlogPostBySlug,
   getPublicSettings,
+  submitCheckout,
+  getOrderStatus,
 } from './api'
 
 function jsonResponse(status: number, body: unknown, ok = status >= 200 && status < 300) {
@@ -473,6 +475,83 @@ describe('api client', () => {
       expect(result).toEqual(settings)
       const [url] = fetchMock.mock.calls[0]
       expect(url).toBe('http://localhost:3001/api/public/settings')
+    })
+  })
+
+  describe('submitCheckout', () => {
+    const payload = {
+      items: [{ productId: 'p1', quantity: 2 }],
+      customer: { name: 'Мария', phone: '+79123456789' },
+      delivery: { method: 'cdek_pvz' as const, address: 'Москва' },
+    }
+
+    it('POSTs /api/checkout with the Idempotency-Key header and unwraps data', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse(201, { data: { orderNumber: 'XM-2026-00001', paymentUrl: null } }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await submitCheckout(payload, 'key-123')
+
+      expect(result).toEqual({ orderNumber: 'XM-2026-00001', paymentUrl: null })
+      const [url, init] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/checkout')
+      expect(init.method).toBe('POST')
+      expect(init.headers).toEqual(
+        expect.objectContaining({
+          'content-type': 'application/json',
+          'Idempotency-Key': 'key-123',
+        }),
+      )
+      expect(JSON.parse(init.body)).toEqual(payload)
+    })
+
+    it('throws ApiError with the server code on 409', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse(409, {
+          error: { code: 'out_of_stock', message: 'Некоторые товары закончились' },
+        }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      await expect(submitCheckout(payload, 'key-123')).rejects.toMatchObject({
+        status: 409,
+        code: 'out_of_stock',
+      })
+    })
+  })
+
+  describe('getOrderStatus', () => {
+    it('fetches the public status endpoint with cache disabled', async () => {
+      const status = {
+        orderNumber: 'XM-2026-00001',
+        status: 'pending',
+        totalRub: 3399,
+        paymentProvider: 'manual',
+        createdAt: '2026-07-01T00:00:00.000Z',
+        paidAt: null,
+      }
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: status }))
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await getOrderStatus('XM-2026-00001')
+
+      expect(result).toEqual(status)
+      const [url, init] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/orders/XM-2026-00001/status')
+      expect(init.cache).toBe('no-store')
+    })
+
+    it('throws ApiError 404 for an unknown order', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse(404, { error: { code: 'order_not_found', message: 'Заказ не найден' } }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      await expect(getOrderStatus('XM-0000-00000')).rejects.toMatchObject({
+        status: 404,
+        code: 'order_not_found',
+      })
     })
   })
 })
