@@ -1,15 +1,19 @@
 import { Router } from 'express'
 import { Brackets } from 'typeorm'
 import multer from 'multer'
-import { parse as parseCsvSync } from 'csv-parse/sync'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Redirect } from '../../entities/Redirect.js'
 import {
   CreateRedirectSchema,
   UpdateRedirectSchema,
   ListQuerySchema,
-  isReservedPath,
 } from './redirects.schemas.js'
+import {
+  RedirectCsvParseError,
+  parseRedirectCsv,
+  upsertRedirectRows,
+  type ParsedRedirectCsv,
+} from '../../lib/redirect-csv.js'
 import { ApiError, conflict, notFound } from '../errors.js'
 import {
   requireAdminAuth,
@@ -22,7 +26,6 @@ adminRedirectsRouter.use(requireAdminAuth)
 adminRedirectsRouter.use(requireCsrfToken)
 
 const CSV_MAX_SIZE = 5 * 1024 * 1024 // 5MB
-const ALLOWED_STATUS_CODES = new Set([301, 302, 307, 308])
 
 const csvUpload = multer({
   storage: multer.memoryStorage(),
@@ -149,12 +152,11 @@ adminRedirectsRouter.delete('/:id', async (req, res, next) => {
 // CSV bulk import.
 //
 // Accepts a multipart upload with a `file` field containing CSV content.
-// Columns: `from_path,to_path[,status_code]`. If the first row looks like
-// a header (matches those exact column names) it's skipped. Each row is
-// validated independently; valid rows are upserted on `from_path` (INSERT
-// or UPDATE of `to_path` + `status_code`), invalid rows are collected into
-// `errors`. Hit counts are preserved on update — reimporting a CSV must not
-// zero historical metrics.
+// Columns: `from_path,to_path[,status_code]`. Parsing/validation and the
+// upsert-by-from_path live in lib/redirect-csv.ts (shared with the
+// tilda-redirects seed). Valid rows are upserted, invalid rows are collected
+// into `errors`. Hit counts are preserved on update — reimporting a CSV must
+// not zero historical metrics.
 interface CsvImportSummary {
   inserted: number
   updated: number
@@ -180,133 +182,28 @@ adminRedirectsRouter.post('/import-csv', (req, res, next) => {
         if (!req.file) {
           throw new ApiError(400, 'missing_file', 'No file uploaded')
         }
-        const text = req.file.buffer.toString('utf8').trim()
-        if (!text) {
-          throw new ApiError(400, 'empty_csv', 'CSV is empty')
-        }
-
-        // Parse once; csv-parse/sync returns string[][] with columns: false
-        // so we can detect and skip a header row ourselves. We intentionally
-        // DON'T use `columns: true` because that throws on missing columns —
-        // we'd rather record per-row errors and continue.
-        let records: string[][]
+        const text = req.file.buffer.toString('utf8')
+        let parsed: ParsedRedirectCsv
         try {
-          records = parseCsvSync(text, {
-            columns: false,
-            skip_empty_lines: true,
-            trim: true,
-            relax_column_count: true,
-          }) as string[][]
-        } catch (parseErr) {
-          const message =
-            parseErr instanceof Error ? parseErr.message : 'CSV parse failed'
-          throw new ApiError(400, 'csv_parse_error', message)
-        }
-
-        if (records.length === 0) {
-          throw new ApiError(400, 'empty_csv', 'CSV is empty')
-        }
-
-        // Detect and drop an optional header row. The spec allows (and
-        // encourages) `from_path,to_path,status_code` as the first row.
-        let startIndex = 0
-        const first = records[0]
-        const firstLower = first.map((c) => c.toLowerCase())
-        if (
-          firstLower[0] === 'from_path' &&
-          firstLower[1] === 'to_path'
-        ) {
-          startIndex = 1
-        }
-
-        const summary: CsvImportSummary = {
-          inserted: 0,
-          updated: 0,
-          skipped: 0,
-          errors: [],
+          parsed = parseRedirectCsv(text)
+        } catch (err) {
+          if (err instanceof RedirectCsvParseError) {
+            throw new ApiError(400, err.code, err.message)
+          }
+          throw err
         }
 
         const repo = AppDataSource.getRepository(Redirect)
+        const upsert = await upsertRedirectRows(repo, parsed.rows)
 
-        for (let i = startIndex; i < records.length; i++) {
-          // Display row number is 1-based and counts the raw CSV line, so the
-          // admin can correlate errors with the source file.
-          const rowNum = i + 1
-          const row = records[i]
-          const fromPath = (row[0] ?? '').trim()
-          const toPath = (row[1] ?? '').trim()
-          const statusRaw = (row[2] ?? '').trim()
-
-          if (!fromPath || !toPath) {
-            summary.skipped++
-            summary.errors.push({
-              row: rowNum,
-              message: 'from_path и to_path обязательны',
-            })
-            continue
-          }
-          if (!fromPath.startsWith('/')) {
-            summary.skipped++
-            summary.errors.push({
-              row: rowNum,
-              message: 'from_path должен начинаться с /',
-            })
-            continue
-          }
-          if (isReservedPath(fromPath)) {
-            summary.skipped++
-            summary.errors.push({
-              row: rowNum,
-              message: 'from_path не может начинаться с /admin, /api, /uploads или /_next',
-            })
-            continue
-          }
-          if (fromPath.length > 1000 || toPath.length > 1000) {
-            summary.skipped++
-            summary.errors.push({
-              row: rowNum,
-              message: 'Путь не может быть длиннее 1000 символов',
-            })
-            continue
-          }
-          let statusCode = 301
-          if (statusRaw) {
-            const parsedStatus = Number.parseInt(statusRaw, 10)
-            if (!Number.isFinite(parsedStatus) || !ALLOWED_STATUS_CODES.has(parsedStatus)) {
-              summary.skipped++
-              summary.errors.push({
-                row: rowNum,
-                message: 'status_code должен быть 301, 302, 307 или 308',
-              })
-              continue
-            }
-            statusCode = parsedStatus
-          }
-
-          try {
-            const existing = await repo.findOneBy({ fromPath })
-            if (existing) {
-              existing.toPath = toPath
-              existing.statusCode = statusCode
-              // hit_count is intentionally preserved on re-import.
-              await repo.save(existing)
-              summary.updated++
-            } else {
-              const created = repo.create({
-                fromPath,
-                toPath,
-                statusCode,
-                hitCount: 0,
-              })
-              await repo.save(created)
-              summary.inserted++
-            }
-          } catch (rowErr) {
-            summary.skipped++
-            const msg =
-              rowErr instanceof Error ? rowErr.message : 'Не удалось сохранить строку'
-            summary.errors.push({ row: rowNum, message: msg })
-          }
+        // Merge validation and save errors back into source-file order so the
+        // admin can correlate them with the uploaded CSV.
+        const errors = [...parsed.errors, ...upsert.errors].sort((a, b) => a.row - b.row)
+        const summary: CsvImportSummary = {
+          inserted: upsert.inserted,
+          updated: upsert.updated,
+          skipped: errors.length,
+          errors,
         }
 
         res.status(200).json({ data: summary })
