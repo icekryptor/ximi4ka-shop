@@ -5,7 +5,10 @@ import type { Product } from '@ximi4ka-shop/shared'
 import { useCart } from '@/lib/cart'
 
 interface Props {
-  product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus'>
+  // images optional: часть вызовов может не иметь картинок под рукой —
+  // корзина тогда покажет плейсхолдер-колбу.
+  product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus'> &
+    Partial<Pick<Product, 'images'>>
 }
 
 export function AddToCartButton({ product }: Props) {
@@ -28,6 +31,7 @@ export function AddToCartButton({ product }: Props) {
       slug: product.slug,
       name: product.name,
       priceRub: product.priceRub,
+      image: product.images?.[0]?.url,
     })
     setToastVisible(true)
     window.setTimeout(() => setPending(false), 400)

@@ -4,7 +4,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { OPEN_CART_EVENT, useCart } from '@/lib/cart'
+import { SHIPPING_RULES } from '@/lib/checkout'
 import { formatRub } from '@/lib/stockLabel'
+
+// Порог бесплатной доставки для прогресс-бара. Единый источник — правила
+// доставки СДЭК ПВЗ (3000 ₽), те же, что показывает чекаут.
+const FREE_SHIPPING_FROM_RUB = SHIPPING_RULES.cdek_pvz.freeFromRub
 
 export function CartDrawer() {
   const { items, subtotal, remove, setQty } = useCart()
@@ -76,6 +81,36 @@ export function CartDrawer() {
                   data-testid={`cart-item-${item.productId}`}
                   className="flex items-start gap-3 border-b border-[var(--color-lj-rule)] py-4"
                 >
+                  {/* Миниатюра: первая картинка товара; для записей старого
+                      формата (без image) — колба-плейсхолдер. Острые углы —
+                      по правилам v3 (пилл только у CTA). */}
+                  <div className="w-14 h-[4.5rem] shrink-0 border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream-shade)] overflow-hidden flex items-center justify-center">
+                    {item.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- 56px-миниатюра в drawer: next/image здесь только добавил бы обёртку и лоадер
+                      <img
+                        src={item.image}
+                        alt=""
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <svg
+                        data-testid="cart-thumb-placeholder"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                        className="w-6 h-6 text-[var(--color-lj-ink)] opacity-35"
+                      >
+                        <path d="M9.5 3h5" />
+                        <path d="M10 3v6.2L5.2 17.7A2 2 0 0 0 7 20.6h10a2 2 0 0 0 1.8-2.9L14 9.2V3" />
+                        <path d="M7.6 14.6h8.8" />
+                      </svg>
+                    )}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-[var(--font-lj-display)] font-[700] text-base tracking-[-0.02em] text-[var(--color-lj-ink)] truncate">
                       {item.name}
@@ -126,6 +161,40 @@ export function CartDrawer() {
 
         {items.length > 0 ? (
           <div className="border-t border-[var(--color-lj-rule)] px-6 py-5 flex flex-col gap-3">
+            {/* Прогресс до бесплатной доставки (порог СДЭК ПВЗ, 3000 ₽) */}
+            <div data-testid="free-shipping-progress" className="flex flex-col gap-2">
+              <p className="m-0 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]">
+                {subtotal >= FREE_SHIPPING_FROM_RUB ? (
+                  <span className="text-[var(--color-lj-brand-deep)]">
+                    Бесплатная доставка в пункт СДЭК ✓
+                  </span>
+                ) : (
+                  <>
+                    До бесплатной доставки осталось{' '}
+                    <span className="text-[var(--color-lj-brand-deep)] font-[700]">
+                      {formatRub(FREE_SHIPPING_FROM_RUB - subtotal)}
+                    </span>
+                  </>
+                )}
+              </p>
+              <div
+                role="progressbar"
+                aria-label="Прогресс до бесплатной доставки"
+                aria-valuemin={0}
+                aria-valuemax={FREE_SHIPPING_FROM_RUB}
+                aria-valuenow={Math.min(subtotal, FREE_SHIPPING_FROM_RUB)}
+                className="h-1.5 rounded-full bg-[var(--color-lj-rule-soft)] overflow-hidden"
+              >
+                <div
+                  data-testid="free-shipping-bar"
+                  className="h-full rounded-full bg-[linear-gradient(90deg,#8d67ff_0%,#c856ff_100%)] transition-[width] duration-500"
+                  style={{
+                    width: `${Math.min(100, Math.round((subtotal / FREE_SHIPPING_FROM_RUB) * 100))}%`,
+                  }}
+                />
+              </div>
+            </div>
+
             <div className="flex items-baseline justify-between font-[var(--font-lj-display)] font-[900] text-xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
               <span>Итого</span>
               <span>{formatRub(subtotal)}</span>
@@ -133,7 +202,7 @@ export function CartDrawer() {
             <Link
               href="/checkout"
               onClick={() => setOpen(false)}
-              className="inline-flex items-center justify-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
+              className="inline-flex items-center justify-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full bg-[linear-gradient(135deg,#8d67ff_0%,#c856ff_100%)] text-white shadow-[var(--shadow-glow-brand)] transition-all duration-300 hover:brightness-110 hover:scale-[1.01]"
             >
               Оформить заказ →
             </Link>
@@ -142,7 +211,7 @@ export function CartDrawer() {
               onClick={() => setOpen(false)}
               className="self-center font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-60 hover:opacity-100 hover:text-[var(--color-lj-brand-deep)]"
             >
-              Открыть корзину
+              Открыть страницу корзины
             </Link>
           </div>
         ) : null}

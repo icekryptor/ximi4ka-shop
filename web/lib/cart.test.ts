@@ -163,6 +163,55 @@ describe('loadCart / saveCart', () => {
   })
 })
 
+describe('image field — миграция формата localStorage', () => {
+  it('loads legacy items without image (old format) untouched', () => {
+    window.localStorage.setItem(
+      'ximi4ka-shop-cart',
+      JSON.stringify([{ ...itemA, quantity: 2 }]),
+    )
+    expect(loadCart()).toEqual([{ ...itemA, quantity: 2 }])
+    expect(loadCart()[0]).not.toHaveProperty('image')
+  })
+
+  it('round-trips items with image through save/load', () => {
+    const withImage: CartItem = {
+      ...itemA,
+      quantity: 1,
+      image: '/uploads/kit-a-01.webp',
+    }
+    saveCart([withImage])
+    expect(loadCart()).toEqual([withImage])
+  })
+
+  it('keeps the item but strips a non-string image value (corrupt data)', () => {
+    window.localStorage.setItem(
+      'ximi4ka-shop-cart',
+      JSON.stringify([{ ...itemA, quantity: 1, image: 42 }]),
+    )
+    expect(loadCart()).toEqual([{ ...itemA, quantity: 1 }])
+  })
+
+  it('strips an empty-string image (falls back to placeholder rendering)', () => {
+    window.localStorage.setItem(
+      'ximi4ka-shop-cart',
+      JSON.stringify([{ ...itemA, quantity: 1, image: '' }]),
+    )
+    expect(loadCart()[0]).not.toHaveProperty('image')
+  })
+
+  it('mixed cart: legacy and new-format items coexist', () => {
+    const legacy = { ...itemA, quantity: 1 }
+    const modern = { ...itemB, quantity: 2, image: '/uploads/kit-b.webp' }
+    window.localStorage.setItem('ximi4ka-shop-cart', JSON.stringify([legacy, modern]))
+    expect(loadCart()).toEqual([legacy, modern])
+  })
+
+  it('addToCart carries image into the stored item', () => {
+    const result = addToCart([], { ...itemA, image: '/uploads/kit-a.webp' })
+    expect(result[0]?.image).toBe('/uploads/kit-a.webp')
+  })
+})
+
 describe('useCart hook', () => {
   it('starts with empty items', () => {
     const { result } = renderHook(() => useCart())

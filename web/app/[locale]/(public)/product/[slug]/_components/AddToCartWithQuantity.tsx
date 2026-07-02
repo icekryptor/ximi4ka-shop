@@ -6,7 +6,10 @@ import { useCart } from '@/lib/cart'
 import { QuantityStepperLJ } from '@/components/product/QuantityStepperLJ'
 
 interface Props {
-  product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus'>
+  product: Pick<
+    Product,
+    'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'
+  >
 }
 
 /**
@@ -30,6 +33,7 @@ export function AddToCartWithQuantity({ product }: Props) {
         slug: product.slug,
         name: product.name,
         priceRub: product.priceRub,
+        image: product.images[0]?.url,
       },
       quantity,
     )
