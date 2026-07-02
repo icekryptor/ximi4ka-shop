@@ -3,8 +3,13 @@ export type {
   OrderItem,
   OrderItemSnapshot,
   OrderStatus,
+  OrderStatusHistoryEntry,
   PaymentProvider,
   DeliveryAddress,
+  DeliveryMethod,
+  CheckoutRequest,
+  CheckoutResponse,
+  PublicOrderStatus,
 } from './types/order.js'
 
 export type { Product, ProductImage, StockStatus } from './types/product.js'
