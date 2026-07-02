@@ -1,0 +1,12 @@
+# Applies when the build context is api/ itself. Railway builds with the repo
+# root as context (Dockerfile Path = api/Dockerfile), where the context comes
+# from a clean git checkout and api/Dockerfile only COPYies what it needs —
+# so this file is a safety net for local `docker build` runs from api/.
+node_modules
+dist
+.env
+.env.*
+!.env.example
+# Runtime uploads are ephemeral; the git-tracked imported/ photos stay.
+uploads
+!uploads/imported
