@@ -5,6 +5,7 @@ import { Product } from '../entities/Product.js'
 import { ProductImage } from '../entities/ProductImage.js'
 import { ProductCategory } from '../entities/ProductCategory.js'
 import { Page } from '../entities/Page.js'
+import { BlogPost } from '../entities/BlogPost.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { AdminUser } from '../entities/AdminUser.js'
@@ -27,7 +28,7 @@ export const AppDataSource = new DataSource({
   logging: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   entities: [
     Product, ProductImage, ProductCategory,
-    Page, Order, OrderItem,
+    Page, BlogPost, Order, OrderItem,
     AdminUser, AdminSession, EntityRevision, Redirect,
     Media, SiteSettings,
   ],
