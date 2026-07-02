@@ -1,4 +1,11 @@
-import type { BlogPost, Page, Product, ProductCategory } from '@ximi4ka-shop/shared'
+import type {
+  BlogPost,
+  OrderDto,
+  OrderStatus,
+  Page,
+  Product,
+  ProductCategory,
+} from '@ximi4ka-shop/shared'
 import { ApiError, type Paginated } from './api'
 
 // Admin API client. Mirrors the public client in api.ts but:
@@ -454,6 +461,43 @@ export async function adminImportRedirectsCsv(
   })
   if (!res.ok) throw await parseError(res)
   const body = (await res.json()) as { data: RedirectCsvSummary }
+  return body.data
+}
+
+// --- orders ---
+
+// The list endpoint returns orders without items; the detail includes them.
+export type AdminOrderSummary = Omit<OrderDto, 'items'>
+
+export async function adminListOrders(
+  opts: { limit?: number; offset?: number; status?: OrderStatus } = {},
+): Promise<Paginated<AdminOrderSummary>> {
+  const params = new URLSearchParams()
+  if (opts.limit != null) params.set('limit', String(opts.limit))
+  if (opts.offset != null) params.set('offset', String(opts.offset))
+  if (opts.status) params.set('status', opts.status)
+  const qs = params.toString()
+  return authedRequest<Paginated<AdminOrderSummary>>(
+    `/api/admin/orders${qs ? `?${qs}` : ''}`,
+  )
+}
+
+export async function adminGetOrder(id: string): Promise<OrderDto> {
+  const body = await authedRequest<{ data: OrderDto }>(
+    `/api/admin/orders/${encodeURIComponent(id)}`,
+  )
+  return body.data
+}
+
+// Manual transitions only — «Отметить оплаченным» / «Отменить».
+export async function adminSetOrderStatus(
+  id: string,
+  input: { status: 'paid' | 'cancelled'; comment?: string },
+): Promise<OrderDto> {
+  const body = await authedRequest<{ data: OrderDto }>(
+    `/api/admin/orders/${encodeURIComponent(id)}/status`,
+    { method: 'PATCH', body: JSON.stringify(input) },
+  )
   return body.data
 }
 
