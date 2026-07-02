@@ -16,6 +16,7 @@
     "import:tilda": "tsx src/seeds/import-tilda-csv.ts",
     "import:tilda-catalog": "tsx src/seeds/import-tilda-catalog.ts",
     "import:tilda-articles": "tsx src/seeds/import-tilda-articles.ts",
+    "import:tilda-redirects": "tsx src/seeds/import-tilda-redirects.ts",
     "audit:images": "tsx src/scripts/audit-images.ts"
   },
   "dependencies": {
