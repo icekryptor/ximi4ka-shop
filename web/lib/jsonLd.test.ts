@@ -178,5 +178,27 @@ describe('JSON-LD helpers', () => {
         publisher: { '@type': 'Organization', name: 'Ximi4ka' },
       })
     })
+
+    it('prefers publishedAt over createdAt when set (blog posts)', () => {
+      const out = articleJsonLd({
+        title: 'Почему пламя синее',
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-06-02T00:00:00.000Z',
+        publishedAt: '2026-06-01T00:00:00.000Z',
+      })
+      expect(out.headline).toBe('Почему пламя синее')
+      expect(out.datePublished).toBe('2026-06-01T00:00:00.000Z')
+      expect(out.dateModified).toBe('2026-06-02T00:00:00.000Z')
+    })
+
+    it('falls back to createdAt when publishedAt is null', () => {
+      const out = articleJsonLd({
+        title: 'Черновик',
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-05-02T00:00:00.000Z',
+        publishedAt: null,
+      })
+      expect(out.datePublished).toBe('2026-05-01T00:00:00.000Z')
+    })
   })
 })

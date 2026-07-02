@@ -5,6 +5,7 @@ import {
   isLocale,
   pickField,
   pluralizeRu,
+  formatDateRu,
   type Locale,
 } from './i18n'
 
@@ -132,5 +133,15 @@ describe('pluralizeRu', () => {
 
   it('handles 0', () => {
     expect(pluralizeRu(0, forms)).toBe('товаров')
+  })
+})
+
+describe('formatDateRu', () => {
+  it('formats an ISO date as «1 июня 2026» without the « г.» suffix', () => {
+    expect(formatDateRu('2026-06-01T00:00:00.000Z')).toBe('1 июня 2026')
+  })
+
+  it('formats mid-month dates', () => {
+    expect(formatDateRu('2026-12-15T12:00:00.000Z')).toBe('15 декабря 2026')
   })
 })

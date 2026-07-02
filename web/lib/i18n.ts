@@ -84,6 +84,20 @@ export function pickField<T>(
 }
 
 /**
+ * Long-form Russian date: «1 июня 2026». toLocaleDateString appends
+ * « г.» in ru-RU which reads noisy in mono journal lines, so we strip it.
+ */
+export function formatDateRu(iso: string): string {
+  return new Date(iso)
+    .toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    })
+    .replace(/\s*г\.$/, '')
+}
+
+/**
  * Russian plural rule: 1 / 2-4 / 5+ → forms[0] / forms[1] / forms[2].
  *
  * Numbers in the "teens" range (11-19, regardless of hundreds digit)

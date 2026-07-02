@@ -2,22 +2,10 @@ import Image from 'next/image'
 import Link from 'next/link'
 import type { BlogPost } from '@ximi4ka-shop/shared'
 import { DashedRectMark } from '@/components/ui/illustrations/DashedRectMark'
+import { formatDateRu } from '@/lib/i18n'
 
 interface Props {
   post: BlogPost
-}
-
-// «1 июня 2026» — long-form Russian date for the journal entry line.
-// toLocaleDateString appends « г.» in ru-RU; the mono журнал line reads
-// cleaner without it.
-function formatDateRu(iso: string): string {
-  return new Date(iso)
-    .toLocaleDateString('ru-RU', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    })
-    .replace(/\s*г\.$/, '')
 }
 
 /**

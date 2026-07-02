@@ -1,4 +1,4 @@
-import type { Page, Product } from '@ximi4ka-shop/shared'
+import type { Product } from '@ximi4ka-shop/shared'
 import { siteUrl } from './metadata'
 
 export interface OrganizationLd {
@@ -161,12 +161,22 @@ export interface ArticleLd {
   publisher: { '@type': 'Organization'; name: string }
 }
 
-export function articleJsonLd(page: Page): ArticleLd {
+// Structural input so both CMS Pages and BlogPosts fit. Blog posts carry an
+// editorial `publishedAt` which — when set — is the true publication date;
+// CMS pages only have createdAt.
+export interface ArticleLdInput {
+  title: string
+  createdAt: string
+  updatedAt: string
+  publishedAt?: string | null
+}
+
+export function articleJsonLd(page: ArticleLdInput): ArticleLd {
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: page.title,
-    datePublished: page.createdAt,
+    datePublished: page.publishedAt ?? page.createdAt,
     dateModified: page.updatedAt,
     author: { '@type': 'Organization', name: 'Ximi4ka' },
     publisher: { '@type': 'Organization', name: 'Ximi4ka' },
