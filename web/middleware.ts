@@ -105,6 +105,26 @@ function firstSegment(pathname: string): string {
   return idx === -1 ? pathname.slice(1) : pathname.slice(1, idx)
 }
 
+// Old-Tilda product URLs: the numeric id is the stable part, the slug and
+// the category prefix drifted over the years (/tproduct/…, /catalog/<cat>/
+// tproduct/…, /reagents/tproduct/…). Old variants live on in search indexes
+// and external links, so an exact from_path lookup is not enough.
+const TPRODUCT_PATH_RE = /^(?:\/catalog(?:\/[a-z]+)?|\/reagents)?\/tproduct\/(\d+)(-.*)?$/
+
+// Exact from_path match first; for /tproduct/<id> paths fall back to the
+// redirect whose from_path carries the same numeric id. Exported for tests.
+export function matchRedirect(
+  items: Redirect[],
+  path: string,
+): Redirect | undefined {
+  const exact = items.find((r) => r.fromPath === path)
+  if (exact) return exact
+  const m = TPRODUCT_PATH_RE.exec(path)
+  if (!m) return undefined
+  const needle = `/tproduct/${m[1]}-`
+  return items.find((r) => r.fromPath.includes(needle))
+}
+
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const path = req.nextUrl.pathname
   if (isExcluded(path)) {
@@ -116,7 +136,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     process.env.NEXT_PUBLIC_API_URL ??
     'http://localhost:3001'
   const redirects = await getRedirects(base)
-  const match = redirects.find((r) => r.fromPath === path)
+  const match = matchRedirect(redirects, path)
   if (match) {
     // Fire-and-forget. We intentionally don't await — the redirect response
     // should ship with minimal TTFB; the counter POST is best-effort.

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-import { middleware, __resetCache } from './middleware'
+import { middleware, matchRedirect, __resetCache } from './middleware'
 
 // Light-weight unit tests for the edge middleware. We exercise the
 // exported function directly with a NextRequest; the Next runtime isn't
@@ -254,5 +254,117 @@ describe('redirect middleware', () => {
         !String(c[0]).includes('/hit'),
     )
     expect(listCall).toBeUndefined()
+  })
+
+  // ---- tproduct-id fallback -------------------------------------------------
+  //
+  // Tilda kept the numeric product id stable while slugs (and category
+  // prefixes) drifted over the years; old URLs live on in search indexes and
+  // external links. When no exact from_path matches, a /tproduct/<id> path
+  // must still find the canonical redirect row by id.
+
+  const tproductRedirects = [
+    {
+      id: 'r-nitrat',
+      fromPath: '/catalog/reagents/tproduct/423044036992-nitrat-serebra',
+      toPath: '/product/nitrat-serebra',
+      statusCode: 301,
+    },
+    {
+      id: 'r-himichka',
+      fromPath: '/tproduct/279167718312-himichka-30',
+      toPath: '/product/himichka-30',
+      statusCode: 301,
+    },
+  ]
+
+  it('redirects an old tproduct slug with a known id to the new product URL', async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/api/public/redirects')) {
+        return new Response(JSON.stringify({ data: tproductRedirects }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      return new Response(null, { status: 204 })
+    })
+    // Same id, different (historical) slug AND different category prefix.
+    const res = await middleware(
+      makeRequest('/catalog/react/tproduct/423044036992-nitrat-serebra-25g'),
+    )
+    expect(res.status).toBe(301)
+    expect(res.headers.get('location')).toBe(
+      'http://localhost:3000/product/nitrat-serebra',
+    )
+  })
+
+  it('passes an unknown tproduct id through to the locale rewrite', async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/api/public/redirects')) {
+        return new Response(JSON.stringify({ data: tproductRedirects }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      return new Response(null, { status: 204 })
+    })
+    const res = await middleware(makeRequest('/tproduct/999999999999-neizvestnyi'))
+    expect(res.headers.get('location')).toBeNull()
+    expect(res.headers.get('x-middleware-rewrite')).toContain(
+      '/ru/tproduct/999999999999-neizvestnyi',
+    )
+  })
+})
+
+describe('matchRedirect (tproduct-id fallback)', () => {
+  const items = [
+    {
+      id: 'r-nitrat',
+      fromPath: '/catalog/reagents/tproduct/423044036992-nitrat-serebra',
+      toPath: '/product/nitrat-serebra',
+      statusCode: 301,
+    },
+    {
+      id: 'r-himichka',
+      fromPath: '/tproduct/279167718312-himichka-30',
+      toPath: '/product/himichka-30',
+      statusCode: 301,
+    },
+    {
+      id: 'r-alias',
+      fromPath: '/tproduct/423044036992-staraya-stranitsa',
+      toPath: '/product/special-landing',
+      statusCode: 302,
+    },
+  ]
+
+  it('prefers an exact from_path match over the id fallback', () => {
+    expect(matchRedirect(items, '/tproduct/423044036992-staraya-stranitsa')?.id).toBe(
+      'r-alias',
+    )
+    expect(
+      matchRedirect(items, '/catalog/reagents/tproduct/423044036992-nitrat-serebra')?.id,
+    ).toBe('r-nitrat')
+  })
+
+  it('matches by numeric id across historical slug and prefix variants', () => {
+    for (const path of [
+      '/tproduct/423044036992-nitrat-serebra-old',
+      '/catalog/tproduct/423044036992-drugoi-slug',
+      '/catalog/reagents/tproduct/423044036992',
+      '/reagents/tproduct/423044036992-eshchyo-odin',
+    ]) {
+      expect(matchRedirect(items, path)?.id).toBe('r-nitrat')
+    }
+    expect(matchRedirect(items, '/tproduct/279167718312')?.id).toBe('r-himichka')
+  })
+
+  it('does not fall back for non-tproduct or malformed paths', () => {
+    expect(matchRedirect(items, '/product/423044036992-nitrat-serebra')).toBeUndefined()
+    expect(matchRedirect(items, '/tproduct/notanumber-slug')).toBeUndefined()
+    expect(matchRedirect(items, '/blog/tproduct/423044036992-x')).toBeUndefined()
+    expect(matchRedirect(items, '/tproduct/999999999999-unknown')).toBeUndefined()
   })
 })
