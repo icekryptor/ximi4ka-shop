@@ -71,7 +71,7 @@ describe('ProductPage', () => {
 
       expect(meta.title).toBe('Custom SEO Title')
       expect(meta.description).toBe('Custom SEO description')
-      expect(meta.alternates?.canonical).toBe('https://shop.ximi4ka.ru/product/kit')
+      expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/product/kit')
       expect(meta.openGraph?.images).toEqual([{ url: 'https://cdn.example.com/og.jpg' }])
     })
 
@@ -131,7 +131,7 @@ describe('ProductPage', () => {
         params: Promise.resolve({ locale: 'ru', slug: 'kit' }),
       })
       expect(meta.other).toEqual({
-        amphtml: 'https://shop.ximi4ka.ru/amp/product/kit',
+        amphtml: 'https://new.ximi4ka.ru/amp/product/kit',
       })
     })
 
@@ -175,13 +175,13 @@ describe('ProductPage', () => {
       expect(meta.description).toBe('EN desc')
       // Canonical for the EN variant is the /en-prefixed URL.
       expect(meta.alternates?.canonical).toBe(
-        'https://shop.ximi4ka.ru/en/product/kit',
+        'https://new.ximi4ka.ru/en/product/kit',
       )
       // hreflang alternates include RU unprefixed, EN prefixed, x-default=RU.
       expect(meta.alternates?.languages).toEqual({
-        ru: 'https://shop.ximi4ka.ru/product/kit',
-        en: 'https://shop.ximi4ka.ru/en/product/kit',
-        'x-default': 'https://shop.ximi4ka.ru/product/kit',
+        ru: 'https://new.ximi4ka.ru/product/kit',
+        en: 'https://new.ximi4ka.ru/en/product/kit',
+        'x-default': 'https://new.ximi4ka.ru/product/kit',
       })
     })
 

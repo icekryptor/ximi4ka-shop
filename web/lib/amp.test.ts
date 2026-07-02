@@ -67,7 +67,7 @@ beforeAll(async () => {
 
 describe('renderAmpProduct', () => {
   it('produces AMP-valid HTML for a typical product', () => {
-    const html = renderAmpProduct(makeProduct(), 'https://shop.ximi4ka.ru')
+    const html = renderAmpProduct(makeProduct(), 'https://new.ximi4ka.ru')
     const result = validator.validateString(html)
     if (result.status !== 'PASS') {
       // Surface actual error lines when this fails so future breakage is
@@ -81,14 +81,14 @@ describe('renderAmpProduct', () => {
   })
 
   it('includes canonical link back to the non-AMP URL', () => {
-    const html = renderAmpProduct(makeProduct(), 'https://shop.ximi4ka.ru')
+    const html = renderAmpProduct(makeProduct(), 'https://new.ximi4ka.ru')
     expect(html).toContain(
-      '<link rel="canonical" href="https://shop.ximi4ka.ru/product/nabor">',
+      '<link rel="canonical" href="https://new.ximi4ka.ru/product/nabor">',
     )
   })
 
   it('emits the AMP runtime script and no other <script> except application/ld+json', () => {
-    const html = renderAmpProduct(makeProduct(), 'https://shop.ximi4ka.ru')
+    const html = renderAmpProduct(makeProduct(), 'https://new.ximi4ka.ru')
     expect(html).toContain(
       '<script async src="https://cdn.ampproject.org/v0.js"></script>',
     )
@@ -100,7 +100,7 @@ describe('renderAmpProduct', () => {
   })
 
   it('uses <amp-img> and not <img> for product gallery', () => {
-    const html = renderAmpProduct(makeProduct(), 'https://shop.ximi4ka.ru')
+    const html = renderAmpProduct(makeProduct(), 'https://new.ximi4ka.ru')
     expect(html).toContain('<amp-img')
     expect(html).not.toMatch(/<img\s/i)
   })
@@ -108,7 +108,7 @@ describe('renderAmpProduct', () => {
 
 describe('renderAmpArticle', () => {
   it('produces AMP-valid HTML for a CMS page', () => {
-    const html = renderAmpArticle(makePage(), 'https://shop.ximi4ka.ru')
+    const html = renderAmpArticle(makePage(), 'https://new.ximi4ka.ru')
     const result = validator.validateString(html)
     if (result.status !== 'PASS') {
       const msg = result.errors
@@ -120,9 +120,9 @@ describe('renderAmpArticle', () => {
   })
 
   it('links canonical back to the CMS slug', () => {
-    const html = renderAmpArticle(makePage(), 'https://shop.ximi4ka.ru')
+    const html = renderAmpArticle(makePage(), 'https://new.ximi4ka.ru')
     expect(html).toContain(
-      '<link rel="canonical" href="https://shop.ximi4ka.ru/o-nas">',
+      '<link rel="canonical" href="https://new.ximi4ka.ru/o-nas">',
     )
   })
 })

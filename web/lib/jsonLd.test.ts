@@ -52,8 +52,8 @@ describe('JSON-LD helpers', () => {
     expect(out['@context']).toBe('https://schema.org')
     expect(out['@type']).toBe('Organization')
     expect(out.name).toBe('Ximi4ka')
-    expect(out.url).toBe('https://shop.ximi4ka.ru')
-    expect(out.logo).toBe('https://shop.ximi4ka.ru/logo.png')
+    expect(out.url).toBe('https://new.ximi4ka.ru')
+    expect(out.logo).toBe('https://new.ximi4ka.ru/logo.png')
   })
 
   it('websiteJsonLd includes SearchAction with the required query-input string', () => {
@@ -62,7 +62,7 @@ describe('JSON-LD helpers', () => {
     expect(out['@type']).toBe('WebSite')
     expect(out.potentialAction).toMatchObject({
       '@type': 'SearchAction',
-      target: 'https://shop.ximi4ka.ru/search?q={search_term_string}',
+      target: 'https://new.ximi4ka.ru/search?q={search_term_string}',
       'query-input': 'required name=search_term_string',
     })
   })
@@ -81,11 +81,11 @@ describe('JSON-LD helpers', () => {
         '@type': 'ListItem',
         position: 1,
         name: 'Главная',
-        item: 'https://shop.ximi4ka.ru/',
+        item: 'https://new.ximi4ka.ru/',
       })
       expect(out.itemListElement[1]).toMatchObject({
         position: 2,
-        item: 'https://shop.ximi4ka.ru/categories',
+        item: 'https://new.ximi4ka.ru/categories',
       })
       // Already-absolute URLs passed through unchanged
       expect(out.itemListElement[2]).toMatchObject({
@@ -121,7 +121,7 @@ describe('JSON-LD helpers', () => {
       expect(out.description).toBe('A cool kit')
       expect(out.sku).toBe('SKU-1')
       expect(out.image).toEqual(['https://cdn.example.com/a.jpg'])
-      expect(out.offers.url).toBe('https://shop.ximi4ka.ru/product/kit')
+      expect(out.offers.url).toBe('https://new.ximi4ka.ru/product/kit')
     })
   })
 
@@ -137,13 +137,13 @@ describe('JSON-LD helpers', () => {
         {
           '@type': 'ListItem',
           position: 1,
-          url: 'https://shop.ximi4ka.ru/product/a',
+          url: 'https://new.ximi4ka.ru/product/a',
           name: 'A',
         },
         {
           '@type': 'ListItem',
           position: 2,
-          url: 'https://shop.ximi4ka.ru/product/b',
+          url: 'https://new.ximi4ka.ru/product/b',
           name: 'B',
         },
       ])

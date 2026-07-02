@@ -52,7 +52,7 @@ describe('generateTurboRss', () => {
     const xml = generateTurboRss({
       products: [],
       pages: [],
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
     expect(xml).toContain('<rss version="2.0"')
@@ -60,7 +60,7 @@ describe('generateTurboRss', () => {
     expect(xml).toContain('xmlns:yandex="http://news.yandex.ru"')
     expect(xml).toContain('<channel>')
     expect(xml).toContain('<title>Ximi4ka</title>')
-    expect(xml).toContain('<link>https://shop.ximi4ka.ru</link>')
+    expect(xml).toContain('<link>https://new.ximi4ka.ru</link>')
     expect(xml).toContain('<language>ru</language>')
   })
 
@@ -68,10 +68,10 @@ describe('generateTurboRss', () => {
     const xml = generateTurboRss({
       products: [makeProduct()],
       pages: [],
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<item turbo="true">')
-    expect(xml).toContain('<link>https://shop.ximi4ka.ru/product/nabor</link>')
+    expect(xml).toContain('<link>https://new.ximi4ka.ru/product/nabor</link>')
     expect(xml).toContain('<turbo:content><![CDATA[')
     expect(xml).toContain('<header><h1>Набор</h1></header>')
     expect(xml).toContain('2')
@@ -98,9 +98,9 @@ describe('generateTurboRss', () => {
           ],
         }),
       ],
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
-    expect(xml).toContain('<link>https://shop.ximi4ka.ru/about</link>')
+    expect(xml).toContain('<link>https://new.ximi4ka.ru/about</link>')
     expect(xml).toContain('<p>Hello world</p>')
     expect(xml).toContain('<details><summary>Q1?</summary>')
     expect(xml).toContain('<p>A1</p>')
@@ -110,17 +110,17 @@ describe('generateTurboRss', () => {
     const xml = generateTurboRss({
       products: [],
       pages: [makePage({ slug: 'home' }), makePage({ slug: 'dostavka' })],
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
-    expect(xml).not.toContain('shop.ximi4ka.ru/home')
-    expect(xml).toContain('shop.ximi4ka.ru/dostavka')
+    expect(xml).not.toContain('new.ximi4ka.ru/home')
+    expect(xml).toContain('new.ximi4ka.ru/dostavka')
   })
 
   it('escapes product titles with XML special chars', () => {
     const xml = generateTurboRss({
       products: [makeProduct({ name: 'Foo & <Bar>' })],
       pages: [],
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<title>Foo &amp; &lt;Bar&gt;</title>')
     // And inside the turbo content block:

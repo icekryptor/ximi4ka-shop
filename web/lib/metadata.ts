@@ -37,7 +37,7 @@ export interface SeoInput {
 }
 
 export function siteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? 'https://shop.ximi4ka.ru'
+  return process.env.NEXT_PUBLIC_SITE_URL ?? 'https://new.ximi4ka.ru'
 }
 
 function trimOrNull(value: string | null | undefined): string | null {

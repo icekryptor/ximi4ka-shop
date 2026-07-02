@@ -16,7 +16,7 @@ vi.mock('@/lib/api', () => ({
 import { GET } from './route'
 import { ApiError, getPage } from '@/lib/api'
 
-const req = new Request('https://shop.ximi4ka.ru/amp/article/o-nas')
+const req = new Request('https://new.ximi4ka.ru/amp/article/o-nas')
 
 describe('GET /amp/article/[slug]', () => {
   beforeEach(() => {
@@ -45,7 +45,7 @@ describe('GET /amp/article/[slug]', () => {
     const body = await res.text()
     expect(body).toContain('<html amp lang="ru">')
     expect(body).toContain(
-      '<link rel="canonical" href="https://shop.ximi4ka.ru/o-nas">',
+      '<link rel="canonical" href="https://new.ximi4ka.ru/o-nas">',
     )
   })
 

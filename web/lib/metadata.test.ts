@@ -39,7 +39,7 @@ describe('buildMetadata', () => {
 
   it('builds absolute canonical from pathname + default site URL', () => {
     const meta = buildMetadata({ title: 'T', pathname: '/product/foo' })
-    expect(meta.alternates?.canonical).toBe('https://shop.ximi4ka.ru/product/foo')
+    expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/product/foo')
   })
 
   it('respects explicit canonicalUrl', () => {
@@ -76,7 +76,7 @@ describe('buildMetadata', () => {
     expect(meta.openGraph).toMatchObject({
       title: 'Hello',
       description: 'Desc',
-      url: 'https://shop.ximi4ka.ru/foo',
+      url: 'https://new.ximi4ka.ru/foo',
       siteName: 'Ximi4ka',
       locale: 'ru_RU',
     })
@@ -87,7 +87,7 @@ describe('buildMetadata', () => {
   it('falls back to default OG image when none provided', () => {
     const meta = buildMetadata({ title: 'T', pathname: '/' })
     expect(meta.openGraph?.images).toEqual([
-      { url: 'https://shop.ximi4ka.ru/og-default.png' },
+      { url: 'https://new.ximi4ka.ru/og-default.png' },
     ])
   })
 
@@ -124,7 +124,7 @@ describe('buildMetadata', () => {
       ampPath: '/amp/product/foo',
     })
     expect(meta.other).toEqual({
-      amphtml: 'https://shop.ximi4ka.ru/amp/product/foo',
+      amphtml: 'https://new.ximi4ka.ru/amp/product/foo',
     })
   })
 
@@ -143,18 +143,18 @@ describe('buildMetadata', () => {
       },
     })
     expect(meta.alternates?.languages).toEqual({
-      ru: 'https://shop.ximi4ka.ru/product/foo',
-      en: 'https://shop.ximi4ka.ru/en/product/foo',
-      'x-default': 'https://shop.ximi4ka.ru/product/foo',
+      ru: 'https://new.ximi4ka.ru/product/foo',
+      en: 'https://new.ximi4ka.ru/en/product/foo',
+      'x-default': 'https://new.ximi4ka.ru/product/foo',
     })
   })
 
   it('synthesizes alternates from pathname when none supplied', () => {
     const meta = buildMetadata({ title: 'T', pathname: '/categories' })
     expect(meta.alternates?.languages).toEqual({
-      ru: 'https://shop.ximi4ka.ru/categories',
-      en: 'https://shop.ximi4ka.ru/en/categories',
-      'x-default': 'https://shop.ximi4ka.ru/categories',
+      ru: 'https://new.ximi4ka.ru/categories',
+      en: 'https://new.ximi4ka.ru/en/categories',
+      'x-default': 'https://new.ximi4ka.ru/categories',
     })
   })
 
@@ -163,18 +163,18 @@ describe('buildMetadata', () => {
     // the RU alternate is `/product/foo`, not `/en/product/foo`.
     const meta = buildMetadata({ title: 'T', pathname: '/en/product/foo' })
     expect(meta.alternates?.languages).toEqual({
-      ru: 'https://shop.ximi4ka.ru/product/foo',
-      en: 'https://shop.ximi4ka.ru/en/product/foo',
-      'x-default': 'https://shop.ximi4ka.ru/product/foo',
+      ru: 'https://new.ximi4ka.ru/product/foo',
+      en: 'https://new.ximi4ka.ru/en/product/foo',
+      'x-default': 'https://new.ximi4ka.ru/product/foo',
     })
   })
 
   it('synthesizes alternates for the root path', () => {
     const meta = buildMetadata({ title: 'T', pathname: '/' })
     expect(meta.alternates?.languages).toEqual({
-      ru: 'https://shop.ximi4ka.ru/',
-      en: 'https://shop.ximi4ka.ru/en',
-      'x-default': 'https://shop.ximi4ka.ru/',
+      ru: 'https://new.ximi4ka.ru/',
+      en: 'https://new.ximi4ka.ru/en',
+      'x-default': 'https://new.ximi4ka.ru/',
     })
   })
 

@@ -16,7 +16,7 @@ vi.mock('@/lib/api', () => ({
 import { GET } from './route'
 import { ApiError, getPublishedProduct } from '@/lib/api'
 
-const req = new Request('https://shop.ximi4ka.ru/amp/product/kit')
+const req = new Request('https://new.ximi4ka.ru/amp/product/kit')
 
 describe('GET /amp/product/[slug]', () => {
   beforeEach(() => {
@@ -53,7 +53,7 @@ describe('GET /amp/product/[slug]', () => {
     const body = await res.text()
     expect(body).toContain('<html amp lang="ru">')
     expect(body).toContain(
-      '<link rel="canonical" href="https://shop.ximi4ka.ru/product/kit">',
+      '<link rel="canonical" href="https://new.ximi4ka.ru/product/kit">',
     )
   })
 

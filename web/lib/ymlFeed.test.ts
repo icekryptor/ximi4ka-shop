@@ -84,7 +84,7 @@ describe('generateYmlXml — structure', () => {
       products: [makeProduct({ categoryIds: ['cat-1'] })],
       categories: [makeCategory()],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
       now: new Date('2026-04-20T09:07:00Z'),
     })
     expect(xml).toContain('<?xml version="1.0" encoding="UTF-8"?>')
@@ -112,10 +112,10 @@ describe('generateYmlXml — structure', () => {
         ymlCurrency: 'RUB',
         ymlDeliveryNote: null,
       },
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<name>Ximi4ka</name>')
-    expect(xml).toContain('<url>https://shop.ximi4ka.ru</url>')
+    expect(xml).toContain('<url>https://new.ximi4ka.ru</url>')
   })
 
   it('emits delivery-options when ymlDeliveryNote is set', () => {
@@ -123,7 +123,7 @@ describe('generateYmlXml — structure', () => {
       products: [],
       categories: [],
       settings: { ...baseSettings, ymlDeliveryNote: 'Доставка 3-7 дней' },
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<delivery-options>')
     expect(xml).toContain('description="Доставка 3-7 дней"')
@@ -139,7 +139,7 @@ describe('generateYmlXml — category mapping', () => {
         makeCategory({ id: 'uuid-b', name: 'B' }),
       ],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<category id="1">A</category>')
     expect(xml).toContain('<category id="2">B</category>')
@@ -153,7 +153,7 @@ describe('generateYmlXml — category mapping', () => {
         makeCategory({ id: 'child-uuid', name: 'Child', parentId: 'parent-uuid' }),
       ],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<category id="1">Parent</category>')
     expect(xml).toContain('<category id="2" parentId="1">Child</category>')
@@ -171,7 +171,7 @@ describe('generateYmlXml — offers', () => {
         makeCategory({ id: 'cat-2', name: 'B' }),
       ],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     // cat-2 was the first linked category; should map to id=2.
     expect(xml).toContain('<categoryId>2</categoryId>')
@@ -195,7 +195,7 @@ describe('generateYmlXml — offers', () => {
       ],
       categories: [makeCategory()],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<offer id="p-in" available="true">')
     expect(xml).toContain('<offer id="p-out" available="false">')
@@ -209,7 +209,7 @@ describe('generateYmlXml — offers', () => {
       ],
       categories: [makeCategory()],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).not.toContain('id="p-orphan"')
     expect(xml).toContain('id="p-ok"')
@@ -233,10 +233,10 @@ describe('generateYmlXml — offers', () => {
       ],
       categories: [makeCategory()],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<url>https://ximi4ka.ru/special/a</url>')
-    expect(xml).toContain('<url>https://shop.ximi4ka.ru/product/slug-b</url>')
+    expect(xml).toContain('<url>https://new.ximi4ka.ru/product/slug-b</url>')
   })
 
   it('escapes product names with XML special chars', () => {
@@ -251,7 +251,7 @@ describe('generateYmlXml — offers', () => {
       ],
       categories: [makeCategory()],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<name>Rock &amp; Roll &lt;Edition&gt;</name>')
     expect(xml).not.toContain('<name>Rock & Roll <Edition></name>')
@@ -276,7 +276,7 @@ describe('generateYmlXml — offers', () => {
       ],
       categories: [makeCategory()],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     const matches = xml.match(/<picture>/g) ?? []
     expect(matches.length).toBe(10)
@@ -306,7 +306,7 @@ describe('generateYmlXml — offers', () => {
       ],
       categories: [makeCategory()],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     expect(xml).toContain('<description>Краткое описание</description>')
     expect(xml).toContain('<description>First para</description>')
@@ -325,7 +325,7 @@ describe('generateYmlXml — offers', () => {
       ],
       categories: [makeCategory()],
       settings: baseSettings,
-      siteUrl: 'https://shop.ximi4ka.ru',
+      siteUrl: 'https://new.ximi4ka.ru',
     })
     // No <description> tag at all — legal YML, Yandex tolerates absence.
     expect(xml).not.toMatch(/<description>/)

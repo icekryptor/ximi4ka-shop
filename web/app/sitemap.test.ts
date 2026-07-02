@@ -102,13 +102,13 @@ describe('sitemap', () => {
     const out = await sitemap()
     const urls = out.map((e) => e.url)
 
-    expect(urls).toContain('https://shop.ximi4ka.ru/')
-    expect(urls).toContain('https://shop.ximi4ka.ru/categories')
-    expect(urls).toContain('https://shop.ximi4ka.ru/categories/himicheskie-nabory')
-    expect(urls).toContain('https://shop.ximi4ka.ru/product/nabor-yunogo-himika')
-    expect(urls).toContain('https://shop.ximi4ka.ru/o-nas')
+    expect(urls).toContain('https://new.ximi4ka.ru/')
+    expect(urls).toContain('https://new.ximi4ka.ru/categories')
+    expect(urls).toContain('https://new.ximi4ka.ru/categories/himicheskie-nabory')
+    expect(urls).toContain('https://new.ximi4ka.ru/product/nabor-yunogo-himika')
+    expect(urls).toContain('https://new.ximi4ka.ru/o-nas')
     // `home` CMS slug is NOT emitted as /home — it lives at `/`.
-    expect(urls).not.toContain('https://shop.ximi4ka.ru/home')
+    expect(urls).not.toContain('https://new.ximi4ka.ru/home')
   })
 
   it('emits hreflang alternates on every entry for ru + en', async () => {
@@ -150,18 +150,18 @@ describe('sitemap', () => {
 
     const out = await sitemap()
     // Home entry.
-    const home = out.find((e) => e.url === 'https://shop.ximi4ka.ru/')
+    const home = out.find((e) => e.url === 'https://new.ximi4ka.ru/')
     expect(home?.alternates?.languages).toEqual({
-      ru: 'https://shop.ximi4ka.ru/',
-      en: 'https://shop.ximi4ka.ru/en',
+      ru: 'https://new.ximi4ka.ru/',
+      en: 'https://new.ximi4ka.ru/en',
     })
     // Product entry.
     const product = out.find(
-      (e) => e.url === 'https://shop.ximi4ka.ru/product/kit',
+      (e) => e.url === 'https://new.ximi4ka.ru/product/kit',
     )
     expect(product?.alternates?.languages).toEqual({
-      ru: 'https://shop.ximi4ka.ru/product/kit',
-      en: 'https://shop.ximi4ka.ru/en/product/kit',
+      ru: 'https://new.ximi4ka.ru/product/kit',
+      en: 'https://new.ximi4ka.ru/en/product/kit',
     })
   })
 
@@ -173,8 +173,8 @@ describe('sitemap', () => {
     const out = await sitemap()
     const urls = out.map((e) => e.url)
     // Homepage + categories landing always ship, even if no data sourced.
-    expect(urls).toContain('https://shop.ximi4ka.ru/')
-    expect(urls).toContain('https://shop.ximi4ka.ru/categories')
+    expect(urls).toContain('https://new.ximi4ka.ru/')
+    expect(urls).toContain('https://new.ximi4ka.ru/categories')
     expect(out.length).toBe(2)
   })
 

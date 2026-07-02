@@ -2,7 +2,8 @@ import path from 'node:path'
 import type { NextConfig } from 'next'
 
 // The api serves uploaded images from its own origin (`localhost:3001` in
-// dev, `api.shop.ximi4ka.ru` in prod). The storefront stores image URLs
+// dev, the Railway domain of the api service in prod). The storefront stores
+// image URLs
 // as origin-agnostic `/uploads/...` paths and we proxy them through Next
 // so the browser never deals with cross-origin URLs.
 const apiOrigin =
