@@ -46,11 +46,15 @@ publicCategoriesRouter.get('/:slug/products', async (req, res, next) => {
       .getRepository(Product)
       .createQueryBuilder('p')
       .innerJoin('product_category_links', 'pcl', 'pcl.product_id = p.id')
+      // Eager-load images: storefront category cards render
+      // `product.images` directly (same contract as /api/public/products).
+      .leftJoinAndSelect('p.images', 'img')
       .where('pcl.category_id = :id', { id: category.id })
       .andWhere('p.is_published = true')
       .andWhere('p.deleted_at IS NULL')
       .orderBy('p.sortOrder', 'ASC')
       .addOrderBy('p.createdAt', 'DESC')
+      .addOrderBy('img.sortOrder', 'ASC')
       .skip(offset)
       .take(limit)
       .getManyAndCount()

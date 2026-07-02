@@ -178,6 +178,37 @@ describe('Category routes', () => {
       expect(slugs).toEqual(['kit-one', 'kit-two'])
       expect(res.body.pagination).toMatchObject({ limit: 20, offset: 0, total: 2 })
     })
+    it('eager-loads product images sorted by sort_order (storefront cards need them)', async () => {
+      const cat = await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug: 'with-images', name: 'With Images' })
+      const p = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'kit-img', name: 'Kit Img', priceRub: 100 })
+      await request(app)
+        .post(`/api/admin/products/${p.body.data.id}/publish`)
+        .set(authHeaders(auth))
+      await AppDataSource.query(
+        'INSERT INTO product_category_links (category_id, product_id) VALUES ($1, $2)',
+        [cat.body.data.id, p.body.data.id],
+      )
+      await AppDataSource.query(
+        `INSERT INTO product_images (product_id, url, alt, sort_order)
+         VALUES ($1, '/uploads/second.jpg', 'second', 2), ($1, '/uploads/first.jpg', 'first', 1)`,
+        [p.body.data.id],
+      )
+      const res = await request(app).get('/api/public/categories/with-images/products')
+      expect(res.status).toBe(200)
+      // `images` must always be an array (never undefined) — ProductCard
+      // renders `images.length` directly.
+      expect(res.body.data[0].images).toBeDefined()
+      expect(res.body.data[0].images.map((i: { url: string }) => i.url)).toEqual([
+        '/uploads/first.jpg',
+        '/uploads/second.jpg',
+      ])
+    })
     it('returns empty data when category has no products', async () => {
       await request(app)
         .post('/api/admin/categories')
