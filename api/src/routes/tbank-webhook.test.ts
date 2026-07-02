@@ -184,6 +184,9 @@ describe('GET /api/public/orders/:number/status', () => {
       status: 'pending',
       totalRub: 2350,
       paidAt: null,
+      // The provider is not PII — the status page needs it to decide
+      // whether to poll (tbank) or show the "менеджер свяжется" copy (manual).
+      paymentProvider: 'tbank',
     })
     expect(res.body.data.createdAt).toBeTruthy()
     // PII must never leak through the public endpoint.
@@ -191,6 +194,7 @@ describe('GET /api/public/orders/:number/status', () => {
       'createdAt',
       'orderNumber',
       'paidAt',
+      'paymentProvider',
       'status',
       'totalRub',
     ])

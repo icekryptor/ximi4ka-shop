@@ -72,11 +72,14 @@ export interface CheckoutResponse {
   paymentUrl: string | null
 }
 
-// Public status endpoint payload — deliberately PII-free.
+// Public status endpoint payload — deliberately PII-free. `paymentProvider`
+// is included so the status page knows whether to poll for a payment result
+// (tbank) or show the "менеджер свяжется" manual-order copy.
 export interface PublicOrderStatus {
   orderNumber: string
   status: OrderStatus
   totalRub: number
+  paymentProvider: PaymentProvider
   createdAt: string
   paidAt: string | null
 }

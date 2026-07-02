@@ -18,6 +18,9 @@ publicOrdersRouter.get('/:number/status', async (req, res, next) => {
         orderNumber: order.orderNumber,
         status: order.status,
         totalRub: order.totalRub,
+        // Not PII: the status page uses the provider to decide whether to
+        // poll for a payment result (tbank) or render the manual-order copy.
+        paymentProvider: order.paymentProvider,
         createdAt: order.createdAt,
         paidAt: order.paidAt,
       },
