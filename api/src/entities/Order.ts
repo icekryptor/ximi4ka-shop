@@ -9,7 +9,12 @@ import {
   Index,
 } from 'typeorm'
 import { OrderItem } from './OrderItem.js'
-import type { OrderStatus, PaymentProvider, DeliveryAddress } from '@ximi4ka-shop/shared'
+import type {
+  OrderStatus,
+  OrderStatusHistoryEntry,
+  PaymentProvider,
+  DeliveryAddress,
+} from '@ximi4ka-shop/shared'
 
 @Entity({ name: 'orders' })
 @Index(['orderNumber'], { unique: true })
@@ -52,6 +57,21 @@ export class Order {
 
   @Column({ type: 'varchar', length: 255, name: 'payment_intent_id', nullable: true })
   paymentIntentId!: string | null
+
+  // Payment page URL returned by the provider (Init → PaymentURL). Stored so
+  // idempotent checkout replays can return the same link.
+  @Column({ type: 'varchar', length: 1024, name: 'payment_url', nullable: true })
+  paymentUrl!: string | null
+
+  // Client-supplied Idempotency-Key header value; unique among non-null rows,
+  // lets a retried checkout POST return the already-created order.
+  @Column({ type: 'varchar', length: 255, name: 'idempotency_key', nullable: true })
+  idempotencyKey!: string | null
+
+  // Status transition timeline: webhook, reconcile job and manual admin
+  // changes append entries here. Rendered in the admin order detail page.
+  @Column({ type: 'jsonb', name: 'status_history', default: () => "'[]'::jsonb" })
+  statusHistory!: OrderStatusHistoryEntry[]
 
   @OneToMany(() => OrderItem, (item) => item.order)
   items!: OrderItem[]
