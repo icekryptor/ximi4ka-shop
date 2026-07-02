@@ -15,10 +15,26 @@ import { Redirect } from '../entities/Redirect.js'
 import { Media } from '../entities/Media.js'
 import { SiteSettings } from '../entities/SiteSettings.js'
 
-const databaseUrl = process.env.DATABASE_URL
-if (!databaseUrl) {
-  throw new Error('DATABASE_URL is not set')
+// Tests must NEVER touch the dev/prod database (DATABASE_URL): suites
+// TRUNCATE tables between cases, which would wipe imported data. Under
+// Vitest (it sets process.env.VITEST) the data source therefore resolves
+// TEST_DATABASE_URL — defaulting to a local ximi4ka_shop_test database —
+// and ignores DATABASE_URL entirely. The test database is created and
+// migrated automatically by src/test/globalSetup.ts.
+const TEST_DATABASE_URL_FALLBACK = 'postgres://localhost:5432/ximi4ka_shop_test'
+
+function resolveDatabaseUrl(): string {
+  if (process.env.VITEST) {
+    return process.env.TEST_DATABASE_URL ?? TEST_DATABASE_URL_FALLBACK
+  }
+  const url = process.env.DATABASE_URL
+  if (!url) {
+    throw new Error('DATABASE_URL is not set')
+  }
+  return url
 }
+
+export const databaseUrl = resolveDatabaseUrl()
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
