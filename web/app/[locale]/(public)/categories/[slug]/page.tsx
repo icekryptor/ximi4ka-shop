@@ -30,6 +30,14 @@ export const revalidate = 60
 
 const PAGE_SIZE = 12
 
+// Плотность карточек по слагу категории (V3_5 §каталог): наборы/комбо —
+// крупные фото-форвард карточки; реактивы/оборудование/печать — компактная
+// плотная сетка со степпером количества.
+const COMPACT_SLUGS = new Set(['reagents', 'equipment', 'print'])
+function densityForSlug(slug: string): 'kit' | 'compact' {
+  return COMPACT_SLUGS.has(slug) ? 'compact' : 'kit'
+}
+
 export async function generateStaticParams() {
   try {
     const res = await listCategories({ limit: 100 })
@@ -167,6 +175,7 @@ export default async function CategoryDetailPage({
   // products API supports a sort param, lift this into the API call so that
   // ordering applies across the full result set rather than just the page slice.
   const products = sortProducts(unsorted, currentSort)
+  const density = densityForSlug(slug)
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
   const name = pickField<string>(category, 'name', locale) ?? category.name
   const description =
@@ -259,8 +268,23 @@ export default async function CategoryDetailPage({
             <p className="text-center opacity-60 py-32 font-lj-mono uppercase tracking-[0.06em]">
               Ничего не найдено
             </p>
+          ) : density === 'compact' ? (
+            // Компактная плотная сетка: 2 колонки на мобиле, до 6 на десктопе.
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-5 gap-y-8">
+              {products.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  stats={{ reagents: 0, instruments: 0, reactions: 0 }}
+                  statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+                  images={p.images}
+                  density="compact"
+                />
+              ))}
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            // Карточки наборов ~360–380px, до 4 в ряд на широких экранах.
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {products.map((p, i) => {
                 // v3.5: первая карточка первой страницы — featured (широкая,
                 // на 2 колонки), больше визуала продукта.
@@ -268,7 +292,7 @@ export default async function CategoryDetailPage({
                 return (
                   <div
                     key={p.id}
-                    className={isFeatured ? 'md:col-span-2' : undefined}
+                    className={isFeatured ? 'sm:col-span-2' : undefined}
                   >
                     {/* TODO(Task 4.4): wire real catalog stats + asymmetric grid */}
                     <ProductCard
