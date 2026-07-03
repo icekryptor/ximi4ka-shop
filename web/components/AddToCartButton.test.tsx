@@ -101,6 +101,26 @@ describe('AddToCartButton', () => {
     expect(loadCart()[0]?.image).toBe('/uploads/test-kit.webp')
   })
 
+  it('adds the given quantity when the quantity prop is set', () => {
+    const { container } = render(
+      <AddToCartButton product={inStock} quantity={3} />,
+    )
+    act(() => {
+      fireEvent.click(within(container).getByRole('button'))
+    })
+    expect(loadCart()[0]?.quantity).toBe(3)
+  })
+
+  it('clamps a fractional/zero quantity to at least 1', () => {
+    const { container } = render(
+      <AddToCartButton product={inStock} quantity={0} />,
+    )
+    act(() => {
+      fireEvent.click(within(container).getByRole('button'))
+    })
+    expect(loadCart()[0]?.quantity).toBe(1)
+  })
+
   it('does nothing when disabled (out_of_stock)', () => {
     const { container } = render(
       <AddToCartButton product={{ ...inStock, stockStatus: 'out_of_stock' }} />,
