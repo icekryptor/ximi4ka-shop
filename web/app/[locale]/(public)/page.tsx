@@ -17,22 +17,11 @@ import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
 import { LabSection } from '@/components/ui/LabSection'
 import { Ticker } from '@/components/ui'
 import { NotebookHeader } from '@/components/ui/NotebookHeader'
-import {
-  Hero,
-  PreFooterCta,
-  Manifesto,
-  DEFAULT_TESTIMONIALS,
-} from '@/components/marketing'
+import { Hero, PreFooterCta, Manifesto, DEFAULT_TESTIMONIALS } from '@/components/marketing'
 import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
 import { HowItWorksStepLJ } from '@/components/marketing/HowItWorksStepLJ'
 import { TestimonialQuoteLJ } from '@/components/marketing/TestimonialQuoteLJ'
-import {
-  DEFAULT_LOCALE,
-  SUPPORTED_LOCALES,
-  isLocale,
-  pickField,
-  type Locale,
-} from '@/lib/i18n'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
 
@@ -89,8 +78,7 @@ export const SITE_CATALOG = [
     sku: 'X-EL',
     slug: 'elektrohimichka',
     name: 'Электрохимичка',
-    shortDescription:
-      'Электролиз, гальваника, батарея. Полный комплект для опытов с током.',
+    shortDescription: 'Электролиз, гальваника, батарея. Полный комплект для опытов с током.',
     priceRub: 3299,
     badge: 'Pro',
     badgeVariant: 'ink' as const,
@@ -128,24 +116,18 @@ interface FetchResult {
 }
 
 async function fetchHome(): Promise<FetchResult> {
-  const [pageRes, productsRes, settingsRes, categoriesRes] =
-    await Promise.allSettled([
-      getPage('home'),
-      listPublishedProducts({ limit: 8 }),
-      getPublicSettings(),
-      listCategories({ limit: 100 }),
-    ])
+  const [pageRes, productsRes, settingsRes, categoriesRes] = await Promise.allSettled([
+    getPage('home'),
+    listPublishedProducts({ limit: 8 }),
+    getPublicSettings(),
+    listCategories({ limit: 100 }),
+  ])
   return {
     page: pageRes.status === 'fulfilled' ? pageRes.value : null,
-    products:
-      productsRes.status === 'fulfilled' && productsRes.value
-        ? productsRes.value.data
-        : [],
+    products: productsRes.status === 'fulfilled' && productsRes.value ? productsRes.value.data : [],
     settings: settingsRes.status === 'fulfilled' ? settingsRes.value : null,
     categories:
-      categoriesRes.status === 'fulfilled' && categoriesRes.value
-        ? categoriesRes.value.data
-        : [],
+      categoriesRes.status === 'fulfilled' && categoriesRes.value ? categoriesRes.value.data : [],
   }
 }
 
@@ -170,8 +152,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   )
   return buildMetadata({
     title,
-    description:
-      'Химические наборы для детей и подростков. Научные эксперименты дома.',
+    description: 'Химические наборы для детей и подростков. Научные эксперименты дома.',
     metaTitle,
     metaDescription,
     ogImage: home?.ogImage ?? null,
@@ -204,20 +185,17 @@ export default async function HomePage({ params }: Props) {
   // story needs to vary again, reintroduce pickField() here and pass the values
   // through the v3 Hero's headlineRows/trailLine/lead props.
 
-  const blocks =
-    (pickField<unknown[]>(
-      page as unknown as Record<string, unknown>,
-      'blocks',
-      locale,
-    ) ??
-      page?.blocks ??
-      []) as unknown[]
+  const blocks = (pickField<unknown[]>(
+    page as unknown as Record<string, unknown>,
+    'blocks',
+    locale,
+  ) ??
+    page?.blocks ??
+    []) as unknown[]
 
   const allBlocks = blocks as Block[]
   const faqBlocks = allBlocks.filter((b) => b && (b as Block).type === 'faq')
-  const otherBlocks = allBlocks.filter(
-    (b) => b && (b as Block).type !== 'faq',
-  )
+  const otherBlocks = allBlocks.filter((b) => b && (b as Block).type !== 'faq')
 
   const testimonials =
     settings?.testimonials && settings.testimonials.length > 0
@@ -263,20 +241,25 @@ export default async function HomePage({ params }: Props) {
         lead="3 набора. От реакций меди до электролиза — настоящие реагенты, посуда, понятные протоколы. То, что школа показывает на видео, вы делаете руками."
         primaryCta={{ label: 'Открыть каталог', href: '/catalog' }}
         secondaryCta={{ label: 'Что мы делаем', href: '#manifesto' }}
-        visual={(() => {
-          // Яркая hero-панель с фото флагмана (v3.5). Берём первый флагман,
-          // у которого есть DB-фото; без фото панель не рендерим.
-          const withPhoto = flagships.find(
-            (f) => f.dbProduct && f.dbProduct.images.length > 0,
-          )
-          if (!withPhoto?.dbProduct) return undefined
-          return {
-            imageUrl: withPhoto.dbProduct.images[0].url,
-            alt: withPhoto.dbProduct.name,
-            href: `/product/${withPhoto.dbProduct.slug}`,
-            label: `fig. 001 — ${withPhoto.emphasisWord ?? 'флагман'}`,
-          }
-        })()}
+        slides={flagships
+          // Слайдер флагманов (v3.5). Берём все флагманы с DB-фото; каждый
+          // слайд — реальный продукт с ценой из БД, ссылкой и CTA «В корзину».
+          // Без фото слайд не показываем; при <1 валидном слайде Hero скрывает
+          // панель и разворачивает заголовок на всю ширину.
+          .filter((f) => f.dbProduct && f.dbProduct.images.length > 0)
+          .map((f, i) => {
+            const p = f.dbProduct!
+            return {
+              productId: p.id,
+              slug: p.slug,
+              name: p.name,
+              priceRub: p.priceRub,
+              imageUrl: p.images[0].url,
+              alt: p.name,
+              href: `/product/${p.slug}`,
+              label: `fig. 00${i + 1} — ${f.emphasisWord ?? 'флагман'}`,
+            }
+          })}
       />
 
       {/* 1.5 Маркиз-тикер фактов (v3.5 BRIGHT) */}
@@ -291,7 +274,8 @@ export default async function HomePage({ params }: Props) {
                 03.0 / Что собрать сегодня
               </p>
               <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.75rem)] leading-[0.92] tracking-[-0.045em]">
-                Готовые<br />
+                Готовые
+                <br />
                 <em className="italic text-[var(--color-lj-brand)] font-[900]">наборы</em>
               </h2>
             </div>
@@ -372,10 +356,9 @@ export default async function HomePage({ params }: Props) {
             04.0 / Каталог
           </p>
           <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
-            Каталог по<br />
-            <em className="italic text-[var(--color-lj-brand)] font-[900]">
-              интересам
-            </em>
+            Каталог по
+            <br />
+            <em className="italic text-[var(--color-lj-brand)] font-[900]">интересам</em>
           </h2>
           {featuredCategories.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -400,22 +383,15 @@ export default async function HomePage({ params }: Props) {
       </LabSection>
 
       {/* 5. Как это работает (DARK INK) — v3 LJ NumberCell steps */}
-      <LabSection
-        variant="ink"
-        id="how-it-works"
-        className="px-6 py-32 relative"
-      >
+      <LabSection variant="ink" id="how-it-works" className="px-6 py-32 relative">
         <NotebookHeader section="05" label="Процесс" page={5} total={9} />
         <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
           <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
             05.0 / Процесс
           </p>
           <h2 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
-            От заказа до{' '}
-            <em className="italic text-[var(--color-lj-brand)] font-[700]">
-              опыта
-            </em>{' '}
-            — три шага
+            От заказа до <em className="italic text-[var(--color-lj-brand)] font-[700]">опыта</em> —
+            три шага
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             <HowItWorksStepLJ
@@ -448,10 +424,9 @@ export default async function HomePage({ params }: Props) {
             06.0 / Отзывы
           </p>
           <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
-            Что говорят<br />
-            <em className="italic text-[var(--color-lj-brand)] font-[900]">
-              родители
-            </em>
+            Что говорят
+            <br />
+            <em className="italic text-[var(--color-lj-brand)] font-[900]">родители</em>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
             {testimonials.slice(0, 3).map((t, i) => {

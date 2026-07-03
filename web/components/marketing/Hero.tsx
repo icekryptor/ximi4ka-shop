@@ -8,6 +8,8 @@ import { HeroFigtag } from './HeroFigtag'
 import { HeroScale } from './HeroScale'
 import { HeroAnnotation } from './HeroAnnotation'
 import { HeroDetailMolecule } from './HeroDetailMolecule'
+import { HeroSlider } from './HeroSlider'
+import type { HeroSlide } from '@/lib/heroSlides'
 
 interface CtaProps {
   label: string
@@ -35,8 +37,16 @@ interface Props {
   primaryCta: CtaProps
   secondaryCta?: CtaProps
   tickerItems?: string[]
-  /** v3.5: яркая градиентная панель с фото флагманского продукта (скрыта < lg) */
+  /**
+   * v3.5: яркая градиентная панель с фото флагманского продукта (скрыта < lg).
+   * Legacy-путь — одна статичная карточка. Если передан `slides`, он в приоритете.
+   */
   visual?: VisualProps
+  /**
+   * v3.5: переключаемый слайдер флагманских наборов (стрелки/точки/свайп).
+   * Каждый слайд — реальный DB-продукт с фото, ценой и CTA. Скрыт < lg.
+   */
+  slides?: HeroSlide[]
 }
 
 const DEFAULT_TICKER = [
@@ -61,7 +71,12 @@ export function Hero({
   secondaryCta,
   tickerItems = DEFAULT_TICKER,
   visual,
+  slides,
 }: Props) {
+  const hasSlider = !!slides && slides.length > 0
+  // Слайдер имеет приоритет; но композиция «карточка-герой справа»
+  // управляется любым из двух источников — от этого зависит размер заголовка.
+  const hasVisual = hasSlider || !!visual
   return (
     <LabSection
       variant="cream"
@@ -94,27 +109,33 @@ export function Hero({
         }}
       />
 
-      {visual && (
-        <Link
-          href={visual.href}
-          aria-label={visual.alt}
-          className="hidden lg:block absolute z-[3] right-[4vw] top-1/2 -translate-y-1/2 w-[clamp(300px,24vw,420px)] aspect-[4/5] rounded-[var(--radius-lj-bright)] bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-lj-bright)] overflow-hidden lj-lift"
-        >
-          <span className="absolute top-5 left-6 z-[2] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright-mute)]">
-            {visual.label ?? 'fig. 001 — флагман'}
-          </span>
-          <Image
-            src={visual.imageUrl}
-            alt={visual.alt}
-            fill
-            priority
-            sizes="(max-width: 1024px) 0px, 24vw"
-            className="object-contain p-8 pt-14 drop-shadow-[0_24px_32px_rgba(60,20,120,0.35)] transition-transform duration-700 hover:scale-[1.04]"
-          />
-          <span className="absolute bottom-5 left-6 right-6 z-[2] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright)] inline-flex items-center gap-2">
-            смотреть набор →
-          </span>
-        </Link>
+      {hasSlider ? (
+        <div className="hidden lg:block absolute z-[3] right-[4vw] top-1/2 -translate-y-1/2">
+          <HeroSlider slides={slides!} />
+        </div>
+      ) : (
+        visual && (
+          <Link
+            href={visual.href}
+            aria-label={visual.alt}
+            className="hidden lg:block absolute z-[3] right-[4vw] top-1/2 -translate-y-1/2 w-[clamp(300px,24vw,420px)] aspect-[4/5] rounded-[var(--radius-lj-bright)] bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-lj-bright)] overflow-hidden lj-lift"
+          >
+            <span className="absolute top-5 left-6 z-[2] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright-mute)]">
+              {visual.label ?? 'fig. 001 — флагман'}
+            </span>
+            <Image
+              src={visual.imageUrl}
+              alt={visual.alt}
+              fill
+              priority
+              sizes="(max-width: 1024px) 0px, 24vw"
+              className="object-contain p-8 pt-14 drop-shadow-[0_24px_32px_rgba(60,20,120,0.35)] transition-transform duration-700 hover:scale-[1.04]"
+            />
+            <span className="absolute bottom-5 left-6 right-6 z-[2] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright)] inline-flex items-center gap-2">
+              смотреть набор →
+            </span>
+          </Link>
+        )
       )}
 
       <div className="relative z-[2] max-w-[var(--max-lj-content)] mx-auto w-full">
@@ -123,7 +144,7 @@ export function Hero({
         </p>
 
         <h1
-          className={`font-lj-display font-[900] ${visual ? 'text-[clamp(2.75rem,7vw,7.75rem)] lg:max-w-[68vw]' : 'text-[length:var(--text-lj-mega)]'} leading-[0.88] tracking-[-0.045em] uppercase mb-10 relative z-[2]`}
+          className={`font-lj-display font-[900] ${hasVisual ? 'text-[clamp(2.5rem,5vw,5.5rem)] lg:max-w-[52vw]' : 'text-[length:var(--text-lj-mega)]'} leading-[0.9] tracking-[-0.045em] uppercase mb-10 relative z-[2]`}
         >
           {headlineRows.map((row, i) => (
             <span key={i} className={`block ${row.offset ? 'pl-[9vw]' : ''}`}>
@@ -141,9 +162,7 @@ export function Hero({
           {trailLine}
         </p>
 
-        <p className="max-w-[540px] text-xl leading-snug opacity-78 mb-12 relative z-[2]">
-          {lead}
-        </p>
+        <p className="max-w-[540px] text-xl leading-snug opacity-78 mb-12 relative z-[2]">{lead}</p>
 
         <div className="flex gap-4 items-center flex-wrap relative z-[2]">
           <Link
