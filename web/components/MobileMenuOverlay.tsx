@@ -44,7 +44,7 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
       <LabSection variant="cream" className="h-full overflow-y-auto px-6 pt-6 pb-12">
         <GridOverlay />
         <div className="relative z-[2]">
-          <div className="flex items-center justify-between font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] mb-12">
+          <div className="flex items-center justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] mb-12">
             <span className="inline-flex items-center gap-3">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-lj-brand)]" />
               № MENU — Меню
@@ -53,7 +53,7 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
               type="button"
               onClick={onClose}
               aria-label="Закрыть меню"
-              className="font-[var(--font-lj-mono)] hover:text-[var(--color-lj-brand-deep)]"
+              className="font-lj-mono hover:text-[var(--color-lj-brand-deep)]"
             >
               × закрыть
             </button>
@@ -70,15 +70,15 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
                     aria-current={active ? 'page' : undefined}
                     className="grid grid-cols-[3rem_1fr_auto] items-baseline gap-3"
                   >
-                    <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-65">
+                    <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-65">
                       {pad(i + 1)} /
                     </span>
                     <div className="flex flex-col gap-1">
-                      <span className={`font-[var(--font-lj-display)] font-[700] text-[2rem] leading-none tracking-[-0.035em] ${active ? 'text-[var(--color-lj-brand)]' : ''}`}>
+                      <span className={`font-lj-display font-[700] text-[2rem] leading-none tracking-[-0.035em] ${active ? 'text-[var(--color-lj-brand)]' : ''}`}>
                         {item.label}
                       </span>
                       {item.desc && (
-                        <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-65">
+                        <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-65">
                           {item.desc}
                         </span>
                       )}
@@ -95,12 +95,12 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
           <Link
             href="/cart"
             onClick={onClose}
-            className={`block mt-12 mb-6 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] ${cartCount > 0 ? 'text-[var(--color-lj-brand)]' : ''}`}
+            className={`block mt-12 mb-6 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] ${cartCount > 0 ? 'text-[var(--color-lj-brand)]' : ''}`}
           >
             {cartCount > 0 ? `КОРЗИНА · ${cartCount} →` : 'КОРЗИНА (0) →'}
           </Link>
 
-          <div className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-65 flex flex-wrap gap-x-3 gap-y-1">
+          <div className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-65 flex flex-wrap gap-x-3 gap-y-1">
             <span>telegram</span>
             <span className="text-[var(--color-lj-brand)]">·</span>
             <span>whatsapp</span>

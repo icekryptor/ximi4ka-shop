@@ -14,7 +14,7 @@ export function SectionHeading({ title, eyebrow, action, as: Tag = 'h2', classNa
     <div className={`mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between ${className}`}>
       <div className="flex flex-col gap-2">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <Tag className="font-[var(--font-display)] tracking-[var(--tracking-tight)] leading-[var(--leading-tight)] text-[length:var(--text-h2)] text-[var(--color-brand-text)]">
+        <Tag className="font-display tracking-[var(--tracking-tight)] leading-[var(--leading-tight)] text-[length:var(--text-h2)] text-[var(--color-brand-text)]">
           {title}
         </Tag>
       </div>

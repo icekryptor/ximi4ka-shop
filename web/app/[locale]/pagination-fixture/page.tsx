@@ -25,7 +25,7 @@ export default function PaginationFixturePage() {
   return (
     <div className="bg-[var(--color-lj-cream)] min-h-screen p-12 flex flex-col gap-12">
       <div data-fixture-scene="middle-of-many">
-        <h2 className="font-[var(--font-lj-mono)] uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
+        <h2 className="font-lj-mono uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
           middle of many pages
         </h2>
         <PaginationLJ
@@ -38,7 +38,7 @@ export default function PaginationFixturePage() {
       </div>
 
       <div data-fixture-scene="few-pages">
-        <h2 className="font-[var(--font-lj-mono)] uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
+        <h2 className="font-lj-mono uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
           few pages (no ellipsis)
         </h2>
         <PaginationLJ
@@ -51,7 +51,7 @@ export default function PaginationFixturePage() {
       </div>
 
       <div data-fixture-scene="first-page">
-        <h2 className="font-[var(--font-lj-mono)] uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
+        <h2 className="font-lj-mono uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
           first page (back disabled)
         </h2>
         <PaginationLJ
@@ -64,7 +64,7 @@ export default function PaginationFixturePage() {
       </div>
 
       <div data-fixture-scene="last-page">
-        <h2 className="font-[var(--font-lj-mono)] uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
+        <h2 className="font-lj-mono uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
           last page (forward disabled, partial range)
         </h2>
         <PaginationLJ

@@ -117,7 +117,7 @@ export default async function BlogPostPage({ params }: Props) {
       {/* Mono breadcrumb trail */}
       <nav
         aria-label="breadcrumbs"
-        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70"
+        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70"
       >
         <Link href={homePath} className="hover:opacity-100">
           Главная
@@ -140,13 +140,13 @@ export default async function BlogPostPage({ params }: Props) {
       <LabSection variant="cream" className="px-6 pt-12 pb-10">
         <NotebookHeader section="B" label="Блог" page={1} total={2} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
             B.1 / {post.rubric ?? 'Статья'}
           </p>
-          <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.25rem,5vw,4.25rem)] leading-[0.96] tracking-[-0.045em] mb-5 max-w-[24ch]">
+          <h1 className="font-lj-display font-[900] text-[clamp(2.25rem,5vw,4.25rem)] leading-[0.96] tracking-[-0.045em] mb-5 max-w-[24ch]">
             {title}
           </h1>
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-60 mb-6">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-60 mb-6">
             <time dateTime={dateIso}>{formatDateRu(dateIso)}</time>
           </p>
           {excerpt && (
@@ -177,7 +177,7 @@ export default async function BlogPostPage({ params }: Props) {
               <BlockRenderer blocks={blocks} />
             </div>
           ) : (
-            <p className="max-w-3xl opacity-60 font-[var(--font-lj-mono)] uppercase tracking-[0.06em]">
+            <p className="max-w-3xl opacity-60 font-lj-mono uppercase tracking-[0.06em]">
               Статья пока пуста
             </p>
           )}

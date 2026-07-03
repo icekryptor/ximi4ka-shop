@@ -39,13 +39,13 @@ export function BlogPostCard({ post }: Props) {
             className="relative aspect-[4/3] bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden"
             role="presentation"
           >
-            <span className="absolute top-3.5 left-3.5 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] tracking-[0.08em] uppercase text-[var(--color-lj-ink)] opacity-55">
+            <span className="absolute top-3.5 left-3.5 font-lj-mono text-[length:var(--text-lj-mono-xs)] tracking-[0.08em] uppercase text-[var(--color-lj-ink)] opacity-55">
               ЗАПИСЬ / {post.rubric ?? 'БЛОГ'}
             </span>
             <div className="absolute inset-[18%] text-[var(--color-lj-ink)] opacity-30">
               <DashedRectMark ratio="1-1" className="w-full h-full" />
             </div>
-            <span className="absolute bottom-3.5 left-1/2 -translate-x-1/2 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] tracking-[0.04em] uppercase text-[var(--color-lj-ink)] opacity-70 whitespace-nowrap">
+            <span className="absolute bottom-3.5 left-1/2 -translate-x-1/2 font-lj-mono text-[length:var(--text-lj-mono-sm)] tracking-[0.04em] uppercase text-[var(--color-lj-ink)] opacity-70 whitespace-nowrap">
               ОБЛОЖКА ГОТОВИТСЯ
             </span>
           </div>
@@ -53,7 +53,7 @@ export function BlogPostCard({ post }: Props) {
       </Link>
 
       <div className="pt-5">
-        <p className="flex items-center gap-3 mb-3 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)]">
+        <p className="flex items-center gap-3 mb-3 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)]">
           {post.rubric && (
             <>
               <span className="opacity-70">{post.rubric}</span>
@@ -67,7 +67,7 @@ export function BlogPostCard({ post }: Props) {
           </time>
         </p>
 
-        <h3 className="font-[var(--font-lj-display)] font-[700] text-[clamp(1.375rem,1.9vw,1.75rem)] leading-[1.05] tracking-[-0.035em] mb-3">
+        <h3 className="font-lj-display font-[700] text-[clamp(1.375rem,1.9vw,1.75rem)] leading-[1.05] tracking-[-0.035em] mb-3">
           <Link
             href={href}
             className="transition-colors group-hover/bcard:text-[var(--color-lj-brand-deep)]"

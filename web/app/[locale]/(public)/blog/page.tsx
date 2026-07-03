@@ -96,7 +96,7 @@ export default async function BlogListPage({ params, searchParams }: Props) {
       {/* Mono breadcrumb trail */}
       <nav
         aria-label="breadcrumbs"
-        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70"
+        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70"
       >
         <Link href={homePath} className="hover:opacity-100">
           Главная
@@ -113,10 +113,10 @@ export default async function BlogListPage({ params, searchParams }: Props) {
       <LabSection variant="cream" className="px-6 pt-12 pb-16">
         <NotebookHeader section="B" label="Блог" page={1} total={2} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
             B.0 / Полевые записи
           </p>
-          <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,6vw,5rem)] leading-[0.92] tracking-[-0.045em] mb-6">
+          <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,6vw,5rem)] leading-[0.92] tracking-[-0.045em] mb-6">
             <em className="italic text-[var(--color-lj-brand)] font-[900]">
               Блог
             </em>{' '}
@@ -133,7 +133,7 @@ export default async function BlogListPage({ params, searchParams }: Props) {
       <LabSection variant="cream" className="px-6 py-16">
         <div className="max-w-[var(--max-lj-content)] mx-auto">
           {posts.length === 0 ? (
-            <p className="text-center opacity-60 py-32 font-[var(--font-lj-mono)] uppercase tracking-[0.06em]">
+            <p className="text-center opacity-60 py-32 font-lj-mono uppercase tracking-[0.06em]">
               Пока нет статей
             </p>
           ) : (

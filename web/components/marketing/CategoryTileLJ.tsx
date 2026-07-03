@@ -29,7 +29,7 @@ export function CategoryTileLJ({ category, index, productCount }: Props) {
       href={`/categories/${category.slug}`}
       className="callout-host group/cat relative block aspect-[5/4] bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color] duration-500 hover:border-[var(--color-lj-ink)]"
     >
-      <span className="absolute top-3.5 left-3.5 z-[3] font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
+      <span className="absolute top-3.5 left-3.5 z-[3] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
         arr. C-{pad(index + 1)}
       </span>
       <MoleculeMotifLJ
@@ -37,10 +37,10 @@ export function CategoryTileLJ({ category, index, productCount }: Props) {
         className="absolute right-[-15%] top-[10%] w-[60%] text-[var(--color-lj-ink)] opacity-15 pointer-events-none"
       />
       <div className="absolute bottom-3.5 left-3.5 right-3.5 z-[2] flex flex-col gap-2">
-        <h3 className="font-[var(--font-lj-display)] font-[700] text-[clamp(1.5rem,2.2vw,2rem)] leading-[0.95] tracking-[-0.035em] text-[var(--color-lj-ink)]">
+        <h3 className="font-lj-display font-[700] text-[clamp(1.5rem,2.2vw,2rem)] leading-[0.95] tracking-[-0.035em] text-[var(--color-lj-ink)]">
           {category.name}
         </h3>
-        <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-65">
+        <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-65">
           {productCount} {pluralizeRu(productCount, ['товар', 'товара', 'товаров'])} →
         </span>
       </div>

@@ -22,7 +22,7 @@ export async function ProductGridBlock({ block }: Props) {
   return (
     <section data-block="product_grid" className="max-w-[var(--max-lj-content)] mx-auto">
       {block.heading ? (
-        <h2 className="font-[var(--font-lj-display)] font-[700] text-[clamp(1.5rem,2.5vw,2.25rem)] leading-[1.05] tracking-[-0.035em] mb-8">{block.heading}</h2>
+        <h2 className="font-lj-display font-[700] text-[clamp(1.5rem,2.5vw,2.25rem)] leading-[1.05] tracking-[-0.035em] mb-8">{block.heading}</h2>
       ) : null}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {products.map((product) => (

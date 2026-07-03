@@ -22,17 +22,17 @@ export default function CartPage() {
     <section className="bg-[var(--color-lj-cream)] px-6 py-16 min-h-[80vh]">
       <div className="max-w-[var(--max-lj-narrow)] mx-auto">
         {hydrated && itemTypeCount > 0 ? (
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
             КОРЗИНА · {itemTypeCount}{' '}
             {pluralizeRu(itemTypeCount, ['НАБОР', 'НАБОРА', 'НАБОРОВ'])}
           </p>
         ) : (
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
             КОРЗИНА
           </p>
         )}
 
-        <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] mb-12 text-[var(--color-lj-ink)]">
+        <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] mb-12 text-[var(--color-lj-ink)]">
           Корзина
         </h1>
 
@@ -43,7 +43,7 @@ export default function CartPage() {
             <p className="text-xl text-[var(--color-lj-ink)] opacity-70">Корзина пуста</p>
             <Link
               href="/categories"
-              className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
+              className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
             >
               Открыть каталог →
             </Link>
@@ -60,11 +60,11 @@ export default function CartPage() {
                   <div className="flex flex-col gap-2 min-w-0">
                     <Link
                       href={`/product/${item.slug}`}
-                      className="font-[var(--font-lj-display)] font-[700] text-xl tracking-[-0.025em] text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand-deep)] truncate"
+                      className="font-lj-display font-[700] text-xl tracking-[-0.025em] text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand-deep)] truncate"
                     >
                       {item.name}
                     </Link>
-                    <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60">
+                    <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60">
                       {formatRub(item.priceRub)} за шт.
                     </p>
                   </div>
@@ -73,14 +73,14 @@ export default function CartPage() {
                       value={item.quantity}
                       onChange={(qty) => setQty(item.productId, qty)}
                     />
-                    <span className="font-[var(--font-lj-display)] font-[900] text-2xl tracking-[-0.04em] min-w-[7rem] text-right text-[var(--color-lj-ink)]">
+                    <span className="font-lj-display font-[900] text-2xl tracking-[-0.04em] min-w-[7rem] text-right text-[var(--color-lj-ink)]">
                       {formatRub(item.priceRub * item.quantity)}
                     </span>
                     <button
                       type="button"
                       onClick={() => remove(item.productId)}
                       aria-label={`Удалить ${item.name}`}
-                      className="font-[var(--font-lj-mono)] text-[var(--color-lj-ink)] opacity-60 hover:opacity-100 hover:text-[var(--color-stock-danger)] text-2xl leading-none px-2"
+                      className="font-lj-mono text-[var(--color-lj-ink)] opacity-60 hover:opacity-100 hover:text-[var(--color-stock-danger)] text-2xl leading-none px-2"
                     >
                       ×
                     </button>
@@ -90,15 +90,15 @@ export default function CartPage() {
             </ul>
 
             <div className="flex flex-col gap-3 mb-8 max-w-md ml-auto">
-              <div className="flex justify-between font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
+              <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                 <span>Подытог</span>
                 <span>{formatRub(subtotal)}</span>
               </div>
-              <div className="flex justify-between font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
+              <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                 <span>Доставка</span>
                 <span>{formatRub(SHIPPING_RUB)}</span>
               </div>
-              <div className="flex justify-between border-t border-[var(--color-lj-rule)] pt-4 font-[var(--font-lj-display)] font-[900] text-2xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
+              <div className="flex justify-between border-t border-[var(--color-lj-rule)] pt-4 font-lj-display font-[900] text-2xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
                 <span>Итого</span>
                 <span>{formatRub(totalRub)}</span>
               </div>
@@ -107,7 +107,7 @@ export default function CartPage() {
             <div className="flex justify-end">
               <Link
                 href="/checkout"
-                className="inline-flex items-center gap-3 px-8 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
+                className="inline-flex items-center gap-3 px-8 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
               >
                 Оформить заказ →
               </Link>

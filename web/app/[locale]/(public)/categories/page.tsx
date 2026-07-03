@@ -74,10 +74,10 @@ export default async function CategoriesListPage({ params }: Props) {
       <LabSection variant="cream" className="px-6 pt-32 pb-24">
         <NotebookHeader section="X" label="Каталог" page={1} total={1} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
             X.0 / Все категории
           </p>
-          <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(3rem,7vw,6rem)] leading-[0.92] tracking-[-0.045em] mb-8">
+          <h1 className="font-lj-display font-[900] text-[clamp(3rem,7vw,6rem)] leading-[0.92] tracking-[-0.045em] mb-8">
             Категории
           </h1>
           <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch] mb-16">

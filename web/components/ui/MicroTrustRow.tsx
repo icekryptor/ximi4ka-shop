@@ -21,7 +21,7 @@ export function MicroTrustRow({ items, className = '' }: Props) {
   if (items.length === 0) return null
   return (
     <ul
-      className={`flex flex-wrap gap-x-6 gap-y-2 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-70 ${className}`.trim()}
+      className={`flex flex-wrap gap-x-6 gap-y-2 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-70 ${className}`.trim()}
     >
       {items.map((item, i) => (
         <li

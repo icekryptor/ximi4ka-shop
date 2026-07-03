@@ -23,7 +23,7 @@ export function PreFooterCta({ title, lead, cta }: Props) {
             )}
             <Link
               href={cta.href}
-              className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-bone)] rounded-full bg-transparent text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-bone)] hover:text-[var(--color-lj-ink)]"
+              className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-bone)] rounded-full bg-transparent text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-bone)] hover:text-[var(--color-lj-ink)]"
             >
               {cta.label}
             </Link>

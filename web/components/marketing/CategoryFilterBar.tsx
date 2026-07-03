@@ -20,7 +20,7 @@ export function CategoryFilterBar({ sort, onSortChange, onReset }: Props) {
     <div className="sticky top-[var(--lj-header-height)] z-20 bg-[var(--color-lj-cream)]/95 backdrop-blur-sm border-y border-[var(--color-lj-rule)] py-3 px-6">
       <div className="max-w-[var(--max-lj-content)] mx-auto flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70 mr-2">
+          <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70 mr-2">
             сортировка:
           </span>
           {(Object.keys(SORT_LABELS) as SortKey[]).map((key) => (
@@ -28,7 +28,7 @@ export function CategoryFilterBar({ sort, onSortChange, onReset }: Props) {
               key={key}
               type="button"
               onClick={() => onSortChange(key)}
-              className={`px-3 py-1.5 border rounded-full font-[var(--font-lj-mono)] text-[0.6875rem] uppercase tracking-[0.04em] transition-colors duration-300 ${
+              className={`px-3 py-1.5 border rounded-full font-lj-mono text-[0.6875rem] uppercase tracking-[0.04em] transition-colors duration-300 ${
                 sort === key
                   ? 'bg-[var(--color-lj-ink)] border-[var(--color-lj-ink)] text-[var(--color-lj-bone)]'
                   : 'border-[var(--color-lj-ink)] bg-transparent text-[var(--color-lj-ink)] hover:bg-[var(--color-lj-ink)] hover:text-[var(--color-lj-bone)]'
@@ -42,7 +42,7 @@ export function CategoryFilterBar({ sort, onSortChange, onReset }: Props) {
         <button
           type="button"
           onClick={onReset}
-          className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] underline underline-offset-4 hover:text-[var(--color-lj-brand-deep)]"
+          className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] underline underline-offset-4 hover:text-[var(--color-lj-brand-deep)]"
           aria-label="Сбросить сортировку"
         >
           Сбросить ×

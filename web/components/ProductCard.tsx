@@ -73,7 +73,7 @@ export function ProductCard({
 
   return (
     <article className="callout-host group/pcard relative cursor-pointer bg-transparent">
-      <div className="flex justify-between items-center mb-3 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em]">
+      <div className="flex justify-between items-center mb-3 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em]">
         <span className="text-[var(--color-lj-ink)] opacity-60">{skuLabel}</span>
         {badge && (
           <span className={`px-2.5 py-1 border rounded-full text-[0.625rem] tracking-[0.1em] ${badgeClass}`}>
@@ -88,7 +88,7 @@ export function ProductCard({
         <Link href={`/product/${product.slug}`} className="block">
           <div className="relative aspect-[4/5] bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color] duration-500 group-hover/pcard:border-[var(--color-lj-ink)]">
             {cornerMark && (
-              <span className="absolute top-3.5 left-3.5 z-10 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
+              <span className="absolute top-3.5 left-3.5 z-10 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
                 {cornerMark}
               </span>
             )}
@@ -109,7 +109,7 @@ export function ProductCard({
               />
             )}
             {hoverFormula && (
-              <div className="absolute bottom-3.5 left-3.5 z-10 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] tracking-[0.04em] text-[var(--color-lj-ink)] bg-[var(--color-lj-cream)] px-2.5 py-1.5 border border-[var(--color-lj-ink)] opacity-0 translate-y-2 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:translate-y-0">
+              <div className="absolute bottom-3.5 left-3.5 z-10 font-lj-mono text-[length:var(--text-lj-mono-xs)] tracking-[0.04em] text-[var(--color-lj-ink)] bg-[var(--color-lj-cream)] px-2.5 py-1.5 border border-[var(--color-lj-ink)] opacity-0 translate-y-2 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:translate-y-0">
                 {hoverFormula}
               </div>
             )}
@@ -118,7 +118,7 @@ export function ProductCard({
       )}
 
       <div className="pt-5">
-        <h3 className="font-[var(--font-lj-display)] font-[700] text-[clamp(1.5rem,2.1vw,2rem)] leading-[0.95] tracking-[-0.035em] mb-3.5">
+        <h3 className="font-lj-display font-[700] text-[clamp(1.5rem,2.1vw,2rem)] leading-[0.95] tracking-[-0.035em] mb-3.5">
           <Link href={`/product/${product.slug}`}>{renderName()}</Link>
         </h3>
         {product.shortDescription && (
@@ -157,13 +157,13 @@ export function ProductCard({
         )}
 
         <div className="flex justify-between items-center border-t border-[var(--color-lj-rule)] pt-5 gap-4 flex-wrap">
-          <span className="font-[var(--font-lj-display)] font-[900] text-3xl tracking-[-0.04em] leading-none">
+          <span className="font-lj-display font-[900] text-3xl tracking-[-0.04em] leading-none">
             {formattedPrice}
-            <span className="font-[var(--font-lj-mono)] font-normal text-base ml-1 opacity-70">₽</span>
+            <span className="font-lj-mono font-normal text-base ml-1 opacity-70">₽</span>
           </span>
           <Link
             href={`/product/${product.slug}`}
-            className="inline-flex items-center gap-2 px-4 py-3 border border-[var(--color-lj-ink)] rounded-full font-[var(--font-lj-mono)] text-[0.6875rem] uppercase tracking-[0.08em] bg-transparent text-[var(--color-lj-ink)] transition-all duration-400 group-hover/pcard:bg-[var(--color-lj-ink)] group-hover/pcard:text-[var(--color-lj-bone)]"
+            className="inline-flex items-center gap-2 px-4 py-3 border border-[var(--color-lj-ink)] rounded-full font-lj-mono text-[0.6875rem] uppercase tracking-[0.08em] bg-transparent text-[var(--color-lj-ink)] transition-all duration-400 group-hover/pcard:bg-[var(--color-lj-ink)] group-hover/pcard:text-[var(--color-lj-bone)]"
           >
             Заказать набор →
           </Link>

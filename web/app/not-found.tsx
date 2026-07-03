@@ -18,12 +18,12 @@ export default function NotFound() {
       <Container>
         <div className="flex flex-col items-center text-center gap-6 py-16">
           <h1
-            className="font-[var(--font-display)] tracking-[var(--tracking-tight)] leading-none text-[length:var(--text-mega)] bg-clip-text text-transparent"
+            className="font-display tracking-[var(--tracking-tight)] leading-none text-[length:var(--text-mega)] bg-clip-text text-transparent"
             style={{ backgroundImage: 'var(--gradient-accent)' }}
           >
             404
           </h1>
-          <p className="text-[length:var(--text-h2)] font-[var(--font-display)] tracking-[var(--tracking-tight)] text-[var(--color-text-on-dark)]">
+          <p className="text-[length:var(--text-h2)] font-display tracking-[var(--tracking-tight)] text-[var(--color-text-on-dark)]">
             Страница не найдена
           </p>
           <p className="max-w-md text-[length:var(--text-lead)] text-[var(--color-text-muted-on-dark)]">

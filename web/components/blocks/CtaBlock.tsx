@@ -10,7 +10,7 @@ function isExternal(href: string): boolean {
 }
 
 const PILL_CLASSES =
-  'inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]'
+  'inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]'
 
 export function CtaBlock({ block }: Props) {
   const external = isExternal(block.buttonHref)
@@ -20,7 +20,7 @@ export function CtaBlock({ block }: Props) {
       data-block="cta"
       className="max-w-[var(--max-lj-narrow)] mx-auto text-center flex flex-col items-center gap-6 my-12"
     >
-      <h3 className="font-[var(--font-lj-display)] font-[700] text-[clamp(2rem,4vw,3rem)] leading-[1.0] tracking-[-0.04em] text-[var(--color-lj-ink)] max-w-[20ch]">
+      <h3 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3rem)] leading-[1.0] tracking-[-0.04em] text-[var(--color-lj-ink)] max-w-[20ch]">
         {block.heading}
       </h3>
       {block.subtext ? (

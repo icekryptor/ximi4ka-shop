@@ -24,7 +24,7 @@ export function StatBar({ index, label, value, fillPercent }: Props) {
     return () => obs.disconnect()
   }, [])
   return (
-    <li className="grid grid-cols-[minmax(7.5rem,auto)_1fr_2.5rem] items-center gap-3 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em]">
+    <li className="grid grid-cols-[minmax(7.5rem,auto)_1fr_2.5rem] items-center gap-3 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em]">
       <span className="text-[var(--color-lj-ink)] opacity-70 whitespace-nowrap">{index} / {label}</span>
       <span
         ref={ref}
@@ -39,7 +39,7 @@ export function StatBar({ index, label, value, fillPercent }: Props) {
           transitionTimingFunction: 'var(--ease-out-quart)',
         } as React.CSSProperties}
       />
-      <span className="font-[var(--font-lj-display)] font-[700] text-[0.95rem] text-right tracking-[-0.02em] text-[var(--color-lj-ink)]">
+      <span className="font-lj-display font-[700] text-[0.95rem] text-right tracking-[-0.02em] text-[var(--color-lj-ink)]">
         {value}
       </span>
     </li>

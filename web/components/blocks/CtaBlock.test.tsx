@@ -87,7 +87,7 @@ describe('<CtaBlock> v3', () => {
     expect(link.className).toContain('rounded-full')
     expect(link.className).toContain('bg-[var(--color-lj-ink)]')
     expect(link.className).toContain('text-[var(--color-lj-bone)]')
-    expect(link.className).toContain('font-[var(--font-lj-mono)]')
+    expect(link.className).toContain('font-lj-mono')
     expect(link.className).toContain('uppercase')
     expect(link.className).toContain('hover:bg-[var(--color-lj-brand-deep)]')
   })
@@ -99,6 +99,6 @@ describe('<CtaBlock> v3', () => {
       />,
     )
     const heading = within(container).getByText('Heading')
-    expect(heading.className).toContain('font-[var(--font-lj-display)]')
+    expect(heading.className).toContain('font-lj-display')
   })
 })

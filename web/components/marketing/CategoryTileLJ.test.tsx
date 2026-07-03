@@ -21,7 +21,7 @@ describe('<CategoryTileLJ>', () => {
   it('renders Unbounded display name', () => {
     render(<CategoryTileLJ category={cat} index={0} productCount={42} />)
     const name = screen.getByText('Реактивы')
-    expect(name.className).toContain('font-[var(--font-lj-display)]')
+    expect(name.className).toContain('font-lj-display')
   })
 
   it('renders mono product count with correct Russian pluralization', () => {

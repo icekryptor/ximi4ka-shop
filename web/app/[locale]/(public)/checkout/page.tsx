@@ -33,13 +33,13 @@ const INITIAL_FIELDS: CheckoutFormFields = {
 }
 
 const FIELD_CLASS =
-  'w-full px-4 py-3 bg-transparent border border-[var(--color-lj-rule)] rounded-none font-[var(--font-lj-body)] text-base text-[var(--color-lj-ink)] placeholder:opacity-40 focus:outline-none focus:border-[var(--color-lj-ink)] transition-colors'
+  'w-full px-4 py-3 bg-transparent border border-[var(--color-lj-rule)] rounded-none font-lj-body text-base text-[var(--color-lj-ink)] placeholder:opacity-40 focus:outline-none focus:border-[var(--color-lj-ink)] transition-colors'
 
 const LABEL_CLASS =
-  'font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-70'
+  'font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-70'
 
 const ERROR_CLASS =
-  'font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] tracking-[0.04em] text-[var(--color-stock-danger)]'
+  'font-lj-mono text-[length:var(--text-lj-mono-xs)] tracking-[0.04em] text-[var(--color-stock-danger)]'
 
 export default function CheckoutPage() {
   const router = useRouter()
@@ -120,11 +120,11 @@ export default function CheckoutPage() {
   return (
     <section className="bg-[var(--color-lj-cream)] px-6 py-16 min-h-[80vh]">
       <div className="max-w-[var(--max-lj-narrow)] mx-auto">
-        <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
+        <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
           КОРЗИНА → ОФОРМЛЕНИЕ
         </p>
 
-        <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] mb-12 text-[var(--color-lj-ink)]">
+        <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] mb-12 text-[var(--color-lj-ink)]">
           Оформление заказа
         </h1>
 
@@ -135,7 +135,7 @@ export default function CheckoutPage() {
             <p className="text-xl text-[var(--color-lj-ink)] opacity-70">Корзина пуста</p>
             <Link
               href="/categories"
-              className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
+              className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
             >
               Открыть каталог →
             </Link>
@@ -222,15 +222,15 @@ export default function CheckoutPage() {
                           onChange={() => setField('method', method)}
                           className="accent-[var(--color-lj-brand)]"
                         />
-                        <span className="font-[var(--font-lj-body)] text-base text-[var(--color-lj-ink)]">
+                        <span className="font-lj-body text-base text-[var(--color-lj-ink)]">
                           {DELIVERY_LABELS[method]}
                         </span>
                       </span>
                       <span className="flex flex-col items-end gap-0.5">
-                        <span className="font-[var(--font-lj-display)] font-[700] text-base tracking-[-0.02em] text-[var(--color-lj-ink)]">
+                        <span className="font-lj-display font-[700] text-base tracking-[-0.02em] text-[var(--color-lj-ink)]">
                           {priceForMethod === 0 ? 'Бесплатно' : formatRub(priceForMethod)}
                         </span>
-                        <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60">
+                        <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60">
                           бесплатно от {formatRub(rule.freeFromRub)}
                         </span>
                       </span>
@@ -272,7 +272,7 @@ export default function CheckoutPage() {
 
             {/* ---- Правая колонка: сводка заказа ---- */}
             <aside className="border border-[var(--color-lj-rule)] p-6 flex flex-col gap-5 lg:sticky lg:top-24">
-              <h2 className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70 m-0">
+              <h2 className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70 m-0">
                 Ваш заказ
               </h2>
 
@@ -282,14 +282,14 @@ export default function CheckoutPage() {
                     key={item.productId}
                     className="flex items-baseline justify-between gap-4 py-3 border-b border-[var(--color-lj-rule)]"
                   >
-                    <span className="font-[var(--font-lj-body)] text-base text-[var(--color-lj-ink)] min-w-0 truncate">
+                    <span className="font-lj-body text-base text-[var(--color-lj-ink)] min-w-0 truncate">
                       {item.name}
-                      <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] opacity-60">
+                      <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] opacity-60">
                         {' '}
                         × {item.quantity}
                       </span>
                     </span>
-                    <span className="font-[var(--font-lj-display)] font-[700] text-base tracking-[-0.02em] text-[var(--color-lj-ink)] whitespace-nowrap">
+                    <span className="font-lj-display font-[700] text-base tracking-[-0.02em] text-[var(--color-lj-ink)] whitespace-nowrap">
                       {formatRub(item.priceRub * item.quantity)}
                     </span>
                   </li>
@@ -297,17 +297,17 @@ export default function CheckoutPage() {
               </ul>
 
               <div className="flex flex-col gap-2">
-                <div className="flex justify-between font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
+                <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                   <span>Подытог</span>
                   <span data-testid="summary-subtotal">{formatRub(subtotal)}</span>
                 </div>
-                <div className="flex justify-between font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
+                <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                   <span>Доставка</span>
                   <span data-testid="summary-shipping">
                     {shippingRub === 0 ? 'Бесплатно' : formatRub(shippingRub)}
                   </span>
                 </div>
-                <div className="flex justify-between border-t border-[var(--color-lj-rule)] pt-4 font-[var(--font-lj-display)] font-[900] text-2xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
+                <div className="flex justify-between border-t border-[var(--color-lj-rule)] pt-4 font-lj-display font-[900] text-2xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
                   <span>Итого</span>
                   <span data-testid="summary-total">{formatRub(totalRub)}</span>
                 </div>
@@ -322,12 +322,12 @@ export default function CheckoutPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex items-center justify-center gap-3 px-8 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="inline-flex items-center justify-center gap-3 px-8 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Оформляем…' : 'Оформить заказ →'}
               </button>
 
-              <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-50 m-0">
+              <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-50 m-0">
                 Нажимая кнопку, вы соглашаетесь с условиями обработки персональных данных
               </p>
             </aside>

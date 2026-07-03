@@ -36,7 +36,7 @@ describe('<FaqBlock> v3', () => {
     // FaqAccordion uses <ul>/<li>, group/faq named group, and an inline +/− indicator
     expect(container.querySelector('ul li details')).not.toBeNull()
     const summary = container.querySelector('summary')
-    expect(summary?.className).toMatch(/font-\[var\(--font-lj-mono\)\]/)
+    expect(summary?.className).toMatch(/font-lj-mono/)
     // +/− indicator spans rendered inside summary
     const indicators = container.querySelectorAll('summary span[aria-hidden="true"]')
     expect(indicators.length).toBeGreaterThanOrEqual(2)

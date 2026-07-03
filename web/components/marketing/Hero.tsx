@@ -82,11 +82,11 @@ export function Hero({
       />
 
       <div className="relative z-[2] max-w-[var(--max-lj-content)] mx-auto w-full">
-        <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-10 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+        <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-10 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
           {eyebrow}
         </p>
 
-        <h1 className="font-[var(--font-lj-display)] font-[900] text-[length:var(--text-lj-mega)] leading-[0.88] tracking-[-0.045em] uppercase mb-10 relative z-[2]">
+        <h1 className="font-lj-display font-[900] text-[length:var(--text-lj-mega)] leading-[0.88] tracking-[-0.045em] uppercase mb-10 relative z-[2]">
           {headlineRows.map((row, i) => (
             <span key={i} className={`block ${row.offset ? 'pl-[9vw]' : ''}`}>
               {row.emphasis ? (
@@ -99,7 +99,7 @@ export function Hero({
             </span>
           ))}
         </h1>
-        <p className="block font-[var(--font-lj-mono)] font-normal text-[clamp(0.875rem,1vw,1.125rem)] normal-case tracking-[0.02em] opacity-55 -mt-4 mb-10 pl-[9vw] max-w-[36ch] leading-snug">
+        <p className="block font-lj-mono font-normal text-[clamp(0.875rem,1vw,1.125rem)] normal-case tracking-[0.02em] opacity-55 -mt-4 mb-10 pl-[9vw] max-w-[36ch] leading-snug">
           {trailLine}
         </p>
 
@@ -110,7 +110,7 @@ export function Hero({
         <div className="flex gap-4 items-center flex-wrap relative z-[2]">
           <Link
             href={primaryCta.href}
-            className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
+            className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
           >
             {primaryCta.label}
             <svg width="14" height="14" viewBox="0 0 16 16">
@@ -127,7 +127,7 @@ export function Hero({
           {secondaryCta && (
             <Link
               href={secondaryCta.href}
-              className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-transparent text-[var(--color-lj-ink)] transition-all duration-400 hover:bg-[var(--color-lj-ink)] hover:text-[var(--color-lj-bone)]"
+              className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-transparent text-[var(--color-lj-ink)] transition-all duration-400 hover:bg-[var(--color-lj-ink)] hover:text-[var(--color-lj-bone)]"
             >
               {secondaryCta.label}
             </Link>
@@ -141,7 +141,7 @@ export function Hero({
       {/* Ticker */}
       <div className="absolute bottom-0 left-0 right-0 border-t border-[var(--color-lj-rule)] bg-[var(--color-lj-cream)] overflow-hidden h-14 flex items-center z-[4]">
         <div
-          className="flex gap-12 whitespace-nowrap font-[var(--font-lj-mono)] text-[0.8125rem] uppercase tracking-[0.08em] [animation:lj-ticker_50s_linear_infinite] pl-12 shrink-0"
+          className="flex gap-12 whitespace-nowrap font-lj-mono text-[0.8125rem] uppercase tracking-[0.08em] [animation:lj-ticker_50s_linear_infinite] pl-12 shrink-0"
           aria-hidden="true"
         >
           {[...tickerItems, ...tickerItems].map((item, i) => (

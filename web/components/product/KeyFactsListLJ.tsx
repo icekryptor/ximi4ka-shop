@@ -9,12 +9,12 @@ export function KeyFactsListLJ({ facts }: Props) {
       {facts.map((f, i) => (
         <li
           key={f.label}
-          className="grid grid-cols-[minmax(8rem,auto)_1fr] items-baseline gap-3 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em]"
+          className="grid grid-cols-[minmax(8rem,auto)_1fr] items-baseline gap-3 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em]"
         >
           <span className="text-[var(--color-lj-ink)] opacity-70 whitespace-nowrap">
             {pad(i + 1)} / {f.label}
           </span>
-          <span className="font-[var(--font-lj-display)] font-[700] text-[0.95rem] text-[var(--color-lj-ink)] tracking-[-0.02em] normal-case">
+          <span className="font-lj-display font-[700] text-[0.95rem] text-[var(--color-lj-ink)] tracking-[-0.02em] normal-case">
             {f.value}
           </span>
         </li>

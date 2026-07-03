@@ -6,7 +6,7 @@ describe('<Chip>', () => {
   it('renders label as lowercase mono', () => {
     render(<Chip>безопасно</Chip>)
     const el = screen.getByText('безопасно')
-    expect(el.className).toContain('font-[var(--font-lj-mono)]')
+    expect(el.className).toContain('font-lj-mono')
     expect(el.className).toContain('lowercase')
   })
 

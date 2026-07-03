@@ -55,7 +55,7 @@ export function AddToCartWithQuantity({ product }: Props) {
           type="button"
           onClick={handleAdd}
           disabled={isOutOfStock}
-          className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)] disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isOutOfStock ? 'Нет в наличии' : 'В корзину →'}
         </button>
@@ -66,7 +66,7 @@ export function AddToCartWithQuantity({ product }: Props) {
       <span
         role="status"
         aria-live="polite"
-        className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-stock-success)]"
+        className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-stock-success)]"
       >
         {confirmed ? 'Товар добавлен ✓' : ''}
       </span>

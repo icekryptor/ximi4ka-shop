@@ -74,11 +74,11 @@ export function PaginationLJ({
   const endResult = Math.min(currentPage * resultsPerPage, totalResults)
 
   const linkClass =
-    'inline-flex items-center font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-70 hover:opacity-100 hover:text-[var(--color-lj-brand-deep)] transition-colors'
+    'inline-flex items-center font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-70 hover:opacity-100 hover:text-[var(--color-lj-brand-deep)] transition-colors'
   const disabledClass =
-    'inline-flex items-center font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-40 cursor-not-allowed'
+    'inline-flex items-center font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-40 cursor-not-allowed'
   const currentClass =
-    'inline-flex items-center font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-brand)]'
+    'inline-flex items-center font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-brand)]'
   const sepClass = 'text-[var(--color-lj-brand)] mx-2'
 
   return (
@@ -86,7 +86,7 @@ export function PaginationLJ({
       aria-label="Пагинация"
       className="flex flex-col items-center gap-3 my-8"
     >
-      <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-65">
+      <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-65">
         стр. {pad(currentPage)} из {pad(totalPages)} · показано {startResult}–{endResult} из {totalResults}
       </p>
 

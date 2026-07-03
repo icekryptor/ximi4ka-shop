@@ -24,7 +24,7 @@ export default function SpecimenFixturePage() {
   return (
     <div className="bg-[var(--color-lj-cream)] min-h-screen p-12 flex flex-col gap-12">
       <div data-fixture-scene="card-size">
-        <h2 className="font-[var(--font-lj-mono)] uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
+        <h2 className="font-lj-mono uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
           card size (4:5)
         </h2>
         <div className="w-[320px]">
@@ -33,7 +33,7 @@ export default function SpecimenFixturePage() {
       </div>
 
       <div data-fixture-scene="pdp-size">
-        <h2 className="font-[var(--font-lj-mono)] uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
+        <h2 className="font-lj-mono uppercase mb-4 text-[var(--color-lj-ink)] text-sm tracking-[0.08em]">
           pdp size (1:1)
         </h2>
         <div className="w-[600px]">

@@ -15,10 +15,10 @@ export function CharacteristicsTableLJ({ characteristics }: Props) {
             i < entries.length - 1 ? 'border-b border-[var(--color-lj-rule-on-ink)]' : ''
           }`}
         >
-          <dt className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-bone-mute)]">
+          <dt className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-bone-mute)]">
             {label}
           </dt>
-          <dd className="font-[var(--font-lj-body)] text-[1.0625rem] text-[var(--color-lj-bone)]">
+          <dd className="font-lj-body text-[1.0625rem] text-[var(--color-lj-bone)]">
             {value}
           </dd>
         </div>

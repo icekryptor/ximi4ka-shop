@@ -39,7 +39,7 @@ export function Callout({ text, position, topPercent = 30, className = '' }: Pro
         />
       </svg>
       <span
-        className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-brand-deep)] bg-[var(--color-lj-cream)] px-1.5 py-0.5 opacity-0 translate-y-1 transition-[opacity,transform] duration-[0.4s] delay-200 [.callout-host:hover_&]:opacity-100 [.callout-host:hover_&]:translate-y-0"
+        className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-brand-deep)] bg-[var(--color-lj-cream)] px-1.5 py-0.5 opacity-0 translate-y-1 transition-[opacity,transform] duration-[0.4s] delay-200 [.callout-host:hover_&]:opacity-100 [.callout-host:hover_&]:translate-y-0"
       >
         {text}
       </span>

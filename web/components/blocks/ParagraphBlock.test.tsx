@@ -12,7 +12,7 @@ describe('<ParagraphBlock> v3', () => {
       <ParagraphBlock block={{ type: 'paragraph', html: '<p>Hello world</p>' }} />,
     )
     const root = container.firstChild as HTMLElement
-    expect(root.className).toContain('font-[var(--font-lj-body)]')
+    expect(root.className).toContain('font-lj-body')
     expect(root.innerHTML).toContain('<p>Hello world</p>')
   })
 
@@ -44,7 +44,7 @@ describe('<ParagraphBlock> v3', () => {
       />,
     )
     const root = container.firstChild as HTMLElement
-    expect(root.className).toMatch(/\[&_code\]:.*font-\[var\(--font-lj-mono\)\]/)
+    expect(root.className).toMatch(/\[&_code\]:font-lj-mono/)
     expect(container.querySelector('code')?.textContent).toBe('npm')
   })
 

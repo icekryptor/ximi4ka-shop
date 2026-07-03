@@ -235,7 +235,7 @@ export default async function ProductPage({ params }: Props) {
           (cream is the section, this nav is on the body's bone-ish bg). */}
       <nav
         aria-label="breadcrumbs"
-        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-70"
+        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-70"
       >
         <Link href="/" className="hover:opacity-100">
           Главная
@@ -275,13 +275,13 @@ export default async function ProductPage({ params }: Props) {
           {/* INFO COLUMN */}
           <div className="flex flex-col gap-6 pt-4">
             {/* SKU header — brand-purple bullet then mono SKU label */}
-            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] inline-flex items-center gap-2 before:content-[''] before:w-1.5 before:h-1.5 before:bg-[var(--color-lj-brand)] before:rounded-full">
+            <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] inline-flex items-center gap-2 before:content-[''] before:w-1.5 before:h-1.5 before:bg-[var(--color-lj-brand)] before:rounded-full">
               № {product.sku ?? product.slug}
             </p>
 
             {/* OFF-GRID H1 — even words flush, odd words indented for the
                 hand-typeset journal stagger. First word lights up brand. */}
-            <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] uppercase">
+            <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] uppercase">
               {nameWords.map((word, i) => (
                 <span key={i} className={`block ${i % 2 === 1 ? 'pl-[6vw]' : ''}`}>
                   {i === 0 ? (
@@ -296,7 +296,7 @@ export default async function ProductPage({ params }: Props) {
             </h1>
 
             {/* Trail line — small mono follow-up under the headline */}
-            <p className="font-[var(--font-lj-mono)] text-sm text-[var(--color-lj-ink)] opacity-55 max-w-[36ch]">
+            <p className="font-lj-mono text-sm text-[var(--color-lj-ink)] opacity-55 max-w-[36ch]">
               — настоящие реактивы, без подделок
             </p>
 
@@ -332,10 +332,10 @@ export default async function ProductPage({ params }: Props) {
       <LabSection variant="ink" className="px-6 py-32 relative">
         <NotebookHeader section="02" label="Характеристики" page={3} total={6} />
         <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
             02.0 / Технические данные
           </p>
-          <h2 className="font-[var(--font-lj-display)] font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
+          <h2 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
             Что у вас будет в{' '}
             <em className="italic text-[var(--color-lj-brand)] font-[700]">руках</em>
           </h2>
@@ -344,7 +344,7 @@ export default async function ProductPage({ params }: Props) {
           </div>
           {Object.keys(characteristics).length > 0 && (
             <div className="mt-16">
-              <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-6">
+              <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-6">
                 Полный список характеристик
               </p>
               <CharacteristicsTableLJ characteristics={characteristics} />
@@ -360,7 +360,7 @@ export default async function ProductPage({ params }: Props) {
         <LabSection variant="cream" className="px-6 py-24">
           <NotebookHeader section="03" label="Описание" page={4} total={6} />
           <div className="max-w-[var(--max-lj-narrow)] mx-auto">
-            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
               03.0 / Полное описание
             </p>
             <BlockRenderer blocks={filteredDescriptionBlocks} />
@@ -381,10 +381,10 @@ export default async function ProductPage({ params }: Props) {
             total={6}
           />
           <div className="max-w-[var(--max-lj-content)] mx-auto">
-            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
               04.0 / С этим набором покупают
             </p>
-            <h2 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2rem,4vw,3.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
+            <h2 className="font-lj-display font-[900] text-[clamp(2rem,4vw,3.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
               Совместимые
               <br />
               <em className="italic text-[var(--color-lj-brand)] font-[900]">

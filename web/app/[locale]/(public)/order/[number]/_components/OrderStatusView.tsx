@@ -60,12 +60,12 @@ function MetaRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-3 border-b border-[var(--color-lj-rule-on-ink)]">
-      <span className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)]">
+      <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)]">
         {label}
       </span>
       <span
         data-testid={testId}
-        className="font-[var(--font-lj-display)] font-[700] text-lg tracking-[-0.02em] text-[var(--color-lj-bone)]"
+        className="font-lj-display font-[700] text-lg tracking-[-0.02em] text-[var(--color-lj-bone)]"
       >
         {children}
       </span>
@@ -121,10 +121,10 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
     return (
       <section className="bg-[var(--color-lj-cream)] px-6 py-16 min-h-[70vh]">
         <div className="max-w-[var(--max-lj-narrow)] mx-auto flex flex-col items-start gap-6">
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70">
             ЗАКАЗ · НЕ НАЙДЕН
           </p>
-          <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2rem,4vw,3.5rem)] leading-[0.95] tracking-[-0.045em] m-0 text-[var(--color-lj-ink)]">
+          <h1 className="font-lj-display font-[900] text-[clamp(2rem,4vw,3.5rem)] leading-[0.95] tracking-[-0.045em] m-0 text-[var(--color-lj-ink)]">
             Заказ не найден
           </h1>
           <p className="text-lg text-[var(--color-lj-ink)] opacity-70 m-0 max-w-[48ch]">
@@ -133,7 +133,7 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
           </p>
           <Link
             href="/orders/track"
-            className="inline-flex items-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
+            className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-300 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
           >
             Отследить заказ →
           </Link>
@@ -147,15 +147,15 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
       <div className="max-w-[var(--max-lj-narrow)] mx-auto">
         {celebrate ? (
           <header className="mb-12">
-            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
+            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
               ЛАБОРАТОРНЫЙ ЖУРНАЛ · НОВАЯ ЗАПИСЬ
             </p>
-            <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] m-0 mb-6 text-[var(--color-lj-ink)]">
+            <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] m-0 mb-6 text-[var(--color-lj-ink)]">
               Заказ{' '}
               <span className="italic text-[var(--color-lj-brand)]">принят!</span>
             </h1>
             <div className="max-w-[56ch]">
-              <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70 mb-3">
+              <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70 mb-3">
                 Что дальше
               </p>
               <ol className="list-none p-0 m-0 flex flex-col gap-2 text-base text-[var(--color-lj-ink)]">
@@ -176,10 +176,10 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
           </header>
         ) : (
           <header className="mb-12">
-            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
+            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
               ЗАКАЗ · СТАТУС
             </p>
-            <h1 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] m-0 text-[var(--color-lj-ink)]">
+            <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] m-0 text-[var(--color-lj-ink)]">
               Статус заказа
             </h1>
           </header>
@@ -187,26 +187,26 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
 
         {/* Ink instrument readout — приборная панель заказа. */}
         <div className="bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] p-8 sm:p-12 max-w-3xl">
-          <div className="flex items-center justify-between font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-6 pb-4 border-b border-[var(--color-lj-rule-on-ink)]">
+          <div className="flex items-center justify-between font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-6 pb-4 border-b border-[var(--color-lj-rule-on-ink)]">
             <span>ЗАКАЗ</span>
             <span>№</span>
           </div>
 
           <p
             data-testid="order-number"
-            className="font-[var(--font-lj-display)] font-[900] leading-none tracking-[-0.045em] text-[clamp(1.75rem,4.5vw,3.25rem)] m-0 mb-10 break-all"
+            className="font-lj-display font-[900] leading-none tracking-[-0.045em] text-[clamp(1.75rem,4.5vw,3.25rem)] m-0 mb-10 break-all"
           >
             {orderNumber}
           </p>
 
           {order === null && error === null && (
-            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)]">
+            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)]">
               Загружаем статус…
             </p>
           )}
 
           {error === 'network' && (
-            <p role="alert" className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] tracking-[0.04em] text-[var(--color-stock-danger)]">
+            <p role="alert" className="font-lj-mono text-[length:var(--text-lj-mono-sm)] tracking-[0.04em] text-[var(--color-stock-danger)]">
               Не удалось загрузить статус заказа. Обновите страницу или попробуйте позже.
             </p>
           )}
@@ -230,7 +230,7 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
                       <span className="flex-1 h-px bg-[var(--color-lj-rule-on-ink)]" />
                     </span>
                     <span
-                      className={`font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] ${stepLabelClass(step)}`}
+                      className={`font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] ${stepLabelClass(step)}`}
                     >
                       {step.label}
                     </span>
@@ -287,7 +287,7 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
         <p className="mt-10">
           <Link
             href="/categories"
-            className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-70 hover:opacity-100 hover:text-[var(--color-lj-brand-deep)]"
+            className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-70 hover:opacity-100 hover:text-[var(--color-lj-brand-deep)]"
           >
             ← Вернуться в каталог
           </Link>

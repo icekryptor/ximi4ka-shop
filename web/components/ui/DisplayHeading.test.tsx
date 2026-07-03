@@ -15,6 +15,6 @@ describe('DisplayHeading', () => {
 
   it('uses Mazzard display font family', () => {
     const { container } = render(<DisplayHeading>x</DisplayHeading>)
-    expect(container.firstChild).toHaveClass('font-[var(--font-display)]')
+    expect(container.firstChild).toHaveClass('font-display')
   })
 })

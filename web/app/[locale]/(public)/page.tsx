@@ -259,10 +259,10 @@ export default async function HomePage({ params }: Props) {
         <div className="max-w-[var(--max-lj-content)] mx-auto">
           <div className="flex justify-between items-end mb-24 gap-8 flex-wrap">
             <div>
-              <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+              <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
                 03.0 / Что собрать сегодня
               </p>
-              <h2 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4.75rem)] leading-[0.92] tracking-[-0.045em]">
+              <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.75rem)] leading-[0.92] tracking-[-0.045em]">
                 Готовые<br />
                 <em className="italic text-[var(--color-lj-brand)] font-[900]">наборы</em>
               </h2>
@@ -340,10 +340,10 @@ export default async function HomePage({ params }: Props) {
       <LabSection variant="cream" className="px-6 py-32">
         <NotebookHeader section="04" label="Каталог" page={4} total={9} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
             04.0 / Каталог
           </p>
-          <h2 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
+          <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
             Каталог по<br />
             <em className="italic text-[var(--color-lj-brand)] font-[900]">
               интересам
@@ -379,10 +379,10 @@ export default async function HomePage({ params }: Props) {
       >
         <NotebookHeader section="05" label="Процесс" page={5} total={9} />
         <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
             05.0 / Процесс
           </p>
-          <h2 className="font-[var(--font-lj-display)] font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
+          <h2 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
             От заказа до{' '}
             <em className="italic text-[var(--color-lj-brand)] font-[700]">
               опыта
@@ -416,10 +416,10 @@ export default async function HomePage({ params }: Props) {
       <LabSection variant="cream" className="px-6 py-32">
         <NotebookHeader section="06" label="Отзывы" page={6} total={9} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
             06.0 / Отзывы
           </p>
-          <h2 className="font-[var(--font-lj-display)] font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
+          <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
             Что говорят<br />
             <em className="italic text-[var(--color-lj-brand)] font-[900]">
               родители
@@ -449,10 +449,10 @@ export default async function HomePage({ params }: Props) {
         <LabSection variant="cream" className="px-6 py-32" id="faq">
           <NotebookHeader section="07" label="FAQ" page={7} total={9} />
           <div className="max-w-[var(--max-lj-narrow)] mx-auto">
-            <p className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
               07.0 / Вопросы
             </p>
-            <h2 className="font-[var(--font-lj-display)] font-[700] text-[clamp(2rem,4vw,3rem)] leading-[1.05] tracking-[-0.035em] mb-12 max-w-[20ch]">
+            <h2 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3rem)] leading-[1.05] tracking-[-0.035em] mb-12 max-w-[20ch]">
               Частые <em className="italic text-[var(--color-lj-brand)] font-[700]">вопросы</em>
             </h2>
             <BlockRenderer blocks={faqBlocks} />

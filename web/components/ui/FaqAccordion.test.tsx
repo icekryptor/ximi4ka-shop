@@ -15,7 +15,7 @@ describe('<FaqAccordion>', () => {
   it('renders question label in mono uppercase', () => {
     render(<FaqAccordion items={[{ q: 'Test?', a: 'Yes.' }]} />)
     const summary = screen.getByText('Test?')
-    expect(summary.className).toContain('font-[var(--font-lj-mono)]')
+    expect(summary.className).toContain('font-lj-mono')
     // The summary itself doesn't necessarily have uppercase — could be on a parent.
     // Check the closest summary element.
     const summaryEl = summary.closest('summary')

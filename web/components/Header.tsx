@@ -96,7 +96,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
                   key={item.href}
                   href={item.href}
                   aria-current={active ? 'page' : undefined}
-                  className={`relative font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] transition-colors ${
+                  className={`relative font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] transition-colors ${
                     active
                       ? 'text-[var(--color-lj-brand)]'
                       : 'text-[var(--color-lj-ink)] opacity-70 hover:opacity-100'
@@ -123,7 +123,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
               type="button"
               onClick={() => setMobileOpen(true)}
               aria-label="Открыть меню"
-              className="md:hidden font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]"
+              className="md:hidden font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]"
             >
               МЕНЮ
             </button>

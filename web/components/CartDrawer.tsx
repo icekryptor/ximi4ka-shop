@@ -54,7 +54,7 @@ export function CartDrawer() {
       />
 
       <aside className="w-full max-w-md bg-[var(--color-lj-cream)] border-l border-[var(--color-lj-rule)] h-full flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-lj-rule)] font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-lj-rule)] font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em]">
           <span className="text-[var(--color-lj-ink)]">
             {items.length > 0 ? `КОРЗИНА · ${items.length}` : 'КОРЗИНА (0)'}
           </span>
@@ -62,7 +62,7 @@ export function CartDrawer() {
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Закрыть"
-            className="font-[var(--font-lj-mono)] text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand-deep)]"
+            className="font-lj-mono text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand-deep)]"
           >
             × ЗАКРЫТЬ
           </button>
@@ -70,7 +70,7 @@ export function CartDrawer() {
 
         <div className="flex-1 overflow-y-auto px-6 py-6">
           {items.length === 0 ? (
-            <p className="text-center font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-60 mt-8">
+            <p className="text-center font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-60 mt-8">
               Корзина пуста
             </p>
           ) : (
@@ -112,10 +112,10 @@ export function CartDrawer() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-[var(--font-lj-display)] font-[700] text-base tracking-[-0.02em] text-[var(--color-lj-ink)] truncate">
+                    <div className="font-lj-display font-[700] text-base tracking-[-0.02em] text-[var(--color-lj-ink)] truncate">
                       {item.name}
                     </div>
-                    <div className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60 mt-1">
+                    <div className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60 mt-1">
                       {formatRub(item.priceRub)} за шт.
                     </div>
                     <div className="mt-3 inline-flex items-center gap-2">
@@ -127,7 +127,7 @@ export function CartDrawer() {
                       >
                         −
                       </button>
-                      <span className="min-w-[2ch] text-center font-[var(--font-lj-mono)] text-sm text-[var(--color-lj-ink)]">
+                      <span className="min-w-[2ch] text-center font-lj-mono text-sm text-[var(--color-lj-ink)]">
                         {item.quantity}
                       </span>
                       <button
@@ -141,14 +141,14 @@ export function CartDrawer() {
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <div className="font-[var(--font-lj-display)] font-[900] text-base tracking-[-0.03em] text-[var(--color-lj-ink)]">
+                    <div className="font-lj-display font-[900] text-base tracking-[-0.03em] text-[var(--color-lj-ink)]">
                       {formatRub(item.priceRub * item.quantity)}
                     </div>
                     <button
                       type="button"
                       onClick={() => remove(item.productId)}
                       aria-label={`Удалить ${item.name}`}
-                      className="font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60 hover:opacity-100 hover:text-[var(--color-stock-danger)]"
+                      className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60 hover:opacity-100 hover:text-[var(--color-stock-danger)]"
                     >
                       Удалить
                     </button>
@@ -163,7 +163,7 @@ export function CartDrawer() {
           <div className="border-t border-[var(--color-lj-rule)] px-6 py-5 flex flex-col gap-3">
             {/* Прогресс до бесплатной доставки (порог СДЭК ПВЗ, 3000 ₽) */}
             <div data-testid="free-shipping-progress" className="flex flex-col gap-2">
-              <p className="m-0 font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]">
+              <p className="m-0 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]">
                 {subtotal >= FREE_SHIPPING_FROM_RUB ? (
                   <span className="text-[var(--color-lj-brand-deep)]">
                     Бесплатная доставка в пункт СДЭК ✓
@@ -195,21 +195,21 @@ export function CartDrawer() {
               </div>
             </div>
 
-            <div className="flex items-baseline justify-between font-[var(--font-lj-display)] font-[900] text-xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
+            <div className="flex items-baseline justify-between font-lj-display font-[900] text-xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
               <span>Итого</span>
               <span>{formatRub(subtotal)}</span>
             </div>
             <Link
               href="/checkout"
               onClick={() => setOpen(false)}
-              className="inline-flex items-center justify-center gap-3 px-7 py-4 font-[var(--font-lj-mono)] text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full bg-[linear-gradient(135deg,#8d67ff_0%,#c856ff_100%)] text-white shadow-[var(--shadow-glow-brand)] transition-all duration-300 hover:brightness-110 hover:scale-[1.01]"
+              className="inline-flex items-center justify-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full bg-[linear-gradient(135deg,#8d67ff_0%,#c856ff_100%)] text-white shadow-[var(--shadow-glow-brand)] transition-all duration-300 hover:brightness-110 hover:scale-[1.01]"
             >
               Оформить заказ →
             </Link>
             <Link
               href="/cart"
               onClick={() => setOpen(false)}
-              className="self-center font-[var(--font-lj-mono)] text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-60 hover:opacity-100 hover:text-[var(--color-lj-brand-deep)]"
+              className="self-center font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-60 hover:opacity-100 hover:text-[var(--color-lj-brand-deep)]"
             >
               Открыть страницу корзины
             </Link>

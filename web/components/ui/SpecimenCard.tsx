@@ -26,7 +26,7 @@ export function SpecimenCard({ sku, size, className = '' }: Props) {
       aria-label={`Образец № ${sku} — фото готовится`}
     >
       <span
-        className={`absolute top-3.5 left-3.5 font-[var(--font-lj-mono)] uppercase text-[var(--color-lj-ink)] opacity-55 ${eyebrowClass}`}
+        className={`absolute top-3.5 left-3.5 font-lj-mono uppercase text-[var(--color-lj-ink)] opacity-55 ${eyebrowClass}`}
       >
         ОБРАЗЕЦ № {sku}
       </span>
@@ -36,7 +36,7 @@ export function SpecimenCard({ sku, size, className = '' }: Props) {
       </div>
 
       <span
-        className={`absolute bottom-3.5 left-1/2 -translate-x-1/2 font-[var(--font-lj-mono)] uppercase text-[var(--color-lj-ink)] opacity-70 whitespace-nowrap ${captionClass}`}
+        className={`absolute bottom-3.5 left-1/2 -translate-x-1/2 font-lj-mono uppercase text-[var(--color-lj-ink)] opacity-70 whitespace-nowrap ${captionClass}`}
       >
         ФОТО ГОТОВИТСЯ
       </span>
