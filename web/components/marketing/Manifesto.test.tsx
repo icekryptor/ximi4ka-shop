@@ -7,12 +7,12 @@ describe('<Manifesto> v3', () => {
     render(
       <Manifesto
         eyebrow="02.0 / Принципы лаборатории"
-        statementParts={[{ text: 'Мы делаем ' }, { text: 'химию', emphasis: true }, { text: ', а не урок.' }]}
+        statementParts={[{ text: 'В коробке — настоящая ' }, { text: 'химия', emphasis: true }, { text: '.' }]}
         body="Каждый набор — запечатанный комплект."
       />
     )
     expect(screen.getByText('02.0 / Принципы лаборатории')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Мы делаем химию, а не урок.')
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('В коробке — настоящая химия.')
     expect(screen.getByText(/Каждый набор/)).toBeInTheDocument()
   })
 
