@@ -8,6 +8,7 @@ import { Ticker } from '@/components/ui'
 import { CartButton } from './CartButton'
 import { HeaderLogo } from './HeaderLogo'
 import { MobileMenuOverlay } from './MobileMenuOverlay'
+import { HeaderSearch } from './search/HeaderSearch'
 
 interface NavItem {
   href: string
@@ -36,6 +37,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
   const pathnameRaw = usePathname()
   const { itemCount } = useCart()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
   const pathname =
     pathnameRaw?.replace(/^\/(ru|en)(?=\/|$)/, '') || '/'
@@ -87,7 +89,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
 
           <nav
             aria-label="Основная навигация"
-            className="hidden md:flex items-center gap-8"
+            className="hidden md:flex items-center gap-6 lg:gap-8"
           >
             {NAV.map((item) => {
               const active = isActive(pathname, item.href)
@@ -114,7 +116,36 @@ export function Header({ headerPromoText = null }: HeaderProps) {
             })}
           </nav>
 
+          {/* Поиск по каталогу с живым превью — между навигацией и корзиной.
+              На десктопе поле встроено в ряд; на мобильном раскрывается по
+              иконке-лупе (см. ниже). */}
+          <div className="hidden md:block flex-1 max-w-[22rem] mx-2">
+            <HeaderSearch />
+          </div>
+
           <div className="flex items-center gap-3 sm:gap-4">
+            {/* Мобильная иконка-лупа: раскрывает поле поиска отдельным рядом. */}
+            <button
+              type="button"
+              onClick={() => setMobileSearchOpen((v) => !v)}
+              aria-label={mobileSearchOpen ? 'Скрыть поиск' : 'Открыть поиск'}
+              aria-expanded={mobileSearchOpen}
+              className="md:hidden text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand)] transition-colors"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                aria-hidden="true"
+              >
+                <circle cx="7" cy="7" r="4.5" />
+                <line x1="10.5" y1="10.5" x2="14" y2="14" strokeLinecap="round" />
+              </svg>
+            </button>
+
             {/* Кнопка корзины видна ВСЕГДА (и на мобильном) и открывает
                 CartDrawer мгновенно — навигация на /cart только из drawer. */}
             <CartButton />
@@ -129,6 +160,15 @@ export function Header({ headerPromoText = null }: HeaderProps) {
             </button>
           </div>
         </div>
+
+        {/* Мобильный ряд поиска — во всю ширину под верхней панелью. */}
+        {mobileSearchOpen ? (
+          <div className="md:hidden border-t border-[var(--color-lj-rule)] px-6 py-3">
+            <div className="[&>div]:max-w-none">
+              <HeaderSearch />
+            </div>
+          </div>
+        ) : null}
       </header>
 
       <MobileMenuOverlay

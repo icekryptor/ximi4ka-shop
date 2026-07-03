@@ -13,6 +13,7 @@ import {
   getPublicSettings,
   submitCheckout,
   getOrderStatus,
+  searchCatalog,
 } from './api'
 
 function jsonResponse(status: number, body: unknown, ok = status >= 200 && status < 300) {
@@ -552,6 +553,38 @@ describe('api client', () => {
         status: 404,
         code: 'order_not_found',
       })
+    })
+  })
+
+  describe('searchCatalog', () => {
+    it('unwraps the data envelope and URL-encodes the query', async () => {
+      const payload = {
+        products: [{ slug: 'himichka-30', name: 'Химичка 3.0', priceRub: 1500, image: null }],
+        posts: [{ slug: 'sky', title: 'Почему небо голубое' }],
+      }
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: payload }))
+      vi.stubGlobal('fetch', fetchMock)
+
+      const result = await searchCatalog('химич')
+
+      expect(result).toEqual(payload)
+      const [url, init] = fetchMock.mock.calls[0]
+      expect(url).toBe(`http://localhost:3001/api/public/search?q=${encodeURIComponent('химич')}`)
+      // Header search must never serve a cached snapshot.
+      expect(init.cache).toBe('no-store')
+    })
+
+    it('forwards an AbortSignal so stale requests can be cancelled', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        jsonResponse(200, { data: { products: [], posts: [] } }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      const controller = new AbortController()
+
+      await searchCatalog('набор', { signal: controller.signal })
+
+      const [, init] = fetchMock.mock.calls[0]
+      expect(init.signal).toBe(controller.signal)
     })
   })
 })

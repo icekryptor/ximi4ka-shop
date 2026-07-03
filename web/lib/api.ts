@@ -6,6 +6,7 @@ import type {
   Product,
   ProductCategory,
   PublicOrderStatus,
+  SearchResult,
 } from '@ximi4ka-shop/shared'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
@@ -160,6 +161,23 @@ export async function listBlogPosts(
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost> {
   const body = await request<DataEnvelope<BlogPost>>(
     `/api/public/blog/${encodeURIComponent(slug)}`,
+  )
+  return body.data
+}
+
+// ---------- Search (public) ----------
+
+// Live header search. Returns compact product + blog-post matches. The API
+// treats a query under 2 chars as empty, so callers can hit this on every
+// keystroke; `signal` lets the header abort a stale request when the user
+// keeps typing.
+export async function searchCatalog(
+  q: string,
+  opts: { signal?: AbortSignal } = {},
+): Promise<SearchResult> {
+  const body = await request<DataEnvelope<SearchResult>>(
+    `/api/public/search?q=${encodeURIComponent(q)}`,
+    { cache: 'no-store', signal: opts.signal },
   )
   return body.data
 }
