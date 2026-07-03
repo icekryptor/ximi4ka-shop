@@ -13,10 +13,9 @@ import {
   pickField,
   type Locale,
 } from '@/lib/i18n'
-import { Container, Section, DisplayHeading } from '@/components/ui'
-import { Reveal } from '@/components/motion'
+import { LabSection } from '@/components/ui/LabSection'
+import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { PreFooterCta } from '@/components/marketing'
-import { GradientBlob } from '@/components/decor'
 
 export const revalidate = 60
 export const dynamicParams = true
@@ -120,51 +119,38 @@ export default async function CmsPage({ params }: Props) {
         ])}
       />
 
-      {/* Hero band */}
-      <Section size="md" surface="soft" className="relative overflow-hidden">
-        <GradientBlob className="pointer-events-none absolute -right-32 top-0 h-[140%] w-[40%] opacity-30" />
-        <Container>
-          <div className="relative z-10 max-w-3xl">
-            <Reveal>
-              <DisplayHeading className="mb-4">
-                <span
-                  aria-hidden="true"
-                  className="mr-3 text-[var(--color-accent)]"
-                >
-                  ·
-                </span>
-                {title}
-              </DisplayHeading>
-            </Reveal>
-            {metaDescription && (
-              <Reveal delay={0.05}>
-                <p className="text-[length:var(--text-lead)] text-[var(--color-brand-text-secondary)]">
-                  {metaDescription}
-                </p>
-              </Reveal>
+      {/* Hero (LAB CREAM) — v3 LJ: моно-eyebrow с brand-буллетом,
+          Unbounded h1. Аудит v3.5: страница была на v2-компонентах
+          (Section soft + GradientBlob + оранжевая точка). */}
+      <LabSection variant="cream" className="px-6 pt-28 pb-16">
+        <NotebookHeader section="S" label={title} page={1} total={2} />
+        <div className="max-w-[var(--max-lj-narrow)] mx-auto">
+          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+            S.0 / Страница
+          </p>
+          <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,6vw,5rem)] leading-[0.95] tracking-[-0.045em] mb-6 max-w-[18ch]">
+            {title}
+          </h1>
+          {metaDescription && (
+            <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch]">
+              {metaDescription}
+            </p>
+          )}
+        </div>
+      </LabSection>
+
+      {/* Body (LAB CREAM) */}
+      <LabSection variant="cream" className="px-6 pb-24">
+        <div className="max-w-[var(--max-lj-narrow)] mx-auto">
+          <div className="mx-auto max-w-3xl">
+            {blocks.length > 0 ? (
+              <BlockRenderer blocks={blocks} />
+            ) : (
+              <p className="opacity-70">Страница пока пуста.</p>
             )}
           </div>
-        </Container>
-      </Section>
-
-      {/* Body */}
-      {blocks.length > 0 ? (
-        <Section size="md" surface="base">
-          <Container>
-            <div className="mx-auto max-w-3xl">
-              <BlockRenderer blocks={blocks} />
-            </div>
-          </Container>
-        </Section>
-      ) : (
-        <Section size="md" surface="base">
-          <Container>
-            <p className="mx-auto max-w-3xl text-[var(--color-brand-text-secondary)]">
-              Страница пока пуста.
-            </p>
-          </Container>
-        </Section>
-      )}
+        </div>
+      </LabSection>
 
       {/* Pre-footer CTA */}
       <PreFooterCta

@@ -290,6 +290,26 @@ body {
 @keyframes lj-rotate-slow-reverse { to { transform: translate(-50%, -50%) rotate(-360deg); } }
 @keyframes lj-ticker { to { transform: translateX(-50%); } }
 
+/* === lj-prose: заголовки в CMS/blog rich-text ===
+   Аудит v3.5: h2/h3/h4 внутри статей рендерились как обычный body-текст —
+   иерархия терялась. Display-шрифт + LJ-трекинг, размеры вниз от --text-h3. */
+.lj-prose h2,
+.lj-prose h3,
+.lj-prose h4 {
+  font-family: var(--font-lj-display), 'Unbounded', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--lj-prose-color, var(--color-lj-ink));
+  margin: 2rem 0 0.75rem;
+}
+.lj-prose h2 { font-size: 1.75rem; }
+.lj-prose h3 { font-size: 1.375rem; }
+.lj-prose h4 { font-size: 1.125rem; }
+.lj-prose h2:first-child,
+.lj-prose h3:first-child,
+.lj-prose h4:first-child { margin-top: 0; }
+
 /* === v3.5 Bright — градиентная CTA-пилюля ===
    Главное действие страницы. Белый текст на фирменном градиенте, hover —
    более глубокий градиент + лёгкий подъём. Вторичные действия остаются

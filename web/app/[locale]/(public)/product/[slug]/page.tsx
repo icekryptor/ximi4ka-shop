@@ -279,21 +279,33 @@ export default async function ProductPage({ params }: Props) {
               № {product.sku ?? product.slug}
             </p>
 
-            {/* OFF-GRID H1 — even words flush, odd words indented for the
-                hand-typeset journal stagger. First word lights up brand. */}
-            <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] uppercase">
-              {nameWords.map((word, i) => (
-                <span key={i} className={`block ${i % 2 === 1 ? 'pl-[6vw]' : ''}`}>
-                  {i === 0 ? (
-                    <em className="not-italic-fix italic text-[var(--color-lj-brand)] font-[900]">
-                      {word}
-                    </em>
-                  ) : (
-                    word
-                  )}
-                </span>
-              ))}
-            </h1>
+            {/* OFF-GRID H1 — для коротких имён (≤3 слов) лесенка
+                «ручного набора»: чётные слова у края, нечётные с отступом.
+                Длинные DB-названия (аудит: «Набор химика для опытов … 161
+                в 1» давал 9 строк-лесенку) переносятся естественно, кегль
+                чуть меньше. Первое слово — brand-italic в обоих случаях. */}
+            {nameWords.length <= 3 ? (
+              <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] uppercase">
+                {nameWords.map((word, i) => (
+                  <span key={i} className={`block ${i % 2 === 1 ? 'pl-[6vw]' : ''}`}>
+                    {i === 0 ? (
+                      <em className="not-italic-fix italic text-[var(--color-lj-brand)] font-[900]">
+                        {word}
+                      </em>
+                    ) : (
+                      word
+                    )}
+                  </span>
+                ))}
+              </h1>
+            ) : (
+              <h1 className="font-lj-display font-[900] text-[clamp(1.875rem,3.4vw,3rem)] leading-[1.02] tracking-[-0.04em] uppercase text-balance">
+                <em className="not-italic-fix italic text-[var(--color-lj-brand)] font-[900]">
+                  {nameWords[0]}
+                </em>{' '}
+                {nameWords.slice(1).join(' ')}
+              </h1>
+            )}
 
             {/* Trail line — small mono follow-up under the headline */}
             <p className="font-lj-mono text-sm text-[var(--color-lj-ink)] opacity-55 max-w-[36ch]">
@@ -327,8 +339,10 @@ export default async function ProductPage({ params }: Props) {
           isn't present in the long description. */}
       <ContentsSection blocks={longDescriptionBlocks} />
 
-      {/* SECTION 3 — Характеристики (ink data sheet). Always shown — the
-          `useFacts` row + full table both no-render when empty. */}
+      {/* SECTION 3 — Характеристики (ink data sheet). Скрывается целиком,
+          когда у товара нет распарсенных характеристик — пустая ink-секция
+          с одним заголовком выглядела сломанной (аудит v3.5). */}
+      {(useFacts.length > 0 || Object.keys(characteristics).length > 0) && (
       <LabSection variant="ink" className="px-6 py-32 relative">
         <NotebookHeader section="02" label="Характеристики" page={3} total={6} />
         <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
@@ -352,6 +366,7 @@ export default async function ProductPage({ params }: Props) {
           )}
         </div>
       </LabSection>
+      )}
 
       {/* SECTION 4 — Описание (cream prose). Renders when CMS provided
           long-description blocks remain after stripping content already
