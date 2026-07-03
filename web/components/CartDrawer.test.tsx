@@ -239,7 +239,7 @@ describe('CartDrawer', () => {
       openDrawer()
     })
     const cta = screen.getByRole('link', { name: /оформить заказ/i })
-    expect(cta.className).toContain('linear-gradient')
+    expect(cta.className).toContain('lj-cta-bright')
   })
 
   it('clicking backdrop closes the drawer', () => {

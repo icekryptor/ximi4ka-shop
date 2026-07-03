@@ -47,7 +47,7 @@ export function AddToCartButton({ product }: Props) {
           type="button"
           disabled={disabled}
           onClick={handleClick}
-          className="bg-black text-white rounded-full px-6 py-3 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-3 px-6 py-3 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {product.stockStatus === 'out_of_stock' ? 'Нет в наличии' : 'В корзину'}
         </button>

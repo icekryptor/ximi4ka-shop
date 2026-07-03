@@ -24,19 +24,21 @@ describe('Ticker', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('applies accent surface by default', () => {
+  it('applies bright gradient surface by default (v3.5)', () => {
     const { container } = render(<Ticker items={items} />)
-    expect(container.firstChild).toHaveClass('bg-[var(--color-accent)]')
+    expect(container.firstChild).toHaveClass(
+      'bg-[image:var(--gradient-lj-bright)]',
+    )
   })
 
-  it('applies dark surface when surface=dark', () => {
+  it('applies ink surface when surface=dark', () => {
     const { container } = render(<Ticker items={items} surface="dark" />)
-    expect(container.firstChild).toHaveClass('bg-[var(--color-dark-base)]')
+    expect(container.firstChild).toHaveClass('bg-[var(--color-lj-ink)]')
   })
 
-  it('applies soft surface when surface=soft', () => {
+  it('applies soft cream surface when surface=soft', () => {
     const { container } = render(<Ticker items={items} surface="soft" />)
-    expect(container.firstChild).toHaveClass('bg-[var(--color-surface-soft)]')
+    expect(container.firstChild).toHaveClass('bg-[var(--color-lj-cream-shade)]')
   })
 
   it('applies infinite-scroll animation class to inner track', () => {

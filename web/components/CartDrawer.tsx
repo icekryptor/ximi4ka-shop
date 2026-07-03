@@ -187,7 +187,7 @@ export function CartDrawer() {
               >
                 <div
                   data-testid="free-shipping-bar"
-                  className="h-full rounded-full bg-[linear-gradient(90deg,#8d67ff_0%,#c856ff_100%)] transition-[width] duration-500"
+                  className="h-full rounded-full bg-[image:var(--gradient-lj-bright)] transition-[width] duration-500"
                   style={{
                     width: `${Math.min(100, Math.round((subtotal / FREE_SHIPPING_FROM_RUB) * 100))}%`,
                   }}
@@ -202,7 +202,7 @@ export function CartDrawer() {
             <Link
               href="/checkout"
               onClick={() => setOpen(false)}
-              className="inline-flex items-center justify-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full bg-[linear-gradient(135deg,#8d67ff_0%,#c856ff_100%)] text-white shadow-[var(--shadow-glow-brand)] transition-all duration-300 hover:brightness-110 hover:scale-[1.01]"
+              className="inline-flex items-center justify-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright"
             >
               Оформить заказ →
             </Link>

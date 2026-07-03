@@ -77,7 +77,7 @@ describe('<CtaBlock> v3', () => {
     expect(container.querySelector('[data-block="cta"]')).not.toBeNull()
   })
 
-  it('applies v3 ink-pill CTA classes (matches Hero ink-pill)', () => {
+  it('applies v3.5 bright-pill CTA classes (matches Hero primary pill)', () => {
     const { container } = render(
       <CtaBlock
         block={{ type: 'cta', heading: 'x', buttonLabel: 'go', buttonHref: '/' }}
@@ -85,11 +85,9 @@ describe('<CtaBlock> v3', () => {
     )
     const link = within(container).getByRole('link')
     expect(link.className).toContain('rounded-full')
-    expect(link.className).toContain('bg-[var(--color-lj-ink)]')
-    expect(link.className).toContain('text-[var(--color-lj-bone)]')
+    expect(link.className).toContain('lj-cta-bright')
     expect(link.className).toContain('font-lj-mono')
     expect(link.className).toContain('uppercase')
-    expect(link.className).toContain('hover:bg-[var(--color-lj-brand-deep)]')
   })
 
   it('uses lab-journal display font for heading', () => {

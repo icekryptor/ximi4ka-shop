@@ -153,6 +153,19 @@
   --max-lj-content: 1600px;
   --max-lj-narrow:  1400px;
   --lj-header-height: 80px;
+
+  /* === v3.5 — «Лабораторный журнал, но ярче» ===
+     См. design-system/ximi4ka-v3/V3_5_BRIGHT_ADDENDUM.md. Фирменный градиент
+     Tilda-сайта становится рабочей поверхностью (карточки категорий, CTA,
+     hero-панель, тикер фактов). */
+  --gradient-lj-bright: linear-gradient(135deg, rgba(141,103,255,1) 0%, rgba(200,86,255,1) 100%);
+  --gradient-lj-bright-deep: linear-gradient(135deg, rgba(122,82,255,1) 0%, rgba(184,62,246,1) 100%);
+  --radius-lj-bright:    32px;
+  --radius-lj-bright-sm: 24px;
+  --shadow-lj-bright: 0 16px 40px -12px rgba(131, 110, 254, 0.45),
+                      0 6px 16px -6px  rgba(200, 86, 255, 0.25);
+  --color-lj-on-bright:      #ffffff;
+  --color-lj-on-bright-mute: rgba(255, 255, 255, 0.78);
 }
 
 body {
@@ -218,11 +231,11 @@ body {
   content: '✓';
   position: absolute;
   left: 0;
-  color: var(--color-accent);
+  color: var(--color-lj-brand);
   font-weight: bold;
 }
 .prose-on-dark strong {
-  color: var(--color-accent);
+  color: var(--color-lj-brand);
   font-weight: 600;
 }
 
@@ -276,6 +289,49 @@ body {
 @keyframes lj-rotate-slow { to { transform: translateY(-50%) rotate(360deg); } }
 @keyframes lj-rotate-slow-reverse { to { transform: translate(-50%, -50%) rotate(-360deg); } }
 @keyframes lj-ticker { to { transform: translateX(-50%); } }
+
+/* === v3.5 Bright — градиентная CTA-пилюля ===
+   Главное действие страницы. Белый текст на фирменном градиенте, hover —
+   более глубокий градиент + лёгкий подъём. Вторичные действия остаются
+   ink-пилюлями. */
+.lj-cta-bright {
+  border: none;
+  background-image: var(--gradient-lj-bright);
+  color: var(--color-lj-on-bright);
+  box-shadow: var(--shadow-lj-bright);
+  transition: transform 0.4s var(--ease-out-quart), box-shadow 0.4s var(--ease-out-quart), filter 0.4s var(--ease-out-quart);
+}
+.lj-cta-bright:hover {
+  background-image: var(--gradient-lj-bright-deep);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 44px -12px rgba(131, 110, 254, 0.55),
+              0 8px 18px -6px  rgba(200, 86, 255, 0.35);
+}
+.lj-cta-bright:focus-visible {
+  outline: 2px solid var(--color-lj-brand-deep);
+  outline-offset: 3px;
+}
+
+/* === v3.5 Bright — hover-lift карточек === */
+.lj-lift {
+  transition: transform 0.4s var(--ease-out-quart), box-shadow 0.4s var(--ease-out-quart);
+}
+.lj-lift:hover { transform: translateY(-6px); }
+
+/* === v3.5 Bright — дрейф декоративных молекул === */
+@keyframes lj-drift {
+  from { transform: translate(0, 0) rotate(0deg); }
+  to   { transform: translate(8px, -10px) rotate(4deg); }
+}
+.lj-drift { animation: lj-drift 14s ease-in-out infinite alternate; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lj-cta-bright,
+  .lj-cta-bright:hover,
+  .lj-lift,
+  .lj-lift:hover { transition: none; transform: none; }
+  .lj-drift { animation: none; }
+}
 
 /* === v3 Lab Journal — reduced-motion accommodations ===
    Disables decorative animations and snaps stat-bar fills to their final width

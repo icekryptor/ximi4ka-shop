@@ -110,7 +110,7 @@ export function Hero({
         <div className="flex gap-4 items-center flex-wrap relative z-[2]">
           <Link
             href={primaryCta.href}
-            className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] border border-[var(--color-lj-ink)] rounded-full bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)] transition-all duration-400 hover:bg-[var(--color-lj-brand-deep)] hover:border-[var(--color-lj-brand-deep)]"
+            className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright"
           >
             {primaryCta.label}
             <svg width="14" height="14" viewBox="0 0 16 16">

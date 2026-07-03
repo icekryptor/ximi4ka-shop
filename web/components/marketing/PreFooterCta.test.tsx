@@ -59,7 +59,7 @@ describe('PreFooterCta', () => {
     expect(section!.className).toContain('bg-[var(--color-lj-ink)]')
   })
 
-  it('renders the CTA as a v3 outlined pill (bone border, transparent bg) on the ink surface', () => {
+  it('renders the CTA as a v3.5 bright gradient pill on the ink surface', () => {
     render(
       <PreFooterCta
         title="t"
@@ -67,10 +67,20 @@ describe('PreFooterCta', () => {
       />,
     )
     const link = screen.getByRole('link', { name: 'Открыть каталог' })
-    expect(link.className).toContain('border-[var(--color-lj-bone)]')
-    expect(link.className).toContain('text-[var(--color-lj-bone)]')
-    expect(link.className).toContain('bg-transparent')
+    expect(link.className).toContain('lj-cta-bright')
+    expect(link.className).toContain('rounded-full')
     expect(link.className).not.toContain('bg-[var(--gradient-accent)]')
-    expect(link.className).not.toContain('shadow-[var(--shadow-glow-brand)]')
+  })
+
+  it('renders the heading in bone (readable on ink surface)', () => {
+    render(
+      <PreFooterCta
+        title="Заголовок"
+        cta={{ label: 'Открыть каталог', href: '/categories' }}
+      />,
+    )
+    const heading = screen.getByRole('heading', { name: 'Заголовок' })
+    expect(heading.className).toContain('text-[var(--color-lj-bone)]')
+    expect(heading.className).toContain('font-lj-display')
   })
 })

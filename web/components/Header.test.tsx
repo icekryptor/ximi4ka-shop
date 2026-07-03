@@ -129,7 +129,7 @@ describe('Header v3', () => {
   it('cart button uses the brand gradient fill (prominent, white text)', () => {
     render(<Header />)
     const cartButton = screen.getByTestId('header-cart-button')
-    expect(cartButton.className).toContain('linear-gradient')
+    expect(cartButton.className).toContain('bg-[image:var(--gradient-lj-bright)]')
     expect(cartButton.className).toContain('text-white')
   })
 
