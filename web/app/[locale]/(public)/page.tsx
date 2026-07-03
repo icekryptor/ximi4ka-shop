@@ -15,6 +15,7 @@ import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
 import { LabSection } from '@/components/ui/LabSection'
+import { Ticker } from '@/components/ui'
 import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import {
   Hero,
@@ -182,6 +183,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   })
 }
 
+// v3.5: факты для яркого маркиз-тикера между hero и каталогом.
+const FACTS_TICKER = [
+  '161 опыт',
+  '62 реактива',
+  'доставка СДЭК',
+  'от 8 лет',
+  '4,9 из 5 на WB и Ozon',
+  '20 000+ покупателей',
+]
+
 export default async function HomePage({ params }: Props) {
   const { locale: rawLocale } = await params
   if (!isLocale(rawLocale)) notFound()
@@ -252,7 +263,24 @@ export default async function HomePage({ params }: Props) {
         lead="3 набора. От реакций меди до электролиза — настоящие реагенты, посуда, понятные протоколы. То, что школа показывает на видео, вы делаете руками."
         primaryCta={{ label: 'Открыть каталог', href: '/catalog' }}
         secondaryCta={{ label: 'Что мы делаем', href: '#manifesto' }}
+        visual={(() => {
+          // Яркая hero-панель с фото флагмана (v3.5). Берём первый флагман,
+          // у которого есть DB-фото; без фото панель не рендерим.
+          const withPhoto = flagships.find(
+            (f) => f.dbProduct && f.dbProduct.images.length > 0,
+          )
+          if (!withPhoto?.dbProduct) return undefined
+          return {
+            imageUrl: withPhoto.dbProduct.images[0].url,
+            alt: withPhoto.dbProduct.name,
+            href: `/product/${withPhoto.dbProduct.slug}`,
+            label: `fig. 001 — ${withPhoto.emphasisWord ?? 'флагман'}`,
+          }
+        })()}
       />
+
+      {/* 1.5 Маркиз-тикер фактов (v3.5 BRIGHT) */}
+      <Ticker items={FACTS_TICKER} surface="bright" />
 
       {/* 2. v3 Catalog — asymmetric 3-card row (LAB CREAM) */}
       <section className="bg-[var(--color-lj-cream)] px-6 py-32 relative">

@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { LabSection } from '@/components/ui/LabSection'
 import { GridOverlay } from '@/components/ui/GridOverlay'
@@ -19,6 +20,13 @@ interface HeadlineRow {
   offset?: boolean
 }
 
+interface VisualProps {
+  imageUrl: string
+  alt: string
+  href: string
+  label?: string
+}
+
 interface Props {
   eyebrow: string
   headlineRows: HeadlineRow[]
@@ -27,6 +35,8 @@ interface Props {
   primaryCta: CtaProps
   secondaryCta?: CtaProps
   tickerItems?: string[]
+  /** v3.5: яркая градиентная панель с фото флагманского продукта (скрыта < lg) */
+  visual?: VisualProps
 }
 
 const DEFAULT_TICKER = [
@@ -50,6 +60,7 @@ export function Hero({
   primaryCta,
   secondaryCta,
   tickerItems = DEFAULT_TICKER,
+  visual,
 }: Props) {
   return (
     <LabSection
@@ -65,7 +76,9 @@ export function Hero({
         edition="Ред. 2026.04 / v3"
       />
       <HeroFigtag figNumber="001-A" arr="C₆H₆" />
-      <HeroDetailMolecule variant="water" />
+      <div className="lj-drift absolute inset-0 pointer-events-none" aria-hidden="true">
+        <HeroDetailMolecule variant="water" />
+      </div>
 
       {/* Pinned rotating benzene */}
       <MoleculeMotifLJ
@@ -81,12 +94,37 @@ export function Hero({
         }}
       />
 
+      {visual && (
+        <Link
+          href={visual.href}
+          aria-label={visual.alt}
+          className="hidden lg:block absolute z-[3] right-[4vw] top-1/2 -translate-y-1/2 w-[clamp(300px,24vw,420px)] aspect-[4/5] rounded-[var(--radius-lj-bright)] bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-lj-bright)] overflow-hidden lj-lift"
+        >
+          <span className="absolute top-5 left-6 z-[2] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright-mute)]">
+            {visual.label ?? 'fig. 001 — флагман'}
+          </span>
+          <Image
+            src={visual.imageUrl}
+            alt={visual.alt}
+            fill
+            priority
+            sizes="(max-width: 1024px) 0px, 24vw"
+            className="object-contain p-8 pt-14 drop-shadow-[0_24px_32px_rgba(60,20,120,0.35)] transition-transform duration-700 hover:scale-[1.04]"
+          />
+          <span className="absolute bottom-5 left-6 right-6 z-[2] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright)] inline-flex items-center gap-2">
+            смотреть набор →
+          </span>
+        </Link>
+      )}
+
       <div className="relative z-[2] max-w-[var(--max-lj-content)] mx-auto w-full">
         <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-10 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
           {eyebrow}
         </p>
 
-        <h1 className="font-lj-display font-[900] text-[length:var(--text-lj-mega)] leading-[0.88] tracking-[-0.045em] uppercase mb-10 relative z-[2]">
+        <h1
+          className={`font-lj-display font-[900] ${visual ? 'text-[clamp(2.75rem,7vw,7.75rem)] lg:max-w-[68vw]' : 'text-[length:var(--text-lj-mega)]'} leading-[0.88] tracking-[-0.045em] uppercase mb-10 relative z-[2]`}
+        >
           {headlineRows.map((row, i) => (
             <span key={i} className={`block ${row.offset ? 'pl-[9vw]' : ''}`}>
               {row.emphasis ? (
