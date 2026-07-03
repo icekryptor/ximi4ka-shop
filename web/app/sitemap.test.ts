@@ -218,11 +218,12 @@ describe('sitemap', () => {
 
     const out = await sitemap()
     const urls = out.map((e) => e.url)
-    // Homepage + categories + blog landings always ship, even without data.
+    // Homepage + catalog + categories + blog landings always ship, even without data.
     expect(urls).toContain('https://new.ximi4ka.ru/')
+    expect(urls).toContain('https://new.ximi4ka.ru/catalog')
     expect(urls).toContain('https://new.ximi4ka.ru/categories')
     expect(urls).toContain('https://new.ximi4ka.ru/blog')
-    expect(out.length).toBe(3)
+    expect(out.length).toBe(4)
   })
 
   it('respects NEXT_PUBLIC_SITE_URL when set', async () => {
