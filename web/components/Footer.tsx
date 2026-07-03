@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { HeaderLogo } from './HeaderLogo'
 import { MoleculeMotifLJ } from '@/components/decor/MoleculeMotif.lj'
+import { ElementOfDayCell } from './ElementOfDayCell'
 
 // Элемент колофона: обычный текст или внутренняя ссылка.
 type ColophonItem = string | { label: string; href: string }
@@ -75,9 +76,13 @@ export function Footer() {
 
         <div className="border-t border-[var(--color-lj-rule)] pt-12 flex items-end justify-between gap-8 flex-wrap">
           <HeaderLogo size={4} className="text-[var(--color-lj-ink)]" />
-          <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70">
-            © 2023–2026 · все права защищены
-          </span>
+          <div className="flex items-end gap-6">
+            {/* v3.5-пасхалка: элемент дня из таблицы Менделеева */}
+            <ElementOfDayCell />
+            <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70">
+              © 2023–2026 · все права защищены
+            </span>
+          </div>
         </div>
       </div>
     </footer>
