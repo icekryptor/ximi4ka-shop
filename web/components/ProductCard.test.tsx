@@ -59,6 +59,33 @@ describe('<ProductCard> v3', () => {
     expect(container.querySelectorAll('[data-statbar]').length).toBe(3)
   })
 
+  it('hides the stats block entirely when all stats are zero (no broken bars)', () => {
+    const { container } = render(
+      <ProductCard
+        product={baseProduct}
+        stats={{ reagents: 0, instruments: 0, reactions: 0 }}
+        statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+        images={[]}
+      />
+    )
+    expect(container.querySelectorAll('[data-statbar]').length).toBe(0)
+  })
+
+  it('renders brand badge as a bright gradient pill (v3.5)', () => {
+    render(
+      <ProductCard
+        product={baseProduct}
+        badge="Хит"
+        badgeVariant="brand"
+        stats={{ reagents: 18, instruments: 12, reactions: 161 }}
+        statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
+        images={[]}
+      />
+    )
+    const badge = screen.getByText('Хит')
+    expect(badge.className).toContain('bg-[image:var(--gradient-lj-bright)]')
+  })
+
   it('renders chips lowercase', () => {
     render(
       <ProductCard

@@ -261,16 +261,26 @@ export default async function CategoryDetailPage({
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {products.map((p) => (
-                /* TODO(Task 4.4): wire real catalog stats + asymmetric grid */
-                <ProductCard
-                  key={p.id}
-                  product={p}
-                  stats={{ reagents: 0, instruments: 0, reactions: 0 }}
-                  statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
-                  images={p.images}
-                />
-              ))}
+              {products.map((p, i) => {
+                // v3.5: первая карточка первой страницы — featured (широкая,
+                // на 2 колонки), больше визуала продукта.
+                const isFeatured = page === 1 && i === 0 && products.length > 2
+                return (
+                  <div
+                    key={p.id}
+                    className={isFeatured ? 'md:col-span-2' : undefined}
+                  >
+                    {/* TODO(Task 4.4): wire real catalog stats + asymmetric grid */}
+                    <ProductCard
+                      product={p}
+                      stats={{ reagents: 0, instruments: 0, reactions: 0 }}
+                      statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+                      images={p.images}
+                      featured={isFeatured}
+                    />
+                  </div>
+                )
+              })}
             </div>
           )}
           {/* Pagination — PaginationLJ renders null when totalPages <= 1 */}
