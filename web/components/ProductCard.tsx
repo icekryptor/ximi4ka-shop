@@ -5,6 +5,7 @@ import { Callout } from '@/components/ui/Callout'
 import { Chip } from '@/components/ui/Chip'
 import { StatBar } from '@/components/ui/StatBar'
 import { SpecimenCard } from './ui/SpecimenCard'
+import { CompactProductCard } from './catalog/CompactProductCard'
 
 interface Stats {
   reagents: number
@@ -31,6 +32,12 @@ interface Props {
   // v3.5: увеличенная карточка (первая в категорийной сетке) — широкая
   // фото-плита вместо портретной.
   featured?: boolean
+  // Плотность карточки. 'kit' (по умолчанию) — крупная фото-форвард карточка
+  // набора с описанием/статами/callout. 'compact' — плотная карточка реактива
+  // /оборудования (мелкое фото, степпер + «В корзину»), делегируется в
+  // CompactProductCard. Дефолт сохраняет существующее поведение — вызовы на
+  // главной по типам не ломаются.
+  density?: 'kit' | 'compact'
 }
 
 export function ProductCard({
@@ -47,7 +54,14 @@ export function ProductCard({
   hoverFormula,
   cornerMark,
   featured = false,
+  density = 'kit',
 }: Props) {
+  // Компактная плотность — отдельная клиентская карточка со степпером.
+  // Возврат до вычислений «kit»-разметки: у compact своя структура.
+  if (density === 'compact') {
+    return <CompactProductCard product={product} images={images} />
+  }
+
   const sku = product.sku || product.slug
   const skuLabel = elementSymbol ? `№ ${sku} / ${elementSymbol}` : `№ ${sku}`
   // v3.5: бейдж «brand» — яркий градиентный пилл (см. V3_5_BRIGHT_ADDENDUM §4).

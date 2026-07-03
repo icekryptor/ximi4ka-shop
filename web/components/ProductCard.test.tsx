@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { ProductCard } from './ProductCard'
 import type { Product } from '@ximi4ka-shop/shared'
 
@@ -165,6 +165,34 @@ describe('ProductCard images behavior', () => {
     )
     const imgs = container.querySelectorAll('img')
     expect(imgs.length).toBe(2)
+  })
+
+  it('delegates to the compact card (stepper + add button) when density="compact"', () => {
+    const images = [{ id: 'i1', productId: 'p1', url: '/a.png', alt: 'a', sortOrder: 0 }]
+    const { container } = render(
+      <ProductCard
+        product={baseProduct}
+        stats={stats}
+        statMaxes={statMaxes}
+        images={images}
+        density="compact"
+      />,
+    )
+    expect(container.querySelector('[data-density="compact"]')).not.toBeNull()
+    // Компактная карточка не рендерит стат-бары набора.
+    expect(container.querySelectorAll('[data-statbar]').length).toBe(0)
+    // Степпер количества присутствует.
+    expect(within(container).getByRole('group', { name: /Количество/ })).toBeInTheDocument()
+    expect(
+      within(container).getByRole('button', { name: 'Увеличить количество' }),
+    ).toBeInTheDocument()
+  })
+
+  it('renders the big kit layout by default (density defaults to kit)', () => {
+    const { container } = render(
+      <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={[]} />,
+    )
+    expect(container.querySelector('[data-density="compact"]')).toBeNull()
   })
 
   it('suppresses cornerMark when images is empty', () => {
