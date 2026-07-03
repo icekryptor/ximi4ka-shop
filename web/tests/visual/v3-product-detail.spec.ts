@@ -43,13 +43,17 @@ test.describe('v3 Lab Journal — product detail', () => {
 
   test('characteristics section visual', async ({ page }) => {
     // SECTION 3 (ink LabSection) — disambiguated by the eyebrow text
-    // "02.0 / Технические данные" which renders unconditionally on this
-    // section, regardless of whether the product has a populated full
-    // characteristics table.
+    // "02.0 / Технические данные". Начиная с v3.5 секция скрывается
+    // целиком, когда у товара нет распарсенных характеристик — в этом
+    // случае снапшотить нечего, тест скипается (данные, а не дизайн).
     const characteristics = page
       .locator('section')
       .filter({ hasText: '02.0 / Технические данные' })
       .first()
+    if ((await characteristics.count()) === 0) {
+      test.skip(true, 'товар без характеристик — секция скрыта (v3.5)')
+      return
+    }
     await characteristics.scrollIntoViewIfNeeded()
     await page.waitForTimeout(500)
     await expect(characteristics).toHaveScreenshot('pdp-characteristics.png', {
