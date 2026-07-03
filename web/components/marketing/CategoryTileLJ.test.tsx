@@ -43,6 +43,22 @@ describe('<CategoryTileLJ>', () => {
     expect(screen.getByText(/5 товаров →/)).toBeInTheDocument()
   })
 
+  it('shows neutral «смотреть →» instead of «0 товаров» when count is unknown', () => {
+    render(<CategoryTileLJ category={cat} index={0} productCount={0} />)
+    expect(screen.getByText('смотреть →')).toBeInTheDocument()
+    expect(screen.queryByText(/0 товаров/)).toBeNull()
+  })
+
+  it('renders as a bright gradient container with large radius (v3.5)', () => {
+    const { container } = render(
+      <CategoryTileLJ category={cat} index={0} productCount={42} />,
+    )
+    const link = container.querySelector('a')
+    expect(link?.className).toContain('bg-[image:var(--gradient-lj-bright)]')
+    expect(link?.className).toContain('rounded-[var(--radius-lj-bright)]')
+    expect(link?.className).toContain('lj-lift')
+  })
+
   it('renders an SVG molecule decoration', () => {
     const { container } = render(<CategoryTileLJ category={cat} index={0} productCount={42} />)
     expect(container.querySelector('svg')).not.toBeNull()
