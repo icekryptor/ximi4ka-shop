@@ -3,6 +3,7 @@ import {
   COMBO_SLUGS,
   SLUG_OVERRIDES,
   assertUniqueSlugs,
+  cleanProductName,
   extractOgDescription,
   extractProductJson,
   parseProductsTsv,
@@ -253,5 +254,50 @@ describe('assertUniqueSlugs', () => {
 
   it('throws listing the duplicated slug', () => {
     expect(() => assertUniqueSlugs(['a', 'b', 'a'])).toThrow(/a/)
+  })
+})
+
+describe('cleanProductName', () => {
+  it('splits a SEO H1 into a clean name + metaTitle', () => {
+    expect(
+      cleanProductName('Купить сульфат алюминия 5%, 35 мл | Алюминий сернокислый для опытов'),
+    ).toEqual({
+      name: 'Сульфат алюминия 5%, 35 мл',
+      metaTitle: 'Купить сульфат алюминия 5%, 35 мл | Алюминий сернокислый для опытов',
+    })
+  })
+
+  it('nominativises accusative leading heads', () => {
+    expect(
+      cleanProductName('Купить серную кислоту 7%, 65 мл | Раствор серной кислоты для опытов').name,
+    ).toBe('Серная кислота 7%, 65 мл')
+    expect(
+      cleanProductName('Купить азотную кислоту 10%, 65 мл | Азотная кислота ОСЧ для опытов').name,
+    ).toBe('Азотная кислота 10%, 65 мл')
+    expect(
+      cleanProductName('Купить соляную кислоту 10%, 65 мл | Раствор соляной кислоты ХЧ').name,
+    ).toBe('Соляная кислота 10%, 65 мл')
+    expect(cleanProductName('Купить серу молотую 10-12 г | Сера техническая для опытов').name).toBe(
+      'Сера молотая 10-12 г',
+    )
+    expect(cleanProductName('Купить железную вату 4-4,5 г | Железо металлическое для опытов').name).toBe(
+      'Железная вата 4-4,5 г',
+    )
+  })
+
+  it('leaves already-clean names untouched (metaTitle=null)', () => {
+    expect(cleanProductName('Электрохимичка')).toEqual({ name: 'Электрохимичка', metaTitle: null })
+    expect(cleanProductName('Чашка Петри')).toEqual({ name: 'Чашка Петри', metaTitle: null })
+  })
+
+  it('is idempotent: cleaning a clean name is a no-op', () => {
+    const once = cleanProductName('Купить хлорид бария 3%, 35 мл | Барий хлористый (BaCl2)')
+    const twice = cleanProductName(once.name)
+    expect(twice.name).toBe(once.name)
+    expect(twice.metaTitle).toBeNull()
+  })
+
+  it('does not treat a plain "Купить"-less pipe name as SEO', () => {
+    expect(cleanProductName('Химичка | 3.0')).toEqual({ name: 'Химичка | 3.0', metaTitle: null })
   })
 })

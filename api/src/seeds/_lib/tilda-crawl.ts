@@ -156,6 +156,52 @@ export function extractOgDescription(html: string): string | null {
   return decoded === '' ? null : decoded
 }
 
+// Reagent (and a few equipment) product names on Tilda are SEO H1 strings of
+// the shape `Купить <товар> | <синонимы для опытов>` — great for search, ugly
+// on a card, in the cart, and in an order line. Split that into a clean display
+// name and keep the full original as the SEO `metaTitle`.
+//
+//   in : "Купить серную кислоту 7%, 65 мл | Раствор серной кислоты для опытов"
+//   out: { name: "Серная кислота 7%, 65 мл",
+//          metaTitle: "Купить серную кислоту 7%, 65 мл | …" }
+//
+// Names without the `Купить … | …` pattern (kits, most equipment) pass through
+// unchanged with metaTitle=null.
+//
+// A handful of names lead with an accusative noun (because "Купить" governs the
+// accusative). We nominativise just those leading heads so the card reads like a
+// title, not a shopping-list line.
+// `\b` is unreliable next to Cyrillic (не в \w), so anchor the tail on a space
+// or end-of-string with a lookahead instead.
+const ACCUSATIVE_HEADS: Array<[RegExp, string]> = [
+  [/^серную кислоту(?=\s|$)/i, 'Серная кислота'],
+  [/^азотную кислоту(?=\s|$)/i, 'Азотная кислота'],
+  [/^соляную кислоту(?=\s|$)/i, 'Соляная кислота'],
+  [/^серу молотую(?=\s|$)/i, 'Сера молотая'],
+  [/^железную вату(?=\s|$)/i, 'Железная вата'],
+]
+
+export function cleanProductName(rawName: string): { name: string; metaTitle: string | null } {
+  const raw = rawName.trim()
+  const hasSeoPattern = /^Купить\s/i.test(raw) && raw.includes(' | ')
+  if (!hasSeoPattern) return { name: raw, metaTitle: null }
+
+  let display = raw.split(' | ', 1)[0]!.trim()
+  display = display.replace(/^Купить\s+/i, '').trim()
+
+  for (const [re, replacement] of ACCUSATIVE_HEADS) {
+    if (re.test(display)) {
+      display = display.replace(re, replacement)
+      break
+    }
+  }
+  // Capitalise the leading letter (nominative fixups already do; this covers
+  // the pass-through nominative heads like "сульфат алюминия …").
+  if (display) display = display[0]!.toUpperCase() + display.slice(1)
+
+  return { name: display, metaTitle: raw }
+}
+
 // The main product text block uses `<br /><br />` as a paragraph separator.
 // Split on double-<br> runs, keep single <br> as an in-paragraph line break,
 // sanitize each chunk and wrap it in <p> for the shared ParagraphBlock shape.
