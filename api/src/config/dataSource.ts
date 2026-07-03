@@ -36,9 +36,23 @@ function resolveDatabaseUrl(): string {
 
 export const databaseUrl = resolveDatabaseUrl()
 
+// Managed Postgres (Neon, Railway, Supabase) requires TLS; local dev/test on
+// localhost does not. rejectUnauthorized:false avoids bundling provider CA
+// chains (their pooler certs don't always validate against the system store).
+// Force on/off explicitly with DATABASE_SSL=true|false when the heuristic is
+// wrong (e.g. a remote host reached over a private network without TLS).
+function resolveSsl(): false | { rejectUnauthorized: false } {
+  const flag = process.env.DATABASE_SSL
+  if (flag === 'true') return { rejectUnauthorized: false }
+  if (flag === 'false') return false
+  const isLocal = /@(localhost|127\.0\.0\.1|\[::1\])[:/]/.test(databaseUrl)
+  return isLocal ? false : { rejectUnauthorized: false }
+}
+
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: databaseUrl,
+  ssl: resolveSsl(),
   // ALWAYS false — schema changes go through migrations.
   synchronize: false,
   logging: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
