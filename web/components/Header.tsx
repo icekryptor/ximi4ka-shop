@@ -14,19 +14,23 @@ interface NavItem {
   href: string
   label: string
   desc: string
+  // Дополнительные префиксы, при которых пункт считается активным. «Каталог»
+  // ведёт на /catalog, но подсвечивается и на страницах категорий и товаров.
+  match?: string[]
 }
 
 const NAV: NavItem[] = [
-  { href: '/categories', label: 'Каталог', desc: 'найти набор' },
+  { href: '/catalog', label: 'Каталог', desc: 'найти набор', match: ['/categories', '/product'] },
   { href: '/blog', label: 'Блог', desc: 'записи из лаборатории' },
   { href: '/o-nas', label: 'О нас', desc: 'наша лаборатория' },
   { href: '/dostavka', label: 'Доставка', desc: 'сроки и тарифы' },
   { href: '/kontakty', label: 'Контакты', desc: 'связь с нами' },
 ]
 
-function isActive(pathname: string, href: string): boolean {
-  if (href === '/') return pathname === '/'
-  return pathname === href || pathname.startsWith(`${href}/`)
+function isActive(pathname: string, item: NavItem): boolean {
+  if (item.href === '/') return pathname === '/'
+  const prefixes = [item.href, ...(item.match ?? [])]
+  return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`))
 }
 
 interface HeaderProps {
@@ -92,7 +96,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
             className="hidden md:flex items-center gap-6 lg:gap-8"
           >
             {NAV.map((item) => {
-              const active = isActive(pathname, item.href)
+              const active = isActive(pathname, item)
               return (
                 <Link
                   key={item.href}

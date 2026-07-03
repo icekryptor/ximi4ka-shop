@@ -44,7 +44,7 @@ describe('Header v3', () => {
     const mainNav = screen.getByRole('navigation', { name: 'Основная навигация' })
     expect(within(mainNav).getByRole('link', { name: 'Каталог' })).toHaveAttribute(
       'href',
-      '/categories',
+      '/catalog',
     )
     expect(within(mainNav).getByRole('link', { name: 'Блог' })).toHaveAttribute(
       'href',

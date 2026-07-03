@@ -9,6 +9,7 @@ interface NavItem {
   href: string
   label: string
   desc?: string
+  match?: string[]
 }
 
 interface Props {
@@ -36,8 +37,11 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
   if (!open) return null
 
   const pad = (n: number) => String(n).padStart(2, '0')
-  const isActive = (href: string) =>
-    href === '/' ? pathname === '/' : pathname === href || pathname.startsWith(`${href}/`)
+  const isActive = (item: NavItem) => {
+    if (item.href === '/') return pathname === '/'
+    const prefixes = [item.href, ...(item.match ?? [])]
+    return prefixes.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+  }
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Меню" className="fixed inset-0 z-[60]">
@@ -61,7 +65,7 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
 
           <ul className="list-none p-0 m-0 flex flex-col gap-0">
             {navItems.map((item, i) => {
-              const active = isActive(item.href)
+              const active = isActive(item)
               return (
                 <li key={item.href} className="border-b border-[var(--color-lj-rule)] py-6">
                   <Link

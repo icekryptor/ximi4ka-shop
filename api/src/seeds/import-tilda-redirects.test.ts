@@ -13,12 +13,12 @@ const REDIRECTS_CSV_PATH = path.resolve(
 )
 
 describe('data/tilda-redirects.csv', () => {
-  it('parses cleanly: 85 valid 301 rows, unique from_path', async () => {
+  it('parses cleanly: 84 valid 301 rows, unique from_path', async () => {
     const csv = await readFile(REDIRECTS_CSV_PATH, 'utf-8')
     const { rows, errors } = parseRedirectCsv(csv)
 
     expect(errors).toEqual([])
-    expect(rows).toHaveLength(85)
+    expect(rows).toHaveLength(84)
     expect(rows.every((r) => r.statusCode === 301)).toBe(true)
     expect(rows.every((r) => r.fromPath.startsWith('/') && r.toPath.startsWith('/'))).toBe(
       true,

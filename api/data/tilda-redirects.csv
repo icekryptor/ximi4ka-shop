@@ -1,5 +1,4 @@
 from_path,to_path,status_code
-/catalog,/categories,301
 /catalog/kits,/categories/kits,301
 /catalog/combo,/categories/combo,301
 /catalog/reagents,/categories/reagents,301

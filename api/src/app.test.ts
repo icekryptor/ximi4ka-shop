@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import request from 'supertest'
 import { createApp } from './app.js'
 
@@ -12,6 +12,18 @@ describe('GET /health', () => {
 })
 
 describe('CORS', () => {
+  // Pin WEB_ORIGIN so the assertions hold regardless of the ambient dev .env
+  // (local dev may point WEB_ORIGIN at a non-default port, e.g. :3020).
+  let prevOrigin: string | undefined
+  beforeEach(() => {
+    prevOrigin = process.env.WEB_ORIGIN
+    process.env.WEB_ORIGIN = 'http://localhost:3000'
+  })
+  afterEach(() => {
+    if (prevOrigin === undefined) delete process.env.WEB_ORIGIN
+    else process.env.WEB_ORIGIN = prevOrigin
+  })
+
   it('allows the configured web origin with credentials', async () => {
     const app = createApp()
     const res = await request(app)
