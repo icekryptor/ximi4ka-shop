@@ -128,6 +128,14 @@ describe('Category routes', () => {
       expect(res.status).toBe(200)
       expect(res.body.data).toHaveLength(2)
     })
+
+    // Фиды (yml.xml, turbo.xml, sitemap) тянут дерево категорий целиком и
+    // просят запас: с админским потолком в 100 запрос отдавал 400, фид молча
+    // уходил в catch и Яндекс получал каталог без единого оффера.
+    it('accepts a generous limit like the feeds use', async () => {
+      const res = await request(app).get('/api/public/categories?limit=500')
+      expect(res.status).toBe(200)
+    })
   })
 
   describe('GET /api/public/categories/:slug', () => {

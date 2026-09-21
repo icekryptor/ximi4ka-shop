@@ -21,3 +21,12 @@ export const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   offset: z.coerce.number().int().min(0).default(0),
 })
+
+// Публичное дерево категорий читают фиды (yml.xml, turbo.xml, sitemap): им
+// нужен весь список разом, с запасом на рост каталога. Потолок как у
+// PublicListQuerySchema товаров — с админским в 100 фид получал 400 и
+// сваливался в catch, отдавая Яндексу пустой каталог.
+export const PublicListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(5000).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+})

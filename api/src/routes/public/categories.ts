@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { AppDataSource } from '../../config/dataSource.js'
 import { ProductCategory } from '../../entities/ProductCategory.js'
 import { Product } from '../../entities/Product.js'
-import { ListQuerySchema } from '../admin/categories.schemas.js'
+import { PublicListQuerySchema } from '../admin/categories.schemas.js'
 import { notFound } from '../errors.js'
 
 export const publicCategoriesRouter: Router = Router()
@@ -10,7 +10,7 @@ export const publicCategoriesRouter: Router = Router()
 // List all categories (flat)
 publicCategoriesRouter.get('/', async (req, res, next) => {
   try {
-    const { limit, offset } = ListQuerySchema.parse(req.query)
+    const { limit, offset } = PublicListQuerySchema.parse(req.query)
     const repo = AppDataSource.getRepository(ProductCategory)
     const [items, total] = await repo.findAndCount({
       order: { sortOrder: 'ASC', name: 'ASC' },
@@ -38,7 +38,7 @@ publicCategoriesRouter.get('/:slug', async (req, res, next) => {
 // List products in a category by slug
 publicCategoriesRouter.get('/:slug/products', async (req, res, next) => {
   try {
-    const { limit, offset } = ListQuerySchema.parse(req.query)
+    const { limit, offset } = PublicListQuerySchema.parse(req.query)
     const catRepo = AppDataSource.getRepository(ProductCategory)
     const category = await catRepo.findOne({ where: { slug: req.params.slug } })
     if (!category) throw notFound('category_not_found', 'Category not found')
