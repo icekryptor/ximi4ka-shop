@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   ApiError,
   listPublishedProducts,
@@ -586,5 +586,49 @@ describe('api client', () => {
       const [, init] = fetchMock.mock.calls[0]
       expect(init.signal).toBe(controller.signal)
     })
+  })
+})
+
+describe('API base resolution', () => {
+  const ORIGINAL_API_URL = process.env.API_URL
+  const ORIGINAL_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL
+
+  afterEach(() => {
+    if (ORIGINAL_API_URL == null) delete process.env.API_URL
+    else process.env.API_URL = ORIGINAL_API_URL
+    if (ORIGINAL_PUBLIC_API_URL == null) delete process.env.NEXT_PUBLIC_API_URL
+    else process.env.NEXT_PUBLIC_API_URL = ORIGINAL_PUBLIC_API_URL
+    vi.resetModules()
+  })
+
+  async function fetchedUrlWith(env: Record<string, string | undefined>) {
+    for (const [key, value] of Object.entries(env)) {
+      if (value == null) delete process.env[key]
+      else process.env[key] = value
+    }
+    vi.resetModules()
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { data: [], pagination: { limit: 1, offset: 0, total: 0 } }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { listPublishedProducts: list } = await import('./api')
+    await list({ limit: 1 })
+    return String(fetchMock.mock.calls[0][0])
+  }
+
+  it('prefers the server-only API_URL so SSR/ISR can reach the api container directly', async () => {
+    const url = await fetchedUrlWith({
+      API_URL: 'http://ximishop-api:3001',
+      NEXT_PUBLIC_API_URL: 'https://new.ximi4ka.ru',
+    })
+    expect(url.startsWith('http://ximishop-api:3001/')).toBe(true)
+  })
+
+  it('falls back to the public URL when API_URL is unset (browser bundles)', async () => {
+    const url = await fetchedUrlWith({
+      API_URL: undefined,
+      NEXT_PUBLIC_API_URL: 'https://new.ximi4ka.ru',
+    })
+    expect(url.startsWith('https://new.ximi4ka.ru/')).toBe(true)
   })
 })

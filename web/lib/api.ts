@@ -9,7 +9,13 @@ import type {
   SearchResult,
 } from '@ximi4ka-shop/shared'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+// Two audiences, two origins. The browser must use the public origin
+// (NEXT_PUBLIC_API_URL, inlined at build time). Server-side rendering — build,
+// ISR revalidation, RSC requests — runs inside the web container and can reach
+// the api container directly over the docker network via API_URL, which also
+// keeps SSR working before the DNS cutover, while the public hostname still
+// points at the old deployment. Same pattern as lib/adminAuth.ts.
+const API_BASE = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export class ApiError extends Error {
   constructor(
