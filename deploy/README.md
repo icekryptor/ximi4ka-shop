@@ -59,6 +59,17 @@ docker exec -i supabase-db psql -U postgres -d ximi4ka_shop \
 `seed`, `import:tilda-catalog -- --replace-dev-seed`, `import:tilda-articles`,
 `import:tilda-redirects` — исходники лежат в гите, в `api/data/`.
 
+⚠️ **Закрыть от индексации сразу после restore.** В дампе с машины разработчика
+`site_settings.robots_txt` разрешает обход (`Allow: /`), а апекс всё ещё на
+Tilda — без этого шага каталог задублируется в индексе против основного сайта:
+
+```bash
+docker exec -i supabase-db psql -U postgres -d ximi4ka_shop \
+  -c $'UPDATE site_settings SET robots_txt = \'User-agent: *\nDisallow: /\';'
+```
+
+Снять — только при переключении апекса (админка → Настройки → robots.txt).
+
 ### 3. Код и секреты
 
 ```bash
@@ -76,7 +87,15 @@ bash deploy/deploy.sh
 ```
 
 Скрипт собирает оба образа, поднимает контейнеры, ждёт healthy api, накатывает
-миграции (`api/dist/scripts/migrate.js`) и печатает число товаров в каталоге.
+миграции (`api/dist/scripts/migrate.js`), печатает число товаров в каталоге и
+прогревает главные страницы.
+
+Про прогрев: шаги сборки docker не видят docker-сеть (ни `build.network` с
+внешней сетью, ни билдер с `--driver-opt network=...` — второе проверено,
+имена контейнеров внутри шагов не резолвятся), поэтому страницы и фиды с
+данными намеренно не пререндерятся: они рендерятся по первому запросу и дальше
+живут в ISR-кеше. Этот первый запрос делает deploy.sh, чтобы он не достался
+живому посетителю.
 
 ### 5. Caddy
 
@@ -100,6 +119,8 @@ docker exec ximishop-api wget -qO- http://ximishop-web:3000/ru | head -c 300
 ### 7. Смоук после переключения
 
 - `/`, `/catalog`, `/categories/kits`, `/product/himichka-30`, `/blog` — 200 и с контентом;
+- `/yml.xml` — 62 оффера и 5 категорий (пустой `<offers></offers>` означает, что
+  api отдаёт ошибку на дерево категорий), `/sitemap.xml` — 78 ссылок;
 - `/tproduct/342501029362-mini-himichka` → 301 `/product/mini-himichka`;
 - `/sitemap.xml`, `/robots.txt` (должен остаться `Disallow: /`, пока апекс на Tilda),
   `/yml.xml`, `/turbo.xml`, `/blog/rss.xml`;
@@ -118,3 +139,12 @@ docker exec ximishop-api wget -qO- http://ximishop-web:3000/ru | head -c 300
   (`/policy`, `/oferta`, `/faq`, `/success`, `/fail` и др.).
 - Картинки товаров — на static.tildacdn.com; перезаливка в наш Storage отдельной задачей.
 - `web/middleware.ts` → конвенция `proxy` (deprecation Next 16).
+
+## Проверено локально перед выездом
+
+Весь стек прогнан на ноутбуке в docker (postgres в контейнере с восстановленным
+дампом, api, web, Caddy перед ними): `deploy.sh` отрабатывает целиком, миграции
+накатываются внутри контейнера, витрина отдаёт 62 товара, категории, блог и
+фиды. По дороге этим прогоном пойманы три дефекта, которые ломали и прод на
+Vercel: пустая сборка при `build.network`, 500 на `/categories/*` и пустой
+YML-фид.
