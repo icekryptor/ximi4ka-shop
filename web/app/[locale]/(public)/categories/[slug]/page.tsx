@@ -4,7 +4,6 @@ import { notFound } from 'next/navigation'
 import {
   ApiError,
   getCategory,
-  listCategories,
   listProductsByCategory,
 } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
@@ -26,7 +25,13 @@ import {
 import type { SortKey } from '@/components/marketing/CategoryFilterBar'
 import { CategoryFilterBarMount } from './_components/CategoryFilterBarMount'
 
-export const revalidate = 60
+// Страница читает searchParams (сортировка и номер страницы), а такую Next не
+// умеет отдавать из ISR-кеша: при рендере по запросу она падает с
+// DYNAMIC_SERVER_USAGE, если слаг не попал в пререндер сборки. На своём сервере
+// образ собирается без доступа к api, пререндера нет вовсе — значит страница
+// должна быть честно динамической. Данные рядом (api в соседнем контейнере),
+// так что рендер по запросу дешёвый.
+export const dynamic = 'force-dynamic'
 
 const PAGE_SIZE = 12
 
@@ -36,17 +41,6 @@ const PAGE_SIZE = 12
 const COMPACT_SLUGS = new Set(['reagents', 'equipment', 'print'])
 function densityForSlug(slug: string): 'kit' | 'compact' {
   return COMPACT_SLUGS.has(slug) ? 'compact' : 'kit'
-}
-
-export async function generateStaticParams() {
-  try {
-    const res = await listCategories({ limit: 100 })
-    return SUPPORTED_LOCALES.flatMap((locale) =>
-      res.data.map((cat) => ({ locale, slug: cat.slug })),
-    )
-  } catch {
-    return []
-  }
 }
 
 interface Props {

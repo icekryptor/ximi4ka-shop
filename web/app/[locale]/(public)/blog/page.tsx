@@ -18,13 +18,12 @@ import {
   type Locale,
 } from '@/lib/i18n'
 
-export const revalidate = 60
+// Пагинация живёт в searchParams, а ISR кеширует страницу без учёта query:
+// из кеша любой ?page=N отдавался бы первой страницей. См. тот же разбор в
+// categories/[slug]/page.tsx.
+export const dynamic = 'force-dynamic'
 
 const PAGE_SIZE = 12
-
-export function generateStaticParams() {
-  return SUPPORTED_LOCALES.map((locale) => ({ locale }))
-}
 
 interface Props {
   params: Promise<{ locale: string }>

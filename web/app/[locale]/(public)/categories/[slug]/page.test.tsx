@@ -1,16 +1,16 @@
 import { describe, it, expect } from 'vitest'
-import CategoryDetailPage, { revalidate, generateStaticParams } from './page'
+import CategoryDetailPage, { dynamic } from './page'
 
 describe('CategoryDetailPage', () => {
   it('is an async Server Component', () => {
     expect(CategoryDetailPage.constructor.name).toBe('AsyncFunction')
   })
 
-  it('enables ISR with a 60-second revalidate window', () => {
-    expect(revalidate).toBe(60)
-  })
-
-  it('exports generateStaticParams as a function', () => {
-    expect(typeof generateStaticParams).toBe('function')
+  // Страница читает searchParams (сортировка, страница), поэтому её нельзя
+  // отдавать из ISR-кеша: при рендере по запросу Next падает с
+  // DYNAMIC_SERVER_USAGE (500), если слаг не был пререндерен на сборке — а на
+  // своём сервере образ собирается без доступа к api, то есть пререндера нет.
+  it('stays dynamic because it reads searchParams', () => {
+    expect(dynamic).toBe('force-dynamic')
   })
 })

@@ -7,8 +7,7 @@ vi.mock('@/lib/api', () => ({
 }))
 
 import BlogListPage, {
-  revalidate,
-  generateStaticParams,
+  dynamic,
   generateMetadata,
 } from './page'
 import { listBlogPosts } from '@/lib/api'
@@ -54,15 +53,10 @@ describe('BlogListPage', () => {
     expect(BlogListPage.constructor.name).toBe('AsyncFunction')
   })
 
-  it('enables ISR with a 60-second revalidate window', () => {
-    expect(revalidate).toBe(60)
-  })
-
-  it('pre-renders both locales via generateStaticParams', () => {
-    expect(generateStaticParams()).toEqual([
-      { locale: 'ru' },
-      { locale: 'en' },
-    ])
+  // Пагинация живёт в searchParams: из ISR-кеша страница отдавалась бы
+  // первой страницей на любой ?page=N.
+  it('stays dynamic because pagination lives in searchParams', () => {
+    expect(dynamic).toBe('force-dynamic')
   })
 
   it('emits the blog title + canonical via generateMetadata', async () => {
