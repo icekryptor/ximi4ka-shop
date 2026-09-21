@@ -5,7 +5,10 @@ import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 // endpoint on the API. Revalidated every 5 minutes — short enough that an
 // admin edit propagates quickly, long enough that burst crawling doesn't hit
 // the DB on every request.
-export const revalidate = 300
+// Фид строится из каталога, а сборка образа идёт без доступа к api: с
+// пререндером в образ попал бы пустой фид и отдавался бы до истечения окна
+// revalidate. Рендерим по запросу — фид дёргают краулеры, это недорого.
+export const dynamic = 'force-dynamic'
 
 // Safe fallback used if the API is unreachable. Keeps crawlers happy (returns
 // 200 with a permissive default) rather than serving a 5xx that some bots

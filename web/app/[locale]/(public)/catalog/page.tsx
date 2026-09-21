@@ -19,10 +19,11 @@ import {
 
 export const revalidate = 60
 
-export function generateStaticParams() {
-  return SUPPORTED_LOCALES.map((locale) => ({ locale }))
-}
-
+// generateStaticParams по локалям здесь не нужен: образ собирается без доступа
+// к api (buildkit не пускает шаги сборки в docker-сеть), поэтому пререндер
+// запёк бы в образ пустую страницу и отдавал её до конца окна revalidate.
+// Без него страница рендерится по первому запросу — уже с данными — и дальше
+// живёт в ISR-кеше те же 60 секунд.
 interface Props {
   params: Promise<{ locale: string }>
 }

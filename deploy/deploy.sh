@@ -24,6 +24,10 @@ done
 
 echo "→ сборка образов"
 "${COMPOSE[@]}" build
+# `docker compose build` умеет завершиться с кодом 0, не собрав ничего (так
+# ведёт себя bake, например, при неподдерживаемом build.network) — проверяем,
+# что образы действительно появились, иначе up поднимет прошлую версию.
+docker image inspect ximishop-api:latest ximishop-web:latest >/dev/null
 
 echo "→ переключение контейнеров"
 "${COMPOSE[@]}" up -d
@@ -50,5 +54,15 @@ echo "  товаров в каталоге: ${total:-0}"
 if [[ "${total:-0}" == "0" ]]; then
   echo "⚠️  каталог пуст — база не залита (см. deploy/README.md, шаг «Данные»)" >&2
 fi
+
+# Прогрев: страницы с данными намеренно не пререндерятся на сборке (шаги
+# buildkit не видят docker-сеть, см. deploy/docker-compose.yml), поэтому первый
+# запрос каждой из них — рендер с походом в api. Делаем его сами.
+echo "→ прогрев страниц"
+for page in /ru /ru/catalog /ru/categories /ru/blog /sitemap.xml /yml.xml; do
+  code=$(docker exec ximishop-web wget -S -qO /dev/null "http://127.0.0.1:3000$page" 2>&1 \
+    | sed -n 's/.*HTTP\/1\.1 \([0-9]*\).*/\1/p' | tail -1)
+  echo "  $page → ${code:-нет ответа}"
+done
 
 echo "✅ деплой завершён: $(git rev-parse --short HEAD)"

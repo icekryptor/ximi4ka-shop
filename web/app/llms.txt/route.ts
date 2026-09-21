@@ -3,7 +3,10 @@ import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 // Serve admin-edited llms.txt at the site root. Mirrors the robots.txt handler
 // but returns an empty body on failure (llms.txt is opt-in; there is no
 // sensible "default" content to serve).
-export const revalidate = 300
+// Фид строится из каталога, а сборка образа идёт без доступа к api: с
+// пререндером в образ попал бы пустой фид и отдавался бы до истечения окна
+// revalidate. Рендерим по запросу — фид дёргают краулеры, это недорого.
+export const dynamic = 'force-dynamic'
 
 export async function GET(): Promise<Response> {
   try {

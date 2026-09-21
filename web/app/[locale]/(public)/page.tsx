@@ -98,12 +98,11 @@ export const SITE_CATALOG = [
 // Химичка 3.0's instruments=12 fills ~60% of the same scale).
 const SITE_CATALOG_STAT_MAXES = { reagents: 18, instruments: 20, reactions: 161 }
 
-export function generateStaticParams() {
-  // One root page per locale. Middleware rewrites unprefixed `/` to
-  // `/${DEFAULT_LOCALE}` so RU is served at a clean URL.
-  return SUPPORTED_LOCALES.map((locale) => ({ locale }))
-}
-
+// generateStaticParams по локалям здесь не нужен: образ собирается без доступа
+// к api (buildkit не пускает шаги сборки в docker-сеть), поэтому пререндер
+// запёк бы в образ пустую страницу и отдавал её до конца окна revalidate.
+// Без него страница рендерится по первому запросу — уже с данными — и дальше
+// живёт в ISR-кеше те же 60 секунд.
 interface Props {
   params: Promise<{ locale: string }>
 }

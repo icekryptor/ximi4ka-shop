@@ -6,7 +6,9 @@ import { generateBlogRss } from '@/lib/blogRss'
 // fine, mirroring /turbo.xml. NOTE: this path is excluded from the locale
 // middleware (see middleware.ts) so it's served unprefixed like the other
 // XML feeds.
-export const revalidate = 3600
+// Лента строится из блога, а сборка идёт без доступа к api — иначе в образ
+// попала бы пустая лента. См. тот же разбор в app/yml.xml/route.ts.
+export const dynamic = 'force-dynamic'
 
 export async function GET(): Promise<Response> {
   try {

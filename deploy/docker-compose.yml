@@ -43,9 +43,12 @@ services:
     build:
       context: ..
       dockerfile: web/Dockerfile
-      # Сборка в сети Supabase: пререндер страниц ходит в ximishop-api напрямую,
-      # не через публичный домен (который до переключения DNS ведёт на Vercel).
-      network: supabase_default
+      # Сети у сборки нет, и это проверенный тупик, а не недосмотр: buildkit не
+      # принимает build.network с внешней docker-сетью (падает молча, с кодом 0
+      # и без образа), а отдельный билдер с --driver-opt network=... всё равно
+      # не резолвит имена контейнеров внутри шагов. Поэтому страницы и фиды, у
+      # которых данные из api, не пререндерятся вовсе: они рендерятся по первому
+      # запросу и дальше живут в ISR-кеше. deploy.sh делает этот первый запрос.
       args:
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL не задан в deploy/web.env}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL не задан в deploy/web.env}

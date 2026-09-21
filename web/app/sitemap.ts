@@ -12,6 +12,11 @@ import {
   type Locale,
 } from '@/lib/i18n'
 
+// Карта сайта строится из каталога, блога и CMS-страниц, а образ собирается без
+// доступа к api: пререндер запёк бы в него карту из четырёх статических ссылок.
+// Рендерим по запросу — её читают только краулеры.
+export const dynamic = 'force-dynamic'
+
 // Path-per-locale helper. Matches the middleware rule: default locale
 // URLs stay unprefixed, everything else gets a /${locale}/ prefix.
 function pathForLocale(locale: Locale, pathname: string): string {

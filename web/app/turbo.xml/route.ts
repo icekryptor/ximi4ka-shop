@@ -5,7 +5,10 @@ import { generateTurboRss } from '@/lib/turbo'
 // Yandex Turbo RSS. Polled on a similar cadence to YML — an hour of
 // staleness is acceptable and saves us from regenerating full-text HTML
 // on every crawl hit.
-export const revalidate = 3600
+// Фид строится из каталога, а сборка образа идёт без доступа к api: с
+// пререндером в образ попал бы пустой фид и отдавался бы до истечения окна
+// revalidate. Рендерим по запросу — фид дёргают краулеры, это недорого.
+export const dynamic = 'force-dynamic'
 
 export async function GET(): Promise<Response> {
   try {

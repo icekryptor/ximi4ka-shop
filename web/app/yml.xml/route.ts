@@ -10,7 +10,10 @@ import { generateYmlXml } from '@/lib/ymlFeed'
 // Cache the feed for 1 hour. Yandex polls this endpoint; regenerating on
 // every hit would hammer the API. Phase 9 will add admin-triggered
 // invalidation; for now ISR is acceptable.
-export const revalidate = 3600
+// Фид строится из каталога, а сборка образа идёт без доступа к api: с
+// пререндером в образ попал бы пустой фид и отдавался бы до истечения окна
+// revalidate. Рендерим по запросу — фид дёргают краулеры, это недорого.
+export const dynamic = 'force-dynamic'
 
 export async function GET(): Promise<Response> {
   try {
