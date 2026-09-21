@@ -1,0 +1,80 @@
+# Витрина ximi4ka (new.ximi4ka.ru) на своём VPS. Отдельный compose-проект — не
+# часть стека Supabase, — но подключён к его сети: api ходит в supabase-db
+# (alias `db`), а supabase-caddy проксирует домен на контейнеры по имени.
+#
+# Запуск/обновление: bash deploy/deploy.sh (на сервере, из /opt/ximishop/app)
+#
+# name обязателен: иначе compose возьмёт имя каталога (deploy), которое уже
+# занято другими приложениями на этом сервере, и деплой одного считал бы
+# контейнеры другого сиротами.
+name: ximishop
+
+services:
+  ximishop-api:
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
+    image: ximishop-api:latest
+    container_name: ximishop-api
+    restart: unless-stopped
+    env_file:
+      - ./app.env
+    # Наружу не публикуем: снаружи только Caddy (80/443).
+    expose:
+      - "3001"
+    volumes:
+      # Аплоады из админки переживают пересборку образа (в отличие от Railway).
+      - ximishop-uploads:/app/api/uploads
+    networks:
+      - supabase
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ximishop-web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+      # Сборка в сети Supabase: пререндер страниц ходит в ximishop-api напрямую,
+      # не через публичный домен (который до переключения DNS ведёт на Vercel).
+      network: supabase_default
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?NEXT_PUBLIC_SITE_URL не задан в deploy/web.env}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL не задан в deploy/web.env}
+        NEXT_PUBLIC_METRIKA_ID: ${NEXT_PUBLIC_METRIKA_ID:-}
+        API_URL: ${API_URL:-http://ximishop-api:3001}
+    image: ximishop-web:latest
+    container_name: ximishop-web
+    restart: unless-stopped
+    environment:
+      # Серверная сторона (SSR/ISR) ходит в api по docker-сети; браузер — по
+      # публичному адресу, вшитому в бандл на этапе сборки.
+      API_URL: ${API_URL:-http://ximishop-api:3001}
+    expose:
+      - "3000"
+    depends_on:
+      ximishop-api:
+        condition: service_healthy
+    networks:
+      - supabase
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  ximishop-uploads:
+
+networks:
+  supabase:
+    external: true
+    name: supabase_default

@@ -49,3 +49,7 @@ api/uploads/*
 
 # Local Claude Code config
 .claude/
+
+# деплой: секреты сервера (только .example в гите)
+deploy/app.env
+deploy/web.env
