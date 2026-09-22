@@ -1,21 +1,35 @@
-# Блок для /opt/supabase-src/docker/volumes/caddy/Caddyfile (рядом с erp. и db.).
-# Caddy сам выпускает сертификат при первом обращении после переключения DNS.
+# Блок для /opt/supabase-src/docker/volumes/proxy/caddy/Caddyfile — рядом с
+# learn., erp. и aics-93. Добавлять ПОСЛЕ переключения DNS на этот сервер:
+# пока A-запись ведёт на Vercel, Caddy не сможет пройти ACME-проверку и будет
+# копить неудачные попытки. Порядок после правки:
+#   docker exec supabase-caddy caddy validate --config /etc/caddy/Caddyfile
+#   docker exec supabase-caddy caddy reload   --config /etc/caddy/Caddyfile
 #
-# Порядок важен: api должен стоять ДО общего reverse_proxy на витрину, иначе
-# /api/* уедет в Next.js и вернёт 404.
+# Порядок handle важен: api должен стоять ДО общего reverse_proxy на витрину,
+# иначе /api/* уедет в Next.js и вернёт 404.
 new.ximi4ka.ru {
-	encode zstd gzip
+    encode zstd gzip
 
-	# Express-api: каталог, заказы, вебхук Т-Кассы, загруженные картинки.
-	handle /api/* {
-		reverse_proxy ximishop-api:3001
-	}
-	handle /uploads/* {
-		reverse_proxy ximishop-api:3001
-	}
+    # Express-api: каталог, заказы, вебхук Т-Кассы, загруженные картинки.
+    handle /api/* {
+        reverse_proxy ximishop-api:3001 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+    handle /uploads/* {
+        reverse_proxy ximishop-api:3001
+    }
 
-	# Всё остальное — витрина и админка (Next.js).
-	handle {
-		reverse_proxy ximishop-web:3000
-	}
+    # Всё остальное — витрина и админка (Next.js).
+    handle {
+        reverse_proxy ximishop-web:3000 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Иммутабельные ассеты Next.js — год в кэше браузера
+    @next_static path /_next/static/*
+    header @next_static Cache-Control "public, max-age=31536000, immutable"
+
+    header -server
 }
