@@ -27,14 +27,18 @@ new.ximi4ka.ru → supabase-caddy (80/443, TLS сам)
 
 ### 1. База в контейнере supabase-db
 
+Роль `postgres` в supabase-db не суперюзер: `CREATE DATABASE ... OWNER` падает с
+«must be able to SET ROLE». Всё, что про создание, делается от `supabase_admin`.
+
 ```bash
+mkdir -p /opt/ximishop
 PASS=$(openssl rand -hex 24); echo "$PASS" > /opt/ximishop/.db-pass; chmod 600 /opt/ximishop/.db-pass
-docker exec -i supabase-db psql -U postgres <<SQL
+docker exec -i supabase-db psql -U supabase_admin <<SQL
 CREATE USER ximishop_user WITH PASSWORD '$PASS';
 CREATE DATABASE ximi4ka_shop OWNER ximishop_user;
 SQL
 # uuid_generate_v4() — дефолт у всех первичных ключей, без расширения restore упадёт
-docker exec -i supabase-db psql -U postgres -d ximi4ka_shop -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
 ```
 
 ### 2. Данные
@@ -49,8 +53,9 @@ pg_dump --format=custom --no-owner --no-acl -d ximi4ka_shop -f ximi4ka_shop.dump
 scp ximi4ka_shop.dump root@201.34.149.163:/root/backups/
 # на сервере
 docker cp /root/backups/ximi4ka_shop.dump supabase-db:/tmp/shop.dump
-docker exec supabase-db pg_restore -U postgres -d ximi4ka_shop --no-owner --clean --if-exists /tmp/shop.dump
-docker exec -i supabase-db psql -U postgres -d ximi4ka_shop \
+docker exec supabase-db pg_restore -U supabase_admin -d ximi4ka_shop --no-owner /tmp/shop.dump
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
+  -c 'GRANT ALL ON SCHEMA public TO ximishop_user;' \
   -c 'GRANT ALL ON ALL TABLES IN SCHEMA public TO ximishop_user;' \
   -c 'GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO ximishop_user;'
 ```
@@ -64,7 +69,7 @@ docker exec -i supabase-db psql -U postgres -d ximi4ka_shop \
 Tilda — без этого шага каталог задублируется в индексе против основного сайта:
 
 ```bash
-docker exec -i supabase-db psql -U postgres -d ximi4ka_shop \
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
   -c $'UPDATE site_settings SET robots_txt = \'User-agent: *\nDisallow: /\';'
 ```
 
@@ -72,9 +77,12 @@ docker exec -i supabase-db psql -U postgres -d ximi4ka_shop \
 
 ### 3. Код и секреты
 
+Отдельный deploy key не нужен: `/root/.ssh/id_ed25519_github` уже открывает
+приватные репозитории владельца (проверяется `git ls-remote`).
+
 ```bash
 mkdir -p /opt/ximishop && cd /opt/ximishop
-git clone git@github.com:icekryptor/ximi4ka-shop.git app   # deploy key, как у ximerp
+git clone git@github.com:icekryptor/ximi4ka-shop.git app
 cd app
 cp deploy/app.env.example deploy/app.env   # DATABASE_URL с паролем из /opt/ximishop/.db-pass,
 cp deploy/web.env.example deploy/web.env   # ADMIN_SESSION_SECRET=$(openssl rand -hex 32)
@@ -99,9 +107,17 @@ bash deploy/deploy.sh
 
 ### 5. Caddy
 
-Добавить блок из `deploy/Caddyfile.snippet` в
-`/opt/supabase-src/docker/volumes/caddy/Caddyfile`, затем
-`docker exec supabase-caddy caddy reload --config /etc/caddy/Caddyfile`.
+Блок из `deploy/Caddyfile.snippet` добавляется в
+`/opt/supabase-src/docker/volumes/proxy/caddy/Caddyfile` (рядом с `learn.`,
+`erp.`, `aics-93.`) — **после** переключения DNS, иначе Caddy будет впустую
+долбиться в ACME. Порядок:
+
+```bash
+cp Caddyfile Caddyfile.bak-$(date +%F)
+cat /opt/ximishop/app/deploy/Caddyfile.snippet >> Caddyfile
+docker exec supabase-caddy caddy validate --config /etc/caddy/Caddyfile
+docker exec supabase-caddy caddy reload   --config /etc/caddy/Caddyfile
+```
 
 Пока DNS ещё смотрит на Vercel, проверять можно изнутри сети:
 
@@ -129,8 +145,15 @@ docker exec ximishop-api wget -qO- http://ximishop-web:3000/ru | head -c 300
 
 ### 8. Бэкапы
 
-Добавить `ximi4ka_shop` в `/root/backup-db.sh` (ночной `pg_dump` в
-`/root/backups/`, ротация 14 дней) — рядом с `ximerp` и `learn`.
+Уже добавлено в `/root/backup-db.sh` (запускается из `/etc/cron.d/ximi-db-backup`
+в 03:30) рядом с `ximerp` и `learn`: ночной `pg_dump -Fc`, ротация 14 дней,
+отметка `ok-shop` в `/root/backups/backup.log`.
+
+## Сразу после переключения DNS
+
+**Сменить пароль админки.** Аккаунт `admin@ximi4ka.local` приехал из дампа с
+сид-паролем `admin-password-change-me`, который лежит открытым в
+`api/src/seeds/seed.ts`. Меняется в `/admin` под этим же аккаунтом.
 
 ## Хвосты
 
