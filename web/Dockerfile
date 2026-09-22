@@ -37,10 +37,12 @@ ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     NEXT_PUBLIC_METRIKA_ID=$NEXT_PUBLIC_METRIKA_ID \
     API_URL=$API_URL \
     NEXT_TELEMETRY_DISABLED=1
-# Pages are ISR (revalidate = 60) and tolerate an unreachable api at build time:
-# they render their empty state and refill on the first request after the api is
-# up. With build.network wired to the docker network, prerender hits it directly.
-RUN npm run build -w web
+# Вторая попытка не для красоты: next/font/google скачивает шрифты на сборке, и
+# с сервера в Москве этот запрос иногда не проходит — сборка падает на
+# module-not-found во внутреннем css шрифта. Рантайм от Google не зависит:
+# next/font кладёт шрифты в образ и раздаёт со своего origin.
+RUN npm run build -w web \
+  || (echo "→ повтор: похоже, не скачались шрифты next/font/google" && npm run build -w web)
 
 # ---- runtime ------------------------------------------------------------------
 FROM node:22-alpine AS runtime
