@@ -51,6 +51,24 @@ describe('redirect middleware', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  // Картинки из web/public лежат под /img: без исключения /img/categories/kits.webp
+  // уехал бы в /ru/img/… (а /categories/… — вообще в роут страницы категории),
+  // и next/image получил бы HTML 404 вместо картинки.
+  it('skips /img/* without locale-rewriting (so public images hit the static handler)', async () => {
+    const res = await middleware(makeRequest('/img/categories/kits.webp'))
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+    expect(res.headers.get('location')).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('does not treat /imgs-like prefixes as the static /img folder', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: [] }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    )
+    const res = await middleware(makeRequest('/imgs'))
+    expect(res.headers.get('x-middleware-rewrite')).toContain('/ru/imgs')
+  })
+
   it('skips /_next, /uploads, /favicon.ico', async () => {
     for (const p of ['/_next/static/foo', '/uploads/x.jpg', '/favicon.ico']) {
       const res = await middleware(makeRequest(p))
