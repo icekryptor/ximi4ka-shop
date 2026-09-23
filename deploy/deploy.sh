@@ -10,6 +10,16 @@ cd "$(dirname "$0")/.."
 
 COMPOSE=(docker compose --env-file deploy/web.env -f deploy/docker-compose.yml)
 
+# Один деплой за раз — тот же замок, что у автодеплоя (deploy/ci-deploy.sh).
+# Когда deploy.sh запущен оттуда, замок уже взят родителем.
+if [[ -z "${XIMISHOP_DEPLOY_LOCKED:-}" ]]; then
+  exec 9>/opt/ximishop/.deploy.lock
+  if ! flock -n 9; then
+    echo "❌ уже идёт другой деплой (возможно, автодеплой из CI) — повторите позже" >&2
+    exit 75
+  fi
+fi
+
 if [[ "${1:-}" != "--no-pull" ]]; then
   echo "→ git pull"
   git pull --ff-only origin "$(git rev-parse --abbrev-ref HEAD)"

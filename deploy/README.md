@@ -156,46 +156,66 @@ Push в `main` → workflow `CI` (`.github/workflows/ci.yml`): тесты, за�
 `deploy` по ssh вызывает на сервере `deploy/ci-deploy.sh` с SHA проверенного
 коммита. Тот убеждается, что коммит есть в `origin/main`, делает fast-forward
 ровно до него и запускает `deploy.sh --no-pull`, отвязав его от ssh-сессии:
-обрыв связи с раннером не прерывает выкатку. Вывод идёт в лог job'а и в
-`/opt/ximishop/deploy-logs/` (последние 30). Параллельные выкатки отсекает
-`flock`. Неудачная сборка сайт не роняет — `deploy.sh` переключает контейнеры
-только после неё.
+обрыв связи с раннером не прерывает выкатку. Параллельные выкатки (в том числе
+ручной `deploy.sh`) отсекает общий замок `/opt/ximishop/.deploy.lock`.
+Неудачная сборка сайт не роняет — `deploy.sh` переключает контейнеры только
+после неё.
+
+Лог Actions у репозитория **публичный**, поэтому туда уходят только маркеры
+шагов (`→ …`, `✅`, `❌`). Полный вывод, включая логи контейнеров при сбое, —
+в `/opt/ximishop/deploy-logs/` на сервере (последние 30 выкаток).
 
 Ключ CI на сервере — forced command: кроме «выкатить SHA из main» он ничего не
-умеет (ни шелла, ни туннелей). Но код из `main` выполняется на сервере от root,
-так что писать в `main` должны только свои: защита ветки в GitHub обязательна.
+умеет (ни шелла, ни туннелей, ни sftp). Но код из `main` выполняется на сервере
+от root, а рядом живут ERP и XimiLearn, так что **писать в `main` должны только
+свои** — см. шаг 4.
 
 ### Разовая настройка
 
 ```bash
-# 1. ключ только для CI (ноутбук; без пароля — его читает раннер)
-ssh-keygen -t ed25519 -N '' -C github-actions-deploy -f ~/.ssh/ximishop_ci_deploy
+# 1. ключ только для CI — во временной папке, на ноутбуке не остаётся
+K=$(mktemp -d)
+ssh-keygen -q -t ed25519 -N '' -C github-actions-deploy -f "$K/key"
 
 # 2. сервер: ключ умеет только ci-deploy.sh
-echo "restrict,command=\"/opt/ximishop/app/deploy/ci-deploy.sh\" $(cat ~/.ssh/ximishop_ci_deploy.pub)" \
+echo "restrict,command=\"/opt/ximishop/app/deploy/ci-deploy.sh\" $(cat "$K/key.pub")" \
   | ssh root@201.34.149.163 'cat >> /root/.ssh/authorized_keys'
 
-# 3. GitHub: секреты и переменные окружения production
-gh secret set DEPLOY_SSH_KEY --env production < ~/.ssh/ximishop_ci_deploy
-ssh-keyscan -t ed25519 201.34.149.163 > /tmp/ximishop_known_hosts   # сверить отпечаток с ssh-keygen -lf на сервере!
-gh secret set DEPLOY_KNOWN_HOSTS --env production < /tmp/ximishop_known_hosts
+# 3. GitHub: environment production — только для защищённых веток, секреты в нём
+gh api -X PUT repos/icekryptor/ximi4ka-shop/environments/production \
+  -F 'deployment_branch_policy[protected_branches]=true' \
+  -F 'deployment_branch_policy[custom_branch_policies]=false'
+gh secret set DEPLOY_SSH_KEY --env production < "$K/key"
+# known_hosts — из уже проверенного ~/.ssh/known_hosts, а не ssh-keyscan вслепую
+ssh-keygen -F 201.34.149.163 | grep -v '^#' | gh secret set DEPLOY_KNOWN_HOSTS --env production
 gh variable set DEPLOY_HOST --env production --body 201.34.149.163
 gh variable set DEPLOY_USER --env production --body root
+rm -rf "$K"
 ```
 
-Проверка ключа без выкатки: `ssh -i ~/.ssh/ximishop_ci_deploy root@201.34.149.163 nope`
-→ «ожидался полный SHA коммита» и код 64.
+4. Защита `main` (Settings → Rules → Rulesets, применять и к админам): запрет
+   force-push и удаления ветки; обязательные проверки `ci (20)` и `ci (22)`.
+   Автомерж зависимостей не включать — каждый мерж в `main` сразу едет в прод.
+5. Проверки на сервере:
+   - `sshd -T | grep -iE 'acceptenv|permitrootlogin|permituserenvironment'` →
+     `acceptenv LANG LC_*`, `permitrootlogin without-password` (или
+     `prohibit-password`), `permituserenvironment no`;
+   - ключ сервера к GitHub (`/root/.ssh/id_ed25519_github`) — deploy key
+     **только на чтение** (Settings → Deploy keys), иначе взлом сервера даёт
+     запись в `main`.
+
+Проверка ключа без выкатки: `ssh root@201.34.149.163 nope` с CI-ключом →
+«ожидался полный SHA коммита» и код 64.
 
 ### Эксплуатация
 
 - Передеплой без нового коммита (правка `deploy/*.env`): Actions → CI →
   Run workflow на `main`.
-- Выкатка упала: лог в job'е `deploy` и в `/opt/ximishop/deploy-logs/`; сайт
-  остаётся на прошлой версии. «уже идёт другой деплой» (код 75) — кто-то
-  выкатывает руками или висит прошлый запуск.
-- Ручной `bash deploy/deploy.sh` на сервере по-прежнему работает, но замок CI
-  не берёт — не запускать одновременно с автодеплоем.
-- Сменить ключ: шаг 1–3 заново и удалить старую строку `github-actions-deploy`
+- Выкатка упала: в job'е `deploy` — шаг, на котором остановилась; подробности —
+  `/opt/ximishop/deploy-logs/` на сервере. Сайт остаётся на прошлой версии.
+- «уже идёт другой деплой» (код 75) — параллельно идёт ручной `deploy.sh` или
+  прошлая выкатка ещё не закончилась.
+- Сменить ключ: шаги 1–3 заново и удалить старую строку `github-actions-deploy`
   из `/root/.ssh/authorized_keys`.
 
 ## Сразу после переключения DNS
