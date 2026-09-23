@@ -19,7 +19,8 @@ new.ximi4ka.ru → supabase-caddy (80/443, TLS сам)
 - Код на сервере: `/opt/ximishop/app` (клон `icekryptor/ximi4ka-shop`).
 - Секреты: `deploy/app.env` (рантайм api) и `deploy/web.env` (сборка витрины) —
   оба не в гите, шаблоны рядом: `*.env.example`.
-- Деплой: `cd /opt/ximishop/app && bash deploy/deploy.sh`.
+- Деплой: автоматически после зелёного CI на `main` (см. «Автодеплой»);
+  руками — `cd /opt/ximishop/app && bash deploy/deploy.sh`.
 - Аплоады админки — docker-том `ximishop-uploads` (на Railway они умирали при
   каждом редеплое); импортированные фото товаров пока лежат на static.tildacdn.com.
 
@@ -148,6 +149,54 @@ docker exec ximishop-api wget -qO- http://ximishop-web:3000/ru | head -c 300
 Уже добавлено в `/root/backup-db.sh` (запускается из `/etc/cron.d/ximi-db-backup`
 в 03:30) рядом с `ximerp` и `learn`: ночной `pg_dump -Fc`, ротация 14 дней,
 отметка `ok-shop` в `/root/backups/backup.log`.
+
+## Автодеплой
+
+Push в `main` → workflow `CI` (`.github/workflows/ci.yml`): тесты, затем job
+`deploy` по ssh вызывает на сервере `deploy/ci-deploy.sh` с SHA проверенного
+коммита. Тот убеждается, что коммит есть в `origin/main`, делает fast-forward
+ровно до него и запускает `deploy.sh --no-pull`, отвязав его от ssh-сессии:
+обрыв связи с раннером не прерывает выкатку. Вывод идёт в лог job'а и в
+`/opt/ximishop/deploy-logs/` (последние 30). Параллельные выкатки отсекает
+`flock`. Неудачная сборка сайт не роняет — `deploy.sh` переключает контейнеры
+только после неё.
+
+Ключ CI на сервере — forced command: кроме «выкатить SHA из main» он ничего не
+умеет (ни шелла, ни туннелей). Но код из `main` выполняется на сервере от root,
+так что писать в `main` должны только свои: защита ветки в GitHub обязательна.
+
+### Разовая настройка
+
+```bash
+# 1. ключ только для CI (ноутбук; без пароля — его читает раннер)
+ssh-keygen -t ed25519 -N '' -C github-actions-deploy -f ~/.ssh/ximishop_ci_deploy
+
+# 2. сервер: ключ умеет только ci-deploy.sh
+echo "restrict,command=\"/opt/ximishop/app/deploy/ci-deploy.sh\" $(cat ~/.ssh/ximishop_ci_deploy.pub)" \
+  | ssh root@201.34.149.163 'cat >> /root/.ssh/authorized_keys'
+
+# 3. GitHub: секреты и переменные окружения production
+gh secret set DEPLOY_SSH_KEY --env production < ~/.ssh/ximishop_ci_deploy
+ssh-keyscan -t ed25519 201.34.149.163 > /tmp/ximishop_known_hosts   # сверить отпечаток с ssh-keygen -lf на сервере!
+gh secret set DEPLOY_KNOWN_HOSTS --env production < /tmp/ximishop_known_hosts
+gh variable set DEPLOY_HOST --env production --body 201.34.149.163
+gh variable set DEPLOY_USER --env production --body root
+```
+
+Проверка ключа без выкатки: `ssh -i ~/.ssh/ximishop_ci_deploy root@201.34.149.163 nope`
+→ «ожидался полный SHA коммита» и код 64.
+
+### Эксплуатация
+
+- Передеплой без нового коммита (правка `deploy/*.env`): Actions → CI →
+  Run workflow на `main`.
+- Выкатка упала: лог в job'е `deploy` и в `/opt/ximishop/deploy-logs/`; сайт
+  остаётся на прошлой версии. «уже идёт другой деплой» (код 75) — кто-то
+  выкатывает руками или висит прошлый запуск.
+- Ручной `bash deploy/deploy.sh` на сервере по-прежнему работает, но замок CI
+  не берёт — не запускать одновременно с автодеплоем.
+- Сменить ключ: шаг 1–3 заново и удалить старую строку `github-actions-deploy`
+  из `/root/.ssh/authorized_keys`.
 
 ## Сразу после переключения DNS
 
