@@ -1,53 +1,8 @@
 import type { Metadata } from 'next'
-import { IBM_Plex_Sans, Roboto_Mono, JetBrains_Mono, Unbounded, Inter } from 'next/font/google'
 import './globals.css'
+import { fontVariables } from './fonts'
 import { getPublicSettings, type PublicSettings } from '@/lib/api'
 import { MetrikaScript, Ga4Script } from '@/lib/analytics'
-
-const plexSans = IBM_Plex_Sans({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-plex',
-  display: 'swap',
-})
-
-// Roboto Mono — Tailwind's `font-mono`: globals.css maps @theme `--font-mono`
-// to this variable, so it has to live in the root layout.
-const robotoMono = Roboto_Mono({
-  subsets: ['latin', 'cyrillic'],
-  weight: ['400', '500', '700'],
-  variable: '--font-mono-google',
-  display: 'swap',
-})
-
-// === v3 — Лабораторный Журнал font pair (Task 0.2) ===
-// Unbounded + Inter + JetBrains Mono drive the lj typography scale wired up in
-// globals.css's @theme inline `--font-lj-*` tokens. Old Mazzard / Plex / Roboto
-// Mono setups above stay until Stage 6 cleanup so v2 surfaces keep rendering
-// while v3 components migrate.
-const ljDisplay = Unbounded({
-  subsets: ['cyrillic', 'latin'],
-  weight: ['400', '700', '900'],
-  variable: '--font-lj-display',
-  display: 'swap',
-})
-
-const ljBody = Inter({
-  subsets: ['cyrillic', 'latin'],
-  weight: ['400', '500', '700'],
-  variable: '--font-lj-body',
-  display: 'swap',
-})
-
-// 600 is not in the lj type scale, but pages do render JetBrains Mono at 600:
-// until 09.2026 a second JetBrains_Mono instance for /v3-preview-c shipped the
-// 600 face under the same family name, and the lj surfaces picked it up.
-const ljMono = JetBrains_Mono({
-  subsets: ['cyrillic', 'latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-lj-mono',
-  display: 'swap',
-})
 
 export const metadata: Metadata = {
   title: 'Ximi4ka — наборы для химических экспериментов',
@@ -81,7 +36,7 @@ export default async function RootLayout({
 }>) {
   const settings = await loadPublicSettings()
   return (
-    <html lang="ru" className={`${plexSans.variable} ${robotoMono.variable} ${ljDisplay.variable} ${ljBody.variable} ${ljMono.variable} h-full antialiased`}>
+    <html lang="ru" className={`${fontVariables} h-full antialiased`}>
       <head>
         {settings?.yandexWebmasterVerification ? (
           <meta

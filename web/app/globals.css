@@ -18,6 +18,54 @@
   unicode-range: U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F;
 }
 
+/* Metric-matched Arial stand-ins shown until the fonts from app/fonts.ts load
+   (display: swap). Numbers are the ones next/font/google generated, so the
+   pre-swap layout does not jump more than before the switch to local files. */
+@font-face {
+  font-family: 'IBM Plex Sans Fallback';
+  src: local('Arial');
+  ascent-override: 101.32%;
+  descent-override: 27.18%;
+  line-gap-override: 0.0%;
+  size-adjust: 101.17%;
+}
+
+@font-face {
+  font-family: 'Roboto Mono Fallback';
+  src: local('Arial');
+  ascent-override: 77.84%;
+  descent-override: 20.13%;
+  line-gap-override: 0.0%;
+  size-adjust: 134.61%;
+}
+
+@font-face {
+  font-family: 'Unbounded Fallback';
+  src: local('Arial');
+  ascent-override: 73.93%;
+  descent-override: 18.2%;
+  line-gap-override: 0.0%;
+  size-adjust: 134.59%;
+}
+
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0.0%;
+  size-adjust: 107.12%;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono Fallback';
+  src: local('Arial');
+  ascent-override: 75.79%;
+  descent-override: 22.29%;
+  line-gap-override: 0.0%;
+  size-adjust: 134.59%;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #1c1528;
@@ -127,9 +175,9 @@
   --color-lj-rule-soft:     rgba(10, 10, 10, 0.08);
   --color-lj-rule-on-ink:   rgba(239, 237, 230, 0.18);
 
-  /* Font families — wired in app/layout.tsx via next/font/google.
+  /* Font families — wired in app/fonts.ts via next/font/local.
      `var(--font-lj-*)` references the same token name that the layout
-     declares on <html className={ljDisplay.variable ...}> — Tailwind 4
+     declares on <html className={fontVariables}> — Tailwind 4
      resolves the loop by reading the inherited custom property, so the
      fallback chain only kicks in pre-hydration or if the JS download
      fails. Keep these alongside the v2 --font-display / --font-sans /

@@ -22,7 +22,7 @@ test.describe('v3 Lab Journal homepage', () => {
     // rewrite if the default locale ever changes.
     await page.goto('/ru')
     await page.waitForLoadState('networkidle')
-    // Ensure web fonts (next/font/google) have finished swapping before
+    // Ensure web fonts (next/font/local) have finished swapping before
     // any screenshot is taken — otherwise the first frame may catch a
     // metric-compatible fallback face.
     await page.evaluate(() => document.fonts.ready)
