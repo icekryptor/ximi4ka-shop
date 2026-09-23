@@ -10,12 +10,7 @@ vi.mock('@/lib/api', () => ({
 }))
 
 import sitemap from './sitemap'
-import {
-  listBlogPosts,
-  listCategories,
-  listPages,
-  listPublishedProducts,
-} from '@/lib/api'
+import { listBlogPosts, listCategories, listPages, listPublishedProducts } from '@/lib/api'
 
 function emptyBlogResponse() {
   return {
@@ -147,9 +142,7 @@ describe('sitemap', () => {
     // Blog: static listing entry + one per published post.
     expect(urls).toContain('https://new.ximi4ka.ru/blog')
     expect(urls).toContain('https://new.ximi4ka.ru/blog/pochemu-plamya-sinee')
-    const post = out.find(
-      (e) => e.url === 'https://new.ximi4ka.ru/blog/pochemu-plamya-sinee',
-    )
+    const post = out.find((e) => e.url === 'https://new.ximi4ka.ru/blog/pochemu-plamya-sinee')
     expect(post?.lastModified).toBe('2026-06-02T00:00:00.000Z')
     // `home` CMS slug is NOT emitted as /home — it lives at `/`.
     expect(urls).not.toContain('https://new.ximi4ka.ru/home')
@@ -201,9 +194,7 @@ describe('sitemap', () => {
       en: 'https://new.ximi4ka.ru/en',
     })
     // Product entry.
-    const product = out.find(
-      (e) => e.url === 'https://new.ximi4ka.ru/product/kit',
-    )
+    const product = out.find((e) => e.url === 'https://new.ximi4ka.ru/product/kit')
     expect(product?.alternates?.languages).toEqual({
       ru: 'https://new.ximi4ka.ru/product/kit',
       en: 'https://new.ximi4ka.ru/en/product/kit',

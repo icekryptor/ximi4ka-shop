@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 
-interface Props { children: ReactNode }
+interface Props {
+  children: ReactNode
+}
 
 /**
  * Lab-journal chip pill. Inverts on parent card hover via Tailwind 4 group:

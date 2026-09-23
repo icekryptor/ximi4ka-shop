@@ -93,9 +93,7 @@ describe('Auth routes', () => {
     })
 
     it('rejects malformed body with 400 validation_error', async () => {
-      const res = await request(app)
-        .post('/api/auth/login')
-        .send({ email: 'not-an-email' })
+      const res = await request(app).post('/api/auth/login').send({ email: 'not-an-email' })
       expect(res.status).toBe(400)
       expect(res.body.error.code).toBe('validation_error')
     })
@@ -108,9 +106,7 @@ describe('Auth routes', () => {
       const unknownMs = Date.now() - start
 
       const start2 = Date.now()
-      await request(app)
-        .post('/api/auth/login')
-        .send({ email: EMAIL, password: 'wrong-password' })
+      await request(app).post('/api/auth/login').send({ email: EMAIL, password: 'wrong-password' })
       const wrongPwMs = Date.now() - start2
 
       // Argon2 verify takes meaningful time; if the unknown-email path skipped

@@ -16,9 +16,7 @@ describe('audit-images helpers', () => {
   })
 
   it('formats markdown table with admin URLs', () => {
-    const products = [
-      { id: 'p1', sku: 'X-30', slug: 'himichka-30', name: 'Химичка 3.0' },
-    ] as any
+    const products = [{ id: 'p1', sku: 'X-30', slug: 'himichka-30', name: 'Химичка 3.0' }] as any
     const md = formatBacklogTable(products)
     expect(md).toContain('| X-30 |')
     expect(md).toContain('`himichka-30`')

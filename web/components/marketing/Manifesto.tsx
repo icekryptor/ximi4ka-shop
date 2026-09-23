@@ -8,7 +8,10 @@ import { Scientific } from '@/components/dataviz/Scientific'
 import { Rating } from '@/components/dataviz/Rating'
 import { DotGrid } from '@/components/dataviz/DotGrid'
 
-interface StatementPart { text: string; emphasis?: boolean }
+interface StatementPart {
+  text: string
+  emphasis?: boolean
+}
 interface Props {
   eyebrow: string
   statementParts: StatementPart[]
@@ -36,12 +39,15 @@ export function Manifesto({ eyebrow, statementParts, body }: Props) {
         <h2 className="font-lj-display font-[700] text-[length:var(--text-lj-display)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[18ch]">
           {statementParts.map((p, i) =>
             p.emphasis ? (
-              <em key={i} className="italic text-[var(--color-lj-brand)] font-[700] relative after:absolute after:content-[''] after:left-0 after:right-0 after:bottom-1 after:h-[5px] after:bg-[var(--color-lj-brand)] after:opacity-50 after:rounded-sm">
+              <em
+                key={i}
+                className="italic text-[var(--color-lj-brand)] font-[700] relative after:absolute after:content-[''] after:left-0 after:right-0 after:bottom-1 after:h-[5px] after:bg-[var(--color-lj-brand)] after:opacity-50 after:rounded-sm"
+              >
                 {p.text}
               </em>
             ) : (
               <span key={i}>{p.text}</span>
-            )
+            ),
           )}
         </h2>
 
@@ -50,16 +56,41 @@ export function Manifesto({ eyebrow, statementParts, body }: Props) {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          <NumberCell index="01" topLabel="год" big="2023" bottomLeft="основано" bottomRight="3 года">
+          <NumberCell
+            index="01"
+            topLabel="год"
+            big="2023"
+            bottomLeft="основано"
+            bottomRight="3 года"
+          >
             <Timeline points={['23', '24', '25', '26']} active={0} />
           </NumberCell>
-          <NumberCell index="02" topLabel="купили" big="20 000+" bottomLeft="покупатели" bottomRight="с 2023">
+          <NumberCell
+            index="02"
+            topLabel="купили"
+            big="20 000+"
+            bottomLeft="покупатели"
+            bottomRight="с 2023"
+          >
             <Scientific mantissa="2" base="10" exponent="4" units="людей" />
           </NumberCell>
-          <NumberCell index="03" topLabel="рейтинг" big="4,9" bigVariant="decimal" bottomLeft="из 5" bottomRight="WB & Ozon">
+          <NumberCell
+            index="03"
+            topLabel="рейтинг"
+            big="4,9"
+            bigVariant="decimal"
+            bottomLeft="из 5"
+            bottomRight="WB & Ozon"
+          >
             <Rating value={4.9} max={5} />
           </NumberCell>
-          <NumberCell index="04" topLabel="реакций" big="161" bottomLeft="в наборе" bottomRight="каждая ≠">
+          <NumberCell
+            index="04"
+            topLabel="реакций"
+            big="161"
+            bottomLeft="в наборе"
+            bottomRight="каждая ≠"
+          >
             <DotGrid total={161} cols={23} />
           </NumberCell>
         </div>

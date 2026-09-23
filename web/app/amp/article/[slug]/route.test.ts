@@ -44,9 +44,7 @@ describe('GET /amp/article/[slug]', () => {
     expect(res.status).toBe(200)
     const body = await res.text()
     expect(body).toContain('<html amp lang="ru">')
-    expect(body).toContain(
-      '<link rel="canonical" href="https://new.ximi4ka.ru/o-nas">',
-    )
+    expect(body).toContain('<link rel="canonical" href="https://new.ximi4ka.ru/o-nas">')
   })
 
   it('returns 404 for the reserved `home` slug', async () => {
@@ -56,9 +54,7 @@ describe('GET /amp/article/[slug]', () => {
   })
 
   it('returns 404 when the page is missing', async () => {
-    vi.mocked(getPage).mockRejectedValue(
-      new ApiError(404, 'page_not_found', 'nope'),
-    )
+    vi.mocked(getPage).mockRejectedValue(new ApiError(404, 'page_not_found', 'nope'))
     const res = await GET(req, { params: Promise.resolve({ slug: 'missing' }) })
     expect(res.status).toBe(404)
   })

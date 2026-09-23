@@ -7,13 +7,7 @@ import { adminSetOrderStatus, ApiError } from '@/lib/adminApi'
 
 // Manual transition buttons for the order detail page. Only pending/failed/
 // cancelled orders can be touched; a paid order is settled and read-only.
-export function OrderStatusActions({
-  orderId,
-  status,
-}: {
-  orderId: string
-  status: OrderStatus
-}) {
+export function OrderStatusActions({ orderId, status }: { orderId: string; status: OrderStatus }) {
   const router = useRouter()
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState<'paid' | 'cancelled' | null>(null)
@@ -32,9 +26,7 @@ export function OrderStatusActions({
       setComment('')
       router.refresh()
     } catch (err) {
-      setError(
-        err instanceof ApiError ? err.message : 'Не удалось изменить статус заказа',
-      )
+      setError(err instanceof ApiError ? err.message : 'Не удалось изменить статус заказа')
     } finally {
       setBusy(null)
     }

@@ -1,11 +1,7 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import {
-  ApiError,
-  getCategory,
-  listProductsByCategory,
-} from '@/lib/api'
+import { ApiError, getCategory, listProductsByCategory } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
 import { LabSection } from '@/components/ui/LabSection'
@@ -15,13 +11,7 @@ import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonLd'
-import {
-  DEFAULT_LOCALE,
-  SUPPORTED_LOCALES,
-  isLocale,
-  pickField,
-  type Locale,
-} from '@/lib/i18n'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 import type { SortKey } from '@/components/marketing/CategoryFilterBar'
 import { CategoryFilterBarMount } from './_components/CategoryFilterBarMount'
 
@@ -51,15 +41,11 @@ interface Props {
 const SORT_KEYS = ['newest', 'price-asc', 'price-desc', 'name-asc'] as const
 
 function parseSort(raw: unknown): SortKey {
-  return (SORT_KEYS as readonly string[]).includes(raw as string)
-    ? (raw as SortKey)
-    : 'newest'
+  return (SORT_KEYS as readonly string[]).includes(raw as string) ? (raw as SortKey) : 'newest'
 }
 
 function pathForLocale(locale: Locale, slug: string): string {
-  return locale === DEFAULT_LOCALE
-    ? `/categories/${slug}`
-    : `/${locale}/categories/${slug}`
+  return locale === DEFAULT_LOCALE ? `/categories/${slug}` : `/${locale}/categories/${slug}`
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -135,27 +121,18 @@ function sortProducts(products: Product[], sort: SortKey): Product[] {
       return arr.sort((a, b) => a.name.localeCompare(b.name, 'ru'))
     case 'newest':
     default:
-      return arr.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
+      return arr.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }
 }
 
-export default async function CategoryDetailPage({
-  params,
-  searchParams,
-}: Props) {
+export default async function CategoryDetailPage({ params, searchParams }: Props) {
   const { locale: rawLocale, slug } = await params
   if (!isLocale(rawLocale)) notFound()
   const locale: Locale = rawLocale
   const sp = (await searchParams) ?? {}
   const currentSort = parseSort(sp.sort)
   const pageRaw = sp.page
-  const page = Math.max(
-    1,
-    parseInt(typeof pageRaw === 'string' ? pageRaw : '1', 10) || 1,
-  )
+  const page = Math.max(1, parseInt(typeof pageRaw === 'string' ? pageRaw : '1', 10) || 1)
 
   const {
     category,
@@ -173,12 +150,9 @@ export default async function CategoryDetailPage({
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
   const name = pickField<string>(category, 'name', locale) ?? category.name
   const description =
-    pickField<string>(category, 'metaDescription', locale) ??
-    category.metaDescription ??
-    null
+    pickField<string>(category, 'metaDescription', locale) ?? category.metaDescription ?? null
 
-  const categoriesPath =
-    locale === DEFAULT_LOCALE ? '/categories' : `/${locale}/categories`
+  const categoriesPath = locale === DEFAULT_LOCALE ? '/categories' : `/${locale}/categories`
   const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
 
   // First word of the category name is emphasised in brand colour, mirroring
@@ -215,9 +189,7 @@ export default async function CategoryDetailPage({
         <span className="mx-2" aria-hidden="true">
           /
         </span>
-        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">
-          {name}
-        </span>
+        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">{name}</span>
       </nav>
 
       {/* C. Категория (LAB CREAM) — v3 LJ hero */}
@@ -232,9 +204,7 @@ export default async function CategoryDetailPage({
               nameWords.map((w, i) => (
                 <span key={i} className="block">
                   {i === 0 ? (
-                    <em className="italic text-[var(--color-lj-brand)] font-[900]">
-                      {w}
-                    </em>
+                    <em className="italic text-[var(--color-lj-brand)] font-[900]">{w}</em>
                   ) : (
                     w
                   )}
@@ -245,9 +215,7 @@ export default async function CategoryDetailPage({
             )}
           </h1>
           {description && (
-            <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch]">
-              {description}
-            </p>
+            <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch]">{description}</p>
           )}
         </div>
       </LabSection>
@@ -284,10 +252,7 @@ export default async function CategoryDetailPage({
                 // на 2 колонки), больше визуала продукта.
                 const isFeatured = page === 1 && i === 0 && products.length > 2
                 return (
-                  <div
-                    key={p.id}
-                    className={isFeatured ? 'sm:col-span-2' : undefined}
-                  >
+                  <div key={p.id} className={isFeatured ? 'sm:col-span-2' : undefined}>
                     {/* TODO(Task 4.4): wire real catalog stats + asymmetric grid */}
                     <ProductCard
                       product={p}

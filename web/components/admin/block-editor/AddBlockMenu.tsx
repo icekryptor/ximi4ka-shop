@@ -38,22 +38,20 @@ export function AddBlockMenu({ onAdd }: Props) {
           role="menu"
           className="absolute top-full left-0 mt-2 w-64 bg-white border border-brand-border rounded-lg shadow-lg z-10 overflow-hidden"
         >
-          {(Object.entries(blockLabels) as Array<[Block['type'], string]>).map(
-            ([type, label]) => (
-              <button
-                key={type}
-                type="button"
-                role="menuitem"
-                onClick={() => {
-                  onAdd(type)
-                  setOpen(false)
-                }}
-                className="block w-full text-left px-4 py-2 text-sm text-brand-text hover:bg-brand-bg-soft"
-              >
-                {label}
-              </button>
-            ),
-          )}
+          {(Object.entries(blockLabels) as Array<[Block['type'], string]>).map(([type, label]) => (
+            <button
+              key={type}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onAdd(type)
+                setOpen(false)
+              }}
+              className="block w-full text-left px-4 py-2 text-sm text-brand-text hover:bg-brand-bg-soft"
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
     </div>

@@ -60,10 +60,9 @@ test.describe('v3 Lab Journal — Stage 8 surfaces', () => {
     await page.waitForLoadState('networkidle')
     await page.evaluate(() => document.fonts.ready)
     await page.waitForTimeout(500)
-    await expect(page.locator('section').first()).toHaveScreenshot(
-      'categories-index.png',
-      { maxDiffPixelRatio: 0.02 },
-    )
+    await expect(page.locator('section').first()).toHaveScreenshot('categories-index.png', {
+      maxDiffPixelRatio: 0.02,
+    })
   })
 
   test('category detail', async ({ page }) => {
@@ -73,9 +72,8 @@ test.describe('v3 Lab Journal — Stage 8 surfaces', () => {
     await page.waitForLoadState('networkidle')
     await page.evaluate(() => document.fonts.ready)
     await page.waitForTimeout(500)
-    await expect(page.locator('section').first()).toHaveScreenshot(
-      'category-detail.png',
-      { maxDiffPixelRatio: 0.02 },
-    )
+    await expect(page.locator('section').first()).toHaveScreenshot('category-detail.png', {
+      maxDiffPixelRatio: 0.02,
+    })
   })
 })

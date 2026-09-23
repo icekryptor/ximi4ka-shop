@@ -1,4 +1,6 @@
-interface Props { caption: string }
+interface Props {
+  caption: string
+}
 export function HeroScale({ caption }: Props) {
   return (
     <div

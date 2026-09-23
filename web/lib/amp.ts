@@ -23,8 +23,7 @@ import { escapeXml } from './ymlFeed'
 //
 // The validator test (amp.test.ts) catches drift from these rules.
 
-const AMP_RUNTIME_SCRIPT =
-  '<script async src="https://cdn.ampproject.org/v0.js"></script>'
+const AMP_RUNTIME_SCRIPT = '<script async src="https://cdn.ampproject.org/v0.js"></script>'
 
 // Mandatory AMP boilerplate — copied verbatim from the spec. Do not edit;
 // any single-character drift will cause the validator to reject the doc.
@@ -79,14 +78,9 @@ function blockToAmp(block: unknown): string {
     return text ? `<p>${escapeXml(text)}</p>` : ''
   }
   if (b.type === 'faq') {
-    const items =
-      (block as { items?: Array<{ question: string; answer: string }> }).items ??
-      []
+    const items = (block as { items?: Array<{ question: string; answer: string }> }).items ?? []
     return items
-      .map(
-        (it) =>
-          `<h2>${escapeXml(it.question)}</h2>\n<p>${escapeXml(it.answer)}</p>`,
-      )
+      .map((it) => `<h2>${escapeXml(it.question)}</h2>\n<p>${escapeXml(it.answer)}</p>`)
       .join('\n')
   }
   if (b.type === 'image') {
@@ -154,9 +148,7 @@ export function renderAmpProduct(product: Product, siteUrl: string): string {
   const canonical = `${siteUrl}/product/${product.slug}`
   const gallery = (product.images ?? [])
     .slice(0, 10)
-    .map((img) =>
-      ampImg({ src: img.url, alt: img.alt, width: 720, height: 720 }),
-    )
+    .map((img) => ampImg({ src: img.url, alt: img.alt, width: 720, height: 720 }))
     .join('\n')
   const blocks = Array.isArray(product.longDescriptionBlocks)
     ? product.longDescriptionBlocks.map(blockToAmp).filter(Boolean).join('\n')
@@ -171,9 +163,7 @@ export function renderAmpProduct(product: Product, siteUrl: string): string {
     `<p class="stock">${escapeXml(stockLabelRu(product.stockStatus))}</p>`,
     gallery ? `<div class="gallery">${gallery}</div>` : '',
     `<div class="price">${escapeXml(formatRubForAmp(product.priceRub))} ₽ ${compare}</div>`,
-    product.shortDescription
-      ? `<p>${escapeXml(product.shortDescription)}</p>`
-      : '',
+    product.shortDescription ? `<p>${escapeXml(product.shortDescription)}</p>` : '',
     blocks ? `<div>${blocks}</div>` : '',
   ]
     .filter(Boolean)

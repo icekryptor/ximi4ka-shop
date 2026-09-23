@@ -40,9 +40,7 @@ function htmlToPlaintext(html: string): string {
 function productDescription(product: Product): string {
   const short = product.shortDescription?.trim()
   if (short) return short
-  const blocks = Array.isArray(product.longDescriptionBlocks)
-    ? product.longDescriptionBlocks
-    : []
+  const blocks = Array.isArray(product.longDescriptionBlocks) ? product.longDescriptionBlocks : []
   for (const block of blocks) {
     if (
       typeof block === 'object' &&
@@ -89,13 +87,7 @@ export interface YmlGeneratorInput {
 // metadata + currencies + categories + offers. We deliberately skip
 // variants/grouped offers/vendor codes — not needed for the MVP.
 export function generateYmlXml(input: YmlGeneratorInput): string {
-  const {
-    products,
-    categories,
-    settings,
-    siteUrl,
-    now = new Date(),
-  } = input
+  const { products, categories, settings, siteUrl, now = new Date() } = input
 
   // Build a UUID → sequential integer map. YML requires integer category
   // ids; we assign them deterministically in insertion order so a given
@@ -114,9 +106,7 @@ export function generateYmlXml(input: YmlGeneratorInput): string {
     .map((cat) => {
       const id = categoryIdMap.get(cat.id)
       const parentId =
-        cat.parentId && categoryIdMap.has(cat.parentId)
-          ? categoryIdMap.get(cat.parentId)!
-          : null
+        cat.parentId && categoryIdMap.has(cat.parentId) ? categoryIdMap.get(cat.parentId)! : null
       const parentAttr = parentId != null ? ` parentId="${parentId}"` : ''
       return `      <category id="${id}"${parentAttr}>${escapeXml(cat.name)}</category>`
     })
@@ -132,8 +122,7 @@ export function generateYmlXml(input: YmlGeneratorInput): string {
     const categoryId = categoryIdMap.get(firstCatId)!
 
     const available = product.stockStatus === 'in_stock' ? 'true' : 'false'
-    const productUrl =
-      product.canonicalUrl?.trim() || `${siteUrl}/product/${product.slug}`
+    const productUrl = product.canonicalUrl?.trim() || `${siteUrl}/product/${product.slug}`
     const description = productDescription(product)
 
     // Cap at 10 pictures per the YML spec so the feed stays compliant even
@@ -151,9 +140,7 @@ export function generateYmlXml(input: YmlGeneratorInput): string {
       `      <categoryId>${categoryId}</categoryId>`,
       pictureLines,
       `      <name>${escapeXml(product.name)}</name>`,
-      description
-        ? `      <description>${escapeXml(description)}</description>`
-        : '',
+      description ? `      <description>${escapeXml(description)}</description>` : '',
     ]
       .filter(Boolean)
       .join('\n')

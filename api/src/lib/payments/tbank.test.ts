@@ -92,9 +92,12 @@ describe('TBankProvider.createPayment', () => {
   })
 
   it('returns null on network failure', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => {
-      throw new Error('ECONNREFUSED')
-    }))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('ECONNREFUSED')
+      }),
+    )
     const provider = new TBankProvider(CFG)
     expect(await provider.createPayment(makeOrder())).toBeNull()
   })
@@ -140,9 +143,9 @@ describe('TBankProvider.verifyAndParseWebhook', () => {
       provider.verifyAndParseWebhook(signedNotification({ Status: 'REJECTED', Success: false }))
         ?.status,
     ).toBe('failed')
-    expect(
-      provider.verifyAndParseWebhook(signedNotification({ Status: 'NEW' }))?.status,
-    ).toBe('pending')
+    expect(provider.verifyAndParseWebhook(signedNotification({ Status: 'NEW' }))?.status).toBe(
+      'pending',
+    )
   })
 
   it('rejects a tampered payload', () => {
@@ -199,9 +202,12 @@ describe('TBankProvider.getStatus', () => {
   it('returns unknown on API error or network failure', async () => {
     mockFetchOnce({ Success: false, ErrorCode: '404' })
     expect(await new TBankProvider(CFG).getStatus('1')).toBe('unknown')
-    vi.stubGlobal('fetch', vi.fn(async () => {
-      throw new Error('boom')
-    }))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('boom')
+      }),
+    )
     expect(await new TBankProvider(CFG).getStatus('1')).toBe('unknown')
   })
 })

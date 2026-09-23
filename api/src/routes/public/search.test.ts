@@ -104,10 +104,20 @@ describe('GET /api/public/search', () => {
     const product = await seedProduct({ name: 'С картинками', slug: 'with-images' })
     const imageRepo = AppDataSource.getRepository(ProductImage)
     await imageRepo.save(
-      imageRepo.create({ productId: product.id, url: 'https://cdn/second.png', alt: 'a', sortOrder: 2 }),
+      imageRepo.create({
+        productId: product.id,
+        url: 'https://cdn/second.png',
+        alt: 'a',
+        sortOrder: 2,
+      }),
     )
     await imageRepo.save(
-      imageRepo.create({ productId: product.id, url: 'https://cdn/first.png', alt: 'a', sortOrder: 1 }),
+      imageRepo.create({
+        productId: product.id,
+        url: 'https://cdn/first.png',
+        alt: 'a',
+        sortOrder: 1,
+      }),
     )
 
     const res = await request(app).get('/api/public/search').query({ q: 'картинк' })

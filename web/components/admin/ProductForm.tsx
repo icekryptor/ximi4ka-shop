@@ -2,10 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import type { Product, StockStatus } from '@ximi4ka-shop/shared'
-import {
-  ImageUploadField,
-  MultiImageUploadField,
-} from './ImageUploadField'
+import { ImageUploadField, MultiImageUploadField } from './ImageUploadField'
 import { BlockEditor } from './block-editor/BlockEditor'
 import { ApiError, type AdminProductInput } from '@/lib/adminApi'
 import { LanguageTabs, countFilled } from './LanguageTabs'
@@ -33,47 +30,27 @@ interface ImageItem {
 
 // Controlled create/edit form. Groups inputs by section; keeps local state
 // only (the parent decides how to submit).
-export function ProductForm({
-  mode,
-  initialValue,
-  onSubmit,
-  submitting,
-  error,
-}: Props) {
+export function ProductForm({ mode, initialValue, onSubmit, submitting, error }: Props) {
   const [slug, setSlug] = useState(initialValue?.slug ?? '')
   const [name, setName] = useState(initialValue?.name ?? '')
   const [sku, setSku] = useState(initialValue?.sku ?? '')
   const [priceRub, setPriceRub] = useState<number>(initialValue?.priceRub ?? 0)
-  const [compareAt, setCompareAt] = useState<number | ''>(
-    initialValue?.compareAtPriceRub ?? '',
-  )
+  const [compareAt, setCompareAt] = useState<number | ''>(initialValue?.compareAtPriceRub ?? '')
   const [stockStatus, setStockStatus] = useState<StockStatus>(
     initialValue?.stockStatus ?? 'in_stock',
   )
-  const [sortOrder, setSortOrder] = useState<number>(
-    initialValue?.sortOrder ?? 0,
-  )
-  const [shortDescription, setShortDescription] = useState(
-    initialValue?.shortDescription ?? '',
-  )
+  const [sortOrder, setSortOrder] = useState<number>(initialValue?.sortOrder ?? 0)
+  const [shortDescription, setShortDescription] = useState(initialValue?.shortDescription ?? '')
   const [longDescriptionBlocks, setLongDescriptionBlocks] = useState<unknown[]>(
     () => initialValue?.longDescriptionBlocks ?? [],
   )
 
   // SEO
   const [metaTitle, setMetaTitle] = useState(initialValue?.metaTitle ?? '')
-  const [metaDescription, setMetaDescription] = useState(
-    initialValue?.metaDescription ?? '',
-  )
-  const [ogImage, setOgImage] = useState<string | null>(
-    initialValue?.ogImage ?? null,
-  )
-  const [canonicalUrl, setCanonicalUrl] = useState(
-    initialValue?.canonicalUrl ?? '',
-  )
-  const [noindex, setNoindex] = useState<boolean>(
-    initialValue?.noindex ?? false,
-  )
+  const [metaDescription, setMetaDescription] = useState(initialValue?.metaDescription ?? '')
+  const [ogImage, setOgImage] = useState<string | null>(initialValue?.ogImage ?? null)
+  const [canonicalUrl, setCanonicalUrl] = useState(initialValue?.canonicalUrl ?? '')
+  const [noindex, setNoindex] = useState<boolean>(initialValue?.noindex ?? false)
 
   // Media gallery
   const [images, setImages] = useState<ImageItem[]>(
@@ -88,9 +65,7 @@ export function ProductForm({
   // locales are stored here; RU lives in the top-level state above and
   // is the source of truth (written to the entity's columns directly).
   const [activeLocale, setActiveLocale] = useState<Locale>(DEFAULT_LOCALE)
-  const initialEn = (initialValue?.translations as
-    | { en?: Record<string, unknown> }
-    | undefined)?.en
+  const initialEn = (initialValue?.translations as { en?: Record<string, unknown> } | undefined)?.en
   const [enName, setEnName] = useState<string>(
     typeof initialEn?.name === 'string' ? initialEn.name : '',
   )
@@ -129,8 +104,7 @@ export function ProductForm({
       name: name.trim(),
       sku: sku.trim() || null,
       priceRub: Math.trunc(priceRub),
-      compareAtPriceRub:
-        compareAt === '' ? null : Math.trunc(Number(compareAt)),
+      compareAtPriceRub: compareAt === '' ? null : Math.trunc(Number(compareAt)),
       stockStatus,
       sortOrder: Math.trunc(sortOrder),
       shortDescription: shortDescription.trim() || null,
@@ -150,8 +124,7 @@ export function ProductForm({
     const enBlock: Record<string, unknown> = {}
     if (enName.trim()) enBlock.name = enName.trim()
     if (enMetaTitle.trim()) enBlock.metaTitle = enMetaTitle.trim()
-    if (enMetaDescription.trim())
-      enBlock.metaDescription = enMetaDescription.trim()
+    if (enMetaDescription.trim()) enBlock.metaDescription = enMetaDescription.trim()
 
     const nextTranslations: Record<string, unknown> = {
       ...(initialValue?.translations ?? {}),
@@ -215,10 +188,7 @@ export function ProductForm({
             />
           </Field>
         ) : (
-          <Field
-            label="Название (EN)"
-            htmlFor="name-en"
-          >
+          <Field label="Название (EN)" htmlFor="name-en">
             <input
               id="name-en"
               value={enName}
@@ -268,9 +238,7 @@ export function ProductForm({
               type="number"
               min={0}
               value={compareAt}
-              onChange={(e) =>
-                setCompareAt(e.target.value === '' ? '' : Number(e.target.value))
-              }
+              onChange={(e) => setCompareAt(e.target.value === '' ? '' : Number(e.target.value))}
               className="input"
             />
           </Field>
@@ -302,11 +270,7 @@ export function ProductForm({
           value={ogImage}
           onChange={setOgImage}
         />
-        <MultiImageUploadField
-          label="Галерея товара"
-          value={images}
-          onChange={setImages}
-        />
+        <MultiImageUploadField label="Галерея товара" value={images} onChange={setImages} />
       </Section>
 
       <Section title="Описание (блоки)">
@@ -374,16 +338,12 @@ export function ProductForm({
           />
         </Field>
         <label className="flex items-center gap-2 text-sm text-brand-text">
-          <input
-            type="checkbox"
-            checked={noindex}
-            onChange={(e) => setNoindex(e.target.checked)}
-          />
+          <input type="checkbox" checked={noindex} onChange={(e) => setNoindex(e.target.checked)} />
           <span>noindex (исключить из поисковой выдачи)</span>
         </label>
       </Section>
 
-      {(formError || error) ? (
+      {formError || error ? (
         <div role="alert" className="p-3 rounded-xl bg-red-50 text-red-700 text-sm">
           {formError ??
             (error
@@ -400,11 +360,7 @@ export function ProductForm({
           disabled={disabled}
           className="px-5 py-2.5 rounded-full bg-brand text-white font-semibold disabled:opacity-50"
         >
-          {submitting
-            ? 'Сохранение...'
-            : mode === 'create'
-              ? 'Создать'
-              : 'Сохранить'}
+          {submitting ? 'Сохранение...' : mode === 'create' ? 'Создать' : 'Сохранить'}
         </button>
       </div>
     </form>
@@ -423,9 +379,7 @@ function Section({
   return (
     <section className="bg-white rounded-2xl border border-brand-border p-6">
       <h2 className="text-lg font-semibold text-brand-text mb-4">{title}</h2>
-      {note ? (
-        <p className="text-xs text-brand-text-secondary mb-3">{note}</p>
-      ) : null}
+      {note ? <p className="text-xs text-brand-text-secondary mb-3">{note}</p> : null}
       <div className="space-y-4">{children}</div>
     </section>
   )
@@ -448,9 +402,7 @@ function Field({
         {label}
       </label>
       {children}
-      {error ? (
-        <div className="mt-1 text-xs text-red-600">{error}</div>
-      ) : null}
+      {error ? <div className="mt-1 text-xs text-red-600">{error}</div> : null}
     </div>
   )
 }

@@ -9,5 +9,4 @@ describe('CatalogPage', () => {
   it('enables ISR with a 60-second revalidate window', () => {
     expect(revalidate).toBe(60)
   })
-
 })

@@ -220,9 +220,7 @@ describe('GET /api/admin/media', () => {
     // time; TypeORM's save sets it before returning. Uploads are serialized.
     const second = await uploadOne(app, auth, 'beta.jpg', jpeg)
 
-    const res = await request(app)
-      .get('/api/admin/media')
-      .set(authHeaders(auth))
+    const res = await request(app).get('/api/admin/media').set(authHeaders(auth))
 
     expect(res.status).toBe(200)
     expect(res.body.pagination).toEqual({ limit: 40, offset: 0, total: 2 })
@@ -237,9 +235,7 @@ describe('GET /api/admin/media', () => {
     await uploadOne(app, auth, 'kitten.jpg', jpeg)
     await uploadOne(app, auth, 'puppy.jpg', jpeg)
 
-    const res = await request(app)
-      .get('/api/admin/media?q=kitten')
-      .set(authHeaders(auth))
+    const res = await request(app).get('/api/admin/media?q=kitten').set(authHeaders(auth))
 
     expect(res.status).toBe(200)
     expect(res.body.data).toHaveLength(1)
@@ -252,16 +248,12 @@ describe('GET /api/admin/media', () => {
     await uploadOne(app, auth, 'a.jpg', jpeg, 'image/jpeg')
     await uploadOne(app, auth, 'b.png', png, 'image/png')
 
-    const res = await request(app)
-      .get('/api/admin/media?mimePrefix=image/')
-      .set(authHeaders(auth))
+    const res = await request(app).get('/api/admin/media?mimePrefix=image/').set(authHeaders(auth))
 
     expect(res.status).toBe(200)
     expect(res.body.data).toHaveLength(2)
     // And a prefix that matches nothing returns empty.
-    const none = await request(app)
-      .get('/api/admin/media?mimePrefix=video/')
-      .set(authHeaders(auth))
+    const none = await request(app).get('/api/admin/media?mimePrefix=video/').set(authHeaders(auth))
     expect(none.status).toBe(200)
     expect(none.body.data).toHaveLength(0)
     expect(none.body.pagination.total).toBe(0)
@@ -302,9 +294,7 @@ describe('DELETE /api/admin/media/:id', () => {
     // Sanity: file exists before delete.
     await access(onDiskPath)
 
-    const res = await request(app)
-      .delete(`/api/admin/media/${uploaded.id}`)
-      .set(authHeaders(auth))
+    const res = await request(app).delete(`/api/admin/media/${uploaded.id}`).set(authHeaders(auth))
 
     expect(res.status).toBe(204)
     const row = await AppDataSource.getRepository(Media).findOneBy({
@@ -331,9 +321,7 @@ describe('DELETE /api/admin/media/:id', () => {
     // Manually remove the file first to simulate a filesystem drift.
     await unlink(onDiskPath)
 
-    const res = await request(app)
-      .delete(`/api/admin/media/${uploaded.id}`)
-      .set(authHeaders(auth))
+    const res = await request(app).delete(`/api/admin/media/${uploaded.id}`).set(authHeaders(auth))
 
     expect(res.status).toBe(204)
     const row = await AppDataSource.getRepository(Media).findOneBy({
@@ -343,9 +331,7 @@ describe('DELETE /api/admin/media/:id', () => {
   })
 
   it('rejects without auth (401)', async () => {
-    const res = await request(app).delete(
-      '/api/admin/media/00000000-0000-0000-0000-000000000000',
-    )
+    const res = await request(app).delete('/api/admin/media/00000000-0000-0000-0000-000000000000')
     expect(res.status).toBe(401)
   })
 })

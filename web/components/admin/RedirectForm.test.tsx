@@ -5,25 +5,15 @@ import type { AdminRedirectInput } from '@/lib/adminApi'
 
 describe('RedirectForm', () => {
   it('renders the three core fields', () => {
-    render(
-      <RedirectForm
-        mode="create"
-        onSubmit={async () => undefined}
-        submitting={false}
-      />,
-    )
+    render(<RedirectForm mode="create" onSubmit={async () => undefined} submitting={false} />)
     expect(screen.getByLabelText(/Исходный путь/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Целевой путь/)).toBeInTheDocument()
     expect(screen.getByLabelText(/HTTP-статус/)).toBeInTheDocument()
   })
 
   it('rejects from_path that does not start with /', async () => {
-    const onSubmit = vi.fn<(i: AdminRedirectInput) => Promise<void>>(
-      async () => undefined,
-    )
-    render(
-      <RedirectForm mode="create" onSubmit={onSubmit} submitting={false} />,
-    )
+    const onSubmit = vi.fn<(i: AdminRedirectInput) => Promise<void>>(async () => undefined)
+    render(<RedirectForm mode="create" onSubmit={onSubmit} submitting={false} />)
     fireEvent.change(screen.getByLabelText(/Исходный путь/), {
       target: { value: 'no-slash' },
     })
@@ -32,20 +22,14 @@ describe('RedirectForm', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Создать/i }))
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        /Исходный путь должен начинаться с \//,
-      )
+      expect(screen.getByRole('alert')).toHaveTextContent(/Исходный путь должен начинаться с \//)
     })
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('rejects reserved /admin prefix for from_path', async () => {
-    const onSubmit = vi.fn<(i: AdminRedirectInput) => Promise<void>>(
-      async () => undefined,
-    )
-    render(
-      <RedirectForm mode="create" onSubmit={onSubmit} submitting={false} />,
-    )
+    const onSubmit = vi.fn<(i: AdminRedirectInput) => Promise<void>>(async () => undefined)
+    render(<RedirectForm mode="create" onSubmit={onSubmit} submitting={false} />)
     fireEvent.change(screen.getByLabelText(/Исходный путь/), {
       target: { value: '/admin/dashboard' },
     })
@@ -54,20 +38,14 @@ describe('RedirectForm', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Создать/i }))
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        /не может начинаться с \/admin/i,
-      )
+      expect(screen.getByRole('alert')).toHaveTextContent(/не может начинаться с \/admin/i)
     })
     expect(onSubmit).not.toHaveBeenCalled()
   })
 
   it('submits with trimmed values on valid input', async () => {
-    const onSubmit = vi.fn<(i: AdminRedirectInput) => Promise<void>>(
-      async () => undefined,
-    )
-    render(
-      <RedirectForm mode="create" onSubmit={onSubmit} submitting={false} />,
-    )
+    const onSubmit = vi.fn<(i: AdminRedirectInput) => Promise<void>>(async () => undefined)
+    render(<RedirectForm mode="create" onSubmit={onSubmit} submitting={false} />)
     fireEvent.change(screen.getByLabelText(/Исходный путь/), {
       target: { value: '  /old  ' },
     })
@@ -89,12 +67,8 @@ describe('RedirectForm', () => {
   })
 
   it('accepts absolute http(s) URL as to_path', async () => {
-    const onSubmit = vi.fn<(i: AdminRedirectInput) => Promise<void>>(
-      async () => undefined,
-    )
-    render(
-      <RedirectForm mode="create" onSubmit={onSubmit} submitting={false} />,
-    )
+    const onSubmit = vi.fn<(i: AdminRedirectInput) => Promise<void>>(async () => undefined)
+    render(<RedirectForm mode="create" onSubmit={onSubmit} submitting={false} />)
     fireEvent.change(screen.getByLabelText(/Исходный путь/), {
       target: { value: '/old' },
     })
@@ -121,9 +95,7 @@ describe('RedirectForm', () => {
         error={apiErr as never}
       />,
     )
-    expect(
-      screen.getByText(/Редирект с таким исходным путём уже существует/i),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Редирект с таким исходным путём уже существует/i)).toBeInTheDocument()
   })
 
   it('shows hit count in edit mode', () => {

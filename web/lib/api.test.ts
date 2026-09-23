@@ -56,9 +56,7 @@ describe('api client', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1)
       const [url, init] = fetchMock.mock.calls[0]
       expect(url).toBe('http://localhost:3001/api/public/products')
-      expect(init.headers).toEqual(
-        expect.objectContaining({ 'content-type': 'application/json' }),
-      )
+      expect(init.headers).toEqual(expect.objectContaining({ 'content-type': 'application/json' }))
     })
 
     it('serializes limit and offset as a query string', async () => {
@@ -76,9 +74,11 @@ describe('api client', () => {
     })
 
     it('allows passing only limit', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(
-        jsonResponse(200, { data: [], pagination: { limit: 3, offset: 0, total: 0 } }),
-      )
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(200, { data: [], pagination: { limit: 3, offset: 0, total: 0 } }),
+        )
       vi.stubGlobal('fetch', fetchMock)
 
       await listPublishedProducts({ limit: 3 })
@@ -117,9 +117,7 @@ describe('api client', () => {
     })
 
     it('URL-encodes slugs with special characters', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(
-        jsonResponse(200, { data: { id: 'p' } }),
-      )
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: { id: 'p' } }))
       vi.stubGlobal('fetch', fetchMock)
 
       await getPublishedProduct('slug with spaces')
@@ -131,13 +129,15 @@ describe('api client', () => {
     it('throws ApiError on 404 with envelope', async () => {
       vi.stubGlobal(
         'fetch',
-        vi.fn().mockResolvedValue(
-          jsonResponse(
-            404,
-            { error: { code: 'product_not_found', message: 'Not found' } },
-            false,
+        vi
+          .fn()
+          .mockResolvedValue(
+            jsonResponse(
+              404,
+              { error: { code: 'product_not_found', message: 'Not found' } },
+              false,
+            ),
           ),
-        ),
       )
 
       await expect(getPublishedProduct('nope')).rejects.toBeInstanceOf(ApiError)
@@ -240,21 +240,27 @@ describe('api client', () => {
     })
 
     it('serializes limit and offset as a query string', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(
-        jsonResponse(200, { data: [], pagination: { limit: 10, offset: 5, total: 0 } }),
-      )
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(200, { data: [], pagination: { limit: 10, offset: 5, total: 0 } }),
+        )
       vi.stubGlobal('fetch', fetchMock)
 
       await listProductsByCategory('kits', { limit: 10, offset: 5 })
 
       const [url] = fetchMock.mock.calls[0]
-      expect(url).toBe('http://localhost:3001/api/public/categories/kits/products?limit=10&offset=5')
+      expect(url).toBe(
+        'http://localhost:3001/api/public/categories/kits/products?limit=10&offset=5',
+      )
     })
 
     it('URL-encodes slugs with special characters', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(
-        jsonResponse(200, { data: [], pagination: { limit: 20, offset: 0, total: 0 } }),
-      )
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(200, { data: [], pagination: { limit: 20, offset: 0, total: 0 } }),
+        )
       vi.stubGlobal('fetch', fetchMock)
 
       await listProductsByCategory('slug with spaces')
@@ -266,13 +272,15 @@ describe('api client', () => {
     it('throws ApiError on 404', async () => {
       vi.stubGlobal(
         'fetch',
-        vi.fn().mockResolvedValue(
-          jsonResponse(
-            404,
-            { error: { code: 'category_not_found', message: 'Not found' } },
-            false,
+        vi
+          .fn()
+          .mockResolvedValue(
+            jsonResponse(
+              404,
+              { error: { code: 'category_not_found', message: 'Not found' } },
+              false,
+            ),
           ),
-        ),
       )
 
       await expect(listProductsByCategory('nope')).rejects.toMatchObject({
@@ -337,9 +345,11 @@ describe('api client', () => {
     })
 
     it('serializes limit and offset as a query string', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(
-        jsonResponse(200, { data: [], pagination: { limit: 10, offset: 5, total: 0 } }),
-      )
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(200, { data: [], pagination: { limit: 10, offset: 5, total: 0 } }),
+        )
       vi.stubGlobal('fetch', fetchMock)
 
       await listPages({ limit: 10, offset: 5 })
@@ -440,13 +450,15 @@ describe('api client', () => {
     it('throws ApiError on 404', async () => {
       vi.stubGlobal(
         'fetch',
-        vi.fn().mockResolvedValue(
-          jsonResponse(
-            404,
-            { error: { code: 'blog_post_not_found', message: 'Not found' } },
-            false,
+        vi
+          .fn()
+          .mockResolvedValue(
+            jsonResponse(
+              404,
+              { error: { code: 'blog_post_not_found', message: 'Not found' } },
+              false,
+            ),
           ),
-        ),
       )
 
       await expect(getBlogPostBySlug('nope')).rejects.toMatchObject({
@@ -466,9 +478,7 @@ describe('api client', () => {
         yandexWebmasterVerification: null,
         googleSiteVerification: null,
       }
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue(jsonResponse(200, { data: settings }))
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: settings }))
       vi.stubGlobal('fetch', fetchMock)
 
       const result = await getPublicSettings()
@@ -487,9 +497,11 @@ describe('api client', () => {
     }
 
     it('POSTs /api/checkout with the Idempotency-Key header and unwraps data', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(
-        jsonResponse(201, { data: { orderNumber: 'XM-2026-00001', paymentUrl: null } }),
-      )
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(201, { data: { orderNumber: 'XM-2026-00001', paymentUrl: null } }),
+        )
       vi.stubGlobal('fetch', fetchMock)
 
       const result = await submitCheckout(payload, 'key-123')
@@ -544,9 +556,11 @@ describe('api client', () => {
     })
 
     it('throws ApiError 404 for an unknown order', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(
-        jsonResponse(404, { error: { code: 'order_not_found', message: 'Заказ не найден' } }),
-      )
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(
+          jsonResponse(404, { error: { code: 'order_not_found', message: 'Заказ не найден' } }),
+        )
       vi.stubGlobal('fetch', fetchMock)
 
       await expect(getOrderStatus('XM-0000-00000')).rejects.toMatchObject({
@@ -575,9 +589,9 @@ describe('api client', () => {
     })
 
     it('forwards an AbortSignal so stale requests can be cancelled', async () => {
-      const fetchMock = vi.fn().mockResolvedValue(
-        jsonResponse(200, { data: { products: [], posts: [] } }),
-      )
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(jsonResponse(200, { data: { products: [], posts: [] } }))
       vi.stubGlobal('fetch', fetchMock)
       const controller = new AbortController()
 
@@ -609,7 +623,9 @@ describe('API base resolution', () => {
     vi.resetModules()
     const fetchMock = vi
       .fn()
-      .mockResolvedValue(jsonResponse(200, { data: [], pagination: { limit: 1, offset: 0, total: 0 } }))
+      .mockResolvedValue(
+        jsonResponse(200, { data: [], pagination: { limit: 1, offset: 0, total: 0 } }),
+      )
     vi.stubGlobal('fetch', fetchMock)
     const { listPublishedProducts: list } = await import('./api')
     await list({ limit: 1 })

@@ -14,9 +14,7 @@ describe('videoEmbedUrl', () => {
   })
 
   it('builds VK embed URL with compound id as query suffix', () => {
-    expect(videoEmbedUrl('vk', 'oid=-1&id=456')).toBe(
-      'https://vk.com/video_ext.php?oid=-1&id=456',
-    )
+    expect(videoEmbedUrl('vk', 'oid=-1&id=456')).toBe('https://vk.com/video_ext.php?oid=-1&id=456')
   })
 
   it('builds Rutube embed URL', () => {
@@ -84,9 +82,7 @@ describe('<VideoBlock> v3', () => {
 
   it('omits [data-caption] when title is null (DB default)', () => {
     const { container } = render(
-      <VideoBlock
-        block={{ type: 'video', provider: 'youtube', videoId: 'abc', title: null }}
-      />,
+      <VideoBlock block={{ type: 'video', provider: 'youtube', videoId: 'abc', title: null }} />,
     )
     expect(container.querySelector('[data-caption]')).toBeNull()
   })

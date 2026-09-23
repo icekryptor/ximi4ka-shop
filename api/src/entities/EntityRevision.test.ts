@@ -17,9 +17,7 @@ describe('EntityRevision entity', () => {
   })
 
   beforeEach(async () => {
-    await AppDataSource.query(
-      'TRUNCATE TABLE "entity_revisions" RESTART IDENTITY CASCADE'
-    )
+    await AppDataSource.query('TRUNCATE TABLE "entity_revisions" RESTART IDENTITY CASCADE')
   })
 
   it('persists and retrieves a revision round-trip', async () => {

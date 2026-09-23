@@ -11,6 +11,7 @@
 The site reads like an open laboratory notebook — cream paper pages alternating with ink instrument readouts. Swiss typographic confidence; molecular notation as ornament; warm hand-drawn callouts grounding the education feeling.
 
 **Two surfaces, two registers.**
+
 - **Cream (`#F2EFE8`)** — daylight, paper, education, hero / product / catalog. Body and product photography live here.
 - **Ink (`#0A0A0A`)** — instrument-on, manifesto, "what's inside", pre-footer CTAs. Numbers, data viz, statements.
 
@@ -27,25 +28,25 @@ The transition between the two IS the cinematic moment. Section flow on every lo
 ```css
 :root {
   /* Cream Lab — daylight surface family */
-  --color-cream:        #F2EFE8;  /* primary cream surface */
-  --color-cream-shade:  #E8E3D7;  /* product-image background, soft surfaces */
-  --color-cream-line:   rgba(10, 10, 10, 0.05);  /* blueprint grid on cream */
+  --color-cream: #f2efe8; /* primary cream surface */
+  --color-cream-shade: #e8e3d7; /* product-image background, soft surfaces */
+  --color-cream-line: rgba(10, 10, 10, 0.05); /* blueprint grid on cream */
 
   /* Ink Lab — nocturnal surface family */
-  --color-ink:           #0A0A0A; /* primary ink surface */
-  --color-ink-elevated:  #141414; /* hover/elevated panels on ink */
-  --color-bone:          #EFEDE6; /* primary text on ink */
-  --color-bone-mute:     rgba(239, 237, 230, 0.60);
-  --color-ink-line:      rgba(239, 237, 230, 0.06);  /* blueprint grid on ink */
+  --color-ink: #0a0a0a; /* primary ink surface */
+  --color-ink-elevated: #141414; /* hover/elevated panels on ink */
+  --color-bone: #efede6; /* primary text on ink */
+  --color-bone-mute: rgba(239, 237, 230, 0.6);
+  --color-ink-line: rgba(239, 237, 230, 0.06); /* blueprint grid on ink */
 
   /* Brand precision accent */
-  --color-brand:         #836efe;
-  --color-brand-deep:    #6703ff;  /* hover state on ink-pill CTAs */
+  --color-brand: #836efe;
+  --color-brand-deep: #6703ff; /* hover state on ink-pill CTAs */
 
   /* Rules */
-  --color-rule:          rgba(10, 10, 10, 0.14);
-  --color-rule-soft:     rgba(10, 10, 10, 0.08);
-  --color-rule-on-ink:   rgba(239, 237, 230, 0.18);
+  --color-rule: rgba(10, 10, 10, 0.14);
+  --color-rule-soft: rgba(10, 10, 10, 0.08);
+  --color-rule-on-ink: rgba(239, 237, 230, 0.18);
 }
 ```
 
@@ -53,31 +54,32 @@ The transition between the two IS the cinematic moment. Section flow on every lo
 
 ### 2.2 Typography
 
-| Role     | Family               | Weights         | Notes                                              |
-|----------|----------------------|-----------------|----------------------------------------------------|
-| Display  | **Unbounded**        | 400 / 700 / 900 | Russian-designed, geometric, Cyrillic-first. All headings, big numbers, product titles. |
-| Body     | **Inter**            | 400 / 500 / 700 | Workhorse. Body copy, descriptions, lead paragraphs. |
-| Mono     | **JetBrains Mono**   | 400 / 500       | Lab-instrument labels, SKUs, formulas, eyebrows, ticker, page numbers, stat labels. |
+| Role    | Family             | Weights         | Notes                                                                                   |
+| ------- | ------------------ | --------------- | --------------------------------------------------------------------------------------- |
+| Display | **Unbounded**      | 400 / 700 / 900 | Russian-designed, geometric, Cyrillic-first. All headings, big numbers, product titles. |
+| Body    | **Inter**          | 400 / 500 / 700 | Workhorse. Body copy, descriptions, lead paragraphs.                                    |
+| Mono    | **JetBrains Mono** | 400 / 500       | Lab-instrument labels, SKUs, formulas, eyebrows, ticker, page numbers, stat labels.     |
 
 All three have excellent Cyrillic, all free via Google Fonts. **No emoji icons. No icon library.** Lucide-react can stay if already imported; prefer mono-character glyphs (`→`, `↓`, `●`, `≠`) inline.
 
 ```css
 :root {
   --font-display: 'Unbounded', system-ui, -apple-system, sans-serif;
-  --font-body:    'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
 
   /* Scale */
-  --text-mega:    clamp(2.75rem, 9vw, 9.5rem);  /* hero headline */
+  --text-mega: clamp(2.75rem, 9vw, 9.5rem); /* hero headline */
   --text-display: clamp(2.25rem, 5.5vw, 5.5rem); /* manifesto statement */
-  --text-h2:      clamp(2rem, 4vw, 4rem);
-  --text-body:    1.0625rem;                     /* 17px */
-  --text-mono-xs: 0.6875rem;                     /* 11px */
-  --text-mono-sm: 0.75rem;                       /* 12px */
+  --text-h2: clamp(2rem, 4vw, 4rem);
+  --text-body: 1.0625rem; /* 17px */
+  --text-mono-xs: 0.6875rem; /* 11px */
+  --text-mono-sm: 0.75rem; /* 12px */
 }
 ```
 
 **Tracking rules:**
+
 - Display: `letter-spacing: -0.045em` (-0.06em for decimals like `4,9`)
 - Mono labels: `letter-spacing: 0.06em` to `0.08em`, ALWAYS uppercase or lowercase intentionally
 - Body: default tracking
@@ -88,10 +90,10 @@ All three have excellent Cyrillic, all free via Google Fonts. **No emoji icons. 
 
 ```css
 :root {
-  --space-section:   8rem;     /* vertical padding inside sections */
-  --space-page:      1.5rem;   /* horizontal page edge */
-  --max-content:     1600px;   /* hero / products inner */
-  --max-narrow:      1400px;   /* manifesto inner */
+  --space-section: 8rem; /* vertical padding inside sections */
+  --space-page: 1.5rem; /* horizontal page edge */
+  --max-content: 1600px; /* hero / products inner */
+  --max-narrow: 1400px; /* manifesto inner */
 }
 ```
 
@@ -101,18 +103,19 @@ All three have excellent Cyrillic, all free via Google Fonts. **No emoji icons. 
 
 ```ts
 // web/lib/motion.ts (replaces v2 motion file)
-export const EASE_OUT_QUART = 'cubic-bezier(0.25, 1, 0.5, 1)';
-export const EASE_OUT_EXPO  = 'cubic-bezier(0.19, 1, 0.22, 1)';
-export const TICKER_DURATION_S = 50;   // hero formula ticker
-export const ROTATE_SLOW_S    = 80;    // hero benzene
-export const ROTATE_GHOST_S   = 200;   // manifesto background molecule (reverse direction)
-export const COUNTUP_DURATION_MS = 1800;
-export const STATBAR_DURATION_S  = 1.2;
+export const EASE_OUT_QUART = 'cubic-bezier(0.25, 1, 0.5, 1)'
+export const EASE_OUT_EXPO = 'cubic-bezier(0.19, 1, 0.22, 1)'
+export const TICKER_DURATION_S = 50 // hero formula ticker
+export const ROTATE_SLOW_S = 80 // hero benzene
+export const ROTATE_GHOST_S = 200 // manifesto background molecule (reverse direction)
+export const COUNTUP_DURATION_MS = 1800
+export const STATBAR_DURATION_S = 1.2
 ```
 
 **Removed from v2:** spring physics (`SPRING_HEAVY`), `EASE_BOUNCE`, sticker wobble, scroll-driven parallax. Lab Notebook is calm-confident, not bouncy.
 
 **Motion budget per page:**
+
 - **Always:** ticker crawl, molecule rotation, mode-multiply blends
 - **On scroll into view:** count-up on big numbers, stat-bar fill, manifesto cell brand-purple top-stroke
 - **On hover:** Mendeleev cell tint shift, callout arrow stroke-dashoffset reveal, callout text fade, product image scale 1→1.04, chips ink-fill, formula slide-up, CTA color invert
@@ -141,6 +144,7 @@ Lives on every section. Top-left = section label with brand-purple bullet. Top-r
 ```
 
 Renders as:
+
 ```
 ●  № 001 — Лабораторный журнал           Ред. 2026.04 / v3   стр. 01 / 03
 ```
@@ -164,7 +168,7 @@ SVG path with `stroke-dasharray` initial state hidden, animates `stroke-dashoffs
   position="top-right"
   offset="-3.5rem"
   text="161 реакция"
-  curve="qbezier"     // qbezier | straight | backward
+  curve="qbezier" // qbezier | straight | backward
 />
 ```
 
@@ -199,12 +203,12 @@ Auto-switches text colors based on variant. Body becomes `bone`, rules become `r
 
 ### 4.3 Data viz components (slot inside `<NumberCell>`)
 
-| Component       | Use                              | Visual |
-|-----------------|----------------------------------|--------|
-| `<Timeline>`    | Year-on-timeline, founding year  | Horizontal axis, brand-filled active dot, mono `'YY` labels under each |
-| `<Scientific>`  | Big-number alternative notation  | Display-font `2 × 10⁴ = ЛЮДЕЙ` with brand-purple multiplier and exponent |
-| `<Rating>`      | X out of N                       | N circles, X-1 fully filled brand-purple, last circle filled by `(X mod 1)` via clip-path |
-| `<DotGrid>`     | Literal count visualization      | Generated grid of N small circles in `cols × rows` layout. Final dot brand-purple. |
+| Component      | Use                             | Visual                                                                                    |
+| -------------- | ------------------------------- | ----------------------------------------------------------------------------------------- |
+| `<Timeline>`   | Year-on-timeline, founding year | Horizontal axis, brand-filled active dot, mono `'YY` labels under each                    |
+| `<Scientific>` | Big-number alternative notation | Display-font `2 × 10⁴ = ЛЮДЕЙ` with brand-purple multiplier and exponent                  |
+| `<Rating>`     | X out of N                      | N circles, X-1 fully filled brand-purple, last circle filled by `(X mod 1)` via clip-path |
+| `<DotGrid>`    | Literal count visualization     | Generated grid of N small circles in `cols × rows` layout. Final dot brand-purple.        |
 
 `<DotGrid>` accepts `total`, `cols`, `dotR`, `cellW`, `cellH` props. JS-generates the SVG circles on mount.
 
@@ -237,11 +241,13 @@ Major rebuild from v2. Anatomy top-to-bottom:
 ```
 
 **Asymmetric stagger rules:**
+
 - 3-card row: `:nth-child(2) { margin-top: 4rem }; :nth-child(3) { margin-top: 8rem }`
 - 4-card row: `:nth-child(2) { margin-top: 3rem }; :nth-child(3) { margin-top: 6rem }; :nth-child(4) { margin-top: 2rem }`
 - Grid columns: NOT equal width — `grid-template-columns: 1.25fr 1fr 1.1fr` for 3-card row to break the rhythm
 
 **Hover state (whole card):**
+
 - Image border `--color-rule` → `--color-ink`
 - Image art `transform: scale(1.04)`
 - Formula popup slides in from below
@@ -259,6 +265,7 @@ Major rebuild from v2. Anatomy top-to-bottom:
 3-column grid: `minmax(7.5rem, auto) 1fr 2.5rem`. Bar uses `repeating-linear-gradient(90deg, ink 0, ink 4px, transparent 4px, transparent 6px)` to render the dashed Morse-like pattern. Width animates from 0 to `fillPercent%` on scroll-in via IntersectionObserver.
 
 **Per-stat-type max scaling** (across all visible cards in a row):
+
 ```
 maxByType = { реактивов: 18, инструментов: 20, реакций: 161 }
 fillPercent = (value / maxByType[type]) * 100
@@ -333,6 +340,7 @@ Each section knows its index in the page count and renders top-right as `стр.
 ### 5.3 Eyebrow pattern
 
 Above every major section heading:
+
 ```
 ●  02.0 / Принципы лаборатории
 ```
@@ -342,6 +350,7 @@ Brand-purple bullet (8px circle), mono `0.75rem`, uppercase, `0.08em` tracking. 
 ### 5.4 Brand-purple budget (per page)
 
 Maximum **5 occurrences**:
+
 1. One headline word (italic)
 2. One manifesto phrase (with brand underline 5px tall, 50% opacity)
 3. Hand-drawn callout strokes
@@ -391,12 +400,12 @@ Forbidden: brand-purple background blocks, brand-purple gradients, brand-purple 
 
 Owner-confirmed values from 2026-04-28:
 
-| Index | Big      | Top label  | Bottom-left   | Bottom-right | Viz                           |
-|-------|----------|-----------|---------------|--------------|-------------------------------|
-| 01    | 2023     | год       | основано      | 3 года       | Timeline 2023→2026, '23 active |
-| 02    | 20 000+  | купили    | покупатели    | с 2023       | Scientific 2 × 10⁴ = людей    |
-| 03    | 4,9      | рейтинг   | из 5          | WB & Ozon    | 5 circles, last filled 92%    |
-| 04    | 161      | реакций   | в наборе      | каждая ≠     | DotGrid 161 dots, 23 × 7      |
+| Index | Big     | Top label | Bottom-left | Bottom-right | Viz                            |
+| ----- | ------- | --------- | ----------- | ------------ | ------------------------------ |
+| 01    | 2023    | год       | основано    | 3 года       | Timeline 2023→2026, '23 active |
+| 02    | 20 000+ | купили    | покупатели  | с 2023       | Scientific 2 × 10⁴ = людей     |
+| 03    | 4,9     | рейтинг   | из 5        | WB & Ozon    | 5 circles, last filled 92%     |
+| 04    | 161     | реакций   | в наборе    | каждая ≠     | DotGrid 161 dots, 23 × 7       |
 
 ---
 
@@ -404,10 +413,10 @@ Owner-confirmed values from 2026-04-28:
 
 Owner-confirmed catalog from 2026-04-28:
 
-| SKU      | Name             | Реактивов | Инструментов | Реакций | Цена   | Возраст | Chips                                | Badge |
-|----------|------------------|-----------|--------------|---------|--------|---------|--------------------------------------|-------|
-| X-30     | Химичка 3.0      | 18        | 12           | 161     | 3 399 ₽ | 10+   | безопасно · ярко · от 10 лет         | Хит   |
-| X-MINI   | Мини-Химичка     | 18        | 4            | 161     | 1 799 ₽ | 8+    | подарок · от 8 лет                   | Старт |
-| X-EL     | Электрохимичка   | 14        | 20           | 74      | 3 299 ₽ | 12+   | ток · гальваника · от 12 лет         | Pro   |
+| SKU    | Name           | Реактивов | Инструментов | Реакций | Цена    | Возраст | Chips                        | Badge |
+| ------ | -------------- | --------- | ------------ | ------- | ------- | ------- | ---------------------------- | ----- |
+| X-30   | Химичка 3.0    | 18        | 12           | 161     | 3 399 ₽ | 10+     | безопасно · ярко · от 10 лет | Хит   |
+| X-MINI | Мини-Химичка   | 18        | 4            | 161     | 1 799 ₽ | 8+      | подарок · от 8 лет           | Старт |
+| X-EL   | Электрохимичка | 14        | 20           | 74      | 3 299 ₽ | 12+     | ток · гальваника · от 12 лет | Pro   |
 
 Per-stat-type max for bar scaling: `{ реактивов: 18, инструментов: 20, реакций: 161 }`.

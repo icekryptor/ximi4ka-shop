@@ -3,12 +3,7 @@ import { ManualProvider } from './manual.js'
 import { TBankProvider } from './tbank.js'
 import type { PaymentProvider } from './types.js'
 
-export type {
-  PaymentProvider,
-  PaymentEvent,
-  PaymentStatus,
-  CreatePaymentResult,
-} from './types.js'
+export type { PaymentProvider, PaymentEvent, PaymentStatus, CreatePaymentResult } from './types.js'
 export { ManualProvider } from './manual.js'
 export { TBankProvider, mapTbankStatus, TBANK_DEFAULT_API_URL } from './tbank.js'
 export { generateToken, verifyToken, buildTokenString } from './token.js'
@@ -26,7 +21,5 @@ export function resolvePaymentProviderName(): PaymentProviderName {
 }
 
 export function getPaymentProvider(): PaymentProvider {
-  return resolvePaymentProviderName() === 'tbank'
-    ? new TBankProvider()
-    : new ManualProvider()
+  return resolvePaymentProviderName() === 'tbank' ? new TBankProvider() : new ManualProvider()
 }

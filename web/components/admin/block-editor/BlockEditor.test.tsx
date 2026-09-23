@@ -27,7 +27,9 @@ describe('BlockEditor', () => {
       { type: 'cta', heading: 'B', subtext: null, buttonLabel: 'X', buttonHref: '#' },
     ]
     render(<BlockEditor value={initial} onChange={onChange} />)
-    const cards = screen.getAllByText('CTA').map((el) => el.closest('[data-block-card]') as HTMLElement)
+    const cards = screen
+      .getAllByText('CTA')
+      .map((el) => el.closest('[data-block-card]') as HTMLElement)
     fireEvent.click(within(cards[0]).getByRole('button', { name: 'Удалить блок' }))
     expect(onChange).toHaveBeenCalled()
     const [blocks] = onChange.mock.calls[0]
@@ -42,7 +44,9 @@ describe('BlockEditor', () => {
       { type: 'cta', heading: 'B', subtext: null, buttonLabel: 'X', buttonHref: '#' },
     ]
     render(<BlockEditor value={initial} onChange={onChange} />)
-    const cards = screen.getAllByText('CTA').map((el) => el.closest('[data-block-card]') as HTMLElement)
+    const cards = screen
+      .getAllByText('CTA')
+      .map((el) => el.closest('[data-block-card]') as HTMLElement)
     fireEvent.click(within(cards[0]).getByRole('button', { name: 'Переместить вниз' }))
     const [blocks] = onChange.mock.calls[0]
     expect((blocks[0] as { heading: string }).heading).toBe('B')
@@ -55,7 +59,9 @@ describe('BlockEditor', () => {
       { type: 'cta', heading: 'B', subtext: null, buttonLabel: 'X', buttonHref: '#' },
     ]
     render(<BlockEditor value={initial} onChange={() => undefined} />)
-    const cards = screen.getAllByText('CTA').map((el) => el.closest('[data-block-card]') as HTMLElement)
+    const cards = screen
+      .getAllByText('CTA')
+      .map((el) => el.closest('[data-block-card]') as HTMLElement)
     expect(within(cards[0]).getByRole('button', { name: 'Переместить вверх' })).toBeDisabled()
     expect(within(cards[1]).getByRole('button', { name: 'Переместить вниз' })).toBeDisabled()
   })

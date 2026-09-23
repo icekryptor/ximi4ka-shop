@@ -7,11 +7,7 @@ vi.mock('@/lib/api', () => ({
 }))
 
 import { GET } from './route'
-import {
-  listPublishedProducts,
-  listCategories,
-  getPublicSettings,
-} from '@/lib/api'
+import { listPublishedProducts, listCategories, getPublicSettings } from '@/lib/api'
 
 describe('GET /yml.xml', () => {
   beforeEach(() => {
@@ -60,7 +56,7 @@ describe('GET /yml.xml', () => {
           // The augmented list endpoint injects categoryIds when
           // include=categories is passed. Mirror that here.
           categoryIds: ['cat-uuid'],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
       ],
       pagination: { limit: 5000, offset: 0, total: 1 },

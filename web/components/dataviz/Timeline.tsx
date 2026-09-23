@@ -15,14 +15,16 @@ export function Timeline({ points, active }: Props) {
         return (
           <g key={i}>
             <circle
-              cx={cx} cy={18}
+              cx={cx}
+              cy={18}
               r={isActive ? 6 : 3}
               fill={isActive ? '#836efe' : 'rgba(239,237,230,0.6)'}
               stroke={isActive ? 'none' : 'rgba(239,237,230,0.6)'}
               strokeWidth={isActive ? 0 : 1.2}
             />
             <text
-              x={cx} y={34}
+              x={cx}
+              y={34}
               fontFamily="var(--font-lj-mono)"
               fontSize={8}
               fill={isActive ? '#836efe' : 'rgba(239,237,230,0.55)'}

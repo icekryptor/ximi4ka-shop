@@ -53,10 +53,7 @@ checkoutRouter.post('/', async (req, res, next) => {
     // Collapse duplicate product ids by summing quantities.
     const qtyByProduct = new Map<string, number>()
     for (const item of parsed.items) {
-      qtyByProduct.set(
-        item.productId,
-        (qtyByProduct.get(item.productId) ?? 0) + item.quantity,
-      )
+      qtyByProduct.set(item.productId, (qtyByProduct.get(item.productId) ?? 0) + item.quantity)
     }
     const productIds = [...qtyByProduct.keys()]
 

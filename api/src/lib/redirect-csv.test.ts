@@ -2,11 +2,7 @@ import 'reflect-metadata'
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Redirect } from '../entities/Redirect.js'
-import {
-  RedirectCsvParseError,
-  parseRedirectCsv,
-  upsertRedirectRows,
-} from './redirect-csv.js'
+import { RedirectCsvParseError, parseRedirectCsv, upsertRedirectRows } from './redirect-csv.js'
 
 describe('parseRedirectCsv', () => {
   it('parses rows, skipping the header and defaulting status_code to 301', () => {
@@ -92,9 +88,7 @@ describe('upsertRedirectRows', () => {
 
   it('is idempotent: re-run updates by from_path and preserves hit_count', async () => {
     const repo = AppDataSource.getRepository(Redirect)
-    await repo.save(
-      repo.create({ fromPath: '/a', toPath: '/old', statusCode: 301, hitCount: 42 }),
-    )
+    await repo.save(repo.create({ fromPath: '/a', toPath: '/old', statusCode: 301, hitCount: 42 }))
 
     const summary = await upsertRedirectRows(repo, [
       { row: 1, fromPath: '/a', toPath: '/new', statusCode: 302 },

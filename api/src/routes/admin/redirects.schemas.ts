@@ -8,9 +8,7 @@ import { z } from 'zod'
 const RESERVED_PREFIXES = ['/admin', '/api', '/uploads', '/_next']
 
 function isReservedPath(value: string): boolean {
-  return RESERVED_PREFIXES.some(
-    (prefix) => value === prefix || value.startsWith(`${prefix}/`),
-  )
+  return RESERVED_PREFIXES.some((prefix) => value === prefix || value.startsWith(`${prefix}/`))
 }
 
 const fromPathSchema = z
@@ -29,10 +27,7 @@ const toPathSchema = z.string().trim().min(1).max(1000)
 const statusCodeSchema = z
   .number()
   .int()
-  .refine(
-    (n) => [301, 302, 307, 308].includes(n),
-    'Код должен быть одним из: 301, 302, 307, 308',
-  )
+  .refine((n) => [301, 302, 307, 308].includes(n), 'Код должен быть одним из: 301, 302, 307, 308')
 
 export const CreateRedirectSchema = z.object({
   fromPath: fromPathSchema,

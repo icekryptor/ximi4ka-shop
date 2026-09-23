@@ -2,11 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  ApiError,
-  adminImportRedirectsCsv,
-  type RedirectCsvSummary,
-} from '@/lib/adminApi'
+import { ApiError, adminImportRedirectsCsv, type RedirectCsvSummary } from '@/lib/adminApi'
 
 interface Props {
   open: boolean
@@ -58,9 +54,7 @@ export function CsvImportDialog({ open, onClose }: Props) {
     >
       <div className="bg-white rounded-2xl border border-brand-border w-full max-w-lg p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-brand-text">
-            Импорт редиректов (CSV)
-          </h2>
+          <h2 className="text-lg font-semibold text-brand-text">Импорт редиректов (CSV)</h2>
           <button
             type="button"
             onClick={close}
@@ -74,12 +68,7 @@ export function CsvImportDialog({ open, onClose }: Props) {
         {summary ? (
           <SummaryView summary={summary} />
         ) : (
-          <UploadView
-            busy={busy}
-            error={error}
-            inputRef={inputRef}
-            onFile={handleFile}
-          />
+          <UploadView busy={busy} error={error} inputRef={inputRef} onFile={handleFile} />
         )}
 
         <div className="flex justify-end gap-2 pt-2">
@@ -111,11 +100,9 @@ function UploadView({
     <div className="space-y-3">
       <p className="text-sm text-brand-text-secondary">
         Загрузите CSV-файл с колонками{' '}
-        <code className="text-xs bg-brand-bg-soft px-1 rounded">
-          from_path,to_path,status_code
-        </code>
-        . Столбец <code>status_code</code> необязателен и по умолчанию 301.
-        Существующие записи обновляются по <code>from_path</code>; счётчик хитов сохраняется.
+        <code className="text-xs bg-brand-bg-soft px-1 rounded">from_path,to_path,status_code</code>
+        . Столбец <code>status_code</code> необязателен и по умолчанию 301. Существующие записи
+        обновляются по <code>from_path</code>; счётчик хитов сохраняется.
       </p>
       <label
         htmlFor="csv-file"
@@ -124,9 +111,7 @@ function UploadView({
         <div className="text-sm font-medium text-brand-text">
           {busy ? 'Загрузка…' : 'Выберите CSV-файл'}
         </div>
-        <div className="text-xs text-brand-text-secondary mt-1">
-          До 5 МБ, UTF-8.
-        </div>
+        <div className="text-xs text-brand-text-secondary mt-1">До 5 МБ, UTF-8.</div>
         <input
           id="csv-file"
           ref={inputRef}
@@ -177,15 +162,7 @@ function SummaryView({ summary }: { summary: RedirectCsvSummary }) {
   )
 }
 
-function Stat({
-  label,
-  value,
-  color,
-}: {
-  label: string
-  value: number
-  color: string
-}) {
+function Stat({ label, value, color }: { label: string; value: number; color: string }) {
   return (
     <div className="p-3 rounded-xl bg-brand-bg-soft">
       <div className={`text-2xl font-semibold ${color}`}>{value}</div>

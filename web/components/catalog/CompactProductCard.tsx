@@ -22,23 +22,14 @@ interface Props {
 export function CompactProductCard({ product, images }: Props) {
   const [qty, setQty] = useState(1)
   const sku = product.sku || product.slug
-  const formattedPrice = product.priceRub
-    .toLocaleString('ru-RU')
-    .replace(/,/g, ' ')
+  const formattedPrice = product.priceRub.toLocaleString('ru-RU').replace(/,/g, ' ')
   const outOfStock = product.stockStatus === 'out_of_stock'
 
   return (
-    <article
-      className="group/compact lj-lift flex flex-col bg-transparent"
-      data-density="compact"
-    >
+    <article className="group/compact lj-lift flex flex-col bg-transparent" data-density="compact">
       <Link href={`/product/${product.slug}`} className="block">
         {images.length === 0 ? (
-          <SpecimenCard
-            sku={sku}
-            size="pdp"
-            className="rounded-[var(--radius-lj-bright-sm)]"
-          />
+          <SpecimenCard sku={sku} size="pdp" className="rounded-[var(--radius-lj-bright-sm)]" />
         ) : (
           <div className="relative aspect-square bg-white rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color,box-shadow] duration-500 group-hover/compact:border-[var(--color-lj-brand)] group-hover/compact:shadow-[var(--shadow-lj-bright)]">
             <Image

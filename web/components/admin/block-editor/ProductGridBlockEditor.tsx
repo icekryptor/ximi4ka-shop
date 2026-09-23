@@ -14,9 +14,7 @@ export function ProductGridBlockEditor({ block, onChange }: Props) {
   // Remount the raw editor whenever the canonical slug list changes
   // externally (undo, reset, etc.). This is cleaner than a
   // setState-in-effect sync and matches React's recommended pattern.
-  return (
-    <RawSlugsEditor key={joined} block={block} initialRaw={joined} onChange={onChange} />
-  )
+  return <RawSlugsEditor key={joined} block={block} initialRaw={joined} onChange={onChange} />
 }
 
 function RawSlugsEditor({
@@ -45,9 +43,7 @@ function RawSlugsEditor({
       <LabeledInput
         label="Заголовок"
         value={block.heading ?? ''}
-        onChange={(heading) =>
-          onChange({ ...block, heading: heading || null })
-        }
+        onChange={(heading) => onChange({ ...block, heading: heading || null })}
       />
       <label className="block">
         <span className="block text-sm font-medium text-brand-text-secondary mb-1">
@@ -61,8 +57,8 @@ function RawSlugsEditor({
         />
       </label>
       <p className="text-xs text-brand-text-secondary">
-        Пример: <code>nabor-yunogo-himika, vulkan-lavy</code>. Несуществующие
-        slug будут пропущены при рендере.
+        Пример: <code>nabor-yunogo-himika, vulkan-lavy</code>. Несуществующие slug будут пропущены
+        при рендере.
       </p>
     </div>
   )

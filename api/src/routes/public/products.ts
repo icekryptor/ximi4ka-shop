@@ -55,9 +55,7 @@ publicProductsRouter.get('/:slug', async (req, res, next) => {
     if (product?.images) {
       // Sort gallery thumbnails by their stored order in JS — `findOne`
       // doesn't accept an `order` clause on relations.
-      product.images = [...product.images].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      )
+      product.images = [...product.images].sort((a, b) => a.sortOrder - b.sortOrder)
     }
     if (!product) throw notFound('product_not_found', 'Product not found')
     res.json({ data: product })

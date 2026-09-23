@@ -17,9 +17,7 @@ export function PageDeleteButton({ id, title }: Props) {
 
   async function handleClick() {
     if (busy) return
-    const ok = window.confirm(
-      `Удалить страницу «${title}»? Это действие мягкое (soft-delete).`,
-    )
+    const ok = window.confirm(`Удалить страницу «${title}»? Это действие мягкое (soft-delete).`)
     if (!ok) return
     setBusy(true)
     try {

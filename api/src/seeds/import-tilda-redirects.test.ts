@@ -20,9 +20,7 @@ describe('data/tilda-redirects.csv', () => {
     expect(errors).toEqual([])
     expect(rows).toHaveLength(84)
     expect(rows.every((r) => r.statusCode === 301)).toBe(true)
-    expect(rows.every((r) => r.fromPath.startsWith('/') && r.toPath.startsWith('/'))).toBe(
-      true,
-    )
+    expect(rows.every((r) => r.fromPath.startsWith('/') && r.toPath.startsWith('/'))).toBe(true)
 
     const fromPaths = new Set(rows.map((r) => r.fromPath))
     expect(fromPaths.size).toBe(rows.length)

@@ -19,9 +19,7 @@ export function MediaSearch({ initialQuery }: { initialQuery: string }) {
     else next.delete('q')
     next.delete('offset')
     startTransition(() => {
-      router.push(
-        `/admin/media${next.toString() ? `?${next.toString()}` : ''}`,
-      )
+      router.push(`/admin/media${next.toString() ? `?${next.toString()}` : ''}`)
     })
   }
 
@@ -51,9 +49,7 @@ export function MediaSearch({ initialQuery }: { initialQuery: string }) {
             next.delete('q')
             next.delete('offset')
             startTransition(() => {
-              router.push(
-                `/admin/media${next.toString() ? `?${next.toString()}` : ''}`,
-              )
+              router.push(`/admin/media${next.toString() ? `?${next.toString()}` : ''}`)
             })
           }}
           className="px-4 py-2 rounded-full bg-brand-bg-soft text-brand-text"

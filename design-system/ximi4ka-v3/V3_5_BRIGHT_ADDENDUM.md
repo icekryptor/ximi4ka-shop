@@ -29,20 +29,28 @@
 ```css
 :root {
   /* Фирменный градиент Tilda — единственный канонический */
-  --gradient-lj-bright: linear-gradient(135deg, rgba(141,103,255,1) 0%, rgba(200,86,255,1) 100%);
+  --gradient-lj-bright: linear-gradient(
+    135deg,
+    rgba(141, 103, 255, 1) 0%,
+    rgba(200, 86, 255, 1) 100%
+  );
   /* Hover-состояние градиентных поверхностей: чуть глубже */
-  --gradient-lj-bright-deep: linear-gradient(135deg, rgba(122,82,255,1) 0%, rgba(184,62,246,1) 100%);
+  --gradient-lj-bright-deep: linear-gradient(
+    135deg,
+    rgba(122, 82, 255, 1) 0%,
+    rgba(184, 62, 246, 1) 100%
+  );
 
   /* Крупное скругление ярких контейнеров (у Tilda 40–55px; здесь сдержаннее) */
-  --radius-lj-bright:    32px;   /* карточки категорий, hero-панель */
-  --radius-lj-bright-sm: 24px;   /* фото-плиты карточек товара */
+  --radius-lj-bright: 32px; /* карточки категорий, hero-панель */
+  --radius-lj-bright-sm: 24px; /* фото-плиты карточек товара */
 
   /* Elevation ярких поверхностей */
-  --shadow-lj-bright: 0 16px 40px -12px rgba(131, 110, 254, 0.45),
-                      0 6px 16px -6px  rgba(200, 86, 255, 0.25);
+  --shadow-lj-bright:
+    0 16px 40px -12px rgba(131, 110, 254, 0.45), 0 6px 16px -6px rgba(200, 86, 255, 0.25);
 
   /* Текст на градиенте */
-  --color-lj-on-bright:      #ffffff;
+  --color-lj-on-bright: #ffffff;
   --color-lj-on-bright-mute: rgba(255, 255, 255, 0.78);
 }
 ```
@@ -54,18 +62,18 @@
 
 ## 4. Какие компоненты переводятся на яркие поверхности
 
-| Компонент | Было (v3) | Стало (v3.5) |
-|---|---|---|
-| `CategoryTileLJ` | cream-shade плита, острые углы, ink-текст | градиент `--gradient-lj-bright`, radius 32px, белая типографика, белый молекул-мотив, hover-lift |
-| `PreFooterCta` CTA | bone-outline пилюля | градиентная пилюля `.lj-cta-bright` |
-| `Hero` primary CTA | ink-пилюля → brand-deep hover | градиентная пилюля `.lj-cta-bright` |
-| `Hero` визуал | type-only | справа яркая градиентная панель с фото флагманского продукта (скрыта < lg) |
-| `CtaBlock` (CMS-блоки) | ink-пилюля | градиентная пилюля |
-| Checkout / Cart / CartDrawer основные CTA | ink-пилюля | градиентная пилюля |
-| `ProductCard` бейдж «Хит» | плоский brand-пилл | градиентный пилл с тенью |
-| `ProductCard` фото-плита | cream-shade, острые углы | белая (#fff) плита, radius 24px, фото доминирует |
-| `ProductCard` цена | text-3xl Unbounded | text-4xl Unbounded (крупнее) |
-| `Ticker` (ui) | orange `accent` surface (v2-рудимент) | новый surface `bright` = градиент; orange удалён |
+| Компонент                                 | Было (v3)                                 | Стало (v3.5)                                                                                     |
+| ----------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `CategoryTileLJ`                          | cream-shade плита, острые углы, ink-текст | градиент `--gradient-lj-bright`, radius 32px, белая типографика, белый молекул-мотив, hover-lift |
+| `PreFooterCta` CTA                        | bone-outline пилюля                       | градиентная пилюля `.lj-cta-bright`                                                              |
+| `Hero` primary CTA                        | ink-пилюля → brand-deep hover             | градиентная пилюля `.lj-cta-bright`                                                              |
+| `Hero` визуал                             | type-only                                 | справа яркая градиентная панель с фото флагманского продукта (скрыта < lg)                       |
+| `CtaBlock` (CMS-блоки)                    | ink-пилюля                                | градиентная пилюля                                                                               |
+| Checkout / Cart / CartDrawer основные CTA | ink-пилюля                                | градиентная пилюля                                                                               |
+| `ProductCard` бейдж «Хит»                 | плоский brand-пилл                        | градиентный пилл с тенью                                                                         |
+| `ProductCard` фото-плита                  | cream-shade, острые углы                  | белая (#fff) плита, radius 24px, фото доминирует                                                 |
+| `ProductCard` цена                        | text-3xl Unbounded                        | text-4xl Unbounded (крупнее)                                                                     |
+| `Ticker` (ui)                             | orange `accent` surface (v2-рудимент)     | новый surface `bright` = градиент; orange удалён                                                 |
 
 **Вторичные CTA** (ghost/outline) остаются ink-пилюлями — иерархия: градиент = главное
 действие страницы, ink = второстепенное. На одной странице не более двух градиентных CTA
@@ -84,7 +92,7 @@
    вспышка перекрашивается в градиентную гамму (остаётся brand-цвет — согласовано).
 4. **Маркиз-тикер фактов** — на главной между hero и каталогом: `Ticker`
    surface="bright" c фактами `161 опыт · 62 реактива · доставка СДЭК · от 8 лет ·
-   4,9 из 5`. Пауза на hover (уже в компоненте).
+4,9 из 5`. Пауза на hover (уже в компоненте).
 5. **«Элемент дня» в футере** — Mendeleev-ячейка в футере; по hover/focus чистым CSS
    раскрывается подпись «элемент дня: Название · №NN». Логика выбора —
    `lib/elementOfDay.ts`, детерминирована датой (день года по модулю списка),

@@ -4,7 +4,11 @@ import { Bleed } from './Bleed'
 
 describe('Bleed', () => {
   it('renders children', () => {
-    render(<Bleed><span>full</span></Bleed>)
+    render(
+      <Bleed>
+        <span>full</span>
+      </Bleed>,
+    )
     expect(screen.getByText('full')).toBeInTheDocument()
   })
 

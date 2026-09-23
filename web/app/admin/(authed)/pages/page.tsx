@@ -21,13 +21,10 @@ async function fetchPages(opts: {
     offset: String(opts.offset),
   })
   if (opts.q) params.set('q', opts.q)
-  const res = await fetch(
-    `${ADMIN_API_URL_SERVER}/api/admin/pages?${params.toString()}`,
-    {
-      headers: { cookie: cookieHeader },
-      cache: 'no-store',
-    },
-  )
+  const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/pages?${params.toString()}`, {
+    headers: { cookie: cookieHeader },
+    cache: 'no-store',
+  })
   if (!res.ok) {
     throw new Error(`Admin pages list failed: ${res.status}`)
   }
@@ -87,10 +84,7 @@ export default async function AdminPagesPage({
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td
-                  colSpan={5}
-                  className="px-4 py-12 text-center text-brand-text-secondary"
-                >
+                <td colSpan={5} className="px-4 py-12 text-center text-brand-text-secondary">
                   {q
                     ? 'Ничего не найдено. Попробуйте другой запрос.'
                     : 'Пока нет страниц. Создайте первую.'}
@@ -98,10 +92,7 @@ export default async function AdminPagesPage({
               </tr>
             ) : (
               data.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-t border-brand-border hover:bg-brand-bg-soft/50"
-                >
+                <tr key={p.id} className="border-t border-brand-border hover:bg-brand-bg-soft/50">
                   <td className="px-4 py-3 text-brand-text-secondary font-mono text-xs">
                     {p.slug}
                   </td>
@@ -124,9 +115,7 @@ export default async function AdminPagesPage({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-brand-text-secondary">
-                    {formatDate(p.updatedAt)}
-                  </td>
+                  <td className="px-4 py-3 text-brand-text-secondary">{formatDate(p.updatedAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-3">
                       <Link
@@ -149,10 +138,7 @@ export default async function AdminPagesPage({
         <div>
           Всего: {pagination.total}.{' '}
           {pagination.total > 0
-            ? `Показаны ${offset + 1}–${Math.min(
-                offset + pagination.limit,
-                pagination.total,
-              )}.`
+            ? `Показаны ${offset + 1}–${Math.min(offset + pagination.limit, pagination.total)}.`
             : ''}
         </div>
         <div className="flex gap-2">
@@ -162,12 +148,7 @@ export default async function AdminPagesPage({
             offset={Math.max(0, offset - pagination.limit)}
             label="← Назад"
           />
-          <PageLink
-            disabled={!hasNext}
-            q={q}
-            offset={offset + pagination.limit}
-            label="Вперёд →"
-          />
+          <PageLink disabled={!hasNext} q={q} offset={offset + pagination.limit} label="Вперёд →" />
         </div>
       </div>
     </div>

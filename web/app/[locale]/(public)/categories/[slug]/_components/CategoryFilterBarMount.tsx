@@ -1,10 +1,7 @@
 'use client'
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import {
-  CategoryFilterBar,
-  type SortKey,
-} from '@/components/marketing/CategoryFilterBar'
+import { CategoryFilterBar, type SortKey } from '@/components/marketing/CategoryFilterBar'
 
 interface Props {
   currentSort: SortKey
@@ -38,11 +35,5 @@ export function CategoryFilterBarMount({ currentSort }: Props) {
     router.push(pathname)
   }
 
-  return (
-    <CategoryFilterBar
-      sort={currentSort}
-      onSortChange={updateSort}
-      onReset={reset}
-    />
-  )
+  return <CategoryFilterBar sort={currentSort} onSortChange={updateSort} onReset={reset} />
 }

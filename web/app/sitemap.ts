@@ -1,16 +1,7 @@
 import type { MetadataRoute } from 'next'
-import {
-  listBlogPosts,
-  listCategories,
-  listPages,
-  listPublishedProducts,
-} from '@/lib/api'
+import { listBlogPosts, listCategories, listPages, listPublishedProducts } from '@/lib/api'
 import { siteUrl } from '@/lib/metadata'
-import {
-  DEFAULT_LOCALE,
-  SUPPORTED_LOCALES,
-  type Locale,
-} from '@/lib/i18n'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from '@/lib/i18n'
 
 // Карта сайта строится из каталога, блога и CMS-страниц, а образ собирается без
 // доступа к api: пререндер запёк бы в него карту из четырёх статических ссылок.

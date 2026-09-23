@@ -47,10 +47,7 @@ describe('validateYmlPreview', () => {
   })
 
   it('flags an empty offers list', () => {
-    const empty = VALID_MIN.replace(
-      /<offers>[\s\S]*?<\/offers>/,
-      '<offers></offers>',
-    )
+    const empty = VALID_MIN.replace(/<offers>[\s\S]*?<\/offers>/, '<offers></offers>')
     const r = validateYmlPreview(empty)
     expect(r.ok).toBe(false)
     expect(r.issues.join(' ')).toMatch(/No offers/)

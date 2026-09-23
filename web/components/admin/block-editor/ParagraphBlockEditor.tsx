@@ -9,10 +9,5 @@ interface Props {
 }
 
 export function ParagraphBlockEditor({ block, onChange }: Props) {
-  return (
-    <RichTextEditor
-      value={block.html}
-      onChange={(html) => onChange({ ...block, html })}
-    />
-  )
+  return <RichTextEditor value={block.html} onChange={(html) => onChange({ ...block, html })} />
 }

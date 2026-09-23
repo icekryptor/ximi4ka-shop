@@ -247,9 +247,7 @@ export async function adminListPages(
 }
 
 export async function adminGetPage(id: string): Promise<Page> {
-  const body = await authedRequest<{ data: Page }>(
-    `/api/admin/pages/${encodeURIComponent(id)}`,
-  )
+  const body = await authedRequest<{ data: Page }>(`/api/admin/pages/${encodeURIComponent(id)}`)
   return body.data
 }
 
@@ -261,14 +259,11 @@ export async function adminCreatePage(input: AdminPageInput): Promise<Page> {
   return body.data
 }
 
-export async function adminUpdatePage(
-  id: string,
-  input: Partial<AdminPageInput>,
-): Promise<Page> {
-  const body = await authedRequest<{ data: Page }>(
-    `/api/admin/pages/${encodeURIComponent(id)}`,
-    { method: 'PATCH', body: JSON.stringify(input) },
-  )
+export async function adminUpdatePage(id: string, input: Partial<AdminPageInput>): Promise<Page> {
+  const body = await authedRequest<{ data: Page }>(`/api/admin/pages/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  })
   return body.data
 }
 
@@ -323,15 +318,11 @@ export async function adminListBlogPosts(
 }
 
 export async function adminGetBlogPost(id: string): Promise<BlogPost> {
-  const body = await authedRequest<{ data: BlogPost }>(
-    `/api/admin/blog/${encodeURIComponent(id)}`,
-  )
+  const body = await authedRequest<{ data: BlogPost }>(`/api/admin/blog/${encodeURIComponent(id)}`)
   return body.data
 }
 
-export async function adminCreateBlogPost(
-  input: AdminBlogPostInput,
-): Promise<BlogPost> {
+export async function adminCreateBlogPost(input: AdminBlogPostInput): Promise<BlogPost> {
   const body = await authedRequest<{ data: BlogPost }>(`/api/admin/blog`, {
     method: 'POST',
     body: JSON.stringify(input),
@@ -404,9 +395,7 @@ export async function adminListRedirects(
   if (opts.q) params.set('q', opts.q)
   if (opts.sort) params.set('sort', opts.sort)
   const qs = params.toString()
-  return authedRequest<Paginated<Redirect>>(
-    `/api/admin/redirects${qs ? `?${qs}` : ''}`,
-  )
+  return authedRequest<Paginated<Redirect>>(`/api/admin/redirects${qs ? `?${qs}` : ''}`)
 }
 
 export async function adminGetRedirect(id: string): Promise<Redirect> {
@@ -416,9 +405,7 @@ export async function adminGetRedirect(id: string): Promise<Redirect> {
   return body.data
 }
 
-export async function adminCreateRedirect(
-  input: AdminRedirectInput,
-): Promise<Redirect> {
+export async function adminCreateRedirect(input: AdminRedirectInput): Promise<Redirect> {
   const body = await authedRequest<{ data: Redirect }>(`/api/admin/redirects`, {
     method: 'POST',
     body: JSON.stringify(input),
@@ -443,9 +430,7 @@ export async function adminDeleteRedirect(id: string): Promise<void> {
   })
 }
 
-export async function adminImportRedirectsCsv(
-  file: File,
-): Promise<RedirectCsvSummary> {
+export async function adminImportRedirectsCsv(file: File): Promise<RedirectCsvSummary> {
   // Multipart upload — let the browser set the content-type boundary itself,
   // same pattern as adminUploadImage.
   const form = new FormData()
@@ -477,9 +462,7 @@ export async function adminListOrders(
   if (opts.offset != null) params.set('offset', String(opts.offset))
   if (opts.status) params.set('status', opts.status)
   const qs = params.toString()
-  return authedRequest<Paginated<AdminOrderSummary>>(
-    `/api/admin/orders${qs ? `?${qs}` : ''}`,
-  )
+  return authedRequest<Paginated<AdminOrderSummary>>(`/api/admin/orders${qs ? `?${qs}` : ''}`)
 }
 
 export async function adminGetOrder(id: string): Promise<OrderDto> {
@@ -542,13 +525,9 @@ export async function adminGetSettings(): Promise<SiteSettings> {
 }
 
 // Partial<SiteSettings> with `id`/`updatedAt` dropped — server ignores them.
-export type AdminSettingsPatch = Partial<
-  Omit<SiteSettings, 'id' | 'updatedAt'>
->
+export type AdminSettingsPatch = Partial<Omit<SiteSettings, 'id' | 'updatedAt'>>
 
-export async function adminUpdateSettings(
-  patch: AdminSettingsPatch,
-): Promise<SiteSettings> {
+export async function adminUpdateSettings(patch: AdminSettingsPatch): Promise<SiteSettings> {
   const body = await authedRequest<{ data: SiteSettings }>(`/api/admin/settings`, {
     method: 'PATCH',
     body: JSON.stringify(patch),
@@ -597,11 +576,7 @@ export async function adminUploadImage(file: File): Promise<UploadResult> {
 
 // --- revisions ---
 
-export type RevisionEntityType =
-  | 'product'
-  | 'page'
-  | 'product_category'
-  | 'blog_post'
+export type RevisionEntityType = 'product' | 'page' | 'product_category' | 'blog_post'
 
 export interface RevisionSummary {
   id: string
@@ -627,10 +602,9 @@ export async function adminListRevisions(
 }
 
 export async function adminRestoreRevision(id: string): Promise<void> {
-  await authedRequest<{ data: unknown }>(
-    `/api/admin/revisions/${encodeURIComponent(id)}/restore`,
-    { method: 'POST' },
-  )
+  await authedRequest<{ data: unknown }>(`/api/admin/revisions/${encodeURIComponent(id)}/restore`, {
+    method: 'POST',
+  })
 }
 
 // --- media library ---
@@ -644,9 +618,7 @@ export async function adminListMedia(
   if (opts.q) params.set('q', opts.q)
   if (opts.mimePrefix) params.set('mimePrefix', opts.mimePrefix)
   const qs = params.toString()
-  return authedRequest<Paginated<Media>>(
-    `/api/admin/media${qs ? `?${qs}` : ''}`,
-  )
+  return authedRequest<Paginated<Media>>(`/api/admin/media${qs ? `?${qs}` : ''}`)
 }
 
 export async function adminDeleteMedia(id: string): Promise<void> {

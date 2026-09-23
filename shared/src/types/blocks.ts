@@ -18,12 +18,7 @@ export interface GalleryBlock {
   images: Array<{ url: string; alt: string }>
 }
 
-export type LayoutVariant =
-  | 'text-left'
-  | 'text-right'
-  | 'text-top'
-  | 'text-bottom'
-  | 'overlay'
+export type LayoutVariant = 'text-left' | 'text-right' | 'text-top' | 'text-bottom' | 'overlay'
 
 export interface LayoutBlock {
   type: 'layout'

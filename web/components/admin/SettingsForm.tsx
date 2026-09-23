@@ -44,20 +44,17 @@ export function SettingsForm({ initial }: Props) {
   const [ga4Id, setGa4Id] = useState(initial.ga4Id ?? '')
   const [robotsTxt, setRobotsTxt] = useState(initial.robotsTxt)
   const [llmsTxt, setLlmsTxt] = useState(initial.llmsTxt)
-  const [yandexWebmasterVerification, setYandexWebmasterVerification] =
-    useState(initial.yandexWebmasterVerification ?? '')
+  const [yandexWebmasterVerification, setYandexWebmasterVerification] = useState(
+    initial.yandexWebmasterVerification ?? '',
+  )
   const [googleSiteVerification, setGoogleSiteVerification] = useState(
     initial.googleSiteVerification ?? '',
   )
   const [ymlShopName, setYmlShopName] = useState(initial.ymlShopName ?? '')
   const [ymlCompany, setYmlCompany] = useState(initial.ymlCompany ?? '')
   const [ymlUrl, setYmlUrl] = useState(initial.ymlUrl ?? '')
-  const [ymlCurrency, setYmlCurrency] = useState<'RUB' | 'RUR'>(
-    initial.ymlCurrency,
-  )
-  const [ymlDeliveryNote, setYmlDeliveryNote] = useState(
-    initial.ymlDeliveryNote ?? '',
-  )
+  const [ymlCurrency, setYmlCurrency] = useState<'RUB' | 'RUR'>(initial.ymlCurrency)
+  const [ymlDeliveryNote, setYmlDeliveryNote] = useState(initial.ymlDeliveryNote ?? '')
   // Preview state — drives the "Проверить YML" panel. Kept local to the form
   // since it's ephemeral: closing the page discards it, matching the rest of
   // the admin's one-shot validation affordances (e.g. redirects CSV import).
@@ -69,24 +66,18 @@ export function SettingsForm({ initial }: Props) {
     issues: string[]
     snippet: string
   } | null>(null)
-  const [yandexPayEnabled, setYandexPayEnabled] = useState(
-    initial.yandexPayEnabled,
-  )
+  const [yandexPayEnabled, setYandexPayEnabled] = useState(initial.yandexPayEnabled)
   const [yandexPayMode, setYandexPayMode] = useState<'sandbox' | 'production'>(
     initial.yandexPayMode,
   )
   // Marketing fields. headerPromoText is a single nullable text blob; the
   // two list editors keep their state as plain arrays of objects, with
   // helpers below to add / update / remove rows.
-  const [headerPromoText, setHeaderPromoText] = useState(
-    initial.headerPromoText ?? '',
-  )
+  const [headerPromoText, setHeaderPromoText] = useState(initial.headerPromoText ?? '')
   const [trustStripItems, setTrustStripItems] = useState<TrustStripItem[]>(
     initial.trustStripItems ?? [],
   )
-  const [testimonials, setTestimonials] = useState<Testimonial[]>(
-    initial.testimonials ?? [],
-  )
+  const [testimonials, setTestimonials] = useState<Testimonial[]>(initial.testimonials ?? [])
 
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
@@ -136,11 +127,7 @@ export function SettingsForm({ initial }: Props) {
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      aria-label="Настройки сайта"
-      className="space-y-6"
-    >
+    <form onSubmit={handleSubmit} aria-label="Настройки сайта" className="space-y-6">
       <Section title="Аналитика">
         <Field label="Яндекс.Метрика (ID счётчика)" htmlFor="metrika-id">
           <input
@@ -151,8 +138,7 @@ export function SettingsForm({ initial }: Props) {
             className="input"
           />
           <p className="mt-1 text-xs text-brand-text-secondary">
-            Числовой идентификатор из интерфейса Метрики. Оставьте пустым, чтобы
-            отключить.
+            Числовой идентификатор из интерфейса Метрики. Оставьте пустым, чтобы отключить.
           </p>
         </Field>
         <Field label="Google Analytics 4 (Measurement ID)" htmlFor="ga4-id">
@@ -191,10 +177,7 @@ export function SettingsForm({ initial }: Props) {
             Публикуется по адресу <code>/llms.txt</code>.
           </p>
         </Field>
-        <Field
-          label="Яндекс.Вебмастер — код подтверждения"
-          htmlFor="yandex-webmaster"
-        >
+        <Field label="Яндекс.Вебмастер — код подтверждения" htmlFor="yandex-webmaster">
           <input
             id="yandex-webmaster"
             value={yandexWebmasterVerification}
@@ -202,10 +185,7 @@ export function SettingsForm({ initial }: Props) {
             className="input"
           />
         </Field>
-        <Field
-          label="Google Search Console — код подтверждения"
-          htmlFor="google-site-verification"
-        >
+        <Field label="Google Search Console — код подтверждения" htmlFor="google-site-verification">
           <input
             id="google-site-verification"
             value={googleSiteVerification}
@@ -246,17 +226,14 @@ export function SettingsForm({ initial }: Props) {
           <select
             id="yml-currency"
             value={ymlCurrency}
-            onChange={(e) =>
-              setYmlCurrency(e.target.value as 'RUB' | 'RUR')
-            }
+            onChange={(e) => setYmlCurrency(e.target.value as 'RUB' | 'RUR')}
             className="input"
           >
             <option value="RUB">RUB — ISO 4217</option>
             <option value="RUR">RUR — устаревший код</option>
           </select>
           <p className="mt-1 text-xs text-brand-text-secondary">
-            Код валюты в YML. Большинство площадок принимают обе формы, RUB
-            — современный ISO 4217.
+            Код валюты в YML. Большинство площадок принимают обе формы, RUB — современный ISO 4217.
           </p>
         </Field>
         <Field label="Примечание о доставке" htmlFor="yml-delivery-note">
@@ -337,10 +314,7 @@ export function SettingsForm({ initial }: Props) {
             checked={yandexPayEnabled}
             onChange={(e) => setYandexPayEnabled(e.target.checked)}
           />
-          <label
-            htmlFor="yandex-pay-enabled"
-            className="text-sm text-brand-text"
-          >
+          <label htmlFor="yandex-pay-enabled" className="text-sm text-brand-text">
             Включить Яндекс.Pay в оформлении заказа
           </label>
         </div>
@@ -348,17 +322,14 @@ export function SettingsForm({ initial }: Props) {
           <select
             id="yandex-pay-mode"
             value={yandexPayMode}
-            onChange={(e) =>
-              setYandexPayMode(e.target.value as 'sandbox' | 'production')
-            }
+            onChange={(e) => setYandexPayMode(e.target.value as 'sandbox' | 'production')}
             className="input"
           >
             <option value="sandbox">Sandbox (тестовый)</option>
             <option value="production">Production</option>
           </select>
           <p className="mt-1 text-xs text-brand-text-secondary">
-            Учётные данные платёжной системы хранятся в переменных окружения, а
-            не в базе.
+            Учётные данные платёжной системы хранятся в переменных окружения, а не в базе.
           </p>
         </Field>
       </Section>
@@ -379,9 +350,7 @@ export function SettingsForm({ initial }: Props) {
         </Field>
 
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-brand-text">
-            Доверие в шапке
-          </h3>
+          <h3 className="text-sm font-semibold text-brand-text">Доверие в шапке</h3>
           {trustStripItems.length === 0 ? (
             <p className="text-xs text-brand-text-secondary">
               Список пуст — добавьте первый элемент.
@@ -420,11 +389,7 @@ export function SettingsForm({ initial }: Props) {
                   />
                   <button
                     type="button"
-                    onClick={() =>
-                      setTrustStripItems(
-                        trustStripItems.filter((_, i) => i !== idx),
-                      )
-                    }
+                    onClick={() => setTrustStripItems(trustStripItems.filter((_, i) => i !== idx))}
                     className="px-3 py-2 rounded-full border border-brand-border text-sm text-brand-text-secondary"
                   >
                     Удалить
@@ -436,12 +401,7 @@ export function SettingsForm({ initial }: Props) {
           {trustStripItems.length < TRUST_STRIP_MAX && (
             <button
               type="button"
-              onClick={() =>
-                setTrustStripItems([
-                  ...trustStripItems,
-                  { icon: '', label: '' },
-                ])
-              }
+              onClick={() => setTrustStripItems([...trustStripItems, { icon: '', label: '' }])}
               className="px-3 py-2 rounded-full border border-brand text-brand text-sm"
             >
               + Добавить
@@ -464,16 +424,10 @@ export function SettingsForm({ initial }: Props) {
                   data-testid={`testimonial-row-${idx}`}
                 >
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-brand-text">
-                      {`Отзыв ${idx + 1}`}
-                    </h4>
+                    <h4 className="text-sm font-medium text-brand-text">{`Отзыв ${idx + 1}`}</h4>
                     <button
                       type="button"
-                      onClick={() =>
-                        setTestimonials(
-                          testimonials.filter((_, i) => i !== idx),
-                        )
-                      }
+                      onClick={() => setTestimonials(testimonials.filter((_, i) => i !== idx))}
                       className="px-3 py-1 rounded-full border border-brand-border text-xs text-brand-text-secondary"
                     >
                       Удалить
@@ -546,10 +500,7 @@ export function SettingsForm({ initial }: Props) {
             <button
               type="button"
               onClick={() =>
-                setTestimonials([
-                  ...testimonials,
-                  { quote: '', author: '', location: '' },
-                ])
+                setTestimonials([...testimonials, { quote: '', author: '', location: '' }])
               }
               className="px-3 py-2 rounded-full border border-brand text-brand text-sm"
             >
@@ -560,10 +511,7 @@ export function SettingsForm({ initial }: Props) {
       </Section>
 
       {formError || apiError ? (
-        <div
-          role="alert"
-          className="p-3 rounded-xl bg-red-50 text-red-700 text-sm"
-        >
+        <div role="alert" className="p-3 rounded-xl bg-red-50 text-red-700 text-sm">
           {formError ?? apiError?.message}
         </div>
       ) : null}
@@ -577,11 +525,7 @@ export function SettingsForm({ initial }: Props) {
           {submitting ? 'Сохранение...' : 'Сохранить'}
         </button>
         {savedAt ? (
-          <span
-            role="status"
-            className="text-sm text-green-700"
-            data-testid="saved-indicator"
-          >
+          <span role="status" className="text-sm text-green-700" data-testid="saved-indicator">
             Сохранено ✓
           </span>
         ) : null}
@@ -590,13 +534,7 @@ export function SettingsForm({ initial }: Props) {
   )
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="bg-white rounded-2xl border border-brand-border p-6 space-y-4">
       <h2 className="text-lg font-semibold text-brand-text">{title}</h2>
@@ -616,10 +554,7 @@ function Field({
 }) {
   return (
     <div>
-      <label
-        htmlFor={htmlFor}
-        className="block text-sm font-medium text-brand-text-secondary mb-1"
-      >
+      <label htmlFor={htmlFor} className="block text-sm font-medium text-brand-text-secondary mb-1">
         {label}
       </label>
       {children}

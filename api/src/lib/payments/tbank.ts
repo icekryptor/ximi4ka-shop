@@ -1,11 +1,6 @@
 import type { Order } from '../../entities/Order.js'
 import { generateToken, verifyToken } from './token.js'
-import type {
-  CreatePaymentResult,
-  PaymentEvent,
-  PaymentProvider,
-  PaymentStatus,
-} from './types.js'
+import type { CreatePaymentResult, PaymentEvent, PaymentProvider, PaymentStatus } from './types.js'
 
 // Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring.
 // Docs: https://developer.tbank.ru (Прием платежей): Init / GetState /

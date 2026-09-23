@@ -19,11 +19,17 @@ export function DotGrid({ total, cols, cellW = 10, cellH = 14, dotR = 2 }: Props
     })
   }
   return (
-    <svg viewBox={`0 0 ${cols * cellW} ${rows * cellH}`} className="w-full max-h-[110px]" aria-hidden="true">
+    <svg
+      viewBox={`0 0 ${cols * cellW} ${rows * cellH}`}
+      className="w-full max-h-[110px]"
+      aria-hidden="true"
+    >
       {dots.map((d, i) => (
         <circle
           key={i}
-          cx={d.cx} cy={d.cy} r={dotR}
+          cx={d.cx}
+          cy={d.cy}
+          r={dotR}
           fill={d.isLast ? '#836efe' : '#EFEDE6'}
           opacity={d.isLast ? 1 : 0.55}
         />

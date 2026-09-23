@@ -97,11 +97,7 @@ export function PageEditClient({ initial }: Props) {
         submitting={submitting}
         error={error}
       />
-      <RevisionsPanel
-        entityType="page"
-        entityId={page.id}
-        onRestored={() => router.refresh()}
-      />
+      <RevisionsPanel entityType="page" entityId={page.id} onRestored={() => router.refresh()} />
     </>
   )
 }
@@ -134,9 +130,7 @@ function PublishToggleButton({
       disabled={busy}
       className={
         'px-4 py-2 rounded-full text-sm font-medium disabled:opacity-50 ' +
-        (isPublished
-          ? 'bg-brand-bg-soft text-brand-text'
-          : 'bg-brand text-white')
+        (isPublished ? 'bg-brand-bg-soft text-brand-text' : 'bg-brand text-white')
       }
     >
       {busy ? '...' : isPublished ? 'Снять с публикации' : 'Опубликовать'}
@@ -144,13 +138,7 @@ function PublishToggleButton({
   )
 }
 
-function DeleteButton({
-  onDelete,
-  busy,
-}: {
-  onDelete: () => void
-  busy: boolean
-}) {
+function DeleteButton({ onDelete, busy }: { onDelete: () => void; busy: boolean }) {
   return (
     <button
       type="button"

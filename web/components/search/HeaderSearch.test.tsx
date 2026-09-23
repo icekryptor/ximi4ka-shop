@@ -63,7 +63,10 @@ describe('HeaderSearch', () => {
     expect(mockSearch).not.toHaveBeenCalled()
 
     act(() => vi.advanceTimersByTime(60))
-    expect(mockSearch).toHaveBeenCalledWith('химич', expect.objectContaining({ signal: expect.anything() }))
+    expect(mockSearch).toHaveBeenCalledWith(
+      'химич',
+      expect.objectContaining({ signal: expect.anything() }),
+    )
 
     await act(async () => {
       await Promise.resolve()

@@ -7,10 +7,7 @@ import { AddToCartBurst } from '@/components/AddToCartBurst'
 import { QuantityStepperLJ } from '@/components/product/QuantityStepperLJ'
 
 interface Props {
-  product: Pick<
-    Product,
-    'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'
-  >
+  product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'>
 }
 
 /**

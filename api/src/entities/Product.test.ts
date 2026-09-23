@@ -19,7 +19,7 @@ describe('Product entity', () => {
 
   beforeEach(async () => {
     await AppDataSource.query(
-      'TRUNCATE TABLE "product_images", "product_category_links", "products" RESTART IDENTITY CASCADE'
+      'TRUNCATE TABLE "product_images", "product_category_links", "products" RESTART IDENTITY CASCADE',
     )
   })
 
@@ -57,12 +57,22 @@ describe('Product entity', () => {
         isPublished: true,
         longDescriptionBlocks: [],
         translations: {},
-      })
+      }),
     )
 
     await imageRepo.save([
-      imageRepo.create({ productId: product.id, url: 'https://ex.com/1.jpg', alt: 'one', sortOrder: 0 }),
-      imageRepo.create({ productId: product.id, url: 'https://ex.com/2.jpg', alt: 'two', sortOrder: 1 }),
+      imageRepo.create({
+        productId: product.id,
+        url: 'https://ex.com/1.jpg',
+        alt: 'one',
+        sortOrder: 0,
+      }),
+      imageRepo.create({
+        productId: product.id,
+        url: 'https://ex.com/2.jpg',
+        alt: 'two',
+        sortOrder: 1,
+      }),
     ])
 
     const found = await productRepo.findOneOrFail({

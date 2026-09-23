@@ -7,10 +7,7 @@ describe('ParagraphBlockEditor', () => {
   it('wraps RichTextEditor and forwards html via onChange', async () => {
     const onChange = vi.fn<(b: ParagraphBlock) => void>()
     const { container } = render(
-      <ParagraphBlockEditor
-        block={{ type: 'paragraph', html: '<p>a</p>' }}
-        onChange={onChange}
-      />,
+      <ParagraphBlockEditor block={{ type: 'paragraph', html: '<p>a</p>' }} onChange={onChange} />,
     )
     await waitFor(() => {
       expect(container.querySelector('.ProseMirror')).not.toBeNull()

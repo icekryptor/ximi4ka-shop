@@ -6,13 +6,7 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata, siteUrl } from '@/lib/metadata'
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/jsonLd'
-import {
-  DEFAULT_LOCALE,
-  SUPPORTED_LOCALES,
-  isLocale,
-  pickField,
-  type Locale,
-} from '@/lib/i18n'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 import { LabSection } from '@/components/ui/LabSection'
 import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { PreFooterCta } from '@/components/marketing'
@@ -24,9 +18,7 @@ export const dynamicParams = true
 // Other slugs still work via on-demand rendering thanks to dynamicParams.
 const KNOWN_SLUGS: string[] = ['o-nas', 'dostavka', 'kontakty']
 
-export async function generateStaticParams(): Promise<
-  Array<{ locale: Locale; slug: string }>
-> {
+export async function generateStaticParams(): Promise<Array<{ locale: Locale; slug: string }>> {
   // Only emit slugs the API actually serves; this mirrors how category/product
   // routes degrade when the API is offline (e.g. during CI builds). Cross
   // with every locale so both /o-nas and /en/o-nas are pre-rendered.
@@ -104,8 +96,7 @@ export default async function CmsPage({ params }: Props) {
   const page = await fetchPage(slug)
   const title = pickField<string>(page, 'title', locale) ?? page.title
   const metaDescription = pickField<string>(page, 'metaDescription', locale)
-  const blocks =
-    (pickField<unknown[]>(page, 'blocks', locale) ?? page.blocks ?? []) as unknown[]
+  const blocks = (pickField<unknown[]>(page, 'blocks', locale) ?? page.blocks ?? []) as unknown[]
 
   return (
     <>
@@ -132,9 +123,7 @@ export default async function CmsPage({ params }: Props) {
             {title}
           </h1>
           {metaDescription && (
-            <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch]">
-              {metaDescription}
-            </p>
+            <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch]">{metaDescription}</p>
           )}
         </div>
       </LabSection>

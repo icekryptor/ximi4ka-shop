@@ -9,9 +9,7 @@ import { getPublicSettings } from '@/lib/api'
 //
 // We fetch public settings here so the Header can render the optional promo
 // bar. The endpoint is cached server-side; failures fall back to no promo.
-export default async function PublicLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default async function PublicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const settings = await getPublicSettings().catch(() => null)
   return (
     <>

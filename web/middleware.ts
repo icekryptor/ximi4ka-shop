@@ -61,12 +61,8 @@ async function getRedirects(baseUrl: string): Promise<Redirect[]> {
       // broken API doesn't take down all redirects.
       return cache.items
     }
-    const body = (await res.json()) as
-      | { data: Redirect[] }
-      | Redirect[]
-    const items = Array.isArray(body)
-      ? (body as Redirect[])
-      : (body.data ?? [])
+    const body = (await res.json()) as { data: Redirect[] } | Redirect[]
+    const items = Array.isArray(body) ? (body as Redirect[]) : (body.data ?? [])
     cache = { fetchedAt: now, items }
     return items
   } catch {
@@ -79,7 +75,20 @@ async function getRedirects(baseUrl: string): Promise<Redirect[]> {
 // the DB (e.g. via a lax migration or direct SQL), we still won't apply it.
 // Also covers feed/route-handler paths that ship XML/plain-text and have
 // no locale concept.
-const EXCLUDED_PREFIXES = ['/_next', '/api', '/admin', '/fonts', '/img', '/uploads', '/amp', '/v3-preview', '/v3-preview-b', '/v3-preview-c', '/v3-preview-d', '/v3-preview-e']
+const EXCLUDED_PREFIXES = [
+  '/_next',
+  '/api',
+  '/admin',
+  '/fonts',
+  '/img',
+  '/uploads',
+  '/amp',
+  '/v3-preview',
+  '/v3-preview-b',
+  '/v3-preview-c',
+  '/v3-preview-d',
+  '/v3-preview-e',
+]
 
 const EXCLUDED_EXACT = new Set([
   '/favicon.ico',
@@ -94,9 +103,7 @@ const EXCLUDED_EXACT = new Set([
 
 function isExcluded(path: string): boolean {
   if (EXCLUDED_EXACT.has(path)) return true
-  return EXCLUDED_PREFIXES.some(
-    (p) => path === p || path.startsWith(`${p}/`),
-  )
+  return EXCLUDED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))
 }
 
 function firstSegment(pathname: string): string {
@@ -113,10 +120,7 @@ const TPRODUCT_PATH_RE = /^(?:\/catalog(?:\/[a-z]+)?|\/reagents)?\/tproduct\/(\d
 
 // Exact from_path match first; for /tproduct/<id> paths fall back to the
 // redirect whose from_path carries the same numeric id. Exported for tests.
-export function matchRedirect(
-  items: Redirect[],
-  path: string,
-): Redirect | undefined {
+export function matchRedirect(items: Redirect[], path: string): Redirect | undefined {
   const exact = items.find((r) => r.fromPath === path)
   if (exact) return exact
   const m = TPRODUCT_PATH_RE.exec(path)
@@ -131,10 +135,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     return NextResponse.next()
   }
 
-  const base =
-    process.env.API_URL ??
-    process.env.NEXT_PUBLIC_API_URL ??
-    'http://localhost:3001'
+  const base = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
   const redirects = await getRedirects(base)
   const match = matchRedirect(redirects, path)
   if (match) {

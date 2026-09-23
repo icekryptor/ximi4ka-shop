@@ -13,10 +13,7 @@ afterEach(() => {
 // fully, which breaks ProseMirror's scrollToSelection path when Tiptap is
 // mounted in tests. Provide harmless stubs so the editor can scroll without
 // crashing. Only installed when missing — real DOMs keep their native impl.
-if (
-  typeof Range !== 'undefined' &&
-  typeof Range.prototype.getClientRects !== 'function'
-) {
+if (typeof Range !== 'undefined' && typeof Range.prototype.getClientRects !== 'function') {
   Range.prototype.getClientRects = function getClientRects() {
     return {
       length: 0,
@@ -25,10 +22,7 @@ if (
     } as unknown as DOMRectList
   }
 }
-if (
-  typeof Range !== 'undefined' &&
-  typeof Range.prototype.getBoundingClientRect !== 'function'
-) {
+if (typeof Range !== 'undefined' && typeof Range.prototype.getBoundingClientRect !== 'function') {
   Range.prototype.getBoundingClientRect = function getBoundingClientRect() {
     return {
       top: 0,

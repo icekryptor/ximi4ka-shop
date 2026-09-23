@@ -70,9 +70,7 @@ function defaultAlternatePaths(pathname: string): Record<Locale, string> {
   const map = {} as Record<Locale, string>
   for (const loc of SUPPORTED_LOCALES) {
     map[loc] =
-      loc === DEFAULT_LOCALE
-        ? stripped
-        : `/${loc}${stripped === '/' ? '' : stripped}` || `/${loc}`
+      loc === DEFAULT_LOCALE ? stripped : `/${loc}${stripped === '/' ? '' : stripped}` || `/${loc}`
   }
   return map
 }
@@ -105,8 +103,7 @@ export function buildMetadata(input: SeoInput): Metadata {
   const locale: Locale = input.locale ?? DEFAULT_LOCALE
 
   const title = metaTitle ?? input.title
-  const description =
-    metaDescription ?? trimOrNull(input.description ?? null) ?? undefined
+  const description = metaDescription ?? trimOrNull(input.description ?? null) ?? undefined
 
   const base = siteUrl()
   const canonical = canonicalOverride ?? `${base}${input.pathname}`
@@ -115,7 +112,7 @@ export function buildMetadata(input: SeoInput): Metadata {
   // Next's OG type union doesn't include 'product'; we fall back to 'website'
   // so builds don't fail. The JSON-LD Product type is what search engines read
   // for product-specific signals anyway.
-  const ogType = input.type === 'product' ? 'website' : input.type ?? 'website'
+  const ogType = input.type === 'product' ? 'website' : (input.type ?? 'website')
 
   // Next's Metadata API doesn't have a first-class amphtml slot — it lives
   // under `other` and renders as a flat `<link>` tag. We build it manually

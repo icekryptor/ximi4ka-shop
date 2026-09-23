@@ -165,10 +165,7 @@ describe('loadCart / saveCart', () => {
 
 describe('image field — миграция формата localStorage', () => {
   it('loads legacy items without image (old format) untouched', () => {
-    window.localStorage.setItem(
-      'ximi4ka-shop-cart',
-      JSON.stringify([{ ...itemA, quantity: 2 }]),
-    )
+    window.localStorage.setItem('ximi4ka-shop-cart', JSON.stringify([{ ...itemA, quantity: 2 }]))
     expect(loadCart()).toEqual([{ ...itemA, quantity: 2 }])
     expect(loadCart()[0]).not.toHaveProperty('image')
   })

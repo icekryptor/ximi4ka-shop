@@ -11,10 +11,7 @@ export const ORDER_POLL_MAX_ATTEMPTS = 60
  * a manual order is simply «Принят» (менеджер свяжется), while a tbank order
  * is waiting for the payment to clear.
  */
-export function orderStatusLabel(
-  status: OrderStatus,
-  provider: PaymentProvider,
-): string {
+export function orderStatusLabel(status: OrderStatus, provider: PaymentProvider): string {
   switch (status) {
     case 'pending':
       return provider === 'manual' ? 'Принят' : 'Ожидает оплаты'

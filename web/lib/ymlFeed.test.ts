@@ -1,11 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { ProductCategory } from '@ximi4ka-shop/shared'
-import {
-  escapeXml,
-  formatYmlDate,
-  generateYmlXml,
-  type ProductWithCategoryIds,
-} from './ymlFeed'
+import { escapeXml, formatYmlDate, generateYmlXml, type ProductWithCategoryIds } from './ymlFeed'
 
 const baseSettings = {
   ymlShopName: 'Ximi4ka',
@@ -58,16 +53,12 @@ function makeCategory(overrides: Partial<ProductCategory> = {}): ProductCategory
 
 describe('escapeXml', () => {
   it('escapes the five predefined XML entities', () => {
-    expect(escapeXml('<a href="x">&y</a>')).toBe(
-      '&lt;a href=&quot;x&quot;&gt;&amp;y&lt;/a&gt;',
-    )
+    expect(escapeXml('<a href="x">&y</a>')).toBe('&lt;a href=&quot;x&quot;&gt;&amp;y&lt;/a&gt;')
     expect(escapeXml("it's")).toBe('it&apos;s')
   })
 
   it('leaves non-special characters untouched', () => {
-    expect(escapeXml('Набор Юного Химика — 2 490 ₽')).toBe(
-      'Набор Юного Химика — 2 490 ₽',
-    )
+    expect(escapeXml('Набор Юного Химика — 2 490 ₽')).toBe('Набор Юного Химика — 2 490 ₽')
   })
 })
 
@@ -163,9 +154,7 @@ describe('generateYmlXml — category mapping', () => {
 describe('generateYmlXml — offers', () => {
   it('maps the first product category uuid to the correct integer id', () => {
     const xml = generateYmlXml({
-      products: [
-        makeProduct({ id: 'p1', slug: 'p', categoryIds: ['cat-2', 'cat-1'] }),
-      ],
+      products: [makeProduct({ id: 'p1', slug: 'p', categoryIds: ['cat-2', 'cat-1'] })],
       categories: [
         makeCategory({ id: 'cat-1', name: 'A' }),
         makeCategory({ id: 'cat-2', name: 'B' }),

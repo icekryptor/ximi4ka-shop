@@ -17,9 +17,7 @@ function decodeNumber(raw: string): string {
   }
 }
 
-export async function generateMetadata({
-  params,
-}: Pick<Props, 'params'>): Promise<Metadata> {
+export async function generateMetadata({ params }: Pick<Props, 'params'>): Promise<Metadata> {
   const { number } = await params
   return {
     title: `Заказ ${decodeNumber(number)} — Ximi4ka`,
@@ -30,7 +28,5 @@ export async function generateMetadata({
 export default async function OrderStatusPage({ params, searchParams }: Props) {
   const { number } = await params
   const sp = await searchParams
-  return (
-    <OrderStatusView orderNumber={decodeNumber(number)} celebrate={sp.new === '1'} />
-  )
+  return <OrderStatusView orderNumber={decodeNumber(number)} celebrate={sp.new === '1'} />
 }

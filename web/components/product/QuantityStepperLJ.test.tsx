@@ -19,13 +19,13 @@ describe('<QuantityStepperLJ>', () => {
     const onChange = vi.fn()
     render(<QuantityStepperLJ value={1} onChange={onChange} />)
     fireEvent.click(screen.getByRole('button', { name: /decrease/i }))
-    expect(onChange).toHaveBeenCalledWith(1)  // clamped, not 0
+    expect(onChange).toHaveBeenCalledWith(1) // clamped, not 0
   })
 
   it('+ button respects custom max', () => {
     const onChange = vi.fn()
     render(<QuantityStepperLJ value={10} onChange={onChange} max={10} />)
     fireEvent.click(screen.getByRole('button', { name: /increase/i }))
-    expect(onChange).toHaveBeenCalledWith(10)  // clamped at max
+    expect(onChange).toHaveBeenCalledWith(10) // clamped at max
   })
 })

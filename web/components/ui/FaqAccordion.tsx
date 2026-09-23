@@ -1,5 +1,10 @@
-interface FaqItem { q: string; a: string }
-interface Props { items: FaqItem[] }
+interface FaqItem {
+  q: string
+  a: string
+}
+interface Props {
+  items: FaqItem[]
+}
 
 /**
  * Native <details>/<summary> accordion styled v3. Zero JS.
@@ -16,8 +21,18 @@ export function FaqAccordion({ items }: Props) {
           <details className="group/faq relative">
             <summary className="cursor-pointer font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] py-5 pr-12 list-none [&::-webkit-details-marker]:hidden flex items-start justify-between gap-4 hover:text-[var(--color-lj-brand-deep)] transition-colors">
               <span className="font-lj-mono">{item.q}</span>
-              <span aria-hidden="true" className="font-lj-mono text-[var(--color-lj-brand)] text-base group-open/faq:hidden">+</span>
-              <span aria-hidden="true" className="font-lj-mono text-[var(--color-lj-brand)] text-base hidden group-open/faq:inline">−</span>
+              <span
+                aria-hidden="true"
+                className="font-lj-mono text-[var(--color-lj-brand)] text-base group-open/faq:hidden"
+              >
+                +
+              </span>
+              <span
+                aria-hidden="true"
+                className="font-lj-mono text-[var(--color-lj-brand)] text-base hidden group-open/faq:inline"
+              >
+                −
+              </span>
             </summary>
             <p className="italic text-[1.0625rem] leading-[1.55] text-[var(--color-lj-ink)] opacity-80 pb-6 pr-12 max-w-[60ch]">
               {item.a}

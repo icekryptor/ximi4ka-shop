@@ -31,9 +31,7 @@ describe('buildMetadata', () => {
       buildMetadata({ title: 'T', metaDescription: 'M', description: 'D', pathname: '/' })
         .description,
     ).toBe('M')
-    expect(
-      buildMetadata({ title: 'T', description: 'D', pathname: '/' }).description,
-    ).toBe('D')
+    expect(buildMetadata({ title: 'T', description: 'D', pathname: '/' }).description).toBe('D')
     expect(buildMetadata({ title: 'T', pathname: '/' }).description).toBeUndefined()
   })
 
@@ -86,9 +84,7 @@ describe('buildMetadata', () => {
 
   it('falls back to default OG image when none provided', () => {
     const meta = buildMetadata({ title: 'T', pathname: '/' })
-    expect(meta.openGraph?.images).toEqual([
-      { url: 'https://new.ximi4ka.ru/og-default.png' },
-    ])
+    expect(meta.openGraph?.images).toEqual([{ url: 'https://new.ximi4ka.ru/og-default.png' }])
   })
 
   it('maps type: product to a valid OG type (website)', () => {
@@ -179,13 +175,10 @@ describe('buildMetadata', () => {
   })
 
   it('sets OG locale to ru_RU by default and en_US when locale=en', () => {
-    expect(buildMetadata({ title: 'T', pathname: '/' }).openGraph?.locale).toBe(
-      'ru_RU',
+    expect(buildMetadata({ title: 'T', pathname: '/' }).openGraph?.locale).toBe('ru_RU')
+    expect(buildMetadata({ title: 'T', pathname: '/', locale: 'en' }).openGraph?.locale).toBe(
+      'en_US',
     )
-    expect(
-      buildMetadata({ title: 'T', pathname: '/', locale: 'en' }).openGraph
-        ?.locale,
-    ).toBe('en_US')
   })
 
   it('trims whitespace on metaTitle / metaDescription / canonicalUrl / ogImage', () => {

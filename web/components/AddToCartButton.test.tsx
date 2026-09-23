@@ -66,9 +66,7 @@ describe('AddToCartButton', () => {
 
   it('fires the CSS reaction burst on click and restarts it on the next click', () => {
     const { container } = render(<AddToCartButton product={inStock} />)
-    expect(
-      within(container).queryByTestId('add-to-cart-burst'),
-    ).not.toBeInTheDocument()
+    expect(within(container).queryByTestId('add-to-cart-burst')).not.toBeInTheDocument()
     act(() => {
       fireEvent.click(within(container).getByRole('button'))
     })
@@ -102,9 +100,7 @@ describe('AddToCartButton', () => {
   })
 
   it('adds the given quantity when the quantity prop is set', () => {
-    const { container } = render(
-      <AddToCartButton product={inStock} quantity={3} />,
-    )
+    const { container } = render(<AddToCartButton product={inStock} quantity={3} />)
     act(() => {
       fireEvent.click(within(container).getByRole('button'))
     })
@@ -112,9 +108,7 @@ describe('AddToCartButton', () => {
   })
 
   it('clamps a fractional/zero quantity to at least 1', () => {
-    const { container } = render(
-      <AddToCartButton product={inStock} quantity={0} />,
-    )
+    const { container } = render(<AddToCartButton product={inStock} quantity={0} />)
     act(() => {
       fireEvent.click(within(container).getByRole('button'))
     })

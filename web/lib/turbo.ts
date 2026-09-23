@@ -42,9 +42,7 @@ function productTurboContent(product: Product): string {
   const price = `${formatRubForTurbo(product.priceRub)} ₽`
   const description = product.shortDescription?.trim() ?? ''
   const longParas: string[] = []
-  const blocks = Array.isArray(product.longDescriptionBlocks)
-    ? product.longDescriptionBlocks
-    : []
+  const blocks = Array.isArray(product.longDescriptionBlocks) ? product.longDescriptionBlocks : []
   for (const block of blocks) {
     if (
       typeof block === 'object' &&
@@ -79,8 +77,7 @@ function blocksToTurboLines(rawBlocks: unknown): string[] {
       const text = htmlToPlaintext(html)
       if (text) lines.push(`<p>${escapeXml(text)}</p>`)
     } else if (type === 'faq') {
-      const items = (block as { items?: Array<{ question: string; answer: string }> })
-        .items ?? []
+      const items = (block as { items?: Array<{ question: string; answer: string }> }).items ?? []
       for (const item of items) {
         lines.push(
           `<details><summary>${escapeXml(item.question)}</summary><p>${escapeXml(item.answer)}</p></details>`,

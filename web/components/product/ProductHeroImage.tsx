@@ -56,7 +56,13 @@ export function ProductHeroImage({ images, cornerMark, alt, sku, hoverFormula }:
               <span className="absolute top-1 left-1 z-[2] font-lj-mono text-[0.5625rem] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-70">
                 arr. {pad(i + 1)}
               </span>
-              <Image src={img.url} alt={img.alt || alt} fill sizes="80px" className="object-cover" />
+              <Image
+                src={img.url}
+                alt={img.alt || alt}
+                fill
+                sizes="80px"
+                className="object-cover"
+              />
             </button>
           ))}
         </div>

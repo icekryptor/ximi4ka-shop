@@ -4,7 +4,11 @@ import { GlassCard } from './GlassCard'
 
 describe('GlassCard', () => {
   it('renders children', () => {
-    render(<GlassCard><p>отзыв</p></GlassCard>)
+    render(
+      <GlassCard>
+        <p>отзыв</p>
+      </GlassCard>,
+    )
     expect(screen.getByText('отзыв')).toBeInTheDocument()
   })
 

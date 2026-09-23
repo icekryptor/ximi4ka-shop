@@ -9,9 +9,5 @@ export { MobileBuyBarLJ } from './MobileBuyBarLJ'
 export { KeyFactsListLJ } from './KeyFactsListLJ'
 export { CharacteristicsTableLJ } from './CharacteristicsTableLJ'
 export { CharacteristicsCellRow } from './CharacteristicsCellRow'
-export {
-  extractKeyFacts,
-  extractUseFacts,
-  extractGalleryImages,
-} from './extractKeyFacts'
+export { extractKeyFacts, extractUseFacts, extractGalleryImages } from './extractKeyFacts'
 export type { UseFact } from './extractKeyFacts'

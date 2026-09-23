@@ -3,11 +3,7 @@ import { Brackets } from 'typeorm'
 import multer from 'multer'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Redirect } from '../../entities/Redirect.js'
-import {
-  CreateRedirectSchema,
-  UpdateRedirectSchema,
-  ListQuerySchema,
-} from './redirects.schemas.js'
+import { CreateRedirectSchema, UpdateRedirectSchema, ListQuerySchema } from './redirects.schemas.js'
 import {
   RedirectCsvParseError,
   parseRedirectCsv,
@@ -15,10 +11,7 @@ import {
   type ParsedRedirectCsv,
 } from '../../lib/redirect-csv.js'
 import { ApiError, conflict, notFound } from '../errors.js'
-import {
-  requireAdminAuth,
-  requireCsrfToken,
-} from '../middleware/requireAdminAuth.js'
+import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 
 export const adminRedirectsRouter: Router = Router()
 
@@ -70,10 +63,9 @@ adminRedirectsRouter.get('/', async (req, res, next) => {
     if (q) {
       qb.andWhere(
         new Brackets((qq) => {
-          qq.where('r.from_path ILIKE :q', { q: `%${q}%` }).orWhere(
-            'r.to_path ILIKE :q',
-            { q: `%${q}%` },
-          )
+          qq.where('r.from_path ILIKE :q', { q: `%${q}%` }).orWhere('r.to_path ILIKE :q', {
+            q: `%${q}%`,
+          })
         }),
       )
     }
@@ -106,9 +98,7 @@ adminRedirectsRouter.post('/', async (req, res, next) => {
     res.status(201).json({ data: saved })
   } catch (err) {
     if (isUniqueViolation(err)) {
-      next(
-        conflict('from_path_conflict', 'Редирект с таким исходным путём уже существует'),
-      )
+      next(conflict('from_path_conflict', 'Редирект с таким исходным путём уже существует'))
       return
     }
     next(err)
@@ -127,9 +117,7 @@ adminRedirectsRouter.patch('/:id', async (req, res, next) => {
     res.json({ data: saved })
   } catch (err) {
     if (isUniqueViolation(err)) {
-      next(
-        conflict('from_path_conflict', 'Редирект с таким исходным путём уже существует'),
-      )
+      next(conflict('from_path_conflict', 'Редирект с таким исходным путём уже существует'))
       return
     }
     next(err)

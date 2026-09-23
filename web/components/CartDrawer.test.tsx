@@ -133,9 +133,10 @@ describe('CartDrawer', () => {
       'href',
       '/checkout',
     )
-    expect(
-      screen.getByRole('link', { name: /открыть страницу корзины/i }),
-    ).toHaveAttribute('href', '/cart')
+    expect(screen.getByRole('link', { name: /открыть страницу корзины/i })).toHaveAttribute(
+      'href',
+      '/cart',
+    )
   })
 
   it('shows subtotal', () => {
@@ -168,9 +169,7 @@ describe('CartDrawer', () => {
 
   it('renders a thumbnail img when the item has an image', () => {
     act(() => {
-      saveCart([
-        { ...seed[0]!, image: '/uploads/kit-a-01.webp' },
-      ])
+      saveCart([{ ...seed[0]!, image: '/uploads/kit-a-01.webp' }])
     })
     render(<CartDrawer />)
     act(() => {

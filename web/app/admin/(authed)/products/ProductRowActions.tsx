@@ -30,10 +30,7 @@ export function ProductRowActions({ id, name }: { id: string; name: string }) {
 
   return (
     <div className="flex gap-2">
-      <Link
-        href={`/admin/products/${id}`}
-        className="text-sm text-brand hover:underline"
-      >
+      <Link href={`/admin/products/${id}`} className="text-sm text-brand hover:underline">
         Редактировать
       </Link>
       <button

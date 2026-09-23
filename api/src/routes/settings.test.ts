@@ -23,9 +23,7 @@ describe('Site settings', () => {
   })
 
   beforeEach(async () => {
-    await AppDataSource.query(
-      'TRUNCATE admin_sessions, admin_users RESTART IDENTITY CASCADE',
-    )
+    await AppDataSource.query('TRUNCATE admin_sessions, admin_users RESTART IDENTITY CASCADE')
     // Reset the singleton so each test starts from defaults. We keep the row
     // rather than deleting it, to mirror production behaviour.
     await AppDataSource.query(`
@@ -52,9 +50,7 @@ describe('Site settings', () => {
   })
 
   it('GET /api/admin/settings returns the singleton with defaults', async () => {
-    const res = await request(app)
-      .get('/api/admin/settings')
-      .set(authHeaders(auth))
+    const res = await request(app).get('/api/admin/settings').set(authHeaders(auth))
     expect(res.status).toBe(200)
     expect(res.body.data).toMatchObject({
       id: 'default',
@@ -71,24 +67,21 @@ describe('Site settings', () => {
   })
 
   it('PATCH /api/admin/settings updates values and returns the fresh row', async () => {
-    const res = await request(app)
-      .patch('/api/admin/settings')
-      .set(authHeaders(auth))
-      .send({
-        metrikaId: '12345678',
-        ga4Id: 'G-ABCDEF',
-        robotsTxt: 'User-agent: *\nDisallow: /admin',
-        llmsTxt: '# Ximi4ka\nChemistry kits for kids.',
-        yandexWebmasterVerification: 'abc123',
-        googleSiteVerification: 'def456',
-        ymlShopName: 'Ximi4ka',
-        ymlCompany: 'Ximi4ka LLC',
-        ymlUrl: 'https://ximi4ka.example.com',
-        ymlCurrency: 'RUR',
-        ymlDeliveryNote: 'Самовывоз бесплатно',
-        yandexPayEnabled: true,
-        yandexPayMode: 'production',
-      })
+    const res = await request(app).patch('/api/admin/settings').set(authHeaders(auth)).send({
+      metrikaId: '12345678',
+      ga4Id: 'G-ABCDEF',
+      robotsTxt: 'User-agent: *\nDisallow: /admin',
+      llmsTxt: '# Ximi4ka\nChemistry kits for kids.',
+      yandexWebmasterVerification: 'abc123',
+      googleSiteVerification: 'def456',
+      ymlShopName: 'Ximi4ka',
+      ymlCompany: 'Ximi4ka LLC',
+      ymlUrl: 'https://ximi4ka.example.com',
+      ymlCurrency: 'RUR',
+      ymlDeliveryNote: 'Самовывоз бесплатно',
+      yandexPayEnabled: true,
+      yandexPayMode: 'production',
+    })
     expect(res.status).toBe(200)
     expect(res.body.data).toMatchObject({
       metrikaId: '12345678',
@@ -101,9 +94,7 @@ describe('Site settings', () => {
     })
 
     // Persistence round-trip: re-GET to ensure the values actually landed.
-    const reGet = await request(app)
-      .get('/api/admin/settings')
-      .set(authHeaders(auth))
+    const reGet = await request(app).get('/api/admin/settings').set(authHeaders(auth))
     expect(reGet.body.data.metrikaId).toBe('12345678')
     expect(reGet.body.data.ymlCompany).toBe('Ximi4ka LLC')
     expect(reGet.body.data.ymlCurrency).toBe('RUR')
@@ -209,9 +200,7 @@ describe('Site settings', () => {
     expect(res.status).toBe(200)
     expect(res.headers['content-type']).toMatch(/^text\/plain/)
     // Body is the raw text (not JSON-wrapped) — crawlers expect this verbatim.
-    expect(res.text).toBe(
-      'User-agent: *\nDisallow: /admin\nSitemap: /sitemap.xml',
-    )
+    expect(res.text).toBe('User-agent: *\nDisallow: /admin\nSitemap: /sitemap.xml')
   })
 
   it('GET /api/public/settings/llms.txt returns plain text (empty by default)', async () => {
@@ -244,17 +233,12 @@ describe('Site settings', () => {
         },
       ],
     }
-    const res = await request(app)
-      .patch('/api/admin/settings')
-      .set(authHeaders(auth))
-      .send(patch)
+    const res = await request(app).patch('/api/admin/settings').set(authHeaders(auth)).send(patch)
     expect(res.status).toBe(200)
     expect(res.body.data).toMatchObject(patch)
 
     // Round-trip via a fresh GET — proves the values landed in the row.
-    const reGet = await request(app)
-      .get('/api/admin/settings')
-      .set(authHeaders(auth))
+    const reGet = await request(app).get('/api/admin/settings').set(authHeaders(auth))
     expect(reGet.body.data.headerPromoText).toBe('Бесплатная доставка от 3000 ₽')
     expect(reGet.body.data.trustStripItems).toHaveLength(2)
     expect(reGet.body.data.testimonials).toHaveLength(2)
@@ -277,9 +261,7 @@ describe('Site settings', () => {
       .patch('/api/admin/settings')
       .set(authHeaders(auth))
       .send({
-        testimonials: [
-          { quote: 'Great', author: 'A', location: 'Москва', rating: 6 },
-        ],
+        testimonials: [{ quote: 'Great', author: 'A', location: 'Москва', rating: 6 }],
       })
     expect(res.status).toBe(400)
     expect(res.body.error.code).toBe('validation_error')
@@ -306,9 +288,7 @@ describe('Site settings', () => {
     const res = await request(app).get('/api/public/settings')
     expect(res.status).toBe(200)
     expect(res.body.data.headerPromoText).toBe('Промо-текст')
-    expect(res.body.data.trustStripItems).toEqual([
-      { icon: '⭐', label: 'Гарантия качества' },
-    ])
+    expect(res.body.data.trustStripItems).toEqual([{ icon: '⭐', label: 'Гарантия качества' }])
     expect(res.body.data.testimonials).toEqual([
       {
         quote: 'Отличный набор',
@@ -320,9 +300,7 @@ describe('Site settings', () => {
   })
 
   it('GET /api/admin/settings returns the three marketing fields with default empty arrays / null', async () => {
-    const res = await request(app)
-      .get('/api/admin/settings')
-      .set(authHeaders(auth))
+    const res = await request(app).get('/api/admin/settings').set(authHeaders(auth))
     expect(res.status).toBe(200)
     expect(res.body.data.headerPromoText).toBeNull()
     expect(res.body.data.trustStripItems).toEqual([])

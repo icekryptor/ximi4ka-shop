@@ -9,12 +9,7 @@ import { LanguageTabs, countFilled } from './LanguageTabs'
 import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n'
 import { slugify } from '@/lib/slugify'
 
-const EN_TRACKED_FIELDS = [
-  'title',
-  'excerpt',
-  'metaTitle',
-  'metaDescription',
-] as const
+const EN_TRACKED_FIELDS = ['title', 'excerpt', 'metaTitle', 'metaDescription'] as const
 
 interface Props {
   mode: 'create' | 'edit'
@@ -30,13 +25,7 @@ const SLUG_RE = /^[a-z0-9-]+$/
 // editorial extras (excerpt, rubric, cover image). Parent owns the submit
 // side-effects. In create mode the slug live-transliterates from the title
 // until the admin edits the slug field manually.
-export function BlogPostForm({
-  mode,
-  initialValue,
-  onSubmit,
-  submitting,
-  error,
-}: Props) {
+export function BlogPostForm({ mode, initialValue, onSubmit, submitting, error }: Props) {
   const [slug, setSlug] = useState(initialValue?.slug ?? '')
   const [title, setTitle] = useState(initialValue?.title ?? '')
   // Live transliteration only makes sense while the post has no identity of
@@ -47,30 +36,18 @@ export function BlogPostForm({
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(
     initialValue?.coverImageUrl ?? null,
   )
-  const [blocks, setBlocks] = useState<unknown[]>(
-    () => initialValue?.blocks ?? [],
-  )
+  const [blocks, setBlocks] = useState<unknown[]>(() => initialValue?.blocks ?? [])
 
   // SEO
   const [metaTitle, setMetaTitle] = useState(initialValue?.metaTitle ?? '')
-  const [metaDescription, setMetaDescription] = useState(
-    initialValue?.metaDescription ?? '',
-  )
-  const [ogImage, setOgImage] = useState<string | null>(
-    initialValue?.ogImage ?? null,
-  )
-  const [canonicalUrl, setCanonicalUrl] = useState(
-    initialValue?.canonicalUrl ?? '',
-  )
-  const [noindex, setNoindex] = useState<boolean>(
-    initialValue?.noindex ?? false,
-  )
+  const [metaDescription, setMetaDescription] = useState(initialValue?.metaDescription ?? '')
+  const [ogImage, setOgImage] = useState<string | null>(initialValue?.ogImage ?? null)
+  const [canonicalUrl, setCanonicalUrl] = useState(initialValue?.canonicalUrl ?? '')
+  const [noindex, setNoindex] = useState<boolean>(initialValue?.noindex ?? false)
 
   // i18n state (see PageForm for rationale).
   const [activeLocale, setActiveLocale] = useState<Locale>(DEFAULT_LOCALE)
-  const initialEn = (initialValue?.translations as
-    | { en?: Record<string, unknown> }
-    | undefined)?.en
+  const initialEn = (initialValue?.translations as { en?: Record<string, unknown> } | undefined)?.en
   const [enTitle, setEnTitle] = useState<string>(
     typeof initialEn?.title === 'string' ? initialEn.title : '',
   )
@@ -132,8 +109,7 @@ export function BlogPostForm({
     if (enTitle.trim()) enBlock.title = enTitle.trim()
     if (enExcerpt.trim()) enBlock.excerpt = enExcerpt.trim()
     if (enMetaTitle.trim()) enBlock.metaTitle = enMetaTitle.trim()
-    if (enMetaDescription.trim())
-      enBlock.metaDescription = enMetaDescription.trim()
+    if (enMetaDescription.trim()) enBlock.metaDescription = enMetaDescription.trim()
 
     const nextTranslations: Record<string, unknown> = {
       ...((initialValue?.translations as Record<string, unknown> | undefined) ?? {}),
@@ -330,11 +306,7 @@ export function BlogPostForm({
           />
         </Field>
         <label className="flex items-center gap-2 text-sm text-brand-text">
-          <input
-            type="checkbox"
-            checked={noindex}
-            onChange={(e) => setNoindex(e.target.checked)}
-          />
+          <input type="checkbox" checked={noindex} onChange={(e) => setNoindex(e.target.checked)} />
           <span>noindex (исключить из поисковой выдачи)</span>
         </label>
       </Section>
@@ -351,24 +323,14 @@ export function BlogPostForm({
           disabled={disabled}
           className="px-5 py-2.5 rounded-full bg-brand text-white font-semibold disabled:opacity-50"
         >
-          {submitting
-            ? 'Сохранение...'
-            : mode === 'create'
-              ? 'Создать'
-              : 'Сохранить'}
+          {submitting ? 'Сохранение...' : mode === 'create' ? 'Создать' : 'Сохранить'}
         </button>
       </div>
     </form>
   )
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="bg-white rounded-2xl border border-brand-border p-6">
       <h2 className="text-lg font-semibold text-brand-text mb-4">{title}</h2>
@@ -390,10 +352,7 @@ function Field({
 }) {
   return (
     <div>
-      <label
-        htmlFor={htmlFor}
-        className="block text-sm font-medium text-brand-text-secondary mb-1"
-      >
+      <label htmlFor={htmlFor} className="block text-sm font-medium text-brand-text-secondary mb-1">
         {label}
       </label>
       {children}

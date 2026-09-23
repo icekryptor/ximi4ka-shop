@@ -1,11 +1,11 @@
 import Link from 'next/link'
 
 interface Props {
-  currentPage: number      // 1-indexed
+  currentPage: number // 1-indexed
   totalPages: number
   totalResults: number
   resultsPerPage: number
-  basePath: string         // e.g. '/categories/reaktivy'
+  basePath: string // e.g. '/categories/reaktivy'
   /** Named query params to preserve when changing page (besides 'page' itself). */
   preserveParams?: string[]
   /** Current values of those params, read from the page's searchParams. */
@@ -24,9 +24,13 @@ function buildRange(currentPage: number, totalPages: number): Array<number | nul
     return Array.from({ length: totalPages }, (_, i) => i + 1)
   }
   const around = new Set<number>([
-    1, 2,
-    currentPage - 1, currentPage, currentPage + 1,
-    totalPages - 1, totalPages,
+    1,
+    2,
+    currentPage - 1,
+    currentPage,
+    currentPage + 1,
+    totalPages - 1,
+    totalPages,
   ])
   const sorted = Array.from(around)
     .filter((n) => n >= 1 && n <= totalPages)
@@ -82,18 +86,18 @@ export function PaginationLJ({
   const sepClass = 'text-[var(--color-lj-brand)] mx-2'
 
   return (
-    <nav
-      aria-label="Пагинация"
-      className="flex flex-col items-center gap-3 my-8"
-    >
+    <nav aria-label="Пагинация" className="flex flex-col items-center gap-3 my-8">
       <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-65">
-        стр. {pad(currentPage)} из {pad(totalPages)} · показано {startResult}–{endResult} из {totalResults}
+        стр. {pad(currentPage)} из {pad(totalPages)} · показано {startResult}–{endResult} из{' '}
+        {totalResults}
       </p>
 
       <div className="flex items-center flex-wrap justify-center gap-y-2">
         {/* Назад */}
         {isFirst ? (
-          <span data-pagination-back className={disabledClass}>← НАЗАД</span>
+          <span data-pagination-back className={disabledClass}>
+            ← НАЗАД
+          </span>
         ) : (
           <Link
             data-pagination-back
@@ -138,7 +142,9 @@ export function PaginationLJ({
 
         {/* Вперёд */}
         {isLast ? (
-          <span data-pagination-next className={disabledClass}>ВПЕРЁД →</span>
+          <span data-pagination-next className={disabledClass}>
+            ВПЕРЁД →
+          </span>
         ) : (
           <Link
             data-pagination-next

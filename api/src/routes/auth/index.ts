@@ -13,10 +13,7 @@ import {
   SESSION_MAX_AGE_MS,
   SESSION_MAX_AGE_SECONDS,
 } from './constants.js'
-import {
-  hashSessionToken,
-  requireAdminAuth,
-} from '../middleware/requireAdminAuth.js'
+import { hashSessionToken, requireAdminAuth } from '../middleware/requireAdminAuth.js'
 
 export const authRouter: Router = Router()
 

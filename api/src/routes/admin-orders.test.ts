@@ -68,9 +68,7 @@ describe('Admin orders', () => {
     await seedOrder({ status: 'paid', paidAt: new Date() })
     await seedOrder({ status: 'cancelled' })
 
-    const res = await request(app)
-      .get('/api/admin/orders?limit=2&offset=0')
-      .set(authHeaders(auth))
+    const res = await request(app).get('/api/admin/orders?limit=2&offset=0').set(authHeaders(auth))
     expect(res.status).toBe(200)
     expect(res.body.data).toHaveLength(2)
     expect(res.body.pagination).toMatchObject({ limit: 2, offset: 0, total: 3 })
@@ -80,9 +78,7 @@ describe('Admin orders', () => {
     await seedOrder()
     const paid = await seedOrder({ status: 'paid', paidAt: new Date() })
 
-    const res = await request(app)
-      .get('/api/admin/orders?status=paid')
-      .set(authHeaders(auth))
+    const res = await request(app).get('/api/admin/orders?status=paid').set(authHeaders(auth))
     expect(res.status).toBe(200)
     expect(res.body.data).toHaveLength(1)
     expect(res.body.data[0].id).toBe(paid.id)
@@ -92,9 +88,7 @@ describe('Admin orders', () => {
     const order = await seedOrder()
     await seedItem(order.id)
 
-    const res = await request(app)
-      .get(`/api/admin/orders/${order.id}`)
-      .set(authHeaders(auth))
+    const res = await request(app).get(`/api/admin/orders/${order.id}`).set(authHeaders(auth))
     expect(res.status).toBe(200)
     expect(res.body.data.orderNumber).toBe(order.orderNumber)
     expect(res.body.data.items).toHaveLength(1)
@@ -107,9 +101,7 @@ describe('Admin orders', () => {
       .set(authHeaders(auth))
     expect(missing.status).toBe(404)
 
-    const malformed = await request(app)
-      .get('/api/admin/orders/not-a-uuid')
-      .set(authHeaders(auth))
+    const malformed = await request(app).get('/api/admin/orders/not-a-uuid').set(authHeaders(auth))
     expect(malformed.status).toBe(404)
   })
 

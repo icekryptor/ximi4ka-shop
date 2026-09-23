@@ -1,11 +1,7 @@
 'use client'
 
 import { useId } from 'react'
-import {
-  DEFAULT_LOCALE,
-  SUPPORTED_LOCALES,
-  type Locale,
-} from '@/lib/i18n'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from '@/lib/i18n'
 
 export interface LocaleTabCompleteness {
   /** Number of fields that are "considered filled" for this locale. */
@@ -37,10 +33,7 @@ function isComplete(stats: LocaleTabCompleteness | undefined): boolean {
   return stats.total > 0 && stats.filled === stats.total
 }
 
-function badgeFor(
-  locale: Locale,
-  stats: LocaleTabCompleteness | undefined,
-): string {
+function badgeFor(locale: Locale, stats: LocaleTabCompleteness | undefined): string {
   // Default locale is always "complete" from the admin's POV — its
   // values are required top-level columns, not optional JSON fields.
   if (locale === DEFAULT_LOCALE) return '✓'

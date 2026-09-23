@@ -13,9 +13,7 @@ export function AdminPlaceholder({ title, todo }: Props) {
         <p className="text-brand-text-secondary">
           Раздел в разработке. Появится в одной из следующих задач фазы 3.
         </p>
-        {todo ? (
-          <p className="mt-3 text-xs text-brand-text-secondary/70">TODO: {todo}</p>
-        ) : null}
+        {todo ? <p className="mt-3 text-xs text-brand-text-secondary/70">TODO: {todo}</p> : null}
       </div>
     </div>
   )

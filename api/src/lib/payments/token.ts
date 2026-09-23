@@ -19,10 +19,7 @@ function serializeScalar(value: string | number | boolean): string {
   return String(value)
 }
 
-export function buildTokenString(
-  params: Record<string, unknown>,
-  password: string,
-): string {
+export function buildTokenString(params: Record<string, unknown>, password: string): string {
   const pairs: Array<[string, string]> = []
   for (const [key, value] of Object.entries(params)) {
     // The signature itself never participates in signing.
@@ -37,13 +34,8 @@ export function buildTokenString(
   return pairs.map(([, v]) => v).join('')
 }
 
-export function generateToken(
-  params: Record<string, unknown>,
-  password: string,
-): string {
-  return createHash('sha256')
-    .update(buildTokenString(params, password), 'utf8')
-    .digest('hex')
+export function generateToken(params: Record<string, unknown>, password: string): string {
+  return createHash('sha256').update(buildTokenString(params, password), 'utf8').digest('hex')
 }
 
 // Constant-time comparison — a plain === on attacker-controlled input would

@@ -26,13 +26,10 @@ async function fetchOrders(opts: {
     offset: String(opts.offset),
   })
   if (opts.status) params.set('status', opts.status)
-  const res = await fetch(
-    `${ADMIN_API_URL_SERVER}/api/admin/orders?${params.toString()}`,
-    {
-      headers: { cookie: cookieHeader },
-      cache: 'no-store',
-    },
-  )
+  const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/orders?${params.toString()}`, {
+    headers: { cookie: cookieHeader },
+    cache: 'no-store',
+  })
   if (!res.ok) {
     throw new Error(`Admin orders list failed: ${res.status}`)
   }
@@ -50,9 +47,7 @@ const STATUS_FILTERS: Array<{ value: OrderStatus | undefined; label: string }> =
 ]
 
 function isOrderStatus(value: string | undefined): value is OrderStatus {
-  return (
-    value === 'pending' || value === 'paid' || value === 'failed' || value === 'cancelled'
-  )
+  return value === 'pending' || value === 'paid' || value === 'failed' || value === 'cancelled'
 }
 
 interface SearchParams {
@@ -122,19 +117,13 @@ export default async function AdminOrdersPage({
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td
-                  colSpan={7}
-                  className="px-4 py-12 text-center text-brand-text-secondary"
-                >
+                <td colSpan={7} className="px-4 py-12 text-center text-brand-text-secondary">
                   {status ? 'Нет заказов в этом статусе.' : 'Пока нет заказов.'}
                 </td>
               </tr>
             ) : (
               data.map((o) => (
-                <tr
-                  key={o.id}
-                  className="border-t border-brand-border hover:bg-brand-bg-soft/50"
-                >
+                <tr key={o.id} className="border-t border-brand-border hover:bg-brand-bg-soft/50">
                   <td className="px-4 py-3">
                     <Link
                       href={`/admin/orders/${o.id}`}
@@ -150,9 +139,7 @@ export default async function AdminOrdersPage({
                   <td className="px-4 py-3 text-brand-text-secondary font-mono text-xs">
                     {o.customerPhone}
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {formatRub(o.totalRub)}
-                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">{formatRub(o.totalRub)}</td>
                   <td className="px-4 py-3">
                     <span
                       className={`text-xs px-2 py-0.5 rounded-full ${ORDER_STATUS_BADGE_CLASSES[o.status]}`}
@@ -175,8 +162,7 @@ export default async function AdminOrdersPage({
           Всего: {pagination.total}.{' '}
           {pagination.total > 0 && (
             <>
-              Показаны {offset + 1}–
-              {Math.min(offset + pagination.limit, pagination.total)}.
+              Показаны {offset + 1}–{Math.min(offset + pagination.limit, pagination.total)}.
             </>
           )}
         </div>
@@ -197,15 +183,7 @@ export default async function AdminOrdersPage({
   )
 }
 
-function PageLink({
-  disabled,
-  href,
-  label,
-}: {
-  disabled: boolean
-  href: string
-  label: string
-}) {
+function PageLink({ disabled, href, label }: { disabled: boolean; href: string; label: string }) {
   if (disabled) {
     return (
       <span className="px-3 py-1.5 rounded-full bg-brand-bg-soft text-brand-text-secondary/50 cursor-not-allowed">

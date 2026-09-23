@@ -6,8 +6,7 @@ import { MetrikaScript, Ga4Script } from '@/lib/analytics'
 
 export const metadata: Metadata = {
   title: 'Ximi4ka — наборы для химических экспериментов',
-  description:
-    'Химические наборы для детей и подростков. Научные эксперименты дома.',
+  description: 'Химические наборы для детей и подростков. Научные эксперименты дома.',
 }
 
 // Public settings live in the DB and are admin-editable. Failures here must
@@ -39,23 +38,15 @@ export default async function RootLayout({
     <html lang="ru" className={`${fontVariables} h-full antialiased`}>
       <head>
         {settings?.yandexWebmasterVerification ? (
-          <meta
-            name="yandex-verification"
-            content={settings.yandexWebmasterVerification}
-          />
+          <meta name="yandex-verification" content={settings.yandexWebmasterVerification} />
         ) : null}
         {settings?.googleSiteVerification ? (
-          <meta
-            name="google-site-verification"
-            content={settings.googleSiteVerification}
-          />
+          <meta name="google-site-verification" content={settings.googleSiteVerification} />
         ) : null}
       </head>
       <body className="min-h-screen flex flex-col text-brand-text bg-background">
         {children}
-        {settings?.metrikaId ? (
-          <MetrikaScript counterId={settings.metrikaId} />
-        ) : null}
+        {settings?.metrikaId ? <MetrikaScript counterId={settings.metrikaId} /> : null}
         {settings?.ga4Id ? <Ga4Script measurementId={settings.ga4Id} /> : null}
       </body>
     </html>

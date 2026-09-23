@@ -1,10 +1,5 @@
 import 'reflect-metadata'
-import {
-  Entity,
-  PrimaryColumn,
-  Column,
-  UpdateDateColumn,
-} from 'typeorm'
+import { Entity, PrimaryColumn, Column, UpdateDateColumn } from 'typeorm'
 
 // Singleton table. The app only ever reads/writes a single row with
 // id = 'default'. Modelled as a table (rather than a JSON blob in a

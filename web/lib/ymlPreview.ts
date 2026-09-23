@@ -18,13 +18,7 @@ export interface YmlPreviewReport {
   snippet: string
 }
 
-const REQUIRED_OFFER_CHILDREN = [
-  'url',
-  'price',
-  'currencyId',
-  'categoryId',
-  'name',
-]
+const REQUIRED_OFFER_CHILDREN = ['url', 'price', 'currencyId', 'categoryId', 'name']
 
 export function validateYmlPreview(xml: string): YmlPreviewReport {
   const issues: string[] = []

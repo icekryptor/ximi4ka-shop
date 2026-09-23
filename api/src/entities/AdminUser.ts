@@ -1,11 +1,5 @@
 import 'reflect-metadata'
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  Index,
-} from 'typeorm'
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm'
 
 @Entity({ name: 'admin_users' })
 @Index(['email'], { unique: true })

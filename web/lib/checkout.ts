@@ -3,10 +3,7 @@ import type { DeliveryMethod } from '@ximi4ka-shop/shared'
 // Client-side mirror of api/src/lib/shipping.ts — the checkout form shows a
 // live total before anything hits the server. The server recomputes and is
 // the source of truth; these values only affect the preview.
-export const SHIPPING_RULES: Record<
-  DeliveryMethod,
-  { freeFromRub: number; priceRub: number }
-> = {
+export const SHIPPING_RULES: Record<DeliveryMethod, { freeFromRub: number; priceRub: number }> = {
   cdek_pvz: { freeFromRub: 3000, priceRub: 350 },
   cdek_courier: { freeFromRub: 5000, priceRub: 500 },
 }
@@ -16,10 +13,7 @@ export const DELIVERY_LABELS: Record<DeliveryMethod, string> = {
   cdek_courier: 'СДЭК — курьером',
 }
 
-export function calcShippingRub(
-  method: DeliveryMethod,
-  subtotalRub: number,
-): number {
+export function calcShippingRub(method: DeliveryMethod, subtotalRub: number): number {
   const rule = SHIPPING_RULES[method]
   return subtotalRub >= rule.freeFromRub ? 0 : rule.priceRub
 }
@@ -29,8 +23,7 @@ export function phoneDigits(value: string): string {
   const digits = value.replace(/\D/g, '')
   if (digits === '') return ''
   // Normalize the RU trunk prefix: 8XXXXXXXXXX and 7XXXXXXXXXX both mean +7.
-  const subscriber =
-    digits[0] === '7' || digits[0] === '8' ? digits.slice(1) : digits
+  const subscriber = digits[0] === '7' || digits[0] === '8' ? digits.slice(1) : digits
   return `7${subscriber.slice(0, 10)}`
 }
 
@@ -59,15 +52,11 @@ export interface CheckoutFormFields {
   comment: string
 }
 
-export type CheckoutFormErrors = Partial<
-  Record<'name' | 'phone' | 'email' | 'address', string>
->
+export type CheckoutFormErrors = Partial<Record<'name' | 'phone' | 'email' | 'address', string>>
 
 // Client-side validation with Russian messages. Mirrors the zod schema on
 // the server (checkout.schemas.ts) so a valid form never bounces off a 400.
-export function validateCheckoutForm(
-  fields: CheckoutFormFields,
-): CheckoutFormErrors {
+export function validateCheckoutForm(fields: CheckoutFormFields): CheckoutFormErrors {
   const errors: CheckoutFormErrors = {}
   if (fields.name.trim() === '') {
     errors.name = 'Укажите имя'

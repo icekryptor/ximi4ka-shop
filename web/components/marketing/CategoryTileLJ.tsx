@@ -17,11 +17,11 @@ const MOLECULE_BY_SLUG: Record<string, MoleculeVariant> = {
   print: 'water',
   // legacy slugs (pre-import naming)
   'nabory-dlya-opytov': 'benzene',
-  'reaktivy': 'water',
+  reaktivy: 'water',
   'laboratornoe-oborudovanie': 'methane',
-  'kombo': 'anthracene',
+  kombo: 'anthracene',
   'pechatnaya-produktsiya': 'water',
-  'novinki': 'benzene',
+  novinki: 'benzene',
 }
 
 // Фото-карточки категорий (web/public/img/categories). Кадры построены под эту
@@ -37,8 +37,8 @@ const IMAGE_BY_SLUG: Record<string, string> = {
   print: '/img/categories/print.webp',
   // legacy slugs (pre-import naming)
   'nabory-dlya-opytov': '/img/categories/kits.webp',
-  'kombo': '/img/categories/combo.webp',
-  'reaktivy': '/img/categories/reagents.webp',
+  kombo: '/img/categories/combo.webp',
+  reaktivy: '/img/categories/reagents.webp',
   'laboratornoe-oborudovanie': '/img/categories/equipment.webp',
   'pechatnaya-produktsiya': '/img/categories/print.webp',
 }

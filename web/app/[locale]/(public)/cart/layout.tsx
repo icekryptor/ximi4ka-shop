@@ -11,8 +11,6 @@ export const metadata: Metadata = buildMetadata({
   noindex: true,
 })
 
-export default function CartLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function CartLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return children
 }

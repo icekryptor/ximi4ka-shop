@@ -14,14 +14,10 @@ export function LayoutBlockEditor({ block, onChange }: Props) {
   return (
     <div className="space-y-3">
       <label className="block">
-        <span className="block text-sm font-medium text-brand-text-secondary mb-1">
-          Вариант
-        </span>
+        <span className="block text-sm font-medium text-brand-text-secondary mb-1">Вариант</span>
         <select
           value={block.variant}
-          onChange={(e) =>
-            onChange({ ...block, variant: e.target.value as LayoutVariant })
-          }
+          onChange={(e) => onChange({ ...block, variant: e.target.value as LayoutVariant })}
           className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white focus:outline-none focus:border-brand text-sm"
         >
           <option value="text-left">Текст слева, картинка справа</option>
@@ -33,21 +29,15 @@ export function LayoutBlockEditor({ block, onChange }: Props) {
       </label>
       <ImageUploadField
         value={block.image.url || null}
-        onChange={(url) =>
-          onChange({ ...block, image: { ...block.image, url: url ?? '' } })
-        }
+        onChange={(url) => onChange({ ...block, image: { ...block.image, url: url ?? '' } })}
       />
       <LabeledInput
         label="Alt-текст картинки"
         value={block.image.alt}
-        onChange={(alt) =>
-          onChange({ ...block, image: { ...block.image, alt } })
-        }
+        onChange={(alt) => onChange({ ...block, image: { ...block.image, alt } })}
       />
       <div>
-        <span className="block text-sm font-medium text-brand-text-secondary mb-1">
-          Текст
-        </span>
+        <span className="block text-sm font-medium text-brand-text-secondary mb-1">Текст</span>
         <RichTextEditor
           value={block.text.html}
           onChange={(html) => onChange({ ...block, text: { html } })}

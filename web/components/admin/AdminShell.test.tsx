@@ -16,9 +16,7 @@ beforeEach(() => {
   mockReplace.mockReset()
   mockRefresh.mockReset()
   document.cookie = 'ximi4ka_shop_csrf=test-csrf; path=/'
-  globalThis.fetch = vi.fn(async () =>
-    new Response('{}', { status: 200 }),
-  ) as typeof fetch
+  globalThis.fetch = vi.fn(async () => new Response('{}', { status: 200 })) as typeof fetch
 })
 
 afterEach(() => {
@@ -74,9 +72,7 @@ describe('AdminShell', () => {
       'aria-current',
       'page',
     )
-    expect(within(nav).getByRole('link', { name: 'Товары' })).not.toHaveAttribute(
-      'aria-current',
-    )
+    expect(within(nav).getByRole('link', { name: 'Товары' })).not.toHaveAttribute('aria-current')
   })
 
   it('does not mark /admin active on /admin/products (exact match)', () => {
@@ -87,9 +83,7 @@ describe('AdminShell', () => {
       </AdminShell>,
     )
     const nav = screen.getByRole('navigation', { name: 'Админ навигация' })
-    expect(within(nav).getByRole('link', { name: 'Главная' })).not.toHaveAttribute(
-      'aria-current',
-    )
+    expect(within(nav).getByRole('link', { name: 'Главная' })).not.toHaveAttribute('aria-current')
     expect(within(nav).getByRole('link', { name: 'Товары' })).toHaveAttribute(
       'aria-current',
       'page',

@@ -14,18 +14,12 @@ describe('CatalogPromoBanner', () => {
       />,
     )
     expect(within(container).getByText('Доставка')).toBeInTheDocument()
-    expect(
-      within(container).getByText('Бесплатная доставка СДЭК от 3000 ₽'),
-    ).toBeInTheDocument()
-    expect(
-      within(container).getByText('Собираем и отправляем в день заказа.'),
-    ).toBeInTheDocument()
+    expect(within(container).getByText('Бесплатная доставка СДЭК от 3000 ₽')).toBeInTheDocument()
+    expect(within(container).getByText('Собираем и отправляем в день заказа.')).toBeInTheDocument()
   })
 
   it('uses the bright gradient surface (v3.5)', () => {
-    const { container } = render(
-      <CatalogPromoBanner headline="Оффер" />,
-    )
+    const { container } = render(<CatalogPromoBanner headline="Оффер" />)
     const banner = container.firstElementChild as HTMLElement
     expect(banner.className).toContain('bg-[image:var(--gradient-lj-bright)]')
     expect(banner.className).toContain('rounded-[var(--radius-lj-bright)]')

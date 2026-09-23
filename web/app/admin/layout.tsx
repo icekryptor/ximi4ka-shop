@@ -5,8 +5,6 @@
 // Route groups let the login page render without the sidebar while every
 // other /admin/* route is auth-gated. Keeping a segment layout at this level
 // also prevents the root layout's public chrome from ever touching /admin.
-export default function AdminLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <>{children}</>
 }

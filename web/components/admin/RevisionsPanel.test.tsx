@@ -108,9 +108,7 @@ describe('RevisionsPanel', () => {
         }),
       )
       // Restore POST
-      .mockResolvedValueOnce(
-        jsonResponse(200, { data: { entityType: 'product', entityId: 'p1' } }),
-      )
+      .mockResolvedValueOnce(jsonResponse(200, { data: { entityType: 'product', entityId: 'p1' } }))
       // Reload after restore
       .mockResolvedValueOnce(
         jsonResponse(200, {
@@ -138,9 +136,7 @@ describe('RevisionsPanel', () => {
 
     window.confirm = vi.fn(() => true)
     const onRestored = vi.fn()
-    render(
-      <RevisionsPanel entityType="product" entityId="p1" onRestored={onRestored} />,
-    )
+    render(<RevisionsPanel entityType="product" entityId="p1" onRestored={onRestored} />)
 
     const btn = await screen.findByRole('button', { name: 'Восстановить' })
     fireEvent.click(btn)

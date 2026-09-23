@@ -5,33 +5,17 @@ import type { AdminPageInput } from '@/lib/adminApi'
 
 describe('PageForm', () => {
   it('renders all sections + block editor', () => {
-    render(
-      <PageForm
-        mode="create"
-        onSubmit={async () => undefined}
-        submitting={false}
-      />,
-    )
+    render(<PageForm mode="create" onSubmit={async () => undefined} submitting={false} />)
     expect(screen.getByText('Основные')).toBeInTheDocument()
     expect(screen.getByText('Блоки')).toBeInTheDocument()
     expect(screen.getByText('SEO')).toBeInTheDocument()
     // Block editor's "Add block" control is rendered inside the Блоки section.
-    expect(
-      screen.getByRole('button', { name: /добавить блок/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /добавить блок/i })).toBeInTheDocument()
   })
 
   it('shows "Недопустимый slug" on invalid slug', async () => {
-    const onSubmit = vi.fn<(input: AdminPageInput) => Promise<void>>(
-      async () => undefined,
-    )
-    render(
-      <PageForm
-        mode="create"
-        onSubmit={onSubmit}
-        submitting={false}
-      />,
-    )
+    const onSubmit = vi.fn<(input: AdminPageInput) => Promise<void>>(async () => undefined)
+    render(<PageForm mode="create" onSubmit={onSubmit} submitting={false} />)
     fireEvent.change(screen.getByLabelText('Slug'), {
       target: { value: 'Bad Slug!' },
     })
@@ -46,16 +30,8 @@ describe('PageForm', () => {
   })
 
   it('calls onSubmit with merged payload on valid form', async () => {
-    const onSubmit = vi.fn<(input: AdminPageInput) => Promise<void>>(
-      async () => undefined,
-    )
-    render(
-      <PageForm
-        mode="create"
-        onSubmit={onSubmit}
-        submitting={false}
-      />,
-    )
+    const onSubmit = vi.fn<(input: AdminPageInput) => Promise<void>>(async () => undefined)
+    render(<PageForm mode="create" onSubmit={onSubmit} submitting={false} />)
     fireEvent.change(screen.getByLabelText('Slug'), {
       target: { value: 'o-nas' },
     })
@@ -111,8 +87,6 @@ describe('PageForm', () => {
         error={apiErr as never}
       />,
     )
-    expect(
-      screen.getByText(/Страница с таким slug уже существует/i),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Страница с таким slug уже существует/i)).toBeInTheDocument()
   })
 })

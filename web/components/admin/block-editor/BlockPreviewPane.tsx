@@ -11,9 +11,7 @@ interface Props {
 export function BlockPreviewPane({ blocks }: Props) {
   return (
     <div className="lg:sticky lg:top-6 lg:self-start">
-      <h3 className="text-sm font-semibold text-brand-text-secondary mb-2">
-        Предпросмотр
-      </h3>
+      <h3 className="text-sm font-semibold text-brand-text-secondary mb-2">Предпросмотр</h3>
       <div
         className="border border-brand-border rounded-lg p-4 bg-white overflow-auto max-h-[80vh]"
         data-testid="block-preview"

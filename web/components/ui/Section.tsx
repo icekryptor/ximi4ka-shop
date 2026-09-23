@@ -34,10 +34,7 @@ export function Section({
   as: Tag = 'section',
 }: Props) {
   return (
-    <Tag
-      id={id}
-      className={`${sizeClass[size]} ${surfaceClass[surface]} ${className}`}
-    >
+    <Tag id={id} className={`${sizeClass[size]} ${surfaceClass[surface]} ${className}`}>
       {children}
     </Tag>
   )

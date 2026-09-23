@@ -13,9 +13,7 @@ export function ElementOfDayCell({ date }: { date?: Date }) {
         aria-hidden="true"
         className="w-16 h-16 border border-[var(--color-lj-rule)] bg-transparent px-2 py-1.5 flex flex-col justify-between cursor-help transition-colors duration-300 group-hover/eod:border-[var(--color-lj-brand)] group-hover/eod:bg-[var(--color-lj-brand)]/5 group-focus-within/eod:border-[var(--color-lj-brand)]"
       >
-        <span className="font-lj-mono text-[0.5625rem] leading-none opacity-60">
-          {el.number}
-        </span>
+        <span className="font-lj-mono text-[0.5625rem] leading-none opacity-60">{el.number}</span>
         <span className="font-lj-display font-[700] text-xl leading-none tracking-[-0.02em] text-[var(--color-lj-ink)] group-hover/eod:text-[var(--color-lj-brand-deep)] transition-colors duration-300">
           {el.symbol}
         </span>

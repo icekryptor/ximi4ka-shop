@@ -30,9 +30,7 @@ export default function LoginPage() {
         router.refresh()
         return
       }
-      const body = (await res.json().catch(() => null)) as
-        | { error?: { message?: string } }
-        | null
+      const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null
       setError(body?.error?.message ?? 'Не удалось войти')
     } catch {
       setError('Не удалось связаться с сервером')
@@ -50,17 +48,12 @@ export default function LoginPage() {
       >
         <h1 className="text-2xl font-bold mb-6 text-brand-text">Вход в админку</h1>
         {error ? (
-          <div
-            role="alert"
-            className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm"
-          >
+          <div role="alert" className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">
             {error}
           </div>
         ) : null}
         <label className="block mb-4">
-          <span className="block text-sm font-medium text-brand-text-secondary mb-1">
-            Email
-          </span>
+          <span className="block text-sm font-medium text-brand-text-secondary mb-1">Email</span>
           <input
             type="email"
             required
@@ -72,9 +65,7 @@ export default function LoginPage() {
           />
         </label>
         <label className="block mb-6">
-          <span className="block text-sm font-medium text-brand-text-secondary mb-1">
-            Пароль
-          </span>
+          <span className="block text-sm font-medium text-brand-text-secondary mb-1">Пароль</span>
           <input
             type="password"
             required

@@ -63,7 +63,10 @@ describe('redirect middleware', () => {
 
   it('does not treat /imgs-like prefixes as the static /img folder', async () => {
     fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ data: [] }), { status: 200, headers: { 'content-type': 'application/json' } }),
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
     )
     const res = await middleware(makeRequest('/imgs'))
     expect(res.headers.get('x-middleware-rewrite')).toContain('/ru/imgs')
@@ -79,19 +82,17 @@ describe('redirect middleware', () => {
 
   it('fetches the redirects list and falls through to a locale rewrite on no match', async () => {
     fetchMock.mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({ data: [] }),
-        { status: 200, headers: { 'content-type': 'application/json' } },
-      ),
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
     )
     const res = await middleware(makeRequest('/some-page'))
     // No Location (it's a rewrite, not a redirect) but the rewrite
     // header carries the internal URL for debugging.
     expect(res.headers.get('location')).toBeNull()
     expect(fetchMock).toHaveBeenCalledOnce()
-    expect(String(fetchMock.mock.calls[0][0])).toContain(
-      'http://api.test/api/public/redirects',
-    )
+    expect(String(fetchMock.mock.calls[0][0])).toContain('http://api.test/api/public/redirects')
     // Rewrote to /ru/some-page internally.
     expect(res.headers.get('x-middleware-rewrite')).toContain('/ru/some-page')
   })
@@ -182,9 +183,7 @@ describe('redirect middleware', () => {
       }),
     )
     const res = await middleware(makeRequest('/blog/pochemu-plamya-sinee'))
-    expect(res.headers.get('x-middleware-rewrite')).toContain(
-      '/ru/blog/pochemu-plamya-sinee',
-    )
+    expect(res.headers.get('x-middleware-rewrite')).toContain('/ru/blog/pochemu-plamya-sinee')
   })
 
   it('rewrites unprefixed requests internally to /ru (invisible to user)', async () => {
@@ -267,9 +266,7 @@ describe('redirect middleware', () => {
     // may still POST a hit, but no list GET should appear in the calls.
     await middleware(makeRequest('/a'))
     const listCall = fetchMock.mock.calls.find(
-      (c) =>
-        String(c[0]).endsWith('/api/public/redirects') &&
-        !String(c[0]).includes('/hit'),
+      (c) => String(c[0]).endsWith('/api/public/redirects') && !String(c[0]).includes('/hit'),
     )
     expect(listCall).toBeUndefined()
   })
@@ -312,9 +309,7 @@ describe('redirect middleware', () => {
       makeRequest('/catalog/react/tproduct/423044036992-nitrat-serebra-25g'),
     )
     expect(res.status).toBe(301)
-    expect(res.headers.get('location')).toBe(
-      'http://localhost:3000/product/nitrat-serebra',
-    )
+    expect(res.headers.get('location')).toBe('http://localhost:3000/product/nitrat-serebra')
   })
 
   it('passes an unknown tproduct id through to the locale rewrite', async () => {
@@ -359,12 +354,10 @@ describe('matchRedirect (tproduct-id fallback)', () => {
   ]
 
   it('prefers an exact from_path match over the id fallback', () => {
-    expect(matchRedirect(items, '/tproduct/423044036992-staraya-stranitsa')?.id).toBe(
-      'r-alias',
+    expect(matchRedirect(items, '/tproduct/423044036992-staraya-stranitsa')?.id).toBe('r-alias')
+    expect(matchRedirect(items, '/catalog/reagents/tproduct/423044036992-nitrat-serebra')?.id).toBe(
+      'r-nitrat',
     )
-    expect(
-      matchRedirect(items, '/catalog/reagents/tproduct/423044036992-nitrat-serebra')?.id,
-    ).toBe('r-nitrat')
   })
 
   it('matches by numeric id across historical slug and prefix variants', () => {

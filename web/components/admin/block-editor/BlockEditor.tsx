@@ -79,10 +79,7 @@ export function BlockEditor({ value, onChange }: Props) {
                   onMoveDown={() => move(i, 1)}
                   onRemove={() => remove(i)}
                 />
-                <BlockEditorForType
-                  block={block}
-                  onChange={(next) => replaceAt(i, next)}
-                />
+                <BlockEditorForType block={block} onChange={(next) => replaceAt(i, next)} />
               </div>
             ))
           )}

@@ -32,9 +32,7 @@ export function FaqBlockEditor({ block, onChange }: Props) {
           className="border border-brand-border rounded-lg p-3 space-y-2 bg-brand-bg-soft/50"
         >
           <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-brand-text">
-              Вопрос {i + 1}
-            </span>
+            <span className="text-sm font-semibold text-brand-text">Вопрос {i + 1}</span>
             <button
               type="button"
               onClick={() => removeItem(i)}

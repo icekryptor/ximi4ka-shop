@@ -68,11 +68,7 @@ describe('fetchCatalog', () => {
 
   it('groups products by category, counts them, and orders kits before reagents', async () => {
     vi.mocked(listPublishedProducts).mockResolvedValue({
-      data: [
-        product('1', ['ck']),
-        product('2', ['ck']),
-        product('3', ['cr']),
-      ],
+      data: [product('1', ['ck']), product('2', ['ck']), product('3', ['cr'])],
       pagination: { limit: 1000, offset: 0, total: 3 },
     } as never)
     vi.mocked(listCategories).mockResolvedValue({

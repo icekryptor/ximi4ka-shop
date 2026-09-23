@@ -43,8 +43,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
-  const pathname =
-    pathnameRaw?.replace(/^\/(ru|en)(?=\/|$)/, '') || '/'
+  const pathname = pathnameRaw?.replace(/^\/(ru|en)(?=\/|$)/, '') || '/'
 
   const promoItems = headerPromoText
     ? headerPromoText

@@ -33,10 +33,8 @@ const variantClass: Record<ButtonVariant, string> = {
     'bg-[var(--gradient-brand)] text-[var(--color-text-on-brand)] shadow-[var(--shadow-glow-brand)] hover:opacity-95',
   secondary:
     'border border-[var(--color-border-strong)] bg-transparent text-[var(--color-brand-text)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]',
-  ghost:
-    'bg-transparent text-[var(--color-brand-text)] hover:bg-[var(--color-surface-soft)]',
-  link:
-    'bg-transparent text-[var(--color-brand)] underline underline-offset-4 hover:text-[var(--color-brand-dark)]',
+  ghost: 'bg-transparent text-[var(--color-brand-text)] hover:bg-[var(--color-surface-soft)]',
+  link: 'bg-transparent text-[var(--color-brand)] underline underline-offset-4 hover:text-[var(--color-brand-dark)]',
 }
 
 const sizeClass: Record<ButtonSize, string> = {
@@ -51,14 +49,14 @@ const baseClass =
 
 function Spinner() {
   return (
-    <svg
-      aria-label="Загрузка"
-      className="h-4 w-4 animate-spin"
-      viewBox="0 0 24 24"
-      fill="none"
-    >
+    <svg aria-label="Загрузка" className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
-      <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      <path
+        d="M12 2a10 10 0 0 1 10 10"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
     </svg>
   )
 }

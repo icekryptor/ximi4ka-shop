@@ -2,16 +2,9 @@ import { Router } from 'express'
 import { Brackets, IsNull } from 'typeorm'
 import { AppDataSource } from '../../config/dataSource.js'
 import { BlogPost } from '../../entities/BlogPost.js'
-import {
-  CreateBlogPostSchema,
-  UpdateBlogPostSchema,
-  ListQuerySchema,
-} from './blog.schemas.js'
+import { CreateBlogPostSchema, UpdateBlogPostSchema, ListQuerySchema } from './blog.schemas.js'
 import { conflict, notFound } from '../errors.js'
-import {
-  requireAdminAuth,
-  requireCsrfToken,
-} from '../middleware/requireAdminAuth.js'
+import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 import { writeRevision } from '../../lib/revisions.js'
 
 export const adminBlogRouter: Router = Router()
@@ -42,10 +35,7 @@ adminBlogRouter.get('/', async (req, res, next) => {
     if (q) {
       qb.andWhere(
         new Brackets((qq) => {
-          qq.where('p.title ILIKE :q', { q: `%${q}%` }).orWhere(
-            'p.slug ILIKE :q',
-            { q: `%${q}%` },
-          )
+          qq.where('p.title ILIKE :q', { q: `%${q}%` }).orWhere('p.slug ILIKE :q', { q: `%${q}%` })
         }),
       )
     }

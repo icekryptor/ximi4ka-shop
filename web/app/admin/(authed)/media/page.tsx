@@ -25,13 +25,10 @@ async function fetchMedia(opts: {
   })
   if (opts.q) params.set('q', opts.q)
   if (opts.mimePrefix) params.set('mimePrefix', opts.mimePrefix)
-  const res = await fetch(
-    `${ADMIN_API_URL_SERVER}/api/admin/media?${params.toString()}`,
-    {
-      headers: { cookie: cookieHeader },
-      cache: 'no-store',
-    },
-  )
+  const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/media?${params.toString()}`, {
+    headers: { cookie: cookieHeader },
+    cache: 'no-store',
+  })
   if (!res.ok) {
     throw new Error(`Admin media list failed: ${res.status}`)
   }
@@ -97,10 +94,7 @@ export default async function AdminMediaPage({
         <div>
           Всего: {pagination.total}.{' '}
           {pagination.total > 0
-            ? `Показаны ${offset + 1}–${Math.min(
-                offset + pagination.limit,
-                pagination.total,
-              )}.`
+            ? `Показаны ${offset + 1}–${Math.min(offset + pagination.limit, pagination.total)}.`
             : ''}
         </div>
         <div className="flex gap-2">

@@ -73,9 +73,7 @@ describe('BlockRenderer', () => {
     // ProductGridBlock is async and will suspend during synchronous render —
     // RTL should see the Suspense fallback.
     const { container } = render(
-      <BlockRenderer
-        blocks={[{ type: 'product_grid', productSlugs: ['nope'] }]}
-      />,
+      <BlockRenderer blocks={[{ type: 'product_grid', productSlugs: ['nope'] }]} />,
     )
     expect(container.textContent).toContain('Загрузка товаров')
   })

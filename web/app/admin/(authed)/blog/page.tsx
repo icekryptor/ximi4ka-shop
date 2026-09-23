@@ -21,13 +21,10 @@ async function fetchPosts(opts: {
     offset: String(opts.offset),
   })
   if (opts.q) params.set('q', opts.q)
-  const res = await fetch(
-    `${ADMIN_API_URL_SERVER}/api/admin/blog?${params.toString()}`,
-    {
-      headers: { cookie: cookieHeader },
-      cache: 'no-store',
-    },
-  )
+  const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/blog?${params.toString()}`, {
+    headers: { cookie: cookieHeader },
+    cache: 'no-store',
+  })
   if (!res.ok) {
     throw new Error(`Admin blog list failed: ${res.status}`)
   }
@@ -88,10 +85,7 @@ export default async function AdminBlogPage({
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-12 text-center text-brand-text-secondary"
-                >
+                <td colSpan={6} className="px-4 py-12 text-center text-brand-text-secondary">
                   {q
                     ? 'Ничего не найдено. Попробуйте другой запрос.'
                     : 'Пока нет статей. Создайте первую.'}
@@ -99,10 +93,7 @@ export default async function AdminBlogPage({
               </tr>
             ) : (
               data.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-t border-brand-border hover:bg-brand-bg-soft/50"
-                >
+                <tr key={p.id} className="border-t border-brand-border hover:bg-brand-bg-soft/50">
                   <td className="px-4 py-3">
                     <Link
                       href={`/admin/blog/${p.id}`}
@@ -114,9 +105,7 @@ export default async function AdminBlogPage({
                   <td className="px-4 py-3 text-brand-text-secondary font-mono text-xs">
                     {p.slug}
                   </td>
-                  <td className="px-4 py-3 text-brand-text-secondary">
-                    {p.rubric ?? '—'}
-                  </td>
+                  <td className="px-4 py-3 text-brand-text-secondary">{p.rubric ?? '—'}</td>
                   <td className="px-4 py-3">
                     {p.isPublished ? (
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
@@ -153,10 +142,7 @@ export default async function AdminBlogPage({
         <div>
           Всего: {pagination.total}.{' '}
           {pagination.total > 0
-            ? `Показаны ${offset + 1}–${Math.min(
-                offset + pagination.limit,
-                pagination.total,
-              )}.`
+            ? `Показаны ${offset + 1}–${Math.min(offset + pagination.limit, pagination.total)}.`
             : ''}
         </div>
         <div className="flex gap-2">
@@ -166,12 +152,7 @@ export default async function AdminBlogPage({
             offset={Math.max(0, offset - pagination.limit)}
             label="← Назад"
           />
-          <PageLink
-            disabled={!hasNext}
-            q={q}
-            offset={offset + pagination.limit}
-            label="Вперёд →"
-          />
+          <PageLink disabled={!hasNext} q={q} offset={offset + pagination.limit} label="Вперёд →" />
         </div>
       </div>
     </div>

@@ -87,13 +87,9 @@ describe('validateCheckoutForm', () => {
   })
 
   it('rejects a malformed email but allows an empty one', () => {
-    expect(validateCheckoutForm({ ...validFields, email: 'нет-собаки' }).email).toMatch(
-      /email/i,
-    )
+    expect(validateCheckoutForm({ ...validFields, email: 'нет-собаки' }).email).toMatch(/email/i)
     expect(validateCheckoutForm({ ...validFields, email: '' }).email).toBeUndefined()
-    expect(
-      validateCheckoutForm({ ...validFields, email: 'a@b.ru' }).email,
-    ).toBeUndefined()
+    expect(validateCheckoutForm({ ...validFields, email: 'a@b.ru' }).email).toBeUndefined()
   })
 
   it('requires the address', () => {

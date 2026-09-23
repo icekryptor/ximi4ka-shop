@@ -14,8 +14,8 @@ export async function nextOrderNumber(
   manager: EntityManager,
   now: Date = new Date(),
 ): Promise<string> {
-  const rows = (await manager.query(
-    `SELECT nextval('order_number_seq') AS n`,
-  )) as Array<{ n: string | number }>
+  const rows = (await manager.query(`SELECT nextval('order_number_seq') AS n`)) as Array<{
+    n: string | number
+  }>
   return formatOrderNumber(now.getFullYear(), Number(rows[0].n))
 }

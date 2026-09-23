@@ -6,8 +6,9 @@ import type { NextConfig } from 'next'
 // origin-agnostic `/uploads/...` paths and we proxy them through Next so the
 // browser never deals with cross-origin URLs. The rewrite runs server-side, so
 // it prefers API_URL (docker-network address) over the public origin.
-const apiOrigin = (process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL)?.replace(/\/$/, '')
-  ?? 'http://localhost:3001'
+const apiOrigin =
+  (process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL)?.replace(/\/$/, '') ??
+  'http://localhost:3001'
 
 const nextConfig: NextConfig = {
   // Self-hosted on our own VPS: `standalone` emits a minimal server bundle with

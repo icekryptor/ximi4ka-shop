@@ -53,8 +53,7 @@ export function RedirectEditClient({ initial }: { initial: Redirect }) {
     <>
       <div className="flex items-center gap-3 p-4 rounded-xl bg-white border border-brand-border">
         <span className="text-sm text-brand-text-secondary">
-          Хиты:{' '}
-          <span className="font-mono text-brand-text">{row.hitCount}</span>
+          Хиты: <span className="font-mono text-brand-text">{row.hitCount}</span>
         </span>
         <button
           type="button"

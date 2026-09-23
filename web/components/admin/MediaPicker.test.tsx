@@ -2,7 +2,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MediaPicker } from './MediaPicker'
 
-function listResponse(items: Array<Partial<{ id: string; url: string; filename: string; mimeType: string; size: number; width: number | null; height: number | null; uploadedBy: string | null; createdAt: string }>>, total?: number) {
+function listResponse(
+  items: Array<
+    Partial<{
+      id: string
+      url: string
+      filename: string
+      mimeType: string
+      size: number
+      width: number | null
+      height: number | null
+      uploadedBy: string | null
+      createdAt: string
+    }>
+  >,
+  total?: number,
+) {
   const data = items.map((i, idx) => ({
     id: i.id ?? `m${idx}`,
     url: i.url ?? `/uploads/2026/04/img${idx}.jpg`,
@@ -39,20 +54,19 @@ describe('MediaPicker', () => {
   })
 
   it('does not render when open=false', () => {
-    render(
-      <MediaPicker open={false} onClose={() => undefined} onPick={() => undefined} />,
-    )
+    render(<MediaPicker open={false} onClose={() => undefined} onPick={() => undefined} />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('fetches and renders grid when opened', async () => {
     fetchMock.mockResolvedValueOnce(
-      listResponse([{ id: 'a', filename: 'alpha.jpg' }, { id: 'b', filename: 'beta.jpg' }]),
+      listResponse([
+        { id: 'a', filename: 'alpha.jpg' },
+        { id: 'b', filename: 'beta.jpg' },
+      ]),
     )
-    render(
-      <MediaPicker open onClose={() => undefined} onPick={() => undefined} />,
-    )
+    render(<MediaPicker open onClose={() => undefined} onPick={() => undefined} />)
     await waitFor(() => {
       expect(screen.getByText('alpha.jpg')).toBeInTheDocument()
     })
@@ -65,9 +79,7 @@ describe('MediaPicker', () => {
 
   it('calls onPick with url and then onClose when a card is clicked', async () => {
     fetchMock.mockResolvedValueOnce(
-      listResponse([
-        { id: 'a', url: '/uploads/2026/04/alpha.jpg', filename: 'alpha.jpg' },
-      ]),
+      listResponse([{ id: 'a', url: '/uploads/2026/04/alpha.jpg', filename: 'alpha.jpg' }]),
     )
     const onPick = vi.fn()
     const onClose = vi.fn()

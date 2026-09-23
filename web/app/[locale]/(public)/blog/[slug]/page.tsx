@@ -27,9 +27,7 @@ export const dynamicParams = true
 export async function generateStaticParams() {
   try {
     const res = await listBlogPosts({ limit: 100 })
-    return SUPPORTED_LOCALES.flatMap((locale) =>
-      res.data.map((p) => ({ locale, slug: p.slug })),
-    )
+    return SUPPORTED_LOCALES.flatMap((locale) => res.data.map((p) => ({ locale, slug: p.slug })))
   } catch {
     return []
   }
@@ -40,9 +38,7 @@ interface Props {
 }
 
 function pathForLocale(locale: Locale, slug: string): string {
-  return locale === DEFAULT_LOCALE
-    ? `/blog/${slug}`
-    : `/${locale}/blog/${slug}`
+  return locale === DEFAULT_LOCALE ? `/blog/${slug}` : `/${locale}/blog/${slug}`
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -95,9 +91,7 @@ export default async function BlogPostPage({ params }: Props) {
   const post = await fetchPost(slug)
   const title = pickField<string>(post, 'title', locale) ?? post.title
   const excerpt = pickField<string>(post, 'excerpt', locale) ?? post.excerpt
-  const blocks = (pickField<unknown[]>(post, 'blocks', locale) ??
-    post.blocks ??
-    []) as unknown[]
+  const blocks = (pickField<unknown[]>(post, 'blocks', locale) ?? post.blocks ?? []) as unknown[]
 
   const dateIso = post.publishedAt ?? post.createdAt
   const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
@@ -131,9 +125,7 @@ export default async function BlogPostPage({ params }: Props) {
         <span className="mx-2" aria-hidden="true">
           /
         </span>
-        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">
-          {title}
-        </span>
+        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">{title}</span>
       </nav>
 
       {/* B. Статья (LAB CREAM) — journal entry header */}
@@ -149,11 +141,7 @@ export default async function BlogPostPage({ params }: Props) {
           <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-60 mb-6">
             <time dateTime={dateIso}>{formatDateRu(dateIso)}</time>
           </p>
-          {excerpt && (
-            <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch]">
-              {excerpt}
-            </p>
-          )}
+          {excerpt && <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch]">{excerpt}</p>}
         </div>
       </LabSection>
 

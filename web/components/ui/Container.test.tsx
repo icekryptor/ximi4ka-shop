@@ -4,7 +4,11 @@ import { Container } from './Container'
 
 describe('Container', () => {
   it('renders children inside a max-width wrapper', () => {
-    render(<Container><span>hello</span></Container>)
+    render(
+      <Container>
+        <span>hello</span>
+      </Container>,
+    )
     expect(screen.getByText('hello')).toBeInTheDocument()
   })
 

@@ -1,9 +1,5 @@
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
-import {
-  listCategories,
-  listPublishedProducts,
-  type ProductWithCategories,
-} from '@/lib/api'
+import { listCategories, listPublishedProducts, type ProductWithCategories } from '@/lib/api'
 
 // Отдельный каталожный слой поверх существующих публичных эндпоинтов
 // (api.ts не редактируем). Тянет все опубликованные товары с

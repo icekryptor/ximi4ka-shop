@@ -8,7 +8,9 @@ beforeEach(() => {
   // @ts-expect-error - test stub
   global.IntersectionObserver = class {
     constructor(public cb: (entries: Partial<IntersectionObserverEntry>[]) => void) {}
-    observe(el: Element) { this.cb([{ isIntersecting: true, target: el }]) }
+    observe(el: Element) {
+      this.cb([{ isIntersecting: true, target: el }])
+    }
     unobserve() {}
     disconnect() {}
   }
@@ -41,7 +43,7 @@ describe('<ProductCard> v3', () => {
         statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
         chips={['безопасно', 'ярко', 'от 10 лет']}
         images={[]}
-      />
+      />,
     )
     expect(screen.getByText(/№\s*X-30\s*\/\s*Cu/)).toBeInTheDocument()
     expect(screen.getByText('Хит')).toBeInTheDocument()
@@ -54,7 +56,7 @@ describe('<ProductCard> v3', () => {
         stats={{ reagents: 18, instruments: 12, reactions: 161 }}
         statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
         images={[]}
-      />
+      />,
     )
     expect(container.querySelectorAll('[data-statbar]').length).toBe(3)
   })
@@ -66,7 +68,7 @@ describe('<ProductCard> v3', () => {
         stats={{ reagents: 0, instruments: 0, reactions: 0 }}
         statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
         images={[]}
-      />
+      />,
     )
     expect(container.querySelectorAll('[data-statbar]').length).toBe(0)
   })
@@ -80,7 +82,7 @@ describe('<ProductCard> v3', () => {
         stats={{ reagents: 18, instruments: 12, reactions: 161 }}
         statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
         images={[]}
-      />
+      />,
     )
     const badge = screen.getByText('Хит')
     expect(badge.className).toContain('bg-[image:var(--gradient-lj-bright)]')
@@ -94,7 +96,7 @@ describe('<ProductCard> v3', () => {
         statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
         chips={['безопасно']}
         images={[]}
-      />
+      />,
     )
     expect(screen.getByText('безопасно')).toBeInTheDocument()
   })
@@ -106,7 +108,7 @@ describe('<ProductCard> v3', () => {
         stats={{ reagents: 1, instruments: 1, reactions: 1 }}
         statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
         images={[]}
-      />
+      />,
     )
     // ru-RU formatting → "12 990" (regular space, but our impl replaces , with space; either way, "12" and "990" land)
     expect(screen.getByText(/12.{0,3}990/)).toBeInTheDocument()
@@ -148,7 +150,7 @@ describe('ProductCard images behavior', () => {
   it('renders single Image when one image provided', () => {
     const images = [{ id: 'i1', productId: 'p1', url: '/test.png', alt: 'alt', sortOrder: 0 }]
     const { container } = render(
-      <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={images} />
+      <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={images} />,
     )
     const imgs = container.querySelectorAll('img')
     expect(imgs.length).toBe(1)
@@ -161,7 +163,7 @@ describe('ProductCard images behavior', () => {
       { id: 'i2', productId: 'p1', url: '/b.png', alt: 'b', sortOrder: 1 },
     ]
     const { container } = render(
-      <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={images} />
+      <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={images} />,
     )
     const imgs = container.querySelectorAll('img')
     expect(imgs.length).toBe(2)
@@ -197,7 +199,13 @@ describe('ProductCard images behavior', () => {
 
   it('suppresses cornerMark when images is empty', () => {
     render(
-      <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={[]} cornerMark="ARR. 01" />
+      <ProductCard
+        product={baseProduct}
+        stats={stats}
+        statMaxes={statMaxes}
+        images={[]}
+        cornerMark="ARR. 01"
+      />,
     )
     expect(screen.queryByText('ARR. 01')).not.toBeInTheDocument()
   })
@@ -205,7 +213,13 @@ describe('ProductCard images behavior', () => {
   it('renders cornerMark when images present', () => {
     const images = [{ id: 'i1', productId: 'p1', url: '/a.png', alt: 'a', sortOrder: 0 }]
     render(
-      <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={images} cornerMark="ARR. 01" />
+      <ProductCard
+        product={baseProduct}
+        stats={stats}
+        statMaxes={statMaxes}
+        images={images}
+        cornerMark="ARR. 01"
+      />,
     )
     expect(screen.getByText('ARR. 01')).toBeInTheDocument()
   })

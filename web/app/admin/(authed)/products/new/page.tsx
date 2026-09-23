@@ -4,11 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
 import { ProductForm } from '@/components/admin/ProductForm'
-import {
-  ApiError,
-  adminCreateProduct,
-  type AdminProductInput,
-} from '@/lib/adminApi'
+import { ApiError, adminCreateProduct, type AdminProductInput } from '@/lib/adminApi'
 
 export default function NewProductPage() {
   const router = useRouter()
@@ -34,19 +30,11 @@ export default function NewProductPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-brand-text">Новый товар</h1>
-        <Link
-          href="/admin/products"
-          className="text-sm text-brand-text-secondary hover:underline"
-        >
+        <Link href="/admin/products" className="text-sm text-brand-text-secondary hover:underline">
           ← К списку
         </Link>
       </div>
-      <ProductForm
-        mode="create"
-        onSubmit={handleSubmit}
-        submitting={submitting}
-        error={error}
-      />
+      <ProductForm mode="create" onSubmit={handleSubmit} submitting={submitting} error={error} />
     </div>
   )
 }

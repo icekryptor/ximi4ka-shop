@@ -4,7 +4,11 @@ import { Fade } from './Fade'
 
 describe('Fade', () => {
   it('renders children', () => {
-    render(<Fade><span>shown</span></Fade>)
+    render(
+      <Fade>
+        <span>shown</span>
+      </Fade>,
+    )
     expect(screen.getByText('shown')).toBeInTheDocument()
   })
 

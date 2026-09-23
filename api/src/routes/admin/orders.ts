@@ -4,10 +4,7 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrdersListQuerySchema, OrderStatusPatchSchema } from './orders.schemas.js'
 import { conflict, notFound } from '../errors.js'
-import {
-  requireAdminAuth,
-  requireCsrfToken,
-} from '../middleware/requireAdminAuth.js'
+import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 
 export const adminOrdersRouter: Router = Router()
 

@@ -128,8 +128,7 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
             Заказ не найден
           </h1>
           <p className="text-lg text-[var(--color-lj-ink)] opacity-70 m-0 max-w-[48ch]">
-            Проверьте номер — он выглядит как XM-2026-00042 и указан в письме
-            и SMS о заказе.
+            Проверьте номер — он выглядит как XM-2026-00042 и указан в письме и SMS о заказе.
           </p>
           <Link
             href="/orders/track"
@@ -151,8 +150,7 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
               ЛАБОРАТОРНЫЙ ЖУРНАЛ · НОВАЯ ЗАПИСЬ
             </p>
             <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] m-0 mb-6 text-[var(--color-lj-ink)]">
-              Заказ{' '}
-              <span className="italic text-[var(--color-lj-brand)]">принят!</span>
+              Заказ <span className="italic text-[var(--color-lj-brand)]">принят!</span>
             </h1>
             <div className="max-w-[56ch]">
               <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70 mb-3">
@@ -160,16 +158,16 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
               </p>
               <ol className="list-none p-0 m-0 flex flex-col gap-2 text-base text-[var(--color-lj-ink)]">
                 <li>
-                  <span className="text-[var(--color-lj-brand)]">01</span> — мы
-                  подтвердим заказ и наличие наборов
+                  <span className="text-[var(--color-lj-brand)]">01</span> — мы подтвердим заказ и
+                  наличие наборов
                 </li>
                 <li>
-                  <span className="text-[var(--color-lj-brand)]">02</span> — соберём и
-                  передадим посылку в СДЭК
+                  <span className="text-[var(--color-lj-brand)]">02</span> — соберём и передадим
+                  посылку в СДЭК
                 </li>
                 <li>
-                  <span className="text-[var(--color-lj-brand)]">03</span> — пришлём
-                  трек-номер для отслеживания
+                  <span className="text-[var(--color-lj-brand)]">03</span> — пришлём трек-номер для
+                  отслеживания
                 </li>
               </ol>
             </div>
@@ -206,7 +204,10 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
           )}
 
           {error === 'network' && (
-            <p role="alert" className="font-lj-mono text-[length:var(--text-lj-mono-sm)] tracking-[0.04em] text-[var(--color-stock-danger)]">
+            <p
+              role="alert"
+              className="font-lj-mono text-[length:var(--text-lj-mono-sm)] tracking-[0.04em] text-[var(--color-stock-danger)]"
+            >
               Не удалось загрузить статус заказа. Обновите страницу или попробуйте позже.
             </p>
           )}
@@ -258,8 +259,8 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
               <div aria-live="polite">
                 {order.status === 'pending' && order.paymentProvider === 'manual' && (
                   <p className="text-base text-[var(--color-lj-bone)] opacity-80 m-0 max-w-[52ch]">
-                    Менеджер свяжется с вами в ближайшее время, чтобы подтвердить
-                    заказ и договориться об оплате.
+                    Менеджер свяжется с вами в ближайшее время, чтобы подтвердить заказ и
+                    договориться об оплате.
                   </p>
                 )}
                 {order.status === 'pending' && order.paymentProvider === 'tbank' && (
@@ -269,14 +270,14 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
                 )}
                 {order.status === 'failed' && (
                   <p className="text-base text-[var(--color-lj-bone)] opacity-80 m-0 max-w-[52ch]">
-                    Оплата не прошла. Попробуйте оформить заказ ещё раз или напишите
-                    нам — поможем разобраться.
+                    Оплата не прошла. Попробуйте оформить заказ ещё раз или напишите нам — поможем
+                    разобраться.
                   </p>
                 )}
                 {order.status === 'cancelled' && (
                   <p className="text-base text-[var(--color-lj-bone)] opacity-80 m-0 max-w-[52ch]">
-                    Заказ отменён. Если это произошло по ошибке — свяжитесь с нами,
-                    мы всё восстановим.
+                    Заказ отменён. Если это произошло по ошибке — свяжитесь с нами, мы всё
+                    восстановим.
                   </p>
                 )}
               </div>

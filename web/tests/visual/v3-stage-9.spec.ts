@@ -54,10 +54,9 @@ test.describe('v3 Lab Journal — Stage 9 surfaces', () => {
     await page.waitForLoadState('networkidle')
     await page.evaluate(() => document.fonts.ready)
     await page.waitForTimeout(500)
-    await expect(page.locator('main, section').first()).toHaveScreenshot(
-      'cart-empty.png',
-      { maxDiffPixelRatio: 0.02 },
-    )
+    await expect(page.locator('main, section').first()).toHaveScreenshot('cart-empty.png', {
+      maxDiffPixelRatio: 0.02,
+    })
   })
 
   test('Mobile menu overlay', async ({ page }, testInfo) => {
@@ -71,9 +70,8 @@ test.describe('v3 Lab Journal — Stage 9 surfaces', () => {
     await page.evaluate(() => document.fonts.ready)
     await page.getByRole('button', { name: 'Открыть меню' }).click()
     await page.waitForTimeout(500)
-    await expect(page.getByRole('dialog', { name: 'Меню' })).toHaveScreenshot(
-      'mobile-menu.png',
-      { maxDiffPixelRatio: 0.02 },
-    )
+    await expect(page.getByRole('dialog', { name: 'Меню' })).toHaveScreenshot('mobile-menu.png', {
+      maxDiffPixelRatio: 0.02,
+    })
   })
 })

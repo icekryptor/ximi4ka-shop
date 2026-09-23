@@ -108,9 +108,7 @@ export async function restoreRevision(
         relations: { categories: true },
       })
       if (product) {
-        const ids = (categoryIds as unknown[]).filter(
-          (x): x is string => typeof x === 'string',
-        )
+        const ids = (categoryIds as unknown[]).filter((x): x is string => typeof x === 'string')
         const cats = ids.length
           ? await AppDataSource.getRepository(ProductCategory).findBy({ id: In(ids) })
           : []

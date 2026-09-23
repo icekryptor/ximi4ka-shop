@@ -4,7 +4,11 @@ import { Reveal } from './Reveal'
 
 describe('Reveal', () => {
   it('renders children', () => {
-    render(<Reveal><span>visible</span></Reveal>)
+    render(
+      <Reveal>
+        <span>visible</span>
+      </Reveal>,
+    )
     expect(screen.getByText('visible')).toBeInTheDocument()
   })
 
@@ -14,7 +18,11 @@ describe('Reveal', () => {
   })
 
   it('renders children even with delay prop', () => {
-    render(<Reveal delay={0.2}><span>delayed</span></Reveal>)
+    render(
+      <Reveal delay={0.2}>
+        <span>delayed</span>
+      </Reveal>,
+    )
     expect(screen.getByText('delayed')).toBeInTheDocument()
   })
 })

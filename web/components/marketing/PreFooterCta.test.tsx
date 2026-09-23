@@ -10,9 +10,7 @@ describe('PreFooterCta', () => {
         cta={{ label: 'Открыть каталог', href: '/categories' }}
       />,
     )
-    expect(
-      screen.getByRole('heading', { name: 'Готовы начать эксперимент?' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Готовы начать эксперимент?' })).toBeInTheDocument()
   })
 
   it('renders the lead paragraph when provided', () => {
@@ -28,31 +26,20 @@ describe('PreFooterCta', () => {
 
   it('omits the lead when not provided', () => {
     const { container } = render(
-      <PreFooterCta
-        title="t"
-        cta={{ label: 'Открыть каталог', href: '/categories' }}
-      />,
+      <PreFooterCta title="t" cta={{ label: 'Открыть каталог', href: '/categories' }} />,
     )
     expect(container.querySelector('p')).toBeNull()
   })
 
   it('renders the CTA as a link with the provided href and label', () => {
-    render(
-      <PreFooterCta
-        title="t"
-        cta={{ label: 'Открыть каталог', href: '/categories' }}
-      />,
-    )
+    render(<PreFooterCta title="t" cta={{ label: 'Открыть каталог', href: '/categories' }} />)
     const link = screen.getByRole('link', { name: 'Открыть каталог' })
     expect(link).toHaveAttribute('href', '/categories')
   })
 
   it('wraps content in an ink LabSection surface', () => {
     const { container } = render(
-      <PreFooterCta
-        title="t"
-        cta={{ label: 'Открыть каталог', href: '/categories' }}
-      />,
+      <PreFooterCta title="t" cta={{ label: 'Открыть каталог', href: '/categories' }} />,
     )
     const section = container.querySelector('section')
     expect(section).not.toBeNull()
@@ -60,12 +47,7 @@ describe('PreFooterCta', () => {
   })
 
   it('renders the CTA as a v3.5 bright gradient pill on the ink surface', () => {
-    render(
-      <PreFooterCta
-        title="t"
-        cta={{ label: 'Открыть каталог', href: '/categories' }}
-      />,
-    )
+    render(<PreFooterCta title="t" cta={{ label: 'Открыть каталог', href: '/categories' }} />)
     const link = screen.getByRole('link', { name: 'Открыть каталог' })
     expect(link.className).toContain('lj-cta-bright')
     expect(link.className).toContain('rounded-full')
@@ -74,10 +56,7 @@ describe('PreFooterCta', () => {
 
   it('renders the heading in bone (readable on ink surface)', () => {
     render(
-      <PreFooterCta
-        title="Заголовок"
-        cta={{ label: 'Открыть каталог', href: '/categories' }}
-      />,
+      <PreFooterCta title="Заголовок" cta={{ label: 'Открыть каталог', href: '/categories' }} />,
     )
     const heading = screen.getByRole('heading', { name: 'Заголовок' })
     expect(heading.className).toContain('text-[var(--color-lj-bone)]')

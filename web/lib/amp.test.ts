@@ -82,16 +82,12 @@ describe('renderAmpProduct', () => {
 
   it('includes canonical link back to the non-AMP URL', () => {
     const html = renderAmpProduct(makeProduct(), 'https://new.ximi4ka.ru')
-    expect(html).toContain(
-      '<link rel="canonical" href="https://new.ximi4ka.ru/product/nabor">',
-    )
+    expect(html).toContain('<link rel="canonical" href="https://new.ximi4ka.ru/product/nabor">')
   })
 
   it('emits the AMP runtime script and no other <script> except application/ld+json', () => {
     const html = renderAmpProduct(makeProduct(), 'https://new.ximi4ka.ru')
-    expect(html).toContain(
-      '<script async src="https://cdn.ampproject.org/v0.js"></script>',
-    )
+    expect(html).toContain('<script async src="https://cdn.ampproject.org/v0.js"></script>')
     // No inline module scripts, no event handlers, no extra <script>.
     const scriptMatches = html.match(/<script/g) ?? []
     // Expect one runtime script and optionally the ld+json block (only
@@ -121,8 +117,6 @@ describe('renderAmpArticle', () => {
 
   it('links canonical back to the CMS slug', () => {
     const html = renderAmpArticle(makePage(), 'https://new.ximi4ka.ru')
-    expect(html).toContain(
-      '<link rel="canonical" href="https://new.ximi4ka.ru/o-nas">',
-    )
+    expect(html).toContain('<link rel="canonical" href="https://new.ximi4ka.ru/o-nas">')
   })
 })

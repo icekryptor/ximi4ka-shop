@@ -10,7 +10,7 @@ describe('<HowItWorksStepLJ>', () => {
         verb="ВЫБРАТЬ"
         title="Выберите набор"
         body="Подберите эксперимент по возрасту."
-      />
+      />,
     )
     expect(screen.getByText('01')).toBeInTheDocument()
     expect(screen.getByText('ВЫБРАТЬ')).toBeInTheDocument()
@@ -20,9 +20,7 @@ describe('<HowItWorksStepLJ>', () => {
   })
 
   it('renders inside a NumberCell', () => {
-    const { container } = render(
-      <HowItWorksStepLJ index={2} verb="X" title="T" body="B" />
-    )
+    const { container } = render(<HowItWorksStepLJ index={2} verb="X" title="T" body="B" />)
     expect(container.querySelector('.lj-num-cell')).not.toBeNull()
   })
 })

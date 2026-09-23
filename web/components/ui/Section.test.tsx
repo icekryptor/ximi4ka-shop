@@ -4,7 +4,11 @@ import { Section } from './Section'
 
 describe('Section', () => {
   it('renders children', () => {
-    render(<Section><span>x</span></Section>)
+    render(
+      <Section>
+        <span>x</span>
+      </Section>,
+    )
     expect(screen.getByText('x')).toBeInTheDocument()
   })
 
