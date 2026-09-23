@@ -30,6 +30,7 @@ describe('прокси виджета СДЭК', () => {
     expect(res.headers['x-total-elements']).toBe('1234')
     // Виджет сверяет старшую версию и отказывается работать с чужим сервисом.
     expect(res.headers['x-service-version']).toBe('4.0.0')
+    expect(res.headers['access-control-expose-headers']).toMatch(/X-Total-Elements/)
     expect(raw).toHaveBeenCalledWith('GET', '/deliverypoints', {
       query: { city_code: '270', page: '0', size: '500' },
     })

@@ -18,6 +18,7 @@ import { rateLimit } from '../middleware/rateLimit.js'
 // протокола нет, он может поменяться с релизом виджета.
 
 export const WIDGET_SERVICE_VERSION = '4.0.0'
+const EXPOSED_HEADERS = 'X-Service-Version, X-Total-Elements, X-Total-Pages, X-Current-Page'
 const SAFE_KEY = /^[a-z_]{1,40}$/
 const IGNORED = new Set(['action', 'subtotal'])
 const CALC_FIELDS = ['currency', 'lang', 'to_location', 'packages', 'date', 'type'] as const
@@ -88,6 +89,9 @@ cdekWidgetRouter.all('/', rateLimit({ limit: 240, windowMs: 60_000 }), async (re
       if (key.toLowerCase() !== 'x-service-version') res.setHeader(key, value)
     }
     res.setHeader('X-Service-Version', WIDGET_SERVICE_VERSION)
+    // Витрина и api на разных адресах (разработка): без этого браузер не
+    // отдаст виджету заголовки, по которым он проверяет версию и листает ПВЗ.
+    res.setHeader('Access-Control-Expose-Headers', EXPOSED_HEADERS)
     res.status(result.status).type('application/json').send(result.text)
   } catch {
     res.setHeader('X-Service-Version', WIDGET_SERVICE_VERSION)

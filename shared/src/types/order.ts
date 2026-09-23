@@ -1,3 +1,5 @@
+import type { DeliveryDestination } from './shipping.js'
+
 export type OrderStatus = 'pending' | 'paid' | 'failed' | 'cancelled'
 
 // Payment provider actually wired to the order. `manual` — no online payment:
@@ -77,7 +79,8 @@ export interface OrderDto {
 export interface CheckoutRequest {
   items: Array<{ productId: string; quantity: number }>
   customer: { name: string; phone: string; email?: string }
-  delivery: { method: DeliveryMethod; address: string; comment?: string }
+  // Куда везём — из виджета СДЭК (см. DeliveryDestination) + комментарий.
+  delivery: DeliveryDestination & { comment?: string }
 }
 
 export interface CheckoutResponse {

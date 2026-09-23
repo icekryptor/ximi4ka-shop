@@ -53,6 +53,7 @@ describe('POST /api/public/shipping/quote', () => {
     expect(res.body.data.subtotalRub).toBe(3299 + 198)
     expect(res.body.data.packages.map((p: { box: string }) => p.box)).toEqual(['large', 'small'])
     expect(res.body.data.quote).toBeNull()
+    expect(res.body.data.tariffs).toEqual({ pvz: 136, courier: 137 })
   })
 
   it('с ПВЗ считает цену для покупателя по правилу порога', async () => {

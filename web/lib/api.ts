@@ -2,6 +2,9 @@ import type {
   BlogPost,
   CheckoutRequest,
   CheckoutResponse,
+  DeliveryDestination,
+  DeliveryQuote,
+  ShippingPackage,
   Page,
   Product,
   ProductCategory,
@@ -16,6 +19,12 @@ import type {
 // keeps SSR working before the DNS cutover, while the public hostname still
 // points at the old deployment. Same pattern as lib/adminAuth.ts.
 const API_BASE = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+
+// Адрес api, видимый из браузера: сюда ходит виджет СДЭК напрямую.
+const PUBLIC_API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001').replace(
+  /\/$/,
+  '',
+)
 
 export class ApiError extends Error {
   constructor(
@@ -199,6 +208,34 @@ export async function submitCheckout(
     body: JSON.stringify(payload),
   })
   return body.data
+}
+
+export interface ShippingQuoteResponse {
+  subtotalRub: number
+  packages: ShippingPackage[]
+  quote: DeliveryQuote | null
+  tariffs: { pvz: number; courier: number }
+}
+
+// Расчёт доставки для корзины. Без destination — только сумма и места
+// отправления (ими виджет СДЭК считает тарифы на карте); с destination —
+// цена для покупателя по правилам сервера, та же, что попадёт в заказ.
+export async function quoteShipping(payload: {
+  items: Array<{ productId: string; quantity: number }>
+  destination?: DeliveryDestination
+}): Promise<ShippingQuoteResponse> {
+  const body = await request<DataEnvelope<ShippingQuoteResponse>>(`/api/public/shipping/quote`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+  return body.data
+}
+
+// Адрес прокси виджета СДЭК (api/src/routes/public/cdek-widget.ts). Сумма
+// корзины в query — только чтобы карта показала 0 ₽ от порога бесплатной
+// доставки; сколько заплатит покупатель, считает сервер.
+export function cdekWidgetServicePath(subtotalRub: number): string {
+  return `${PUBLIC_API_BASE}/api/public/cdek/widget?subtotal=${Math.max(0, Math.round(subtotalRub))}`
 }
 
 export async function getOrderStatus(orderNumber: string): Promise<PublicOrderStatus> {
