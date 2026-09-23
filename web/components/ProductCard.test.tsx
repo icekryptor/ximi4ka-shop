@@ -7,7 +7,7 @@ import type { Product } from '@ximi4ka-shop/shared'
 beforeEach(() => {
   // @ts-expect-error - test stub
   global.IntersectionObserver = class {
-    constructor(public cb: any) {}
+    constructor(public cb: (entries: Partial<IntersectionObserverEntry>[]) => void) {}
     observe(el: Element) { this.cb([{ isIntersecting: true, target: el }]) }
     unobserve() {}
     disconnect() {}

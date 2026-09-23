@@ -50,15 +50,12 @@ export function HeaderSearch() {
   const hasQuery = query.trim().length >= MIN_QUERY
 
   // Debounced fetch. A stale request is aborted when the query changes so
-  // out-of-order responses can never overwrite fresher results.
+  // out-of-order responses can never overwrite fresher results. `loading` and
+  // the reset for a too-short query are set in onChange, not here: setState
+  // straight in an effect body re-renders in a cascade.
   useEffect(() => {
-    if (!hasQuery) {
-      setResult(null)
-      setLoading(false)
-      return
-    }
+    if (!hasQuery) return
     const controller = new AbortController()
-    setLoading(true)
     const timer = setTimeout(() => {
       searchCatalog(query.trim(), { signal: controller.signal })
         .then((res) => {
@@ -150,8 +147,12 @@ export function HeaderSearch() {
           role="searchbox"
           value={query}
           onChange={(e) => {
-            setQuery(e.target.value)
+            const next = e.target.value
+            const searchable = next.trim().length >= MIN_QUERY
+            setQuery(next)
             setOpen(true)
+            setLoading(searchable)
+            if (!searchable) setResult(null)
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}

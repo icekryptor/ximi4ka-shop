@@ -28,7 +28,7 @@ export function Timeline({ points, active }: Props) {
               fill={isActive ? '#836efe' : 'rgba(239,237,230,0.55)'}
               textAnchor="middle"
             >
-              '{label}
+              &apos;{label}
             </text>
           </g>
         )
