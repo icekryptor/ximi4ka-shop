@@ -20,15 +20,27 @@ const props = {
 
 describe('<CdekWidget>', () => {
   const ORIGINAL_KEY = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY
+  const ORIGINAL_GEO_KEY = process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY
   let ctor: ReturnType<typeof vi.fn>
+  // Экземпляр виджета так, как его устраивает 4.0.0: геокодер хранит готовый
+  // адрес запроса с ключом карты.
+  let instance: { yandexApi: { geocodeSrc: string } }
 
   beforeEach(() => {
-    ctor = vi.fn()
+    instance = {
+      yandexApi: { geocodeSrc: 'https://geocode-maps.yandex.ru/1.x/?apikey=ya-key&lang=ru_RU' },
+    }
+    // Вызывается через new: возвращённый объект становится экземпляром.
+    ctor = vi.fn(function () {
+      return instance
+    })
     ;(window as unknown as { CDEKWidget: unknown }).CDEKWidget = ctor
   })
   afterEach(() => {
     if (ORIGINAL_KEY == null) delete process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY
     else process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY = ORIGINAL_KEY
+    if (ORIGINAL_GEO_KEY == null) delete process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY
+    else process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY = ORIGINAL_GEO_KEY
     delete (window as unknown as { CDEKWidget?: unknown }).CDEKWidget
   })
 
@@ -69,5 +81,38 @@ describe('<CdekWidget>', () => {
     }
     ctor.mock.calls[0][0].onChoose('office', tariff, address)
     expect(onChoose).toHaveBeenCalledWith('office', tariff, address)
+  })
+
+  it('центр карты — координаты, а не строка: иначе геокодер вызовется до подмены ключа', () => {
+    process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY = 'ya-key'
+    render(<CdekWidget {...props} />)
+    const { defaultLocation } = ctor.mock.calls[0][0]
+    expect(Array.isArray(defaultLocation)).toBe(true)
+    expect(defaultLocation).toHaveLength(2)
+  })
+
+  it('подставляет отдельный ключ HTTP Геокодера, если он задан', () => {
+    process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY = 'ya-key'
+    process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY = 'geo-key'
+    render(<CdekWidget {...props} />)
+    const url = new URL(instance.yandexApi.geocodeSrc)
+    expect(url.searchParams.get('apikey')).toBe('geo-key')
+    expect(url.searchParams.get('lang')).toBe('ru_RU')
+  })
+
+  it('без ключа геокодера оставляет общий ключ карты', () => {
+    process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY = 'ya-key'
+    delete process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY
+    render(<CdekWidget {...props} />)
+    expect(new URL(instance.yandexApi.geocodeSrc).searchParams.get('apikey')).toBe('ya-key')
+  })
+
+  it('не падает, если у виджета другая внутренняя структура', () => {
+    process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY = 'ya-key'
+    process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY = 'geo-key'
+    ctor.mockImplementation(function () {
+      return {}
+    })
+    expect(() => render(<CdekWidget {...props} />)).not.toThrow()
   })
 })

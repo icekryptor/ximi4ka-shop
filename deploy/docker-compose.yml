@@ -54,6 +54,7 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL не задан в deploy/web.env}
         NEXT_PUBLIC_METRIKA_ID: ${NEXT_PUBLIC_METRIKA_ID:-}
         NEXT_PUBLIC_YANDEX_MAPS_API_KEY: ${NEXT_PUBLIC_YANDEX_MAPS_API_KEY:-}
+        NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY: ${NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY:-}
         API_URL: ${API_URL:-http://ximishop-api:3001}
     image: ximishop-web:latest
     container_name: ximishop-web

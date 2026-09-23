@@ -20,6 +20,30 @@ interface Props {
   ) => void
 }
 
+// Центр Москвы, [долгота, широта] — формат defaultLocation у виджета.
+// Координаты, а не строка 'Москва': строку виджет геокодирует прямо в
+// конструкторе, до того как мы успеем подставить ключ геокодера (см. ниже).
+const MOSCOW_CENTER: [number, number] = [37.6176, 55.7558]
+
+// Виджет 4.0.0 подписывает одним apiKey и загрузку карты (JavaScript API), и
+// запросы к HTTP Геокодеру (поиск, адрес курьера). В кабинете Яндекса это два
+// разных ключа, а отдельной опции у виджета нет, поэтому адрес геокодера
+// переписываем на готовом экземпляре. Поле yandexApi.geocodeSrc в сборке не
+// минифицировано; версия виджета закреплена, так что поле не уедет без нашего
+// ведома. Если структура другая — молча оставляем общий ключ.
+function applyGeocoderKey(widget: unknown, geocoderKey: string | undefined): void {
+  if (!geocoderKey) return
+  const api = (widget as { yandexApi?: { geocodeSrc?: unknown } } | null)?.yandexApi
+  if (!api || typeof api.geocodeSrc !== 'string') return
+  try {
+    const url = new URL(api.geocodeSrc)
+    url.searchParams.set('apikey', geocoderKey)
+    api.geocodeSrc = url.toString()
+  } catch {
+    // Не URL — не трогаем.
+  }
+}
+
 declare global {
   interface Window {
     CDEKWidget?: new (config: Record<string, unknown>) => unknown
@@ -42,12 +66,12 @@ export function CdekWidget({ goods, servicePath, tariffs, onChoose }: Props) {
   function create() {
     if (created.current || !window.CDEKWidget) return
     created.current = true
-    new window.CDEKWidget({
+    const widget = new window.CDEKWidget({
       root: rootId,
       apiKey,
       servicePath,
       from: 'Москва',
-      defaultLocation: 'Москва',
+      defaultLocation: MOSCOW_CENTER,
       canChoose: true,
       goods,
       lang: 'rus',
@@ -61,6 +85,7 @@ export function CdekWidget({ goods, servicePath, tariffs, onChoose }: Props) {
         address: WidgetOfficeAddress | WidgetDoorAddress,
       ) => onChooseRef.current(mode, tariff, address),
     })
+    applyGeocoderKey(widget, process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY)
   }
 
   if (!apiKey) {
