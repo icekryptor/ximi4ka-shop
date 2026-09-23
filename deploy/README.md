@@ -194,7 +194,7 @@ rm -rf "$K"
 ```
 
 4. Защита `main` (Settings → Rules → Rulesets, применять и к админам): запрет
-   force-push и удаления ветки; обязательные проверки `ci (20)` и `ci (22)`.
+   force-push и удаления ветки; при желании обязательная проверка `ci`.
    Автомерж зависимостей не включать — каждый мерж в `main` сразу едет в прод.
 5. Проверки на сервере:
    - `sshd -T | grep -iE 'acceptenv|permitrootlogin|permituserenvironment'` →
