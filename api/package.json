@@ -17,7 +17,8 @@
     "import:tilda-catalog": "tsx src/seeds/import-tilda-catalog.ts",
     "import:tilda-articles": "tsx src/seeds/import-tilda-articles.ts",
     "import:tilda-redirects": "tsx src/seeds/import-tilda-redirects.ts",
-    "audit:images": "tsx src/scripts/audit-images.ts"
+    "audit:images": "tsx src/scripts/audit-images.ts",
+    "import:tilda-shipping": "tsx src/seeds/import-tilda-shipping.ts"
   },
   "dependencies": {
     "@ximi4ka-shop/shared": "^0.0.0",
