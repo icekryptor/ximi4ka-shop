@@ -14,7 +14,12 @@ export type {
 
 export type { Product, ProductImage, StockStatus } from './types/product.js'
 
-export type { ShippingBox, ShippingPackage } from './types/shipping.js'
+export type {
+  DeliveryDestination,
+  DeliveryQuote,
+  ShippingBox,
+  ShippingPackage,
+} from './types/shipping.js'
 
 export type { ProductCategory } from './types/category.js'
 

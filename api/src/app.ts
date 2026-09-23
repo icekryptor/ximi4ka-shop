@@ -21,11 +21,18 @@ import { checkoutRouter } from './routes/checkout.js'
 import { tbankWebhookRouter } from './routes/webhooks/tbank.js'
 import { publicOrdersRouter } from './routes/public/orders.js'
 import { adminOrdersRouter } from './routes/admin/orders.js'
+import { publicShippingRouter } from './routes/public/shipping.js'
+import { cdekWidgetRouter } from './routes/public/cdek-widget.js'
 import { errorHandler } from './routes/errors.js'
 import { UPLOADS_DIR } from './lib/storage/index.js'
 
 export function createApp(): Express {
   const app = express()
+
+  // За Caddy: доверяем X-Forwarded-For только от адресов из частных сетей
+  // (docker-сеть, localhost) — снаружи этот заголовок подделать нельзя. Без
+  // этого req.ip — адрес Caddy, и лимит частоты бил бы всех разом.
+  app.set('trust proxy', 'loopback, linklocal, uniquelocal')
 
   // CORS — the web app (http://localhost:3000 in dev) and the api
   // (http://localhost:3001) live on different origins. Login sets HttpOnly
@@ -60,6 +67,8 @@ export function createApp(): Express {
   app.use('/api/public/search', publicSearchRouter)
   app.use('/api/admin/media', mediaRouter)
   app.use('/api/public/redirects', publicRedirectsRouter)
+  app.use('/api/public/shipping', publicShippingRouter)
+  app.use('/api/public/cdek/widget', cdekWidgetRouter)
   app.use('/api/admin/redirects', adminRedirectsRouter)
   app.use('/api/admin/revisions', adminRevisionsRouter)
   app.use('/api/public/settings', publicSettingsRouter)

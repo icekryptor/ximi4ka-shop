@@ -6,6 +6,7 @@ import { Product } from '../entities/Product.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { createApp } from '../app.js'
+import { setCdekClientForTests } from '../lib/cdek/index.js'
 
 async function seedProduct(overrides: Partial<Product> = {}): Promise<Product> {
   const repo = AppDataSource.getRepository(Product)
@@ -28,7 +29,13 @@ function checkoutBody(items: Array<{ productId: string; quantity: number }>) {
   return {
     items,
     customer: { name: 'Иван Иванов', phone: '+79001234567', email: 'ivan@example.com' },
-    delivery: { method: 'cdek_pvz', address: 'Москва, ул. Ленина, 1', comment: 'после 18:00' },
+    delivery: {
+      method: 'cdek_pvz',
+      cityCode: 44,
+      deliveryPointCode: 'MSK123',
+      address: 'Москва, ул. Ленина, 1',
+      comment: 'после 18:00',
+    } as Record<string, unknown>,
   }
 }
 
@@ -51,6 +58,7 @@ describe('POST /api/checkout', () => {
   afterEach(() => {
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
+    setCdekClientForTests(null)
   })
 
   it('creates a pending order with DB-recomputed prices and snapshots', async () => {
@@ -81,9 +89,20 @@ describe('POST /api/checkout', () => {
     expect(order.shippingRub).toBe(350)
     expect(order.totalRub).toBe(2800)
     expect(order.deliveryMethod).toBe('cdek_pvz')
+    // Под тестами СДЭК «недоступен» — ставка фиксированная, и это видно в заказе.
     expect(order.deliveryAddress).toEqual({
       address: 'Москва, ул. Ленина, 1',
       comment: 'после 18:00',
+      cityCode: 44,
+      deliveryPointCode: 'MSK123',
+      postalCode: null,
+      quote: {
+        tariffCode: 136,
+        cdekPriceRub: null,
+        periodMin: null,
+        periodMax: null,
+        source: 'fallback',
+      },
     })
     expect(order.items).toHaveLength(2)
     const item1 = order.items.find((i) => i.productId === p1.id)!
@@ -112,7 +131,7 @@ describe('POST /api/checkout', () => {
   it('charges 500 ₽ for courier below 5000 ₽', async () => {
     const p = await seedProduct({ priceRub: 4000 })
     const body = checkoutBody([{ productId: p.id, quantity: 1 }])
-    body.delivery.method = 'cdek_courier'
+    body.delivery = { method: 'cdek_courier', address: 'Москва, ул. Тверская, 1, кв. 5' }
     const res = await request(app).post('/api/checkout').send(body)
     expect(res.status).toBe(201)
     const order = await AppDataSource.getRepository(Order).findOneByOrFail({
@@ -120,6 +139,53 @@ describe('POST /api/checkout', () => {
     })
     expect(order.shippingRub).toBe(500)
     expect(order.totalRub).toBe(4500)
+  })
+
+  it('берёт цену доставки у калькулятора СДЭК ниже порога', async () => {
+    const post = vi.fn().mockResolvedValue({ total_sum: 412.4, period_min: 2, period_max: 4 })
+    setCdekClientForTests({ post, get: vi.fn(), raw: vi.fn() })
+    const p = await seedProduct({ priceRub: 900, weightG: 50 })
+
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: p.id, quantity: 3 }]))
+
+    expect(res.status).toBe(201)
+    const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+      orderNumber: res.body.data.orderNumber,
+    })
+    expect(order.shippingRub).toBe(413)
+    expect(order.totalRub).toBe(2700 + 413)
+    expect(order.deliveryAddress.quote).toMatchObject({ cdekPriceRub: 413, source: 'cdek' })
+    // Три флакона — малая коробка: 3×50 г + тара.
+    const [, calc] = post.mock.calls[0]
+    expect(calc.to_location).toEqual({ code: 44 })
+    expect(calc.packages).toEqual([{ weight: 180, length: 10, width: 10, height: 4 }])
+  })
+
+  it('от порога доставка бесплатна, даже если СДЭК назвал цену', async () => {
+    setCdekClientForTests({
+      post: vi.fn().mockResolvedValue({ total_sum: 500 }),
+      get: vi.fn(),
+      raw: vi.fn(),
+    })
+    const p = await seedProduct({ priceRub: 3000 })
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: p.id, quantity: 1 }]))
+    const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+      orderNumber: res.body.data.orderNumber,
+    })
+    expect(order.shippingRub).toBe(0)
+    expect(order.deliveryAddress.quote).toMatchObject({ cdekPriceRub: 500 })
+  })
+
+  it('не принимает ПВЗ без кода пункта — без него не создать заказ в СДЭК', async () => {
+    const p = await seedProduct()
+    const body = checkoutBody([{ productId: p.id, quantity: 1 }])
+    delete body.delivery.deliveryPointCode
+    const res = await request(app).post('/api/checkout').send(body)
+    expect(res.status).toBe(400)
   })
 
   it('increments the order number sequence between orders', async () => {

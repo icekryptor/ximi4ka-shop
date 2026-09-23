@@ -1,14 +1,14 @@
 import { Router } from 'express'
-import { In, IsNull } from 'typeorm'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
-import { Product } from '../entities/Product.js'
+import { getCdekClient } from '../lib/cdek/index.js'
 import { getPaymentProvider } from '../lib/payments/index.js'
-import { calcShippingRub } from '../lib/shipping/rates.js'
+import { loadCart } from '../lib/shipping/cart.js'
+import { packCart } from '../lib/shipping/pack.js'
+import { deliveryConfigFromEnv, quoteDelivery } from '../lib/shipping/quote.js'
 import { nextOrderNumber } from '../lib/orderNumber.js'
 import { CheckoutSchema } from './checkout.schemas.js'
-import { ApiError } from './errors.js'
 
 export const checkoutRouter: Router = Router()
 
@@ -50,41 +50,16 @@ checkoutRouter.post('/', async (req, res, next) => {
       }
     }
 
-    // Collapse duplicate product ids by summing quantities.
-    const qtyByProduct = new Map<string, number>()
-    for (const item of parsed.items) {
-      qtyByProduct.set(item.productId, (qtyByProduct.get(item.productId) ?? 0) + item.quantity)
-    }
-    const productIds = [...qtyByProduct.keys()]
+    const { lines, subtotalRub, packLines } = await loadCart(parsed.items)
+    const { delivery } = parsed
 
-    const products = await AppDataSource.getRepository(Product).find({
-      where: { id: In(productIds), deletedAt: IsNull() },
-    })
-    const productById = new Map(products.map((p) => [p.id, p]))
-
-    // Unknown / soft-deleted / unpublished products cannot be ordered.
-    const unavailable = productIds.filter((id) => {
-      const p = productById.get(id)
-      return !p || !p.isPublished
-    })
-    if (unavailable.length > 0) {
-      throw new ApiError(409, 'products_unavailable', 'Некоторые товары недоступны для заказа', {
-        productIds: unavailable,
-      })
-    }
-
-    const outOfStock = products.filter((p) => p.stockStatus === 'out_of_stock')
-    if (outOfStock.length > 0) {
-      throw new ApiError(409, 'out_of_stock', 'Некоторые товары закончились', {
-        items: outOfStock.map((p) => ({ productId: p.id, name: p.name })),
-      })
-    }
-
-    const subtotalRub = productIds.reduce(
-      (sum, id) => sum + productById.get(id)!.priceRub * qtyByProduct.get(id)!,
-      0,
+    // Цену доставки считает только сервер: сумма, которую показал виджет, —
+    // подсказка для интерфейса, клиенту не доверяем.
+    const quote = await quoteDelivery(
+      { destination: delivery, subtotalRub, packages: packCart(packLines) },
+      { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
     )
-    const shippingRub = calcShippingRub(parsed.delivery.method, subtotalRub)
+    const shippingRub = quote.customerPriceRub
     const totalRub = subtotalRub + shippingRub
 
     const provider = getPaymentProvider()
@@ -101,10 +76,20 @@ checkoutRouter.post('/', async (req, res, next) => {
             customerPhone: parsed.customer.phone,
             customerEmail: parsed.customer.email ?? '',
             deliveryAddress: {
-              address: parsed.delivery.address,
-              comment: parsed.delivery.comment ?? null,
+              address: delivery.address,
+              comment: delivery.comment ?? null,
+              cityCode: delivery.cityCode ?? null,
+              deliveryPointCode: delivery.method === 'cdek_pvz' ? delivery.deliveryPointCode : null,
+              postalCode: delivery.method === 'cdek_courier' ? (delivery.postalCode ?? null) : null,
+              quote: {
+                tariffCode: quote.tariffCode,
+                cdekPriceRub: quote.cdekPriceRub,
+                periodMin: quote.periodMin,
+                periodMax: quote.periodMax,
+                source: quote.source,
+              },
             },
-            deliveryMethod: parsed.delivery.method,
+            deliveryMethod: delivery.method,
             subtotalRub,
             shippingRub,
             totalRub,
@@ -115,16 +100,15 @@ checkoutRouter.post('/', async (req, res, next) => {
         )
         const itemRepo = em.getRepository(OrderItem)
         await itemRepo.save(
-          productIds.map((id) => {
-            const p = productById.get(id)!
-            return itemRepo.create({
+          lines.map(({ product: p, quantity }) =>
+            itemRepo.create({
               orderId: created.id,
               productId: p.id,
               productSnapshot: { name: p.name, sku: p.sku, priceRub: p.priceRub },
-              quantity: qtyByProduct.get(id)!,
+              quantity,
               unitPriceRub: p.priceRub,
-            })
-          }),
+            }),
+          ),
         )
         return created
       })

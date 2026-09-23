@@ -25,6 +25,19 @@ export interface OrderItem {
 export interface DeliveryAddress {
   address: string
   comment: string | null
+  // Из виджета СДЭК. У заказов до интеграции этих полей нет.
+  cityCode?: number | null
+  deliveryPointCode?: string | null
+  postalCode?: string | null
+  // Расчёт доставки на момент заказа. source: 'fallback' — калькулятор СДЭК
+  // не ответил, взята фиксированная ставка: такой заказ стоит проверить.
+  quote?: {
+    tariffCode: number
+    cdekPriceRub: number | null
+    periodMin: number | null
+    periodMax: number | null
+    source: 'cdek' | 'fallback'
+  } | null
 }
 
 // One entry per status transition — appended by the checkout flow, the

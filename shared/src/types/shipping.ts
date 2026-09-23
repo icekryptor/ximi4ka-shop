@@ -15,3 +15,25 @@ export interface ShippingPackage {
   estimated: boolean
   items: { productId: string; quantity: number }[]
 }
+
+// Куда везём: ПВЗ — код пункта и код города СДЭК (их отдаёт виджет),
+// курьер — адрес, геокодированный виджетом.
+export type DeliveryDestination =
+  | { method: 'cdek_pvz'; cityCode: number; deliveryPointCode: string; address: string }
+  | { method: 'cdek_courier'; cityCode?: number; postalCode?: string; address: string }
+
+// Расчёт доставки для покупателя. customerPriceRub — то, что увидит и
+// заплатит покупатель (0 от порога бесплатной доставки); cdekPriceRub — что
+// магазин заплатит СДЭК (null, если калькулятор не ответил).
+export interface DeliveryQuote {
+  method: 'cdek_pvz' | 'cdek_courier'
+  tariffCode: number
+  customerPriceRub: number
+  cdekPriceRub: number | null
+  periodMin: number | null
+  periodMax: number | null
+  free: boolean
+  // cdek — цена от калькулятора; fallback — СДЭК не ответил, взята
+  // фиксированная ставка.
+  source: 'cdek' | 'fallback'
+}
