@@ -50,9 +50,7 @@ describe('<CategoryTileLJ>', () => {
   })
 
   it('renders as a bright gradient container with large radius (v3.5)', () => {
-    const { container } = render(
-      <CategoryTileLJ category={cat} index={0} productCount={42} />,
-    )
+    const { container } = render(<CategoryTileLJ category={cat} index={0} productCount={42} />)
     const link = container.querySelector('a')
     expect(link?.className).toContain('bg-[image:var(--gradient-lj-bright)]')
     expect(link?.className).toContain('rounded-[var(--radius-lj-bright)]')

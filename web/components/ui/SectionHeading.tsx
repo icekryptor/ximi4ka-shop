@@ -11,7 +11,9 @@ interface Props {
 
 export function SectionHeading({ title, eyebrow, action, as: Tag = 'h2', className = '' }: Props) {
   return (
-    <div className={`mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between ${className}`}>
+    <div
+      className={`mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between ${className}`}
+    >
       <div className="flex flex-col gap-2">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
         <Tag className="font-display tracking-[var(--tracking-tight)] leading-[var(--leading-tight)] text-[length:var(--text-h2)] text-[var(--color-brand-text)]">

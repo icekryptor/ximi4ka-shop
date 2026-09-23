@@ -12,15 +12,11 @@ import type { MigrationInterface, QueryRunner } from 'typeorm'
 // jsonb defaults to an empty array so existing rows (and the singleton
 // 'default' row seeded by AddSiteSettings) immediately satisfy the NOT NULL
 // constraint without a follow-up backfill.
-export class AddSiteSettingsMarketingFields1777156599284
-  implements MigrationInterface
-{
+export class AddSiteSettingsMarketingFields1777156599284 implements MigrationInterface {
   name = 'AddSiteSettingsMarketingFields1777156599284'
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "site_settings" ADD "header_promo_text" text`,
-    )
+    await queryRunner.query(`ALTER TABLE "site_settings" ADD "header_promo_text" text`)
     await queryRunner.query(
       `ALTER TABLE "site_settings" ADD "trust_strip_items" jsonb NOT NULL DEFAULT '[]'::jsonb`,
     )
@@ -30,14 +26,8 @@ export class AddSiteSettingsMarketingFields1777156599284
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "site_settings" DROP COLUMN "testimonials"`,
-    )
-    await queryRunner.query(
-      `ALTER TABLE "site_settings" DROP COLUMN "trust_strip_items"`,
-    )
-    await queryRunner.query(
-      `ALTER TABLE "site_settings" DROP COLUMN "header_promo_text"`,
-    )
+    await queryRunner.query(`ALTER TABLE "site_settings" DROP COLUMN "testimonials"`)
+    await queryRunner.query(`ALTER TABLE "site_settings" DROP COLUMN "trust_strip_items"`)
+    await queryRunner.query(`ALTER TABLE "site_settings" DROP COLUMN "header_promo_text"`)
   }
 }

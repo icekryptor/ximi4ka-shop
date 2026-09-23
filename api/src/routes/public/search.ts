@@ -70,9 +70,7 @@ publicSearchRouter.get('/', async (req, res, next) => {
         slug: p.slug,
         name: p.name,
         priceRub: p.priceRub,
-        image:
-          [...(p.images ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)[0]
-            ?.url ?? null,
+        image: [...(p.images ?? [])].sort((a, b) => a.sortOrder - b.sortOrder)[0]?.url ?? null,
       })),
       posts: posts.map((post) => ({ slug: post.slug, title: post.title })),
     }

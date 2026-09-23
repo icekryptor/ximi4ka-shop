@@ -6,11 +6,7 @@ import { useState, useTransition } from 'react'
 // Search input for the products list. Writes the query into the URL so the
 // server component re-runs and the result is a proper page render (works
 // with browser back/forward + server-side rendering).
-export function ProductsListSearch({
-  initialQuery,
-}: {
-  initialQuery: string
-}) {
+export function ProductsListSearch({ initialQuery }: { initialQuery: string }) {
   const router = useRouter()
   const params = useSearchParams()
   const [value, setValue] = useState(initialQuery)

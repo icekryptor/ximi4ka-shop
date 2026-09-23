@@ -27,8 +27,7 @@ export default async function AdminSettingsPage() {
       <header>
         <h1 className="text-2xl font-bold text-brand-text">Настройки сайта</h1>
         <p className="text-sm text-brand-text-secondary">
-          Аналитика, SEO, YML-фид и оплата. Изменения вступают в силу после
-          сохранения.
+          Аналитика, SEO, YML-фид и оплата. Изменения вступают в силу после сохранения.
         </p>
       </header>
       <SettingsForm initial={settings} />

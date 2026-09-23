@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  within,
-} from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { SettingsForm } from './SettingsForm'
 import type { SiteSettings } from '@/lib/adminApi'
 
@@ -16,9 +10,8 @@ vi.mock('@/lib/adminApi', async (importOriginal) => {
   const mod = await importOriginal<typeof import('@/lib/adminApi')>()
   return {
     ...mod,
-    adminUpdateSettings: vi.fn<
-      (patch: Parameters<typeof mod.adminUpdateSettings>[0]) => Promise<SiteSettings>
-    >(),
+    adminUpdateSettings:
+      vi.fn<(patch: Parameters<typeof mod.adminUpdateSettings>[0]) => Promise<SiteSettings>>(),
   }
 })
 
@@ -67,12 +60,8 @@ describe('SettingsForm', () => {
     )
     expect(screen.getByLabelText(/Яндекс\.Метрика/)).toHaveValue('123')
     expect(screen.getByLabelText(/Google Analytics 4/)).toHaveValue('G-XYZ')
-    expect(screen.getByLabelText(/^robots\.txt$/)).toHaveValue(
-      'User-agent: *\nAllow: /',
-    )
-    expect(screen.getByLabelText(/URL магазина/)).toHaveValue(
-      'https://ximi4ka.example',
-    )
+    expect(screen.getByLabelText(/^robots\.txt$/)).toHaveValue('User-agent: *\nAllow: /')
+    expect(screen.getByLabelText(/URL магазина/)).toHaveValue('https://ximi4ka.example')
     // Toggle state from initial
     expect(screen.getByLabelText(/Включить Яндекс\.Pay/)).not.toBeChecked()
   })
@@ -107,9 +96,7 @@ describe('SettingsForm', () => {
     render(<SettingsForm initial={baseSettings} />)
     fireEvent.click(screen.getByRole('button', { name: /Сохранить/ }))
     await waitFor(() => {
-      expect(screen.getByTestId('saved-indicator')).toHaveTextContent(
-        /Сохранено/,
-      )
+      expect(screen.getByTestId('saved-indicator')).toHaveTextContent(/Сохранено/)
     })
   })
 
@@ -126,9 +113,7 @@ describe('SettingsForm', () => {
     const form = screen.getByRole('form', { name: /Настройки сайта/ })
     fireEvent.submit(form)
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent(
-        /URL для YML должен быть корректным/,
-      )
+      expect(screen.getByRole('alert')).toHaveTextContent(/URL для YML должен быть корректным/)
     })
     expect(adminUpdateSettings).not.toHaveBeenCalled()
   })
@@ -148,18 +133,10 @@ describe('SettingsForm', () => {
 
   it('renders the Маркетинг section with all three editors', () => {
     render(<SettingsForm initial={baseSettings} />)
-    expect(
-      screen.getByRole('heading', { name: 'Маркетинг' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByLabelText(/Текст промо-полосы в шапке/),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'Доверие в шапке' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('heading', { name: 'Отзывы' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Маркетинг' })).toBeInTheDocument()
+    expect(screen.getByLabelText(/Текст промо-полосы в шапке/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Доверие в шапке' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Отзывы' })).toBeInTheDocument()
   })
 
   it('appends a trust-strip row when "+ Добавить" is clicked', () => {
@@ -200,9 +177,7 @@ describe('SettingsForm', () => {
       icon: String(i),
       label: `Row ${i}`,
     }))
-    render(
-      <SettingsForm initial={{ ...baseSettings, trustStripItems: eight }} />,
-    )
+    render(<SettingsForm initial={{ ...baseSettings, trustStripItems: eight }} />)
     // The trust-strip section's "+ Добавить" should be gone, but the
     // testimonials one (empty list) should remain — so total count is 1.
     const addButtons = screen.getAllByRole('button', { name: /\+ Добавить/ })
@@ -214,9 +189,7 @@ describe('SettingsForm', () => {
       ...baseSettings,
       headerPromoText: 'Промо',
       trustStripItems: [{ icon: '🚚', label: 'Доставка' }],
-      testimonials: [
-        { quote: 'Топ', author: 'Анна', location: 'Москва', rating: 5 },
-      ],
+      testimonials: [{ quote: 'Топ', author: 'Анна', location: 'Москва', rating: 5 }],
     })
     render(<SettingsForm initial={baseSettings} />)
 
@@ -261,4 +234,3 @@ describe('SettingsForm', () => {
     ])
   })
 })
-

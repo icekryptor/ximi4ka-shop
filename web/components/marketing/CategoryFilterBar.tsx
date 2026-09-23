@@ -3,7 +3,7 @@
 type SortKey = 'newest' | 'price-asc' | 'price-desc' | 'name-asc'
 
 const SORT_LABELS: Record<SortKey, string> = {
-  'newest': 'Новинки',
+  newest: 'Новинки',
   'price-asc': 'Цена ↑',
   'price-desc': 'Цена ↓',
   'name-asc': 'А–Я',

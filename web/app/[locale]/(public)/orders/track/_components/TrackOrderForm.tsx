@@ -33,8 +33,7 @@ export function TrackOrderForm() {
         </h1>
 
         <p className="text-lg text-[var(--color-lj-ink)] opacity-70 max-w-[48ch] mb-10">
-          Введите номер заказа — он указан в письме и SMS, которые мы отправили
-          после оформления.
+          Введите номер заказа — он указан в письме и SMS, которые мы отправили после оформления.
         </p>
 
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 max-w-md">

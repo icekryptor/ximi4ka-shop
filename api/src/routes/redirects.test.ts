@@ -40,9 +40,7 @@ describe('Admin redirects CRUD', () => {
     })
     const id = create.body.data.id as string
 
-    const get = await request(app)
-      .get(`/api/admin/redirects/${id}`)
-      .set(authHeaders(auth))
+    const get = await request(app).get(`/api/admin/redirects/${id}`).set(authHeaders(auth))
     expect(get.status).toBe(200)
     expect(get.body.data.fromPath).toBe('/old')
 
@@ -54,14 +52,10 @@ describe('Admin redirects CRUD', () => {
     expect(patch.body.data.toPath).toBe('/newer')
     expect(patch.body.data.statusCode).toBe(302)
 
-    const del = await request(app)
-      .delete(`/api/admin/redirects/${id}`)
-      .set(authHeaders(auth))
+    const del = await request(app).delete(`/api/admin/redirects/${id}`).set(authHeaders(auth))
     expect(del.status).toBe(204)
 
-    const gone = await request(app)
-      .get(`/api/admin/redirects/${id}`)
-      .set(authHeaders(auth))
+    const gone = await request(app).get(`/api/admin/redirects/${id}`).set(authHeaders(auth))
     expect(gone.status).toBe(404)
   })
 
@@ -115,9 +109,7 @@ describe('Admin redirects CRUD', () => {
       .send({ toPath: '/x' })
     expect(patch.status).toBe(404)
 
-    const del = await request(app)
-      .delete(`/api/admin/redirects/${notExist}`)
-      .set(authHeaders(auth))
+    const del = await request(app).delete(`/api/admin/redirects/${notExist}`).set(authHeaders(auth))
     expect(del.status).toBe(404)
   })
 })
@@ -151,49 +143,27 @@ describe('Admin redirects list', () => {
   })
 
   it('sorts by hit_count DESC by default', async () => {
-    const res = await request(app)
-      .get('/api/admin/redirects')
-      .set(authHeaders(auth))
+    const res = await request(app).get('/api/admin/redirects').set(authHeaders(auth))
     expect(res.status).toBe(200)
-    expect(res.body.data.map((r: { fromPath: string }) => r.fromPath)).toEqual([
-      '/b',
-      '/a',
-      '/c',
-    ])
+    expect(res.body.data.map((r: { fromPath: string }) => r.fromPath)).toEqual(['/b', '/a', '/c'])
   })
 
   it('sorts by hit_count ASC', async () => {
-    const res = await request(app)
-      .get('/api/admin/redirects?sort=hits_asc')
-      .set(authHeaders(auth))
-    expect(res.body.data.map((r: { fromPath: string }) => r.fromPath)).toEqual([
-      '/c',
-      '/a',
-      '/b',
-    ])
+    const res = await request(app).get('/api/admin/redirects?sort=hits_asc').set(authHeaders(auth))
+    expect(res.body.data.map((r: { fromPath: string }) => r.fromPath)).toEqual(['/c', '/a', '/b'])
   })
 
   it('sorts by from_path ASC', async () => {
-    const res = await request(app)
-      .get('/api/admin/redirects?sort=from_asc')
-      .set(authHeaders(auth))
-    expect(res.body.data.map((r: { fromPath: string }) => r.fromPath)).toEqual([
-      '/a',
-      '/b',
-      '/c',
-    ])
+    const res = await request(app).get('/api/admin/redirects?sort=from_asc').set(authHeaders(auth))
+    expect(res.body.data.map((r: { fromPath: string }) => r.fromPath)).toEqual(['/a', '/b', '/c'])
   })
 
   it('filters by q on from_path or to_path', async () => {
-    const byFrom = await request(app)
-      .get('/api/admin/redirects?q=%2Fa')
-      .set(authHeaders(auth))
+    const byFrom = await request(app).get('/api/admin/redirects?q=%2Fa').set(authHeaders(auth))
     expect(byFrom.body.data).toHaveLength(1)
     expect(byFrom.body.data[0].fromPath).toBe('/a')
 
-    const byTo = await request(app)
-      .get('/api/admin/redirects?q=%2Fy')
-      .set(authHeaders(auth))
+    const byTo = await request(app).get('/api/admin/redirects?q=%2Fy').set(authHeaders(auth))
     expect(byTo.body.data).toHaveLength(1)
     expect(byTo.body.data[0].toPath).toBe('/y')
   })
@@ -220,12 +190,7 @@ describe('Admin redirects CSV import', () => {
   })
 
   it('imports a valid CSV with header, inserting rows', async () => {
-    const csv = [
-      'from_path,to_path,status_code',
-      '/a,/x,301',
-      '/b,/y,302',
-      '/c,/z',
-    ].join('\n')
+    const csv = ['from_path,to_path,status_code', '/a,/x,301', '/b,/y,302', '/c,/z'].join('\n')
     const res = await request(app)
       .post('/api/admin/redirects/import-csv')
       .set(authHeaders(auth))

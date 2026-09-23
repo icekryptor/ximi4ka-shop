@@ -6,10 +6,7 @@ vi.mock('@/lib/api', () => ({
   listBlogPosts: vi.fn(),
 }))
 
-import BlogListPage, {
-  dynamic,
-  generateMetadata,
-} from './page'
+import BlogListPage, { dynamic, generateMetadata } from './page'
 import { listBlogPosts } from '@/lib/api'
 
 function makePost(overrides: Partial<BlogPost> = {}): BlogPost {
@@ -69,10 +66,7 @@ describe('BlogListPage', () => {
 
   it('renders post cards for every fetched post', async () => {
     vi.mocked(listBlogPosts).mockResolvedValue({
-      data: [
-        makePost(),
-        makePost({ id: 'bp2', slug: 'kristally-doma', title: 'Кристаллы дома' }),
-      ],
+      data: [makePost(), makePost({ id: 'bp2', slug: 'kristally-doma', title: 'Кристаллы дома' })],
       pagination: { limit: 12, offset: 0, page: 1, total: 2 },
     })
 
@@ -138,9 +132,7 @@ describe('BlogListPage', () => {
     })
 
     const { container } = render(await BlogListPage(props))
-    const scripts = Array.from(
-      container.querySelectorAll('script[type="application/ld+json"]'),
-    )
+    const scripts = Array.from(container.querySelectorAll('script[type="application/ld+json"]'))
     const breadcrumb = scripts
       .map((s) => JSON.parse(s.textContent ?? '{}'))
       .find((d) => d['@type'] === 'BreadcrumbList')

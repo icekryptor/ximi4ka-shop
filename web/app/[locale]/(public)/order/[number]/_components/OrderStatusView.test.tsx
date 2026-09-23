@@ -71,9 +71,7 @@ describe('<OrderStatusView>', () => {
     vi.stubGlobal('fetch', fetchReturning(statusPayload()))
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
 
-    expect(
-      await screen.findByRole('heading', { name: /заказ принят!/i }),
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /заказ принят!/i })).toBeInTheDocument()
     expect(screen.getByText(/что дальше/i)).toBeInTheDocument()
   })
 
@@ -91,9 +89,7 @@ describe('<OrderStatusView>', () => {
     )
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} />)
 
-    expect(await screen.findByTestId('order-status-label')).toHaveTextContent(
-      'Ошибка оплаты',
-    )
+    expect(await screen.findByTestId('order-status-label')).toHaveTextContent('Ошибка оплаты')
     expect(screen.getByText(/оплата не прошла/i)).toBeInTheDocument()
   })
 

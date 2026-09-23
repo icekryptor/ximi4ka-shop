@@ -53,7 +53,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     let message = `Request failed with status ${res.status}`
     let details: unknown
     try {
-      const body = (await res.json()) as { error?: { code?: string; message?: string; details?: unknown } }
+      const body = (await res.json()) as {
+        error?: { code?: string; message?: string; details?: unknown }
+      }
       if (body?.error) {
         code = body.error.code ?? code
         message = body.error.message ?? message
@@ -91,9 +93,7 @@ export async function listPublishedProducts(
   if (opts.offset != null) params.set('offset', String(opts.offset))
   if (opts.include) params.set('include', opts.include)
   const qs = params.toString()
-  return request<Paginated<Product>>(
-    `/api/public/products${qs ? `?${qs}` : ''}`,
-  )
+  return request<Paginated<Product>>(`/api/public/products${qs ? `?${qs}` : ''}`)
 }
 
 export async function getPublishedProduct(slug: string): Promise<Product> {
@@ -108,9 +108,7 @@ export async function getPublishedProduct(slug: string): Promise<Product> {
 export async function listCategories(
   opts: { limit?: number; offset?: number } = {},
 ): Promise<Paginated<ProductCategory>> {
-  return request<Paginated<ProductCategory>>(
-    `/api/public/categories${buildListQuery(opts)}`,
-  )
+  return request<Paginated<ProductCategory>>(`/api/public/categories${buildListQuery(opts)}`)
 }
 
 export async function getCategory(slug: string): Promise<ProductCategory> {
@@ -132,9 +130,7 @@ export async function listProductsByCategory(
 // ---------- Pages (public) ----------
 
 export async function getPage(slug: string): Promise<Page> {
-  const body = await request<DataEnvelope<Page>>(
-    `/api/public/pages/${encodeURIComponent(slug)}`,
-  )
+  const body = await request<DataEnvelope<Page>>(`/api/public/pages/${encodeURIComponent(slug)}`)
   return body.data
 }
 
@@ -165,9 +161,7 @@ export async function listBlogPosts(
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost> {
-  const body = await request<DataEnvelope<BlogPost>>(
-    `/api/public/blog/${encodeURIComponent(slug)}`,
-  )
+  const body = await request<DataEnvelope<BlogPost>>(`/api/public/blog/${encodeURIComponent(slug)}`)
   return body.data
 }
 
@@ -207,9 +201,7 @@ export async function submitCheckout(
   return body.data
 }
 
-export async function getOrderStatus(
-  orderNumber: string,
-): Promise<PublicOrderStatus> {
+export async function getOrderStatus(orderNumber: string): Promise<PublicOrderStatus> {
   const body = await request<DataEnvelope<PublicOrderStatus>>(
     `/api/public/orders/${encodeURIComponent(orderNumber)}/status`,
     // The status page polls this endpoint while a payment is in flight —
@@ -251,8 +243,6 @@ export interface PublicSettings {
 }
 
 export async function getPublicSettings(): Promise<PublicSettings> {
-  const body = await request<DataEnvelope<PublicSettings>>(
-    `/api/public/settings`,
-  )
+  const body = await request<DataEnvelope<PublicSettings>>(`/api/public/settings`)
   return body.data
 }

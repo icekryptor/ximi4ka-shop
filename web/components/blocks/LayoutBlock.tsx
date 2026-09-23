@@ -62,15 +62,10 @@ export function LayoutBlock({ block }: Props) {
   // Non-overlay: positional grid.
   const isHorizontal = block.variant === 'text-left' || block.variant === 'text-right'
   const textFirst = block.variant === 'text-left' || block.variant === 'text-top'
-  const layoutClass = isHorizontal
-    ? 'md:grid-cols-2 items-center'
-    : 'grid-cols-1'
+  const layoutClass = isHorizontal ? 'md:grid-cols-2 items-center' : 'grid-cols-1'
 
   const media = (
-    <MediaFrame
-      cornerMark="arr. layout"
-      aspectRatio={isHorizontal ? '4/5' : '16/9'}
-    >
+    <MediaFrame cornerMark="arr. layout" aspectRatio={isHorizontal ? '4/5' : '16/9'}>
       <Image
         src={block.image.url}
         alt={block.image.alt}

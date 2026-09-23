@@ -19,9 +19,7 @@ async function ensureDatabaseExists(testUrl: URL, dbName: string): Promise<void>
   const client = new pg.Client({ connectionString: adminUrl.href })
   await client.connect()
   try {
-    const existing = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [
-      dbName,
-    ])
+    const existing = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [dbName])
     if (existing.rowCount === 0) {
       // Identifiers can't be parameterized; dbName comes from our own config,
       // but escape double quotes defensively anyway.

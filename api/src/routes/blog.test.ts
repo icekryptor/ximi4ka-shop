@@ -232,9 +232,7 @@ describe('Admin blog routes', () => {
         .post('/api/admin/blog')
         .set(authHeaders(auth))
         .send({ slug: 'himiya-doma', title: 'Химия дома' })
-      const bySlug = await request(app)
-        .get('/api/admin/blog?q=HIMIYA')
-        .set(authHeaders(auth))
+      const bySlug = await request(app).get('/api/admin/blog?q=HIMIYA').set(authHeaders(auth))
       expect(bySlug.status).toBe(200)
       expect(bySlug.body.data).toHaveLength(1)
       expect(bySlug.body.data[0].slug).toBe('himiya-doma')
@@ -367,10 +365,7 @@ describe('Admin blog routes', () => {
       const adm = await request(app).get('/api/admin/blog').set(authHeaders(auth))
       expect(adm.body.data).toHaveLength(0)
       // Soft delete: the row is still in the table with deleted_at set.
-      const raw = await AppDataSource.query(
-        'SELECT deleted_at FROM blog_posts WHERE id = $1',
-        [id],
-      )
+      const raw = await AppDataSource.query('SELECT deleted_at FROM blog_posts WHERE id = $1', [id])
       expect(raw).toHaveLength(1)
       expect(raw[0].deleted_at).toBeTruthy()
     })

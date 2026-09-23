@@ -12,14 +12,10 @@ export function VideoBlockEditor({ block, onChange }: Props) {
   return (
     <div className="space-y-3">
       <label className="block">
-        <span className="block text-sm font-medium text-brand-text-secondary mb-1">
-          Провайдер
-        </span>
+        <span className="block text-sm font-medium text-brand-text-secondary mb-1">Провайдер</span>
         <select
           value={block.provider}
-          onChange={(e) =>
-            onChange({ ...block, provider: e.target.value as VideoProvider })
-          }
+          onChange={(e) => onChange({ ...block, provider: e.target.value as VideoProvider })}
           className="w-full px-3 py-2 rounded-lg border border-brand-border bg-white focus:outline-none focus:border-brand text-sm"
         >
           <option value="youtube">YouTube</option>

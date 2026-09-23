@@ -8,8 +8,7 @@
 export const ADMIN_API_URL_SERVER =
   process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
-export const ADMIN_API_URL_CLIENT =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+export const ADMIN_API_URL_CLIENT = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
 export const CSRF_COOKIE_NAME = 'ximi4ka_shop_csrf'
 

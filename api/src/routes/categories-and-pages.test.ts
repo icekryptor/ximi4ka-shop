@@ -434,9 +434,7 @@ describe('Page routes', () => {
         .set(authHeaders(auth))
         .send({ slug: 'kontakty', title: 'Контакты' })
       // slug match
-      const bySlug = await request(app)
-        .get('/api/admin/pages?q=DOSTAVKA')
-        .set(authHeaders(auth))
+      const bySlug = await request(app).get('/api/admin/pages?q=DOSTAVKA').set(authHeaders(auth))
       expect(bySlug.status).toBe(200)
       expect(bySlug.body.data).toHaveLength(1)
       expect(bySlug.body.data[0].slug).toBe('dostavka')
@@ -448,9 +446,7 @@ describe('Page routes', () => {
       expect(byTitle.body.data).toHaveLength(1)
       expect(byTitle.body.data[0].slug).toBe('dostavka')
       // no match
-      const none = await request(app)
-        .get('/api/admin/pages?q=missing')
-        .set(authHeaders(auth))
+      const none = await request(app).get('/api/admin/pages?q=missing').set(authHeaders(auth))
       expect(none.body.data).toHaveLength(0)
     })
   })
@@ -525,7 +521,9 @@ describe('Page routes', () => {
         .post('/api/admin/pages')
         .set(authHeaders(auth))
         .send({ slug: 'gone', title: 'Gone' })
-      await request(app).post(`/api/admin/pages/${gone.body.data.id}/publish`).set(authHeaders(auth))
+      await request(app)
+        .post(`/api/admin/pages/${gone.body.data.id}/publish`)
+        .set(authHeaders(auth))
       await request(app).delete(`/api/admin/pages/${gone.body.data.id}`).set(authHeaders(auth))
 
       const res = await request(app).get('/api/public/pages')

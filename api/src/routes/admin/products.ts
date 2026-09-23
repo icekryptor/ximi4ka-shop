@@ -2,16 +2,9 @@ import { Router } from 'express'
 import { Brackets, IsNull } from 'typeorm'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Product } from '../../entities/Product.js'
-import {
-  CreateProductSchema,
-  UpdateProductSchema,
-  ListQuerySchema,
-} from './products.schemas.js'
+import { CreateProductSchema, UpdateProductSchema, ListQuerySchema } from './products.schemas.js'
 import { conflict, notFound } from '../errors.js'
-import {
-  requireAdminAuth,
-  requireCsrfToken,
-} from '../middleware/requireAdminAuth.js'
+import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 import { writeRevision } from '../../lib/revisions.js'
 
 export const adminProductsRouter: Router = Router()
@@ -43,10 +36,7 @@ adminProductsRouter.get('/', async (req, res, next) => {
     if (q) {
       qb.andWhere(
         new Brackets((qq) => {
-          qq.where('p.name ILIKE :q', { q: `%${q}%` }).orWhere(
-            'p.sku ILIKE :q',
-            { q: `%${q}%` },
-          )
+          qq.where('p.name ILIKE :q', { q: `%${q}%` }).orWhere('p.sku ILIKE :q', { q: `%${q}%` })
         }),
       )
     }

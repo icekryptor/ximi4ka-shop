@@ -239,22 +239,14 @@ describe('adminApi', () => {
   })
 
   it('pages: publish/unpublish POST with CSRF', async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(200, { data: { id: 'p1', isPublished: true } }),
-    )
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: { id: 'p1', isPublished: true } }))
     await adminPublishPage('p1')
-    expect(String(fetchMock.mock.calls[0][0])).toContain(
-      '/api/admin/pages/p1/publish',
-    )
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/admin/pages/p1/publish')
     expect(fetchMock.mock.calls[0][1]?.method).toBe('POST')
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(200, { data: { id: 'p1', isPublished: false } }),
-    )
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: { id: 'p1', isPublished: false } }))
     await adminUnpublishPage('p1')
-    expect(String(fetchMock.mock.calls[1][0])).toContain(
-      '/api/admin/pages/p1/unpublish',
-    )
+    expect(String(fetchMock.mock.calls[1][0])).toContain('/api/admin/pages/p1/unpublish')
   })
 
   it('pages: delete sends DELETE and resolves on 204', async () => {
@@ -339,9 +331,7 @@ describe('adminApi', () => {
     expect(init?.credentials).toBe('include')
     const headers = init?.headers as Record<string, string>
     expect(headers['X-CSRF-Token']).toBe('csrf-token-123')
-    expect(init?.body).toBe(
-      JSON.stringify({ slug: 'post', title: 'Пост', rubric: 'Эксперименты' }),
-    )
+    expect(init?.body).toBe(JSON.stringify({ slug: 'post', title: 'Пост', rubric: 'Эксперименты' }))
   })
 
   it('blog: update sends PATCH with CSRF', async () => {
@@ -357,22 +347,14 @@ describe('adminApi', () => {
   })
 
   it('blog: publish/unpublish POST with CSRF', async () => {
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(200, { data: { id: 'b1', isPublished: true } }),
-    )
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: { id: 'b1', isPublished: true } }))
     await adminPublishBlogPost('b1')
-    expect(String(fetchMock.mock.calls[0][0])).toContain(
-      '/api/admin/blog/b1/publish',
-    )
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/api/admin/blog/b1/publish')
     expect(fetchMock.mock.calls[0][1]?.method).toBe('POST')
 
-    fetchMock.mockResolvedValueOnce(
-      jsonResponse(200, { data: { id: 'b1', isPublished: false } }),
-    )
+    fetchMock.mockResolvedValueOnce(jsonResponse(200, { data: { id: 'b1', isPublished: false } }))
     await adminUnpublishBlogPost('b1')
-    expect(String(fetchMock.mock.calls[1][0])).toContain(
-      '/api/admin/blog/b1/unpublish',
-    )
+    expect(String(fetchMock.mock.calls[1][0])).toContain('/api/admin/blog/b1/unpublish')
   })
 
   it('blog: delete sends DELETE and resolves on 204', async () => {

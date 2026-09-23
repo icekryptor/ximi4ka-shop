@@ -280,9 +280,9 @@ describe('cleanProductName', () => {
     expect(cleanProductName('Купить серу молотую 10-12 г | Сера техническая для опытов').name).toBe(
       'Сера молотая 10-12 г',
     )
-    expect(cleanProductName('Купить железную вату 4-4,5 г | Железо металлическое для опытов').name).toBe(
-      'Железная вата 4-4,5 г',
-    )
+    expect(
+      cleanProductName('Купить железную вату 4-4,5 г | Железо металлическое для опытов').name,
+    ).toBe('Железная вата 4-4,5 г')
   })
 
   it('leaves already-clean names untouched (metaTitle=null)', () => {

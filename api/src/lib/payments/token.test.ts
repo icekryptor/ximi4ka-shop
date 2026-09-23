@@ -12,8 +12,7 @@ const OFFICIAL_PARAMS = {
   Description: 'Подарочная карта на 1000 рублей',
 }
 const OFFICIAL_PASSWORD = '11111111111111'
-const OFFICIAL_TOKEN =
-  '72dd466f8ace0a37a1f740ce5fb78101712bc0665d91a8108c7c8a0ccd426db2'
+const OFFICIAL_TOKEN = '72dd466f8ace0a37a1f740ce5fb78101712bc0665d91a8108c7c8a0ccd426db2'
 
 describe('buildTokenString', () => {
   it('sorts by key and concatenates values with Password included', () => {
@@ -46,9 +45,7 @@ describe('buildTokenString', () => {
   })
 
   it('serializes booleans lowercase and numbers in decimal', () => {
-    expect(buildTokenString({ Success: true, Amount: 1111 }, 'pw')).toBe(
-      '1111pwtrue',
-    )
+    expect(buildTokenString({ Success: true, Amount: 1111 }, 'pw')).toBe('1111pwtrue')
     // Sorted keys: Password < Success → values "pw" + "false".
     expect(buildTokenString({ Success: false }, 'pw')).toBe('pwfalse')
   })
@@ -56,36 +53,22 @@ describe('buildTokenString', () => {
 
 describe('generateToken', () => {
   it('matches the official docs example (SHA-256 over UTF-8)', () => {
-    expect(generateToken(OFFICIAL_PARAMS, OFFICIAL_PASSWORD)).toBe(
-      OFFICIAL_TOKEN,
-    )
+    expect(generateToken(OFFICIAL_PARAMS, OFFICIAL_PASSWORD)).toBe(OFFICIAL_TOKEN)
   })
 })
 
 describe('verifyToken', () => {
   it('accepts a token generated with the same password', () => {
-    expect(
-      verifyToken(OFFICIAL_PARAMS, OFFICIAL_PASSWORD, OFFICIAL_TOKEN),
-    ).toBe(true)
+    expect(verifyToken(OFFICIAL_PARAMS, OFFICIAL_PASSWORD, OFFICIAL_TOKEN)).toBe(true)
   })
 
   it('accepts uppercase hex', () => {
-    expect(
-      verifyToken(
-        OFFICIAL_PARAMS,
-        OFFICIAL_PASSWORD,
-        OFFICIAL_TOKEN.toUpperCase(),
-      ),
-    ).toBe(true)
+    expect(verifyToken(OFFICIAL_PARAMS, OFFICIAL_PASSWORD, OFFICIAL_TOKEN.toUpperCase())).toBe(true)
   })
 
   it('rejects a tampered payload', () => {
     expect(
-      verifyToken(
-        { ...OFFICIAL_PARAMS, Amount: '99999' },
-        OFFICIAL_PASSWORD,
-        OFFICIAL_TOKEN,
-      ),
+      verifyToken({ ...OFFICIAL_PARAMS, Amount: '99999' }, OFFICIAL_PASSWORD, OFFICIAL_TOKEN),
     ).toBe(false)
   })
 

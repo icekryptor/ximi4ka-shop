@@ -16,13 +16,10 @@ import {
 
 async function fetchOrder(id: string): Promise<OrderDto | null> {
   const store = await cookies()
-  const res = await fetch(
-    `${ADMIN_API_URL_SERVER}/api/admin/orders/${encodeURIComponent(id)}`,
-    {
-      headers: { cookie: store.toString() },
-      cache: 'no-store',
-    },
-  )
+  const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/orders/${encodeURIComponent(id)}`, {
+    headers: { cookie: store.toString() },
+    cache: 'no-store',
+  })
   if (res.status === 404) return null
   if (!res.ok) {
     throw new Error(`Admin order detail failed: ${res.status}`)
@@ -43,16 +40,11 @@ export default async function AdminOrderDetailPage({
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href="/admin/orders"
-          className="text-sm text-brand-text-secondary hover:text-brand"
-        >
+        <Link href="/admin/orders" className="text-sm text-brand-text-secondary hover:text-brand">
           ← Все заказы
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-brand-text font-mono">
-            {order.orderNumber}
-          </h1>
+          <h1 className="text-2xl font-bold text-brand-text font-mono">{order.orderNumber}</h1>
           <span
             className={`text-sm px-3 py-1 rounded-full ${ORDER_STATUS_BADGE_CLASSES[order.status]}`}
           >
@@ -69,9 +61,7 @@ export default async function AdminOrderDetailPage({
         <div className="lg:col-span-2 space-y-6">
           {/* Состав заказа — из product_snapshot, а не из актуальных товаров */}
           <section className="bg-white rounded-2xl border border-brand-border overflow-hidden">
-            <h2 className="px-4 pt-4 text-lg font-semibold text-brand-text">
-              Состав заказа
-            </h2>
+            <h2 className="px-4 pt-4 text-lg font-semibold text-brand-text">Состав заказа</h2>
             <table className="w-full text-sm mt-2">
               <thead className="bg-brand-bg-soft text-brand-text-secondary text-left">
                 <tr>
@@ -92,9 +82,7 @@ export default async function AdminOrderDetailPage({
                     <td className="px-4 py-3 text-right tabular-nums">
                       {formatRub(item.unitPriceRub)}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {item.quantity}
-                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">{item.quantity}</td>
                     <td className="px-4 py-3 text-right tabular-nums">
                       {formatRub(item.unitPriceRub * item.quantity)}
                     </td>
@@ -122,9 +110,7 @@ export default async function AdminOrderDetailPage({
                   <td colSpan={4} className="px-4 py-3 text-right">
                     Итого
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {formatRub(order.totalRub)}
-                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">{formatRub(order.totalRub)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -190,9 +176,7 @@ export default async function AdminOrderDetailPage({
               </div>
               <div>
                 <dt className="text-xs text-brand-text-secondary">Телефон</dt>
-                <dd className="text-brand-text font-mono text-xs">
-                  {order.customerPhone}
-                </dd>
+                <dd className="text-brand-text font-mono text-xs">{order.customerPhone}</dd>
               </div>
               <div>
                 <dt className="text-xs text-brand-text-secondary">E-mail</dt>
@@ -237,9 +221,7 @@ export default async function AdminOrderDetailPage({
               {order.paymentIntentId && (
                 <div>
                   <dt className="text-xs text-brand-text-secondary">ID платежа</dt>
-                  <dd className="text-brand-text font-mono text-xs">
-                    {order.paymentIntentId}
-                  </dd>
+                  <dd className="text-brand-text font-mono text-xs">{order.paymentIntentId}</dd>
                 </div>
               )}
               {order.paymentUrl && (

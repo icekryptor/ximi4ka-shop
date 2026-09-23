@@ -20,9 +20,7 @@ export function LabeledInput({
 }: LabeledInputProps) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium text-brand-text-secondary mb-1">
-        {label}
-      </span>
+      <span className="block text-sm font-medium text-brand-text-secondary mb-1">{label}</span>
       <input
         type={type}
         value={value}
@@ -51,9 +49,7 @@ export function LabeledTextarea({
 }: LabeledTextareaProps) {
   return (
     <label className="block">
-      <span className="block text-sm font-medium text-brand-text-secondary mb-1">
-        {label}
-      </span>
+      <span className="block text-sm font-medium text-brand-text-secondary mb-1">{label}</span>
       <textarea
         value={value}
         placeholder={placeholder}

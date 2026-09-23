@@ -25,7 +25,12 @@ export function badRequest(code: string, message: string, details?: unknown): Ap
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction): void {
+export function errorHandler(
+  err: unknown,
+  _req: Request,
+  res: Response,
+  _next: NextFunction,
+): void {
   if (err instanceof ApiError) {
     res.status(err.status).json({
       error: { code: err.code, message: err.message, details: err.details },

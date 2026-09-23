@@ -1,10 +1,5 @@
 import 'reflect-metadata'
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  Index,
-} from 'typeorm'
+import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm'
 
 @Entity({ name: 'redirects' })
 @Index(['fromPath'], { unique: true })

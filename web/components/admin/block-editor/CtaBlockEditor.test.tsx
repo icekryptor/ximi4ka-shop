@@ -27,23 +27,17 @@ describe('CtaBlockEditor', () => {
     fireEvent.change(screen.getByLabelText('Заголовок'), {
       target: { value: 'New H' },
     })
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ heading: 'New H' }),
-    )
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ heading: 'New H' }))
 
     fireEvent.change(screen.getByLabelText('Текст кнопки'), {
       target: { value: 'Buy' },
     })
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ buttonLabel: 'Buy' }),
-    )
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ buttonLabel: 'Buy' }))
 
     fireEvent.change(screen.getByLabelText('Ссылка кнопки'), {
       target: { value: '/shop' },
     })
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ buttonHref: '/shop' }),
-    )
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ buttonHref: '/shop' }))
   })
 
   it('empty subtext is coerced to null', () => {
@@ -52,8 +46,6 @@ describe('CtaBlockEditor', () => {
     fireEvent.change(screen.getByLabelText('Подтекст'), {
       target: { value: '' },
     })
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ subtext: null }),
-    )
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ subtext: null }))
   })
 })

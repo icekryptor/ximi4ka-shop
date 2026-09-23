@@ -3,10 +3,7 @@ import { z } from 'zod'
 import { AppDataSource } from '../../config/dataSource.js'
 import { SiteSettings } from '../../entities/SiteSettings.js'
 import { getSettings } from '../../lib/settings.js'
-import {
-  requireAdminAuth,
-  requireCsrfToken,
-} from '../middleware/requireAdminAuth.js'
+import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 
 // Zod schema for the PATCH body. Every field is optional — the form saves
 // all tabs at once, but unchanged fields are simply omitted rather than

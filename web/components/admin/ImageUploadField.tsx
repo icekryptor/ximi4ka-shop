@@ -28,8 +28,7 @@ export function ImageUploadField({ value, onChange, label, id }: SingleProps) {
       const result = await adminUploadImage(file)
       onChange(result.url)
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : 'Не удалось загрузить файл'
+      const msg = err instanceof ApiError ? err.message : 'Не удалось загрузить файл'
       setError(msg)
     } finally {
       setUploading(false)
@@ -39,10 +38,7 @@ export function ImageUploadField({ value, onChange, label, id }: SingleProps) {
   return (
     <div>
       {label ? (
-        <label
-          htmlFor={id}
-          className="block text-sm font-medium text-brand-text-secondary mb-1"
-        >
+        <label htmlFor={id} className="block text-sm font-medium text-brand-text-secondary mb-1">
           {label}
         </label>
       ) : null}
@@ -59,9 +55,7 @@ export function ImageUploadField({ value, onChange, label, id }: SingleProps) {
         }}
         className={
           'rounded-2xl border-2 border-dashed p-4 flex items-center gap-4 transition ' +
-          (dragActive
-            ? 'border-brand bg-brand/5'
-            : 'border-brand-border bg-white')
+          (dragActive ? 'border-brand bg-brand/5' : 'border-brand-border bg-white')
         }
       >
         {value ? (
@@ -113,9 +107,7 @@ export function ImageUploadField({ value, onChange, label, id }: SingleProps) {
             ) : null}
           </div>
           {value ? (
-            <div className="mt-2 text-xs text-brand-text-secondary break-all">
-              {value}
-            </div>
+            <div className="mt-2 text-xs text-brand-text-secondary break-all">{value}</div>
           ) : (
             <div className="mt-2 text-xs text-brand-text-secondary">
               Перетащите сюда файл или выберите его. До 10 МБ.
@@ -166,8 +158,7 @@ export function MultiImageUploadField({ value, onChange, label }: MultiProps) {
       }
       onChange([...value, ...uploaded])
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : 'Не удалось загрузить файл'
+      const msg = err instanceof ApiError ? err.message : 'Не удалось загрузить файл'
       setError(msg)
     } finally {
       setUploading(false)
@@ -185,9 +176,7 @@ export function MultiImageUploadField({ value, onChange, label }: MultiProps) {
   return (
     <div>
       {label ? (
-        <div className="block text-sm font-medium text-brand-text-secondary mb-1">
-          {label}
-        </div>
+        <div className="block text-sm font-medium text-brand-text-secondary mb-1">{label}</div>
       ) : null}
       <div className="space-y-3">
         {value.map((item, i) => (

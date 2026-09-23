@@ -93,7 +93,9 @@ async function main(): Promise<void> {
   console.log('')
   console.log('=== Tilda CSV import plan ===')
   console.log(`CSV file:      ${csvPath}`)
-  console.log(`Mode:          ${args.dryRun ? 'DRY RUN (no writes)' : 'LIVE (will TRUNCATE & insert)'}`)
+  console.log(
+    `Mode:          ${args.dryRun ? 'DRY RUN (no writes)' : 'LIVE (will TRUNCATE & insert)'}`,
+  )
   console.log(`Rows in file:  ${rows.length}`)
   console.log(`Skipped:       ${skipped}`)
   console.log(`Products:      ${products.length}`)
@@ -117,13 +119,17 @@ async function main(): Promise<void> {
 
   if (args.dryRun) {
     console.log('Dry-run complete — no DB writes, no downloads.')
-    console.log(`Would import ${products.length} products, ${categories.length} categories, ${totalImages} images`)
+    console.log(
+      `Would import ${products.length} products, ${categories.length} categories, ${totalImages} images`,
+    )
     return
   }
 
   // ---- LIVE mode below ----
 
-  console.warn('LIVE MODE: about to TRUNCATE products, product_images, product_categories, product_category_links')
+  console.warn(
+    'LIVE MODE: about to TRUNCATE products, product_images, product_categories, product_category_links',
+  )
   // Lazy-load DB modules so dry-run works without DATABASE_URL set.
   const { AppDataSource } = await import('../config/dataSource.js')
   const { Product } = await import('../entities/Product.js')
@@ -196,7 +202,10 @@ async function main(): Promise<void> {
             }),
           )
         }
-        logger.info({ slug: p.slug, downloaded: downloaded.length, attempted: p.photoUrls.length }, 'images saved')
+        logger.info(
+          { slug: p.slug, downloaded: downloaded.length, attempted: p.photoUrls.length },
+          'images saved',
+        )
       }
     }
 

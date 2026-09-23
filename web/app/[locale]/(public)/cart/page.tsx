@@ -23,8 +23,7 @@ export default function CartPage() {
       <div className="max-w-[var(--max-lj-narrow)] mx-auto">
         {hydrated && itemTypeCount > 0 ? (
           <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
-            КОРЗИНА · {itemTypeCount}{' '}
-            {pluralizeRu(itemTypeCount, ['НАБОР', 'НАБОРА', 'НАБОРОВ'])}
+            КОРЗИНА · {itemTypeCount} {pluralizeRu(itemTypeCount, ['НАБОР', 'НАБОРА', 'НАБОРОВ'])}
           </p>
         ) : (
           <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">

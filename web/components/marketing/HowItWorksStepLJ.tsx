@@ -1,10 +1,10 @@
 import { NumberCell } from '@/components/ui/NumberCell'
 
 interface Props {
-  index: number  // 1-based
-  verb: string   // big upper-case verb (e.g. "ВЫБРАТЬ")
-  title: string  // step title (e.g. "Выберите набор")
-  body: string   // description
+  index: number // 1-based
+  verb: string // big upper-case verb (e.g. "ВЫБРАТЬ")
+  title: string // step title (e.g. "Выберите набор")
+  body: string // description
 }
 
 export function HowItWorksStepLJ({ index, verb, title, body }: Props) {

@@ -10,12 +10,7 @@ import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { breadcrumbJsonLd } from '@/lib/jsonLd'
 import { fetchCatalog, densityForSlug } from '@/lib/catalogApi'
-import {
-  DEFAULT_LOCALE,
-  SUPPORTED_LOCALES,
-  isLocale,
-  type Locale,
-} from '@/lib/i18n'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
 
@@ -60,9 +55,7 @@ export default async function CatalogPage({ params }: Props) {
   const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
   const catalogPath = pathForLocale(locale)
   const categoryPath = (slug: string) =>
-    locale === DEFAULT_LOCALE
-      ? `/categories/${slug}`
-      : `/${locale}/categories/${slug}`
+    locale === DEFAULT_LOCALE ? `/categories/${slug}` : `/${locale}/categories/${slug}`
 
   return (
     <>
@@ -84,9 +77,7 @@ export default async function CatalogPage({ params }: Props) {
         <span className="mx-2" aria-hidden="true">
           /
         </span>
-        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">
-          Каталог
-        </span>
+        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">Каталог</span>
       </nav>
 
       {/* Витрина каталога (LAB CREAM) */}
@@ -97,10 +88,7 @@ export default async function CatalogPage({ params }: Props) {
             K.0 / Все товары
           </p>
           <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,6vw,5.5rem)] leading-[0.92] tracking-[-0.045em] mb-8">
-            <em className="italic text-[var(--color-lj-brand)] font-[900]">
-              Каталог
-            </em>{' '}
-            целиком
+            <em className="italic text-[var(--color-lj-brand)] font-[900]">Каталог</em> целиком
           </h1>
 
           {/* Промо-баннер */}
@@ -121,10 +109,7 @@ export default async function CatalogPage({ params }: Props) {
               {groups.map((group) => {
                 const density = densityForSlug(group.category.slug)
                 return (
-                  <section
-                    key={group.category.id}
-                    aria-labelledby={`cat-${group.category.id}`}
-                  >
+                  <section key={group.category.id} aria-labelledby={`cat-${group.category.id}`}>
                     <div className="flex items-baseline justify-between gap-4 flex-wrap mb-8 border-b border-[var(--color-lj-rule)] pb-4">
                       <h2
                         id={`cat-${group.category.id}`}

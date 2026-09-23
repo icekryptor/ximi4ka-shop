@@ -33,13 +33,7 @@ import { PreFooterCta } from '@/components/marketing/PreFooterCta'
 import { parseCharacteristics } from '@/lib/parseCharacteristics'
 import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
-import {
-  DEFAULT_LOCALE,
-  SUPPORTED_LOCALES,
-  isLocale,
-  pickField,
-  type Locale,
-} from '@/lib/i18n'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
 
@@ -71,9 +65,7 @@ export async function generateStaticParams() {
     const res = await listPublishedProducts({ limit: 500 })
     // Emit one (locale, slug) pair per supported locale. EN renders
     // with RU fallback content when `translations.en` is empty.
-    return SUPPORTED_LOCALES.flatMap((locale) =>
-      res.data.map((p) => ({ locale, slug: p.slug })),
-    )
+    return SUPPORTED_LOCALES.flatMap((locale) => res.data.map((p) => ({ locale, slug: p.slug })))
   } catch {
     return []
   }
@@ -87,9 +79,7 @@ interface Props {
 // unprefixed because middleware rewrites `/product/foo` → `/ru/product/foo`
 // internally. Non-default locales are prefixed.
 function pathForLocale(locale: Locale, slug: string): string {
-  return locale === DEFAULT_LOCALE
-    ? `/product/${slug}`
-    : `/${locale}/product/${slug}`
+  return locale === DEFAULT_LOCALE ? `/product/${slug}` : `/${locale}/product/${slug}`
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -137,9 +127,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * v3 trims to a 3-up grid (was 4-up in v2) to match the lab-journal
  * asymmetric catalog rhythm used on the homepage.
  */
-async function fetchRelatedProducts(
-  currentProductId: string,
-): Promise<Product[]> {
+async function fetchRelatedProducts(currentProductId: string): Promise<Product[]> {
   try {
     const res = await listPublishedProducts({ limit: 100, include: 'categories' })
     const all = res.data as ProductWithCategories[]
@@ -155,8 +143,7 @@ async function fetchRelatedProducts(
     if (sameCategory.length >= 3) return sameCategory.slice(0, 3)
 
     const others = all.filter(
-      (p) =>
-        p.id !== currentProductId && !sameCategory.some((s) => s.id === p.id),
+      (p) => p.id !== currentProductId && !sameCategory.some((s) => s.id === p.id),
     )
     return [...sameCategory, ...others].slice(0, 3)
   } catch {
@@ -182,14 +169,9 @@ export default async function ProductPage({ params }: Props) {
   // translation is missing. Static UI strings stay Russian for now;
   // translating them is out of scope for Phase 8.
   const name = pickField<string>(product, 'name', locale) ?? product.name
-  const shortDescription = pickField<string>(
-    product,
-    'shortDescription',
-    locale,
-  )
-  const longDescriptionBlocks =
-    (pickField<unknown[]>(product, 'longDescriptionBlocks', locale) ??
-      product.longDescriptionBlocks) as unknown[]
+  const shortDescription = pickField<string>(product, 'shortDescription', locale)
+  const longDescriptionBlocks = (pickField<unknown[]>(product, 'longDescriptionBlocks', locale) ??
+    product.longDescriptionBlocks) as unknown[]
 
   const characteristics = parseCharacteristics(longDescriptionBlocks)
   const keyFacts = extractKeyFacts(characteristics)
@@ -343,29 +325,29 @@ export default async function ProductPage({ params }: Props) {
           когда у товара нет распарсенных характеристик — пустая ink-секция
           с одним заголовком выглядела сломанной (аудит v3.5). */}
       {(useFacts.length > 0 || Object.keys(characteristics).length > 0) && (
-      <LabSection variant="ink" className="px-6 py-32 relative">
-        <NotebookHeader section="02" label="Характеристики" page={3} total={6} />
-        <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
-          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-            02.0 / Технические данные
-          </p>
-          <h2 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
-            Что у вас будет в{' '}
-            <em className="italic text-[var(--color-lj-brand)] font-[700]">руках</em>
-          </h2>
-          <div className="mb-16">
-            <CharacteristicsCellRow facts={useFacts} />
-          </div>
-          {Object.keys(characteristics).length > 0 && (
-            <div className="mt-16">
-              <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-6">
-                Полный список характеристик
-              </p>
-              <CharacteristicsTableLJ characteristics={characteristics} />
+        <LabSection variant="ink" className="px-6 py-32 relative">
+          <NotebookHeader section="02" label="Характеристики" page={3} total={6} />
+          <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
+            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
+              02.0 / Технические данные
+            </p>
+            <h2 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
+              Что у вас будет в{' '}
+              <em className="italic text-[var(--color-lj-brand)] font-[700]">руках</em>
+            </h2>
+            <div className="mb-16">
+              <CharacteristicsCellRow facts={useFacts} />
             </div>
-          )}
-        </div>
-      </LabSection>
+            {Object.keys(characteristics).length > 0 && (
+              <div className="mt-16">
+                <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-6">
+                  Полный список характеристик
+                </p>
+                <CharacteristicsTableLJ characteristics={characteristics} />
+              </div>
+            )}
+          </div>
+        </LabSection>
       )}
 
       {/* SECTION 4 — Описание (cream prose). Renders when CMS provided
@@ -389,12 +371,7 @@ export default async function ProductPage({ params }: Props) {
           uses on the homepage. */}
       {related.length > 0 && (
         <LabSection variant="cream" className="px-6 py-24">
-          <NotebookHeader
-            section="04"
-            label="Связанные наборы"
-            page={5}
-            total={6}
-          />
+          <NotebookHeader section="04" label="Связанные наборы" page={5} total={6} />
           <div className="max-w-[var(--max-lj-content)] mx-auto">
             <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
               04.0 / С этим набором покупают
@@ -402,17 +379,14 @@ export default async function ProductPage({ params }: Props) {
             <h2 className="font-lj-display font-[900] text-[clamp(2rem,4vw,3.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
               Совместимые
               <br />
-              <em className="italic text-[var(--color-lj-brand)] font-[900]">
-                наборы
-              </em>
+              <em className="italic text-[var(--color-lj-brand)] font-[900]">наборы</em>
             </h2>
             <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr_1.1fr] gap-8">
               {related.slice(0, 3).map((p, i) => {
                 /* Asymmetric stagger mirrors the homepage catalog row
                    (Task 4.4): first card flush, second offset 16, third
                    offset 32. */
-                const stagger =
-                  i === 0 ? 'lg:mt-0' : i === 1 ? 'lg:mt-16' : 'lg:mt-32'
+                const stagger = i === 0 ? 'lg:mt-0' : i === 1 ? 'lg:mt-16' : 'lg:mt-32'
                 return (
                   <div key={p.id} className={stagger}>
                     {/* TODO(Task 4.4 follow-up): wire real stats once admin

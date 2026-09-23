@@ -5,13 +5,7 @@ import type { AdminProductInput } from '@/lib/adminApi'
 
 describe('ProductForm', () => {
   it('renders all sections', () => {
-    render(
-      <ProductForm
-        mode="create"
-        onSubmit={async () => undefined}
-        submitting={false}
-      />,
-    )
+    render(<ProductForm mode="create" onSubmit={async () => undefined} submitting={false} />)
     expect(screen.getByText('Основные')).toBeInTheDocument()
     expect(screen.getByText('Медиа')).toBeInTheDocument()
     expect(screen.getByText('SEO')).toBeInTheDocument()
@@ -19,16 +13,8 @@ describe('ProductForm', () => {
   })
 
   it('shows slug error for invalid characters', async () => {
-    const onSubmit = vi.fn<(input: AdminProductInput) => Promise<void>>(
-      async () => undefined,
-    )
-    render(
-      <ProductForm
-        mode="create"
-        onSubmit={onSubmit}
-        submitting={false}
-      />,
-    )
+    const onSubmit = vi.fn<(input: AdminProductInput) => Promise<void>>(async () => undefined)
+    render(<ProductForm mode="create" onSubmit={onSubmit} submitting={false} />)
     fireEvent.change(screen.getByLabelText('Slug'), {
       target: { value: 'Invalid Slug!' },
     })
@@ -43,16 +29,8 @@ describe('ProductForm', () => {
   })
 
   it('submits valid input', async () => {
-    const onSubmit = vi.fn<(input: AdminProductInput) => Promise<void>>(
-      async () => undefined,
-    )
-    render(
-      <ProductForm
-        mode="create"
-        onSubmit={onSubmit}
-        submitting={false}
-      />,
-    )
+    const onSubmit = vi.fn<(input: AdminProductInput) => Promise<void>>(async () => undefined)
+    render(<ProductForm mode="create" onSubmit={onSubmit} submitting={false} />)
     fireEvent.change(screen.getByLabelText('Slug'), {
       target: { value: 'ok-kit' },
     })
@@ -88,8 +66,6 @@ describe('ProductForm', () => {
         error={apiErr as never}
       />,
     )
-    expect(
-      screen.getByText(/Товар с таким slug уже существует/i),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Товар с таким slug уже существует/i)).toBeInTheDocument()
   })
 })

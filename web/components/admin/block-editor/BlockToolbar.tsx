@@ -9,14 +9,7 @@ interface Props {
   onRemove: () => void
 }
 
-export function BlockToolbar({
-  index,
-  total,
-  typeLabel,
-  onMoveUp,
-  onMoveDown,
-  onRemove,
-}: Props) {
+export function BlockToolbar({ index, total, typeLabel, onMoveUp, onMoveDown, onRemove }: Props) {
   return (
     <div className="flex items-center justify-between gap-2 mb-3">
       <span className="text-xs font-semibold text-brand-text-secondary uppercase tracking-wide">

@@ -18,6 +18,54 @@
   unicode-range: U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F;
 }
 
+/* Metric-matched Arial stand-ins shown until the fonts from app/fonts.ts load
+   (display: swap). Numbers are the ones next/font/google generated, so the
+   pre-swap layout does not jump more than before the switch to local files. */
+@font-face {
+  font-family: 'IBM Plex Sans Fallback';
+  src: local('Arial');
+  ascent-override: 101.32%;
+  descent-override: 27.18%;
+  line-gap-override: 0%;
+  size-adjust: 101.17%;
+}
+
+@font-face {
+  font-family: 'Roboto Mono Fallback';
+  src: local('Arial');
+  ascent-override: 77.84%;
+  descent-override: 20.13%;
+  line-gap-override: 0%;
+  size-adjust: 134.61%;
+}
+
+@font-face {
+  font-family: 'Unbounded Fallback';
+  src: local('Arial');
+  ascent-override: 73.93%;
+  descent-override: 18.2%;
+  line-gap-override: 0%;
+  size-adjust: 134.59%;
+}
+
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial');
+  ascent-override: 90.44%;
+  descent-override: 22.52%;
+  line-gap-override: 0%;
+  size-adjust: 107.12%;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono Fallback';
+  src: local('Arial');
+  ascent-override: 75.79%;
+  descent-override: 22.29%;
+  line-gap-override: 0%;
+  size-adjust: 134.59%;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #1c1528;
@@ -52,7 +100,7 @@
   --leading-body: 1.5;
 
   /* Color extensions */
-  --gradient-brand: linear-gradient(135deg, rgba(141,103,255,1) 0%, rgba(200,86,255,1) 100%);
+  --gradient-brand: linear-gradient(135deg, rgba(141, 103, 255, 1) 0%, rgba(200, 86, 255, 1) 100%);
   --color-surface-base: #ffffff;
   --color-surface-soft: #eeebf3;
   --color-surface-elevated: #ffffff;
@@ -85,7 +133,8 @@
   --shadow-sm: 0 1px 2px 0 rgba(28, 21, 40, 0.05);
   --shadow-md: 0 4px 12px -2px rgba(28, 21, 40, 0.08), 0 2px 6px -1px rgba(28, 21, 40, 0.05);
   --shadow-lg: 0 10px 32px -8px rgba(28, 21, 40, 0.12), 0 4px 16px -4px rgba(28, 21, 40, 0.06);
-  --shadow-glow-brand: 0 8px 24px -4px rgba(131, 110, 254, 0.4), 0 4px 12px -2px rgba(200, 86, 255, 0.25);
+  --shadow-glow-brand:
+    0 8px 24px -4px rgba(131, 110, 254, 0.4), 0 4px 12px -2px rgba(200, 86, 255, 0.25);
 
   /* Border radii */
   --radius-sm: 12px;
@@ -97,49 +146,49 @@
   /* === v2 additions === */
 
   /* v2 residual — consumers remain inside migrated ink LabSections (prose-on-dark styles, etc) */
-  --color-accent: #FF6B35;
-  --color-dark-base: #0F0A1F;
-  --color-text-on-dark: #F4F1FF;
+  --color-accent: #ff6b35;
+  --color-dark-base: #0f0a1f;
+  --color-text-on-dark: #f4f1ff;
   --color-text-muted-on-dark: rgba(244, 241, 255, 0.55);
-  --gradient-accent: linear-gradient(135deg, #FF6B35 0%, #FF9558 100%);
+  --gradient-accent: linear-gradient(135deg, #ff6b35 0%, #ff9558 100%);
   --text-mega: clamp(3.5rem, 8vw + 1rem, 9rem);
 
   /* === v3 — Лабораторный Журнал === */
 
   /* Cream Lab — daylight surface family */
-  --color-lj-cream:        #F2EFE8;
-  --color-lj-cream-shade:  #E8E3D7;
-  --color-lj-cream-line:   rgba(10, 10, 10, 0.05);
+  --color-lj-cream: #f2efe8;
+  --color-lj-cream-shade: #e8e3d7;
+  --color-lj-cream-line: rgba(10, 10, 10, 0.05);
 
   /* Ink Lab — nocturnal surface family */
-  --color-lj-ink:           #0A0A0A;
-  --color-lj-ink-elevated:  #141414;
-  --color-lj-bone:          #EFEDE6;
-  --color-lj-bone-mute:     rgba(239, 237, 230, 0.60);
-  --color-lj-ink-line:      rgba(239, 237, 230, 0.06);
+  --color-lj-ink: #0a0a0a;
+  --color-lj-ink-elevated: #141414;
+  --color-lj-bone: #efede6;
+  --color-lj-bone-mute: rgba(239, 237, 230, 0.6);
+  --color-lj-ink-line: rgba(239, 237, 230, 0.06);
 
   /* Brand precision accent (re-exposed under lj- prefix for clarity) */
-  --color-lj-brand:         #836efe;
-  --color-lj-brand-deep:    #6703ff;
+  --color-lj-brand: #836efe;
+  --color-lj-brand-deep: #6703ff;
 
   /* Rules */
-  --color-lj-rule:          rgba(10, 10, 10, 0.14);
-  --color-lj-rule-soft:     rgba(10, 10, 10, 0.08);
-  --color-lj-rule-on-ink:   rgba(239, 237, 230, 0.18);
+  --color-lj-rule: rgba(10, 10, 10, 0.14);
+  --color-lj-rule-soft: rgba(10, 10, 10, 0.08);
+  --color-lj-rule-on-ink: rgba(239, 237, 230, 0.18);
 
-  /* Font families — wired in app/layout.tsx via next/font/google.
+  /* Font families — wired in app/fonts.ts via next/font/local.
      `var(--font-lj-*)` references the same token name that the layout
-     declares on <html className={ljDisplay.variable ...}> — Tailwind 4
+     declares on <html className={fontVariables}> — Tailwind 4
      resolves the loop by reading the inherited custom property, so the
      fallback chain only kicks in pre-hydration or if the JS download
      fails. Keep these alongside the v2 --font-display / --font-sans /
      --font-mono tokens above; both coexist until Stage 6 cleanup. */
   --font-lj-display: var(--font-lj-display), 'Unbounded', system-ui, sans-serif;
-  --font-lj-body:    var(--font-lj-body), 'Inter', system-ui, sans-serif;
-  --font-lj-mono:    var(--font-lj-mono), 'JetBrains Mono', ui-monospace, monospace;
+  --font-lj-body: var(--font-lj-body), 'Inter', system-ui, sans-serif;
+  --font-lj-mono: var(--font-lj-mono), 'JetBrains Mono', ui-monospace, monospace;
 
   /* Type scale (additive — old --text-* stay until Stage 5) */
-  --text-lj-mega:    clamp(2.75rem, 9vw, 9.5rem);
+  --text-lj-mega: clamp(2.75rem, 9vw, 9.5rem);
   --text-lj-display: clamp(2.25rem, 5.5vw, 5.5rem);
   --text-lj-mono-xs: 0.6875rem;
   --text-lj-mono-sm: 0.75rem;
@@ -147,24 +196,32 @@
   /* Easings — intentionally unprefixed: these are generic curves
      reusable by any design version, not lab-journal-specific. */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-out-expo:  cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
 
   /* Layout */
   --max-lj-content: 1600px;
-  --max-lj-narrow:  1400px;
+  --max-lj-narrow: 1400px;
   --lj-header-height: 80px;
 
   /* === v3.5 — «Лабораторный журнал, но ярче» ===
      См. design-system/ximi4ka-v3/V3_5_BRIGHT_ADDENDUM.md. Фирменный градиент
      Tilda-сайта становится рабочей поверхностью (карточки категорий, CTA,
      hero-панель, тикер фактов). */
-  --gradient-lj-bright: linear-gradient(135deg, rgba(141,103,255,1) 0%, rgba(200,86,255,1) 100%);
-  --gradient-lj-bright-deep: linear-gradient(135deg, rgba(122,82,255,1) 0%, rgba(184,62,246,1) 100%);
-  --radius-lj-bright:    32px;
+  --gradient-lj-bright: linear-gradient(
+    135deg,
+    rgba(141, 103, 255, 1) 0%,
+    rgba(200, 86, 255, 1) 100%
+  );
+  --gradient-lj-bright-deep: linear-gradient(
+    135deg,
+    rgba(122, 82, 255, 1) 0%,
+    rgba(184, 62, 246, 1) 100%
+  );
+  --radius-lj-bright: 32px;
   --radius-lj-bright-sm: 24px;
-  --shadow-lj-bright: 0 16px 40px -12px rgba(131, 110, 254, 0.45),
-                      0 6px 16px -6px  rgba(200, 86, 255, 0.25);
-  --color-lj-on-bright:      #ffffff;
+  --shadow-lj-bright:
+    0 16px 40px -12px rgba(131, 110, 254, 0.45), 0 6px 16px -6px rgba(200, 86, 255, 0.25);
+  --color-lj-on-bright: #ffffff;
   --color-lj-on-bright-mute: rgba(255, 255, 255, 0.78);
 }
 
@@ -192,26 +249,39 @@ body {
 }
 
 @keyframes sticker-wobble {
-  0%, 100% { transform: rotate(-3deg); }
-  50%      { transform: rotate(-1deg); }
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(-1deg);
+  }
 }
 .animate-sticker-wobble {
   animation: sticker-wobble 4s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .animate-sticker-wobble { animation: none; }
+  .animate-sticker-wobble {
+    animation: none;
+  }
 }
 
 @keyframes ticker-scroll {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 .animate-ticker-scroll {
   animation: ticker-scroll 30s linear infinite;
   width: max-content;
 }
 @media (prefers-reduced-motion: reduce) {
-  .animate-ticker-scroll { animation: none; }
+  .animate-ticker-scroll {
+    animation: none;
+  }
 }
 
 /* === prose-on-dark ===
@@ -243,15 +313,23 @@ body {
    Короткий pulse при добавлении товара. Перезапуск обеспечивает ремоунт
    бейджа по key в CartButton. */
 @keyframes lj-badge-pop {
-  0%   { transform: scale(1); }
-  40%  { transform: scale(1.4); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 .animate-lj-badge-pop {
   animation: lj-badge-pop 0.45s var(--ease-out-quart);
 }
 @media (prefers-reduced-motion: reduce) {
-  .animate-lj-badge-pop { animation: none; }
+  .animate-lj-badge-pop {
+    animation: none;
+  }
 }
 
 /* === Реакция «химического» добавления в корзину ===
@@ -259,16 +337,28 @@ body {
    Чистый CSS, без JS-библиотек; перезапуск — ремоунтом overlay по key
    (см. AddToCartBurst). */
 @keyframes lj-add-flash {
-  0%   { box-shadow: 0 0 0 0 rgba(131, 110, 254, 0.55); }
-  100% { box-shadow: 0 0 0 16px rgba(131, 110, 254, 0); }
+  0% {
+    box-shadow: 0 0 0 0 rgba(131, 110, 254, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 16px rgba(131, 110, 254, 0);
+  }
 }
 .lj-add-flash {
   animation: lj-add-flash 0.55s var(--ease-out-quart) forwards;
 }
 @keyframes lj-bubble-rise {
-  0%   { opacity: 0; transform: translateY(0) scale(0.4); }
-  25%  { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-1.75rem) scale(1); }
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.4);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-1.75rem) scale(1);
+  }
 }
 .lj-bubble {
   position: absolute;
@@ -282,13 +372,27 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .lj-add-flash,
-  .lj-bubble { animation: none; }
+  .lj-bubble {
+    animation: none;
+  }
 }
 
 /* === v3 Lab Journal animations === */
-@keyframes lj-rotate-slow { to { transform: translateY(-50%) rotate(360deg); } }
-@keyframes lj-rotate-slow-reverse { to { transform: translate(-50%, -50%) rotate(-360deg); } }
-@keyframes lj-ticker { to { transform: translateX(-50%); } }
+@keyframes lj-rotate-slow {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
+@keyframes lj-rotate-slow-reverse {
+  to {
+    transform: translate(-50%, -50%) rotate(-360deg);
+  }
+}
+@keyframes lj-ticker {
+  to {
+    transform: translateX(-50%);
+  }
+}
 
 /* === lj-prose: заголовки в CMS/blog rich-text ===
    Аудит v3.5: h2/h3/h4 внутри статей рендерились как обычный body-текст —
@@ -303,12 +407,20 @@ body {
   color: var(--lj-prose-color, var(--color-lj-ink));
   margin: 2rem 0 0.75rem;
 }
-.lj-prose h2 { font-size: 1.75rem; }
-.lj-prose h3 { font-size: 1.375rem; }
-.lj-prose h4 { font-size: 1.125rem; }
+.lj-prose h2 {
+  font-size: 1.75rem;
+}
+.lj-prose h3 {
+  font-size: 1.375rem;
+}
+.lj-prose h4 {
+  font-size: 1.125rem;
+}
 .lj-prose h2:first-child,
 .lj-prose h3:first-child,
-.lj-prose h4:first-child { margin-top: 0; }
+.lj-prose h4:first-child {
+  margin-top: 0;
+}
 
 /* === v3.5 Bright — градиентная CTA-пилюля ===
    Главное действие страницы. Белый текст на фирменном градиенте, hover —
@@ -319,13 +431,17 @@ body {
   background-image: var(--gradient-lj-bright);
   color: var(--color-lj-on-bright);
   box-shadow: var(--shadow-lj-bright);
-  transition: transform 0.4s var(--ease-out-quart), box-shadow 0.4s var(--ease-out-quart), filter 0.4s var(--ease-out-quart);
+  transition:
+    transform 0.4s var(--ease-out-quart),
+    box-shadow 0.4s var(--ease-out-quart),
+    filter 0.4s var(--ease-out-quart);
 }
 .lj-cta-bright:hover {
   background-image: var(--gradient-lj-bright-deep);
   transform: translateY(-2px);
-  box-shadow: 0 20px 44px -12px rgba(131, 110, 254, 0.55),
-              0 8px 18px -6px  rgba(200, 86, 255, 0.35);
+  box-shadow:
+    0 20px 44px -12px rgba(131, 110, 254, 0.55),
+    0 8px 18px -6px rgba(200, 86, 255, 0.35);
 }
 .lj-cta-bright:focus-visible {
   outline: 2px solid var(--color-lj-brand-deep);
@@ -334,23 +450,38 @@ body {
 
 /* === v3.5 Bright — hover-lift карточек === */
 .lj-lift {
-  transition: transform 0.4s var(--ease-out-quart), box-shadow 0.4s var(--ease-out-quart);
+  transition:
+    transform 0.4s var(--ease-out-quart),
+    box-shadow 0.4s var(--ease-out-quart);
 }
-.lj-lift:hover { transform: translateY(-6px); }
+.lj-lift:hover {
+  transform: translateY(-6px);
+}
 
 /* === v3.5 Bright — дрейф декоративных молекул === */
 @keyframes lj-drift {
-  from { transform: translate(0, 0) rotate(0deg); }
-  to   { transform: translate(8px, -10px) rotate(4deg); }
+  from {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  to {
+    transform: translate(8px, -10px) rotate(4deg);
+  }
 }
-.lj-drift { animation: lj-drift 14s ease-in-out infinite alternate; }
+.lj-drift {
+  animation: lj-drift 14s ease-in-out infinite alternate;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .lj-cta-bright,
   .lj-cta-bright:hover,
   .lj-lift,
-  .lj-lift:hover { transition: none; transform: none; }
-  .lj-drift { animation: none; }
+  .lj-lift:hover {
+    transition: none;
+    transform: none;
+  }
+  .lj-drift {
+    animation: none;
+  }
 }
 
 /* === v3 Lab Journal — reduced-motion accommodations ===
@@ -360,11 +491,13 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .lj-num-cell::before,
   [data-statbar],
-  [class*="lj-rotate"],
-  [class*="lj-ticker"] {
+  [class*='lj-rotate'],
+  [class*='lj-ticker'] {
     animation: none !important;
     transition: none !important;
   }
   /* Snap stat bars to their final width without the 1.2s width transition */
-  [data-statbar] { width: var(--w) !important; }
+  [data-statbar] {
+    width: var(--w) !important;
+  }
 }

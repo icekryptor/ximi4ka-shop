@@ -17,10 +17,9 @@ const FALLBACK = 'User-agent: *\nAllow: /\n'
 
 export async function GET(): Promise<Response> {
   try {
-    const res = await fetch(
-      `${ADMIN_API_URL_SERVER}/api/public/settings/robots.txt`,
-      { next: { revalidate: 300 } },
-    )
+    const res = await fetch(`${ADMIN_API_URL_SERVER}/api/public/settings/robots.txt`, {
+      next: { revalidate: 300 },
+    })
     if (!res.ok) {
       return new Response(FALLBACK, {
         headers: { 'content-type': 'text/plain; charset=utf-8' },

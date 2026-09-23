@@ -7,16 +7,11 @@ import { describe, it, expect, vi } from 'vitest'
 // fails — forcing the contributor to either fix the slug or update both
 // this mirror AND the DB seed.
 vi.mock('@/lib/api', async () => {
-  const actual =
-    await vi.importActual<typeof import('@/lib/api')>('@/lib/api')
+  const actual = await vi.importActual<typeof import('@/lib/api')>('@/lib/api')
   return {
     ...actual,
     getPublishedProduct: vi.fn().mockImplementation((slug: string) => {
-      const known = new Set([
-        'himichka-30',
-        'mini-himichka',
-        'elektrohimichka',
-      ])
+      const known = new Set(['himichka-30', 'mini-himichka', 'elektrohimichka'])
       if (known.has(slug)) {
         return Promise.resolve({
           id: 'mock',

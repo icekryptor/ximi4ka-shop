@@ -11,8 +11,7 @@ export function LabSection({ variant, className = '', children, style, ...rest }
       ? 'bg-[var(--color-lj-cream)] text-[var(--color-lj-ink)]'
       : 'bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)]'
 
-  const proseColor =
-    variant === 'cream' ? 'var(--color-lj-ink)' : 'var(--color-lj-bone)'
+  const proseColor = variant === 'cream' ? 'var(--color-lj-ink)' : 'var(--color-lj-bone)'
 
   const mergedStyle = {
     ...(style ?? {}),

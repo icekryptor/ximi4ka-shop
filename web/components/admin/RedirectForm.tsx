@@ -1,11 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  ApiError,
-  type AdminRedirectInput,
-  type Redirect,
-} from '@/lib/adminApi'
+import { ApiError, type AdminRedirectInput, type Redirect } from '@/lib/adminApi'
 
 interface Props {
   mode: 'create' | 'edit'
@@ -27,9 +23,7 @@ const RESERVED_PREFIXES = ['/admin', '/api', '/uploads', '/_next']
 const STATUS_CODES = [301, 302, 307, 308] as const
 
 function isReservedFromPath(value: string): boolean {
-  return RESERVED_PREFIXES.some(
-    (p) => value === p || value.startsWith(`${p}/`),
-  )
+  return RESERVED_PREFIXES.some((p) => value === p || value.startsWith(`${p}/`))
 }
 
 function validateToPath(value: string): string | null {
@@ -39,18 +33,10 @@ function validateToPath(value: string): string | null {
   return 'Путь должен начинаться с / либо быть абсолютным http(s)-адресом.'
 }
 
-export function RedirectForm({
-  mode,
-  initialValue,
-  onSubmit,
-  submitting,
-  error,
-}: Props) {
+export function RedirectForm({ mode, initialValue, onSubmit, submitting, error }: Props) {
   const [fromPath, setFromPath] = useState(initialValue?.fromPath ?? '')
   const [toPath, setToPath] = useState(initialValue?.toPath ?? '')
-  const [statusCode, setStatusCode] = useState<number>(
-    initialValue?.statusCode ?? 301,
-  )
+  const [statusCode, setStatusCode] = useState<number>(initialValue?.statusCode ?? 301)
   const [formError, setFormError] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -69,9 +55,7 @@ export function RedirectForm({
       return
     }
     if (isReservedFromPath(trimmedFrom)) {
-      setFormError(
-        'Исходный путь не может начинаться с /admin, /api, /uploads или /_next.',
-      )
+      setFormError('Исходный путь не может начинаться с /admin, /api, /uploads или /_next.')
       return
     }
 
@@ -98,18 +82,14 @@ export function RedirectForm({
   return (
     <form
       onSubmit={handleSubmit}
-      aria-label={
-        mode === 'create' ? 'Создание редиректа' : 'Редактирование редиректа'
-      }
+      aria-label={mode === 'create' ? 'Создание редиректа' : 'Редактирование редиректа'}
       className="space-y-6"
     >
       <section className="bg-white rounded-2xl border border-brand-border p-6 space-y-4">
         <Field
           label="Исходный путь (from)"
           htmlFor="from-path"
-          error={
-            conflict ? 'Редирект с таким исходным путём уже существует.' : undefined
-          }
+          error={conflict ? 'Редирект с таким исходным путём уже существует.' : undefined}
         >
           <input
             id="from-path"
@@ -171,11 +151,7 @@ export function RedirectForm({
           disabled={submitting}
           className="px-5 py-2.5 rounded-full bg-brand text-white font-semibold disabled:opacity-50"
         >
-          {submitting
-            ? 'Сохранение...'
-            : mode === 'create'
-              ? 'Создать'
-              : 'Сохранить'}
+          {submitting ? 'Сохранение...' : mode === 'create' ? 'Создать' : 'Сохранить'}
         </button>
       </div>
     </form>
@@ -195,10 +171,7 @@ function Field({
 }) {
   return (
     <div>
-      <label
-        htmlFor={htmlFor}
-        className="block text-sm font-medium text-brand-text-secondary mb-1"
-      >
+      <label htmlFor={htmlFor} className="block text-sm font-medium text-brand-text-secondary mb-1">
         {label}
       </label>
       {children}

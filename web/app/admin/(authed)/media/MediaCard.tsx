@@ -14,9 +14,7 @@ export function MediaCard({ media }: { media: Media }) {
 
   async function handleDelete() {
     if (busy) return
-    const ok = window.confirm(
-      `Удалить файл «${media.filename}»? Это действие нельзя отменить.`,
-    )
+    const ok = window.confirm(`Удалить файл «${media.filename}»? Это действие нельзя отменить.`)
     if (!ok) return
     setBusy(true)
     try {
@@ -41,16 +39,11 @@ export function MediaCard({ media }: { media: Media }) {
         />
       </div>
       <div className="p-2 flex-1 flex flex-col gap-1">
-        <div
-          className="text-xs text-brand-text truncate"
-          title={media.filename}
-        >
+        <div className="text-xs text-brand-text truncate" title={media.filename}>
           {media.filename}
         </div>
         <div className="text-[11px] text-brand-text-secondary">
-          {media.width && media.height
-            ? `${media.width}×${media.height} • `
-            : ''}
+          {media.width && media.height ? `${media.width}×${media.height} • ` : ''}
           {formatSize(media.size)}
         </div>
         <div className="mt-auto pt-2">

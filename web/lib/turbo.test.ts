@@ -146,9 +146,7 @@ describe('generateTurboRss', () => {
       posts: [makeBlogPost()],
       siteUrl: 'https://new.ximi4ka.ru',
     })
-    expect(xml).toContain(
-      '<link>https://new.ximi4ka.ru/blog/pochemu-plamya-sinee</link>',
-    )
+    expect(xml).toContain('<link>https://new.ximi4ka.ru/blog/pochemu-plamya-sinee</link>')
     expect(xml).toContain('<title>Почему пламя синее</title>')
     expect(xml).toContain('<header><h1>Почему пламя синее</h1></header>')
     expect(xml).toContain('<p>Разбираем химию горения.</p>')

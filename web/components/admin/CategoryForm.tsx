@@ -44,9 +44,7 @@ export function CategoryForm({
   const [metaDescription, setMetaDescription] = useState(initialValue?.metaDescription ?? '')
   // i18n — see ProductForm for rationale.
   const [activeLocale, setActiveLocale] = useState<Locale>(DEFAULT_LOCALE)
-  const initialEn = (initialValue?.translations as
-    | { en?: Record<string, unknown> }
-    | undefined)?.en
+  const initialEn = (initialValue?.translations as { en?: Record<string, unknown> } | undefined)?.en
   const [enName, setEnName] = useState<string>(
     typeof initialEn?.name === 'string' ? initialEn.name : '',
   )
@@ -101,8 +99,7 @@ export function CategoryForm({
     const enBlock: Record<string, unknown> = {}
     if (enName.trim()) enBlock.name = enName.trim()
     if (enMetaTitle.trim()) enBlock.metaTitle = enMetaTitle.trim()
-    if (enMetaDescription.trim())
-      enBlock.metaDescription = enMetaDescription.trim()
+    if (enMetaDescription.trim()) enBlock.metaDescription = enMetaDescription.trim()
 
     const nextTranslations: Record<string, unknown> = {
       ...((initialValue?.translations as Record<string, unknown> | undefined) ?? {}),

@@ -26,9 +26,7 @@ describe('CsvImportDialog', () => {
   })
 
   it('renders nothing when open=false', () => {
-    const { container } = render(
-      <CsvImportDialog open={false} onClose={() => {}} />,
-    )
+    const { container } = render(<CsvImportDialog open={false} onClose={() => {}} />)
     expect(container.firstChild).toBeNull()
   })
 

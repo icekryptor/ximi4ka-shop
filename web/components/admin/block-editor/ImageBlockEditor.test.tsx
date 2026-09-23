@@ -29,9 +29,7 @@ describe('ImageBlockEditor', () => {
     fireEvent.change(screen.getByLabelText('Alt-текст'), {
       target: { value: 'описание' },
     })
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ alt: 'описание' }),
-    )
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ alt: 'описание' }))
   })
 
   it('uploads an image and fires onChange with url', async () => {
@@ -56,9 +54,7 @@ describe('ImageBlockEditor', () => {
       />,
     )
     const file = new File([new Uint8Array([1])], 'p.jpg', { type: 'image/jpeg' })
-    const input = container.querySelector(
-      'input[type="file"]',
-    ) as HTMLInputElement
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [file] } })
     await waitFor(() => {
       expect(onChange).toHaveBeenCalled()
@@ -78,8 +74,6 @@ describe('ImageBlockEditor', () => {
     fireEvent.change(screen.getByLabelText('Подпись'), {
       target: { value: '' },
     })
-    expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ caption: null }),
-    )
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ caption: null }))
   })
 })

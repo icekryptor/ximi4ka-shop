@@ -73,8 +73,7 @@ export function ProductCard({
         : 'bg-transparent border-[var(--color-lj-ink)] text-[var(--color-lj-ink)]'
   // Категорийные карточки пока не имеют реальных стат (TODO Task 4.4) —
   // нулевые бары выглядят сломанными, скрываем блок целиком.
-  const hasStats =
-    stats.reagents > 0 || stats.instruments > 0 || stats.reactions > 0
+  const hasStats = stats.reagents > 0 || stats.instruments > 0 || stats.reactions > 0
 
   const renderName = () => {
     if (!emphasisWord || !product.name.includes(emphasisWord)) return product.name
@@ -91,15 +90,16 @@ export function ProductCard({
   const formattedPrice = product.priceRub.toLocaleString('ru-RU').replace(/,/g, ' ')
 
   // Guard against divide-by-zero when caller passes 0 maxes.
-  const pct = (value: number, max: number) =>
-    max > 0 ? Math.round((value / max) * 100) : 0
+  const pct = (value: number, max: number) => (max > 0 ? Math.round((value / max) * 100) : 0)
 
   return (
     <article className="callout-host group/pcard lj-lift relative cursor-pointer bg-transparent">
       <div className="flex justify-between items-center mb-3 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em]">
         <span className="text-[var(--color-lj-ink)] opacity-60">{skuLabel}</span>
         {badge && (
-          <span className={`px-2.5 py-1 border rounded-full text-[0.625rem] tracking-[0.1em] ${badgeClass}`}>
+          <span
+            className={`px-2.5 py-1 border rounded-full text-[0.625rem] tracking-[0.1em] ${badgeClass}`}
+          >
             {badge}
           </span>
         )}
@@ -109,7 +109,9 @@ export function ProductCard({
         <SpecimenCard sku={product.sku ?? product.slug} size="card" className="border-0" />
       ) : (
         <Link href={`/product/${product.slug}`} className="block">
-          <div className={`relative ${featured ? 'aspect-[16/10]' : 'aspect-[4/5]'} bg-white rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color,box-shadow] duration-500 group-hover/pcard:border-[var(--color-lj-brand)] group-hover/pcard:shadow-[var(--shadow-lj-bright)]`}>
+          <div
+            className={`relative ${featured ? 'aspect-[16/10]' : 'aspect-[4/5]'} bg-white rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color,box-shadow] duration-500 group-hover/pcard:border-[var(--color-lj-brand)] group-hover/pcard:shadow-[var(--shadow-lj-bright)]`}
+          >
             {cornerMark && (
               <span className="absolute top-3.5 left-3.5 z-10 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
                 {cornerMark}
@@ -127,7 +129,9 @@ export function ProductCard({
                 src={images[1].url}
                 alt={images[1].alt}
                 fill
-                sizes={featured ? '(max-width: 768px) 100vw, 66vw' : '(max-width: 768px) 100vw, 33vw'}
+                sizes={
+                  featured ? '(max-width: 768px) 100vw, 66vw' : '(max-width: 768px) 100vw, 33vw'
+                }
                 className="absolute inset-0 object-cover opacity-0 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:scale-[1.04]"
               />
             )}
@@ -141,7 +145,9 @@ export function ProductCard({
       )}
 
       <div className="pt-5">
-        <h3 className={`font-lj-display font-[700] ${featured ? 'text-[clamp(1.75rem,2.6vw,2.5rem)]' : 'text-[clamp(1.5rem,2.1vw,2rem)]'} leading-[0.95] tracking-[-0.035em] mb-3.5`}>
+        <h3
+          className={`font-lj-display font-[700] ${featured ? 'text-[clamp(1.75rem,2.6vw,2.5rem)]' : 'text-[clamp(1.5rem,2.1vw,2rem)]'} leading-[0.95] tracking-[-0.035em] mb-3.5`}
+        >
           <Link href={`/product/${product.slug}`}>{renderName()}</Link>
         </h3>
         {product.shortDescription && (
@@ -195,7 +201,9 @@ export function ProductCard({
         </div>
       </div>
 
-      {callout && <Callout text={callout.text} position={callout.position} topPercent={callout.topPercent} />}
+      {callout && (
+        <Callout text={callout.text} position={callout.position} topPercent={callout.topPercent} />
+      )}
     </article>
   )
 }

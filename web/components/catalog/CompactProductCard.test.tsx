@@ -20,34 +20,24 @@ const base = {
   longDescriptionBlocks: [],
 } as unknown as Product
 
-const images = [
-  { id: 'i1', productId: 'r1', url: '/r.png', alt: 'реактив', sortOrder: 0 },
-]
+const images = [{ id: 'i1', productId: 'r1', url: '/r.png', alt: 'реактив', sortOrder: 0 }]
 
 describe('CompactProductCard', () => {
   it('renders name, sku and price', () => {
-    const { container } = render(
-      <CompactProductCard product={base} images={images} />,
-    )
+    const { container } = render(<CompactProductCard product={base} images={images} />)
     expect(within(container).getByText('Сульфат меди (II) 100 г')).toBeInTheDocument()
     expect(within(container).getByText(/№ R-11/)).toBeInTheDocument()
     expect(within(container).getByText(/290/)).toBeInTheDocument()
   })
 
   it('renders a quantity stepper and add-to-cart button', () => {
-    const { container } = render(
-      <CompactProductCard product={base} images={images} />,
-    )
+    const { container } = render(<CompactProductCard product={base} images={images} />)
     expect(within(container).getByRole('group', { name: /Количество/ })).toBeInTheDocument()
-    expect(
-      within(container).getByRole('button', { name: /В корзину/ }),
-    ).toBeInTheDocument()
+    expect(within(container).getByRole('button', { name: /В корзину/ })).toBeInTheDocument()
   })
 
   it('adds the selected quantity to the cart', () => {
-    const { container } = render(
-      <CompactProductCard product={base} images={images} />,
-    )
+    const { container } = render(<CompactProductCard product={base} images={images} />)
     // bump quantity to 3
     const inc = within(container).getByRole('button', { name: 'Увеличить количество' })
     act(() => {
@@ -77,9 +67,7 @@ describe('CompactProductCard', () => {
   })
 
   it('renders a SpecimenCard placeholder when no images are provided', () => {
-    const { container } = render(
-      <CompactProductCard product={base} images={[]} />,
-    )
+    const { container } = render(<CompactProductCard product={base} images={[]} />)
     expect(within(container).getByText('ОБРАЗЕЦ № R-11')).toBeInTheDocument()
   })
 })

@@ -135,9 +135,7 @@ function stripTags(html: string): string {
 // Strip Tilda's <style>/<script> siblings so attribute regexes never match
 // inside CSS or embedded JSON.
 function stripNonMarkup(html: string): string {
-  return html
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
+  return html.replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<script[\s\S]*?<\/script>/gi, '')
 }
 
 // `field="title"` / `field="text"` content — Tilda emits it on h2/h3/div

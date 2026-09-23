@@ -4,11 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
 import { BlogPostForm } from '@/components/admin/BlogPostForm'
-import {
-  ApiError,
-  adminCreateBlogPost,
-  type AdminBlogPostInput,
-} from '@/lib/adminApi'
+import { ApiError, adminCreateBlogPost, type AdminBlogPostInput } from '@/lib/adminApi'
 
 export default function NewBlogPostPage() {
   const router = useRouter()
@@ -34,19 +30,11 @@ export default function NewBlogPostPage() {
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-brand-text">Новая статья</h1>
-        <Link
-          href="/admin/blog"
-          className="text-sm text-brand-text-secondary hover:underline"
-        >
+        <Link href="/admin/blog" className="text-sm text-brand-text-secondary hover:underline">
           ← К списку
         </Link>
       </div>
-      <BlogPostForm
-        mode="create"
-        onSubmit={handleSubmit}
-        submitting={submitting}
-        error={error}
-      />
+      <BlogPostForm mode="create" onSubmit={handleSubmit} submitting={submitting} error={error} />
     </div>
   )
 }

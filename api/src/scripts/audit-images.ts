@@ -8,9 +8,7 @@ interface ProductLite {
   categories?: Array<{ name: string }>
 }
 
-export function groupByPrimaryCategory(
-  products: ProductLite[],
-): Map<string, ProductLite[]> {
+export function groupByPrimaryCategory(products: ProductLite[]): Map<string, ProductLite[]> {
   const map = new Map<string, ProductLite[]>()
   for (const p of products) {
     const key = p.categories?.[0]?.name ?? 'Без категории'
@@ -55,9 +53,7 @@ async function main(): Promise<void> {
     }
 
     const byCategory = groupByPrimaryCategory(missing as ProductLite[])
-    console.log(
-      `\n# Photography backlog — ${missing.length} products missing images\n`,
-    )
+    console.log(`\n# Photography backlog — ${missing.length} products missing images\n`)
     for (const [categoryName, items] of byCategory) {
       console.log(`## ${categoryName} (${items.length})\n`)
       console.log(formatBacklogTable(items))

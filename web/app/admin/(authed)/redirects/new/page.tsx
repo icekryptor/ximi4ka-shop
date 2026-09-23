@@ -4,11 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
 import { RedirectForm } from '@/components/admin/RedirectForm'
-import {
-  ApiError,
-  adminCreateRedirect,
-  type AdminRedirectInput,
-} from '@/lib/adminApi'
+import { ApiError, adminCreateRedirect, type AdminRedirectInput } from '@/lib/adminApi'
 
 export default function NewRedirectPage() {
   const router = useRouter()
@@ -34,19 +30,11 @@ export default function NewRedirectPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-brand-text">Новый редирект</h1>
-        <Link
-          href="/admin/redirects"
-          className="text-sm text-brand-text-secondary hover:underline"
-        >
+        <Link href="/admin/redirects" className="text-sm text-brand-text-secondary hover:underline">
           ← К списку
         </Link>
       </div>
-      <RedirectForm
-        mode="create"
-        onSubmit={handleSubmit}
-        submitting={submitting}
-        error={error}
-      />
+      <RedirectForm mode="create" onSubmit={handleSubmit} submitting={submitting} error={error} />
     </div>
   )
 }

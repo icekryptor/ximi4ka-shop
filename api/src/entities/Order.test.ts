@@ -18,9 +18,7 @@ describe('Order entity', () => {
   })
 
   beforeEach(async () => {
-    await AppDataSource.query(
-      'TRUNCATE TABLE "order_items", "orders" RESTART IDENTITY CASCADE'
-    )
+    await AppDataSource.query('TRUNCATE TABLE "order_items", "orders" RESTART IDENTITY CASCADE')
   })
 
   it('persists and retrieves an order round-trip', async () => {
@@ -70,7 +68,7 @@ describe('Order entity', () => {
         shippingRub: 0,
         totalRub: 2500,
         paymentProvider: 'yandex_pay',
-      })
+      }),
     )
 
     const productIdA = '11111111-1111-1111-1111-111111111111'

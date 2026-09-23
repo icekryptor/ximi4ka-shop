@@ -50,8 +50,7 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
         <div className="relative z-[2]">
           <div className="flex items-center justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] mb-12">
             <span className="inline-flex items-center gap-3">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-lj-brand)]" />
-              № MENU — Меню
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-lj-brand)]" />№ MENU — Меню
             </span>
             <button
               type="button"
@@ -78,7 +77,9 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
                       {pad(i + 1)} /
                     </span>
                     <div className="flex flex-col gap-1">
-                      <span className={`font-lj-display font-[700] text-[2rem] leading-none tracking-[-0.035em] ${active ? 'text-[var(--color-lj-brand)]' : ''}`}>
+                      <span
+                        className={`font-lj-display font-[700] text-[2rem] leading-none tracking-[-0.035em] ${active ? 'text-[var(--color-lj-brand)]' : ''}`}
+                      >
                         {item.label}
                       </span>
                       {item.desc && (
@@ -88,7 +89,10 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
                       )}
                     </div>
                     {active && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-lj-brand)] mt-3" aria-hidden="true" />
+                      <span
+                        className="w-1.5 h-1.5 rounded-full bg-[var(--color-lj-brand)] mt-3"
+                        aria-hidden="true"
+                      />
                     )}
                   </Link>
                 </li>

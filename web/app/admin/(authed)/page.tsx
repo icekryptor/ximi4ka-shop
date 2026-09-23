@@ -7,8 +7,8 @@ export default function AdminDashboardPage() {
     <div className="max-w-4xl">
       <h1 className="text-3xl font-bold text-brand-text mb-4">Добро пожаловать</h1>
       <p className="text-brand-text-secondary">
-        Используйте меню слева, чтобы перейти к управлению товарами, категориями,
-        страницами и заказами.
+        Используйте меню слева, чтобы перейти к управлению товарами, категориями, страницами и
+        заказами.
       </p>
     </div>
   )

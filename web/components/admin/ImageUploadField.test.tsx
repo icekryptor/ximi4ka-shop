@@ -38,15 +38,11 @@ describe('ImageUploadField', () => {
       ),
     )
     const onChange = vi.fn()
-    const { container } = render(
-      <ImageUploadField value={null} onChange={onChange} />,
-    )
+    const { container } = render(<ImageUploadField value={null} onChange={onChange} />)
     const file = new File([new Uint8Array([1])], 'y.jpg', {
       type: 'image/jpeg',
     })
-    const input = container.querySelector(
-      'input[type="file"]',
-    ) as HTMLInputElement
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [file] } })
     await waitFor(() => {
       expect(onChange).toHaveBeenCalledWith('/uploads/2026/04/y.jpg')
@@ -55,9 +51,7 @@ describe('ImageUploadField', () => {
 
   it('clicking "Удалить" clears the value', () => {
     const onChange = vi.fn()
-    render(
-      <ImageUploadField value="/uploads/2026/04/x.jpg" onChange={onChange} />,
-    )
+    render(<ImageUploadField value="/uploads/2026/04/x.jpg" onChange={onChange} />)
     fireEvent.click(screen.getByText(/Удалить/))
     expect(onChange).toHaveBeenCalledWith(null)
   })

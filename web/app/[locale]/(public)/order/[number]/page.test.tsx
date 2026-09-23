@@ -55,9 +55,6 @@ describe('/order/[number] page', () => {
         searchParams: Promise.resolve({}),
       }),
     )
-    expect(screen.getByTestId('order-status-view')).toHaveAttribute(
-      'data-celebrate',
-      'false',
-    )
+    expect(screen.getByTestId('order-status-view')).toHaveAttribute('data-celebrate', 'false')
   })
 })

@@ -27,34 +27,22 @@ describe('ContentsSection', () => {
   })
 
   it('renders nothing when blocks is not an array', () => {
-    const { container } = render(
-      <ContentsSection blocks={null as unknown as unknown[]} />,
-    )
+    const { container } = render(<ContentsSection blocks={null as unknown as unknown[]} />)
     expect(container.firstChild).toBeNull()
   })
 
   it('renders the «Что внутри» section when a Состав block is present', () => {
-    render(
-      <ContentsSection
-        blocks={[{ type: 'paragraph', html: sostavHtml }]}
-      />,
-    )
+    render(<ContentsSection blocks={[{ type: 'paragraph', html: sostavHtml }]} />)
     // Heading is split into <span>/<em> for v3 typography — assert via role
     // and normalized text content rather than a single text node.
     const heading = screen.getByRole('heading', { level: 2 })
-    expect(heading.textContent?.replace(/\s+/g, ' ').trim()).toBe(
-      'Что внутри набора',
-    )
-    expect(
-      screen.getByText('сульфат алюминия 35 мл 5% р-р'),
-    ).toBeInTheDocument()
+    expect(heading.textContent?.replace(/\s+/g, ' ').trim()).toBe('Что внутри набора')
+    expect(screen.getByText('сульфат алюминия 35 мл 5% р-р')).toBeInTheDocument()
   })
 
   it('strips the leading «Состав» heading from the rendered body', () => {
     const { container } = render(
-      <ContentsSection
-        blocks={[{ type: 'paragraph', html: sostavHtml }]}
-      />,
+      <ContentsSection blocks={[{ type: 'paragraph', html: sostavHtml }]} />,
     )
     // No <h3>Состав</h3> should remain — only our «Что внутри» heading.
     const innerH3s = Array.from(container.querySelectorAll('h3'))
@@ -62,8 +50,7 @@ describe('ContentsSection', () => {
   })
 
   it('sanitizes <script> tags from the input', () => {
-    const malicious =
-      '<h3>Состав</h3><script>alert(1)</script><ul><li>safe</li></ul>'
+    const malicious = '<h3>Состав</h3><script>alert(1)</script><ul><li>safe</li></ul>'
     const { container } = render(
       <ContentsSection blocks={[{ type: 'paragraph', html: malicious }]} />,
     )

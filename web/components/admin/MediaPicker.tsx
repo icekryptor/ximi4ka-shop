@@ -15,12 +15,7 @@ const PAGE_SIZE = 40
 // Reusable media-browser modal. Fetches lazily — only when `open` goes true —
 // and supports "show more" pagination in place (append, not replace).
 // Self-contained: owns its own data fetching via adminListMedia.
-export function MediaPicker({
-  open,
-  onClose,
-  onPick,
-  mimePrefix = 'image/',
-}: Props) {
+export function MediaPicker({ open, onClose, onPick, mimePrefix = 'image/' }: Props) {
   const [items, setItems] = useState<Media[]>([])
   const [total, setTotal] = useState(0)
   const [offset, setOffset] = useState(0)
@@ -46,8 +41,7 @@ export function MediaPicker({
         setOffset(nextOffset)
         setItems((prev) => (append ? [...prev, ...res.data] : res.data))
       } catch (err) {
-        const msg =
-          err instanceof ApiError ? err.message : 'Не удалось загрузить медиа'
+        const msg = err instanceof ApiError ? err.message : 'Не удалось загрузить медиа'
         setError(msg)
       } finally {
         setLoading(false)
@@ -105,9 +99,7 @@ export function MediaPicker({
         className="bg-white rounded-2xl shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-brand-border">
-          <h2 className="text-lg font-semibold text-brand-text">
-            Выберите из библиотеки
-          </h2>
+          <h2 className="text-lg font-semibold text-brand-text">Выберите из библиотеки</h2>
           <button
             type="button"
             onClick={onClose}
@@ -146,9 +138,7 @@ export function MediaPicker({
             </div>
           ) : null}
           {items.length === 0 && !loading ? (
-            <div className="text-center text-brand-text-secondary py-12">
-              Ничего не найдено.
-            </div>
+            <div className="text-center text-brand-text-secondary py-12">Ничего не найдено.</div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {items.map((m) => (
@@ -170,10 +160,7 @@ export function MediaPicker({
                     />
                   </div>
                   <div className="p-2">
-                    <div
-                      className="text-xs text-brand-text truncate"
-                      title={m.filename}
-                    >
+                    <div className="text-xs text-brand-text truncate" title={m.filename}>
                       {m.filename}
                     </div>
                     <div className="text-[11px] text-brand-text-secondary">

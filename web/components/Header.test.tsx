@@ -46,10 +46,7 @@ describe('Header v3', () => {
       'href',
       '/catalog',
     )
-    expect(within(mainNav).getByRole('link', { name: 'Блог' })).toHaveAttribute(
-      'href',
-      '/blog',
-    )
+    expect(within(mainNav).getByRole('link', { name: 'Блог' })).toHaveAttribute('href', '/blog')
     expect(within(mainNav).getByRole('link', { name: 'О нас' })).toHaveAttribute('href', '/o-nas')
     expect(within(mainNav).getByRole('link', { name: 'Доставка' })).toHaveAttribute(
       'href',
@@ -141,9 +138,7 @@ describe('Header v3', () => {
       'aria-current',
       'page',
     )
-    expect(within(mainNav).getByRole('link', { name: 'О нас' })).not.toHaveAttribute(
-      'aria-current',
-    )
+    expect(within(mainNav).getByRole('link', { name: 'О нас' })).not.toHaveAttribute('aria-current')
   })
 
   it('treats nested category slug as active каталог', () => {
@@ -199,8 +194,6 @@ describe('Header v3', () => {
   it('uses brand-purple for active route (v3)', () => {
     mockPathname.mockReturnValue('/categories')
     const { container } = render(<Header />)
-    expect(
-      container.querySelector('.bg-\\[var\\(--color-lj-brand\\)\\]'),
-    ).not.toBeNull()
+    expect(container.querySelector('.bg-\\[var\\(--color-lj-brand\\)\\]')).not.toBeNull()
   })
 })

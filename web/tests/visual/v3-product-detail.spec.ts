@@ -24,7 +24,7 @@ test.describe('v3 Lab Journal — product detail', () => {
     // dropped the desktop-only restriction to baseline all three.
     await page.goto('/ru/product/himichka-30')
     await page.waitForLoadState('networkidle')
-    // Ensure web fonts (next/font/google) have finished swapping before the
+    // Ensure web fonts (next/font/local) have finished swapping before the
     // first capture — otherwise we may snapshot a metric-fallback face.
     await page.evaluate(() => document.fonts.ready)
     // Brief pause for one-shot mount work / layout-effect settling.

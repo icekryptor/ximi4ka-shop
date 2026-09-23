@@ -81,11 +81,7 @@ describe('AddToCartWithQuantity', () => {
   })
 
   it('does not add anything when out of stock', () => {
-    render(
-      <AddToCartWithQuantity
-        product={{ ...product, stockStatus: 'out_of_stock' }}
-      />,
-    )
+    render(<AddToCartWithQuantity product={{ ...product, stockStatus: 'out_of_stock' }} />)
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: 'Нет в наличии' }))
     })

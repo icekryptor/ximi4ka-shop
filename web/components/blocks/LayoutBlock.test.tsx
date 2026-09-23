@@ -34,16 +34,12 @@ describe('<LayoutBlock> v3', () => {
   })
 
   it('renders body via lj-prose class for non-overlay variants', () => {
-    const { container } = render(
-      <LayoutBlock block={{ ...baseProps, variant: 'text-left' }} />,
-    )
+    const { container } = render(<LayoutBlock block={{ ...baseProps, variant: 'text-left' }} />)
     expect(container.querySelector('.lj-prose')).not.toBeNull()
   })
 
   it('orders text before media for text-left variant', () => {
-    const { container } = render(
-      <LayoutBlock block={{ ...baseProps, variant: 'text-left' }} />,
-    )
+    const { container } = render(<LayoutBlock block={{ ...baseProps, variant: 'text-left' }} />)
     const root = container.querySelector('[data-block="layout"]')!
     const first = root.children[0] as HTMLElement
     // Text pane has lj-prose; media pane has [data-frame]
@@ -51,42 +47,33 @@ describe('<LayoutBlock> v3', () => {
   })
 
   it('orders media before text for text-right variant', () => {
-    const { container } = render(
-      <LayoutBlock block={{ ...baseProps, variant: 'text-right' }} />,
-    )
+    const { container } = render(<LayoutBlock block={{ ...baseProps, variant: 'text-right' }} />)
     const root = container.querySelector('[data-block="layout"]')!
     const first = root.children[0] as HTMLElement
     expect(first.querySelector('[data-frame]')).not.toBeNull()
   })
 
   it('orders text before media for text-top variant (vertical)', () => {
-    const { container } = render(
-      <LayoutBlock block={{ ...baseProps, variant: 'text-top' }} />,
-    )
+    const { container } = render(<LayoutBlock block={{ ...baseProps, variant: 'text-top' }} />)
     const root = container.querySelector('[data-block="layout"]')!
     const first = root.children[0] as HTMLElement
     expect(first.querySelector('.lj-prose') ?? first.classList.contains('lj-prose')).toBeTruthy()
   })
 
   it('orders media before text for text-bottom variant (vertical)', () => {
-    const { container } = render(
-      <LayoutBlock block={{ ...baseProps, variant: 'text-bottom' }} />,
-    )
+    const { container } = render(<LayoutBlock block={{ ...baseProps, variant: 'text-bottom' }} />)
     const root = container.querySelector('[data-block="layout"]')!
     const first = root.children[0] as HTMLElement
     expect(first.querySelector('[data-frame]')).not.toBeNull()
   })
 
   it('overlay variant places sanitized text on top of the image', () => {
-    const { container } = render(
-      <LayoutBlock block={{ ...baseProps, variant: 'overlay' }} />,
-    )
+    const { container } = render(<LayoutBlock block={{ ...baseProps, variant: 'overlay' }} />)
     const root = container.querySelector('[data-block="layout"][data-variant="overlay"]')
     expect(root).not.toBeNull()
     // overlay still renders an image (via Image or MediaFrame)
     const hasImage =
-      container.querySelector('img') !== null ||
-      container.querySelector('[data-frame]') !== null
+      container.querySelector('img') !== null || container.querySelector('[data-frame]') !== null
     expect(hasImage).toBe(true)
     expect(container.innerHTML).toContain('Body text content')
   })

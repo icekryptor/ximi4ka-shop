@@ -18,9 +18,7 @@ describe('<ImageBlock> v3', () => {
 
   it('renders caption inside [data-caption] when provided', () => {
     const { container } = render(
-      <ImageBlock
-        block={{ type: 'image', url: '/test.jpg', alt: 'x', caption: 'Подпись' }}
-      />,
+      <ImageBlock block={{ type: 'image', url: '/test.jpg', alt: 'x', caption: 'Подпись' }} />,
     )
     const caption = container.querySelector('[data-caption]')
     expect(caption).not.toBeNull()
@@ -36,9 +34,7 @@ describe('<ImageBlock> v3', () => {
 
   it('omits [data-caption] when caption is null (DB default)', () => {
     const { container } = render(
-      <ImageBlock
-        block={{ type: 'image', url: '/test.jpg', alt: 'x', caption: null }}
-      />,
+      <ImageBlock block={{ type: 'image', url: '/test.jpg', alt: 'x', caption: null }} />,
     )
     expect(container.querySelector('[data-caption]')).toBeNull()
   })

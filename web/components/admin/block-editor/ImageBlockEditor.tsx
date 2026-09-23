@@ -24,9 +24,7 @@ export function ImageBlockEditor({ block, onChange }: Props) {
       <LabeledInput
         label="Подпись"
         value={block.caption ?? ''}
-        onChange={(caption) =>
-          onChange({ ...block, caption: caption || null })
-        }
+        onChange={(caption) => onChange({ ...block, caption: caption || null })}
       />
     </div>
   )

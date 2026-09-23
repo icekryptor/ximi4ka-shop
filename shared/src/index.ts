@@ -20,11 +20,7 @@ export type { Page } from './types/page.js'
 
 export type { BlogPost } from './types/blogPost.js'
 
-export type {
-  SearchResult,
-  SearchProductResult,
-  SearchPostResult,
-} from './types/search.js'
+export type { SearchResult, SearchProductResult, SearchPostResult } from './types/search.js'
 
 export type {
   Block,

@@ -20,9 +20,7 @@ export function PagesListSearch({ initialQuery }: { initialQuery: string }) {
     else next.delete('q')
     next.delete('offset')
     startTransition(() => {
-      router.push(
-        `/admin/pages${next.toString() ? `?${next.toString()}` : ''}`,
-      )
+      router.push(`/admin/pages${next.toString() ? `?${next.toString()}` : ''}`)
     })
   }
 

@@ -174,9 +174,7 @@ describe('ProductPage', () => {
       expect(meta.title).toBe('EN meta')
       expect(meta.description).toBe('EN desc')
       // Canonical for the EN variant is the /en-prefixed URL.
-      expect(meta.alternates?.canonical).toBe(
-        'https://new.ximi4ka.ru/en/product/kit',
-      )
+      expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/en/product/kit')
       // hreflang alternates include RU unprefixed, EN prefixed, x-default=RU.
       expect(meta.alternates?.languages).toEqual({
         ru: 'https://new.ximi4ka.ru/product/kit',

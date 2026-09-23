@@ -26,9 +26,7 @@ describe('CORS', () => {
 
   it('allows the configured web origin with credentials', async () => {
     const app = createApp()
-    const res = await request(app)
-      .get('/health')
-      .set('Origin', 'http://localhost:3000')
+    const res = await request(app).get('/health').set('Origin', 'http://localhost:3000')
     expect(res.status).toBe(200)
     expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3000')
     expect(res.headers['access-control-allow-credentials']).toBe('true')

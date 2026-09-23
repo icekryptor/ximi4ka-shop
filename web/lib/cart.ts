@@ -77,9 +77,7 @@ export function loadCart(): CartItem[] {
     if (!raw) return []
     const parsed: unknown = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed
-      .map(normalizeCartItem)
-      .filter((item): item is CartItem => item !== null)
+    return parsed.map(normalizeCartItem).filter((item): item is CartItem => item !== null)
   } catch {
     return []
   }
@@ -180,10 +178,7 @@ export function useCart() {
   }, [])
 
   const subtotal = useMemo(() => calculateSubtotal(items), [items])
-  const itemCount = useMemo(
-    () => items.reduce((sum, i) => sum + i.quantity, 0),
-    [items],
-  )
+  const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items])
 
   return { items, add, remove, setQty, clear, subtotal, itemCount }
 }

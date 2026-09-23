@@ -2,14 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { SearchResult } from '@ximi4ka-shop/shared'
 import { searchCatalog } from '@/lib/api'
 import { formatRub } from '@/lib/stockLabel'
@@ -50,15 +43,12 @@ export function HeaderSearch() {
   const hasQuery = query.trim().length >= MIN_QUERY
 
   // Debounced fetch. A stale request is aborted when the query changes so
-  // out-of-order responses can never overwrite fresher results.
+  // out-of-order responses can never overwrite fresher results. `loading` and
+  // the reset for a too-short query are set in onChange, not here: setState
+  // straight in an effect body re-renders in a cascade.
   useEffect(() => {
-    if (!hasQuery) {
-      setResult(null)
-      setLoading(false)
-      return
-    }
+    if (!hasQuery) return
     const controller = new AbortController()
-    setLoading(true)
     const timer = setTimeout(() => {
       searchCatalog(query.trim(), { signal: controller.signal })
         .then((res) => {
@@ -66,7 +56,8 @@ export function HeaderSearch() {
           setActiveIndex(-1)
         })
         .catch((err: unknown) => {
-          if ((err as { name?: string })?.name !== 'AbortError') setResult({ products: [], posts: [] })
+          if ((err as { name?: string })?.name !== 'AbortError')
+            setResult({ products: [], posts: [] })
         })
         .finally(() => {
           if (!controller.signal.aborted) setLoading(false)
@@ -139,7 +130,14 @@ export function HeaderSearch() {
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-lj-ink)] opacity-55"
         >
           {/* Лупа */}
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+          >
             <circle cx="7" cy="7" r="4.5" />
             <line x1="10.5" y1="10.5" x2="14" y2="14" strokeLinecap="round" />
           </svg>
@@ -150,8 +148,12 @@ export function HeaderSearch() {
           role="searchbox"
           value={query}
           onChange={(e) => {
-            setQuery(e.target.value)
+            const next = e.target.value
+            const searchable = next.trim().length >= MIN_QUERY
+            setQuery(next)
             setOpen(true)
+            setLoading(searchable)
+            if (!searchable) setResult(null)
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
@@ -207,7 +209,9 @@ export function HeaderSearch() {
             items.map((item, i) => {
               const active = i === activeIndex
               const optClass = `flex items-center gap-3 rounded-[var(--radius-lj-bright-sm)] px-2.5 py-2 no-underline transition-colors ${
-                active ? 'bg-[var(--color-lj-cream-shade)]' : 'hover:bg-[var(--color-lj-cream-shade)]'
+                active
+                  ? 'bg-[var(--color-lj-cream-shade)]'
+                  : 'hover:bg-[var(--color-lj-cream-shade)]'
               }`
               return (
                 <li key={`${item.kind}-${item.slug}`} role="presentation">

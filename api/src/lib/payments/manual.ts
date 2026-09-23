@@ -1,10 +1,5 @@
 import type { Order } from '../../entities/Order.js'
-import type {
-  CreatePaymentResult,
-  PaymentEvent,
-  PaymentProvider,
-  PaymentStatus,
-} from './types.js'
+import type { CreatePaymentResult, PaymentEvent, PaymentProvider, PaymentStatus } from './types.js'
 
 // Manual mode: no online payment at all. The order is created as `pending`
 // with paymentUrl = null and a manager contacts the customer to arrange

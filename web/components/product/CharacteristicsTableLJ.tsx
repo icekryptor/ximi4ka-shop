@@ -18,9 +18,7 @@ export function CharacteristicsTableLJ({ characteristics }: Props) {
           <dt className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-bone-mute)]">
             {label}
           </dt>
-          <dd className="font-lj-body text-[1.0625rem] text-[var(--color-lj-bone)]">
-            {value}
-          </dd>
+          <dd className="font-lj-body text-[1.0625rem] text-[var(--color-lj-bone)]">{value}</dd>
         </div>
       ))}
     </dl>

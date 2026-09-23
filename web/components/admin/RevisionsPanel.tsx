@@ -36,8 +36,7 @@ export function RevisionsPanel({ entityType, entityId, onRestored }: Props) {
       setItems(res.data)
       setTotal(res.pagination.total)
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : 'Не удалось загрузить историю'
+      const msg = err instanceof ApiError ? err.message : 'Не удалось загрузить историю'
       setError(msg)
     } finally {
       setLoading(false)
@@ -71,8 +70,7 @@ export function RevisionsPanel({ entityType, entityId, onRestored }: Props) {
       onRestored?.()
       router.refresh()
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : 'Ошибка восстановления'
+      const msg = err instanceof ApiError ? err.message : 'Ошибка восстановления'
       window.alert(msg)
     } finally {
       setRestoringId(null)
@@ -92,21 +90,14 @@ export function RevisionsPanel({ entityType, entityId, onRestored }: Props) {
             {error}
           </div>
         ) : items.length === 0 ? (
-          <div className="text-sm text-brand-text-secondary">
-            Пока нет изменений
-          </div>
+          <div className="text-sm text-brand-text-secondary">Пока нет изменений</div>
         ) : (
           <ul className="divide-y divide-brand-border">
             {items.map((r) => (
-              <li
-                key={r.id}
-                className="py-2 flex items-center gap-3 text-sm"
-              >
+              <li key={r.id} className="py-2 flex items-center gap-3 text-sm">
                 <div className="flex-1 min-w-0">
                   <div className="text-brand-text">{formatDateTime(r.editedAt)}</div>
-                  <div className="text-brand-text-secondary truncate">
-                    {r.editorEmail ?? '—'}
-                  </div>
+                  <div className="text-brand-text-secondary truncate">{r.editorEmail ?? '—'}</div>
                 </div>
                 <button
                   type="button"

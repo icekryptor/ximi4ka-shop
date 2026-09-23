@@ -9,13 +9,14 @@ interface Props {
 export function MoleculeMotifLJ({ variant, className = '', style }: Props) {
   if (variant === 'benzene') {
     return (
-      <svg
-        viewBox="0 0 400 400"
-        aria-hidden="true"
-        className={className}
-        style={style}
-      >
-        <g stroke="currentColor" fill="none" strokeWidth={1.4} strokeLinejoin="round" strokeLinecap="round">
+      <svg viewBox="0 0 400 400" aria-hidden="true" className={className} style={style}>
+        <g
+          stroke="currentColor"
+          fill="none"
+          strokeWidth={1.4}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        >
           <polygon points="200,40 348,125 348,275 200,360 52,275 52,125" />
           <circle cx="200" cy="200" r="86" />
           <line x1="200" y1="40" x2="200" y2="2" />
@@ -49,9 +50,15 @@ export function MoleculeMotifLJ({ variant, className = '', style }: Props) {
           <line x1="20" y1="38" x2="55" y2="22" />
           <line x1="55" y1="22" x2="90" y2="38" />
         </g>
-        <text x="14" y="44" fontFamily="var(--font-lj-mono)" fontSize="9" fill="currentColor">H</text>
-        <text x="92" y="44" fontFamily="var(--font-lj-mono)" fontSize="9" fill="currentColor">H</text>
-        <text x="49" y="18" fontFamily="var(--font-lj-mono)" fontSize="9" fill="currentColor">O</text>
+        <text x="14" y="44" fontFamily="var(--font-lj-mono)" fontSize="9" fill="currentColor">
+          H
+        </text>
+        <text x="92" y="44" fontFamily="var(--font-lj-mono)" fontSize="9" fill="currentColor">
+          H
+        </text>
+        <text x="49" y="18" fontFamily="var(--font-lj-mono)" fontSize="9" fill="currentColor">
+          O
+        </text>
       </svg>
     )
   }

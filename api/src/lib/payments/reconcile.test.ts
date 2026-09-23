@@ -3,10 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { applyPaymentStatus } from './orderStatus.js'
-import {
-  reconcilePendingOrders,
-  startReconciliationJob,
-} from './reconcile.js'
+import { reconcilePendingOrders, startReconciliationJob } from './reconcile.js'
 import { ManualProvider } from './manual.js'
 import type { PaymentProvider, PaymentStatus } from './types.js'
 

@@ -104,9 +104,7 @@ describe('Revision routes', () => {
     expect(restoreRes.body.data).toEqual({ entityType: 'product', entityId: id })
 
     // Product is now back to Alpha.
-    const getRes = await request(app)
-      .get(`/api/admin/products/${id}`)
-      .set(authHeaders(auth))
+    const getRes = await request(app).get(`/api/admin/products/${id}`).set(authHeaders(auth))
     expect(getRes.body.data.name).toBe('Alpha')
     expect(getRes.body.data.priceRub).toBe(100)
 
@@ -209,9 +207,7 @@ describe('Revision routes', () => {
     expect(res.body.data).toHaveLength(2)
     // Newest first: we expect the 2 timestamps to be descending.
     const [a, b] = res.body.data as Array<{ editedAt: string; editorEmail: string | null }>
-    expect(new Date(a.editedAt).getTime()).toBeGreaterThanOrEqual(
-      new Date(b.editedAt).getTime(),
-    )
+    expect(new Date(a.editedAt).getTime()).toBeGreaterThanOrEqual(new Date(b.editedAt).getTime())
     expect(a.editorEmail).toBe('admin@test.local')
     expect(b.editorEmail).toBe('admin@test.local')
     expect(res.body.pagination).toEqual({ limit: 20, offset: 0, total: 2 })

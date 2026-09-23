@@ -5,10 +5,7 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { AdminSession } from '../../entities/AdminSession.js'
 import type { AdminUser } from '../../entities/AdminUser.js'
 import { ApiError } from '../errors.js'
-import {
-  CSRF_COOKIE_NAME,
-  SESSION_COOKIE_NAME,
-} from '../auth/constants.js'
+import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from '../auth/constants.js'
 
 // Augment the Express Request type with the fields we attach after a
 // successful auth check. Declared here so every consumer imports it for free.
@@ -48,11 +45,7 @@ export async function requireAdminAuth(
   next()
 }
 
-export function requireCsrfToken(
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-): void {
+export function requireCsrfToken(req: Request, _res: Response, next: NextFunction): void {
   if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') {
     return next()
   }

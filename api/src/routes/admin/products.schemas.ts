@@ -48,5 +48,12 @@ export const PublicListQuerySchema = z.object({
     .trim()
     .max(200)
     .optional()
-    .transform((v) => (v ? v.split(',').map((s) => s.trim()).filter(Boolean) : [])),
+    .transform((v) =>
+      v
+        ? v
+            .split(',')
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [],
+    ),
 })

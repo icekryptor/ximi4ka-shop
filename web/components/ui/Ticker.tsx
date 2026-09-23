@@ -25,19 +25,14 @@ export function Ticker({ items, surface = 'bright', className = '' }: Props) {
   // Duplicate items so the marquee loops seamlessly when track translates -50%.
   const doubled = [...items, ...items]
   return (
-    <div
-      className={`relative overflow-hidden ${surfaceClass[surface]} ${className}`}
-    >
+    <div className={`relative overflow-hidden ${surfaceClass[surface]} ${className}`}>
       <div className="animate-ticker-scroll flex whitespace-nowrap py-2.5 hover:[animation-play-state:paused]">
         {doubled.map((item, i) => (
           <span
             key={i}
             className="mx-6 inline-flex items-center gap-3.5 font-lj-mono text-[length:var(--text-lj-mono-sm)] font-medium uppercase tracking-[0.08em]"
           >
-            <span
-              aria-hidden="true"
-              className={`w-1 h-1 rounded-full ${dotClass[surface]}`}
-            />
+            <span aria-hidden="true" className={`w-1 h-1 rounded-full ${dotClass[surface]}`} />
             {item}
           </span>
         ))}

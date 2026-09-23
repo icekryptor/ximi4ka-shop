@@ -14,7 +14,11 @@ interface Props {
  * Shared by ImageBlock / GalleryBlock / VideoBlock and PDP product images.
  */
 export function MediaFrame({
-  children, cornerMark, caption, aspectRatio = '4/5', className = '',
+  children,
+  cornerMark,
+  caption,
+  aspectRatio = '4/5',
+  className = '',
 }: Props) {
   return (
     <figure className={`flex flex-col gap-3 ${className}`.trim()}>

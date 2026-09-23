@@ -16,10 +16,7 @@ const logger = pino().child({ mod: 'seed' })
 const ADMIN_EMAIL = 'admin@ximi4ka.local'
 const ADMIN_PASSWORD = 'admin-password-change-me'
 
-type CatSlug =
-  | 'himicheskie-nabory'
-  | 'eksperimentalnye-nabory'
-  | 'obrazovatelnye-materialy'
+type CatSlug = 'himicheskie-nabory' | 'eksperimentalnye-nabory' | 'obrazovatelnye-materialy'
 
 const categorySeed: Array<{ slug: CatSlug; name: string; sortOrder: number }> = [
   { slug: 'himicheskie-nabory', name: 'Химические наборы', sortOrder: 1 },
@@ -281,11 +278,13 @@ const pageSeed: Array<{
         items: [
           {
             question: 'Безопасны ли наборы для детей?',
-            answer: 'Все реактивы проходят сертификацию по ГОСТ. Наборы разработаны педагогами и химиками и соответствуют возрастным маркировкам.',
+            answer:
+              'Все реактивы проходят сертификацию по ГОСТ. Наборы разработаны педагогами и химиками и соответствуют возрастным маркировкам.',
           },
           {
             question: 'Как быстро доставите заказ?',
-            answer: 'По Москве — в течение 1–2 рабочих дней, по России — 3–7 дней через СДЭК и Почту России.',
+            answer:
+              'По Москве — в течение 1–2 рабочих дней, по России — 3–7 дней через СДЭК и Почту России.',
           },
           {
             question: 'Можно ли вернуть набор?',

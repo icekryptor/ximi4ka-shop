@@ -76,9 +76,7 @@ describe('/checkout page', () => {
   it('renders the heading and all form fields', () => {
     seedCart(seed)
     render(<CheckoutPage />)
-    expect(
-      screen.getByRole('heading', { name: 'Оформление заказа' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Оформление заказа' })).toBeInTheDocument()
     expect(screen.getByLabelText(/имя/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/телефон/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
@@ -110,7 +108,13 @@ describe('/checkout page', () => {
 
   it('shows «Бесплатно» when the subtotal clears the free-shipping threshold', () => {
     seedCart([
-      { productId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', slug: 'kit-b', name: 'Набор B', priceRub: 3500, quantity: 1 },
+      {
+        productId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        slug: 'kit-b',
+        name: 'Набор B',
+        priceRub: 3500,
+        quantity: 1,
+      },
     ])
     render(<CheckoutPage />)
     // 3500 ≥ 3000 → ПВЗ бесплатно
@@ -170,9 +174,7 @@ describe('/checkout page', () => {
     fillValidForm()
 
     fireEvent.click(screen.getByRole('button', { name: /оформить заказ/i }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      /не удалось связаться с сервером/i,
-    )
+    expect(await screen.findByRole('alert')).toHaveTextContent(/не удалось связаться с сервером/i)
 
     fireEvent.click(screen.getByRole('button', { name: /оформить заказ/i }))
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
@@ -205,13 +207,14 @@ describe('/checkout page', () => {
   })
 
   it('shows the server message on 409 (availability changed)', async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({
-          error: { code: 'out_of_stock', message: 'Некоторые товары закончились' },
-        }),
-        { status: 409 },
-      ),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: { code: 'out_of_stock', message: 'Некоторые товары закончились' },
+          }),
+          { status: 409 },
+        ),
     )
     vi.stubGlobal('fetch', fetchMock)
     seedCart(seed)

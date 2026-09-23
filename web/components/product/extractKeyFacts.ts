@@ -50,10 +50,34 @@ const USE_FACT_DEFINITIONS: ReadonlyArray<{
   bottomRight: string
   charKeys: readonly string[]
 }> = [
-  { key: 'age',      label: 'возраст',  bottomLeft: 'от 10 лет',    bottomRight: 'рекомендуется',     charKeys: ['Возраст', 'Age'] },
-  { key: 'time',     label: 'время',    bottomLeft: 'минут',         bottomRight: 'на один опыт',     charKeys: ['Время опыта', 'Время'] },
-  { key: 'lead',     label: 'срок',     bottomLeft: 'готовность',    bottomRight: 'к отправке',       charKeys: ['Срок изготовления', 'Срок'] },
-  { key: 'warranty', label: 'гарантия', bottomLeft: 'на компоненты', bottomRight: 'возврат 30 дней',  charKeys: ['Гарантия'] },
+  {
+    key: 'age',
+    label: 'возраст',
+    bottomLeft: 'от 10 лет',
+    bottomRight: 'рекомендуется',
+    charKeys: ['Возраст', 'Age'],
+  },
+  {
+    key: 'time',
+    label: 'время',
+    bottomLeft: 'минут',
+    bottomRight: 'на один опыт',
+    charKeys: ['Время опыта', 'Время'],
+  },
+  {
+    key: 'lead',
+    label: 'срок',
+    bottomLeft: 'готовность',
+    bottomRight: 'к отправке',
+    charKeys: ['Срок изготовления', 'Срок'],
+  },
+  {
+    key: 'warranty',
+    label: 'гарантия',
+    bottomLeft: 'на компоненты',
+    bottomRight: 'возврат 30 дней',
+    charKeys: ['Гарантия'],
+  },
 ]
 
 /**
@@ -61,9 +85,7 @@ const USE_FACT_DEFINITIONS: ReadonlyArray<{
  * Characteristics section's NumberCell row. Each cell hides individually
  * when its characteristic is missing — the row auto-collapses.
  */
-export function extractUseFacts(
-  characteristics: Record<string, string>,
-): UseFact[] {
+export function extractUseFacts(characteristics: Record<string, string>): UseFact[] {
   const out: UseFact[] = []
   for (const def of USE_FACT_DEFINITIONS) {
     const value = def.charKeys.map((k) => characteristics[k]).find(Boolean)

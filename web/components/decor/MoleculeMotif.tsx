@@ -19,15 +19,20 @@ const ATOMS: Array<[number, number, number]> = [
 ]
 
 const BONDS: Array<[number, number]> = [
-  [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0],
-  [0, 6], [2, 6], [4, 6],
+  [0, 1],
+  [1, 2],
+  [2, 3],
+  [3, 4],
+  [4, 5],
+  [5, 0],
+  [0, 6],
+  [2, 6],
+  [4, 6],
 ]
 
 export function MoleculeMotif({ variant = 'subtle', className = '' }: Props) {
-  const stroke =
-    variant === 'vivid' ? 'var(--color-brand)' : 'var(--color-border-strong)'
-  const fill =
-    variant === 'vivid' ? 'rgba(131, 110, 254, 0.08)' : 'transparent'
+  const stroke = variant === 'vivid' ? 'var(--color-brand)' : 'var(--color-border-strong)'
+  const fill = variant === 'vivid' ? 'rgba(131, 110, 254, 0.08)' : 'transparent'
 
   return (
     <svg

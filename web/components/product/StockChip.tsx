@@ -1,11 +1,13 @@
 import type { StockStatus } from '@ximi4ka-shop/shared'
 
-interface Props { status: StockStatus }
+interface Props {
+  status: StockStatus
+}
 
 const CONFIG: Record<StockStatus, { label: string; dotClass: string }> = {
-  in_stock:     { label: 'В наличии',      dotClass: 'bg-[var(--color-stock-success)]' },
-  preorder:     { label: 'Под заказ',      dotClass: 'bg-[var(--color-stock-warning)]' },
-  out_of_stock: { label: 'Нет в наличии',  dotClass: 'bg-[var(--color-stock-danger)]'  },
+  in_stock: { label: 'В наличии', dotClass: 'bg-[var(--color-stock-success)]' },
+  preorder: { label: 'Под заказ', dotClass: 'bg-[var(--color-stock-warning)]' },
+  out_of_stock: { label: 'Нет в наличии', dotClass: 'bg-[var(--color-stock-danger)]' },
 }
 
 export function StockChip({ status }: Props) {

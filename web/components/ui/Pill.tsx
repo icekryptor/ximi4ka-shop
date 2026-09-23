@@ -1,12 +1,6 @@
 import type { ReactNode } from 'react'
 
-type PillVariant =
-  | 'solid-brand'
-  | 'soft-brand'
-  | 'success'
-  | 'warning'
-  | 'danger'
-  | 'neutral'
+type PillVariant = 'solid-brand' | 'soft-brand' | 'success' | 'warning' | 'danger' | 'neutral'
 
 interface Props {
   children: ReactNode

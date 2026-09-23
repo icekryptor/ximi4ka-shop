@@ -31,9 +31,7 @@ describe('ProductGridBlockEditor', () => {
     fireEvent.change(screen.getByLabelText('Заголовок'), {
       target: { value: 'Популярное' },
     })
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ heading: 'Популярное' }),
-    )
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ heading: 'Популярное' }))
   })
 
   it('does not fire onChange if committed value matches current', () => {

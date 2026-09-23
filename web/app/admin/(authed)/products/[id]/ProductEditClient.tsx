@@ -60,9 +60,7 @@ export function ProductEditClient({ initial }: Props) {
 
   async function handleDelete() {
     if (deleteBusy) return
-    const ok = window.confirm(
-      `Удалить товар «${product.name}»? Это действие мягкое (soft-delete).`,
-    )
+    const ok = window.confirm(`Удалить товар «${product.name}»? Это действие мягкое (soft-delete).`)
     if (!ok) return
     setDeleteBusy(true)
     try {
@@ -121,9 +119,7 @@ function PublishToggleButton({
       disabled={busy}
       className={
         'px-4 py-2 rounded-full text-sm font-medium disabled:opacity-50 ' +
-        (isPublished
-          ? 'bg-brand-bg-soft text-brand-text'
-          : 'bg-brand text-white')
+        (isPublished ? 'bg-brand-bg-soft text-brand-text' : 'bg-brand text-white')
       }
     >
       {busy ? '...' : isPublished ? 'Снять с публикации' : 'Опубликовать'}
@@ -131,13 +127,7 @@ function PublishToggleButton({
   )
 }
 
-function DeleteButton({
-  onDelete,
-  busy,
-}: {
-  onDelete: () => void
-  busy: boolean
-}) {
+function DeleteButton({ onDelete, busy }: { onDelete: () => void; busy: boolean }) {
   return (
     <button
       type="button"

@@ -40,9 +40,7 @@ describe('BlogPostCard', () => {
   it('renders rubric, excerpt and the ru-RU publish date', () => {
     render(<BlogPostCard post={makePost()} />)
     expect(screen.getByText('Опыты')).toBeInTheDocument()
-    expect(
-      screen.getByText('Разбираем химию горения на кухне.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('Разбираем химию горения на кухне.')).toBeInTheDocument()
     expect(screen.getByText('1 июня 2026')).toBeInTheDocument()
   })
 
@@ -50,9 +48,7 @@ describe('BlogPostCard', () => {
     // The cover link is aria-hidden (the title link is the accessible
     // entry point), so query the DOM directly rather than by role.
     const { container } = render(
-      <BlogPostCard
-        post={makePost({ coverImageUrl: '/uploads/blog/flame.jpg' })}
-      />,
+      <BlogPostCard post={makePost({ coverImageUrl: '/uploads/blog/flame.jpg' })} />,
     )
     const img = container.querySelector('img')
     expect(img).not.toBeNull()
@@ -73,8 +69,6 @@ describe('BlogPostCard', () => {
   it('omits rubric and excerpt blocks when the post has none', () => {
     render(<BlogPostCard post={makePost({ rubric: null, excerpt: null })} />)
     expect(screen.queryByText('Опыты')).not.toBeInTheDocument()
-    expect(
-      screen.queryByText('Разбираем химию горения на кухне.'),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Разбираем химию горения на кухне.')).not.toBeInTheDocument()
   })
 })

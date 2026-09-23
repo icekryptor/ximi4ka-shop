@@ -6,10 +6,7 @@ import { MobileBuyBarLJ } from '@/components/product/MobileBuyBarLJ'
 import { useCart } from '@/lib/cart'
 
 interface Props {
-  product: Pick<
-    Product,
-    'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'
-  >
+  product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'>
 }
 
 /**
@@ -29,9 +26,7 @@ export function MobileBuyBarMount({ product }: Props) {
   const { add } = useCart()
 
   useEffect(() => {
-    const sentinel = document.querySelector<HTMLElement>(
-      '[data-add-to-cart-row]',
-    )
+    const sentinel = document.querySelector<HTMLElement>('[data-add-to-cart-row]')
     // Reading from the DOM (an external system) is exactly what effects
     // are for; the set-state-in-effect rule misclassifies this.
     if (!sentinel) {
@@ -83,11 +78,7 @@ export function MobileBuyBarMount({ product }: Props) {
       }`}
       aria-hidden={!shown}
     >
-      <MobileBuyBarLJ
-        priceRub={product.priceRub}
-        onAddToCart={handleAdd}
-        disabled={isOutOfStock}
-      />
+      <MobileBuyBarLJ priceRub={product.priceRub} onAddToCart={handleAdd} disabled={isOutOfStock} />
     </div>
   )
 }

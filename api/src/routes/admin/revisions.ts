@@ -5,15 +5,8 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { EntityRevision } from '../../entities/EntityRevision.js'
 import { AdminUser } from '../../entities/AdminUser.js'
 import { notFound } from '../errors.js'
-import {
-  requireAdminAuth,
-  requireCsrfToken,
-} from '../middleware/requireAdminAuth.js'
-import {
-  writeRevision,
-  restoreRevision,
-  type RevisionEntityType,
-} from '../../lib/revisions.js'
+import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
+import { writeRevision, restoreRevision, type RevisionEntityType } from '../../lib/revisions.js'
 
 export const adminRevisionsRouter: Router = Router()
 
@@ -61,7 +54,7 @@ adminRevisionsRouter.get('/entity/:entityType/:entityId', async (req, res, next)
       entityId: r.entityId,
       editedAt: r.editedAt,
       editedBy: r.editedBy,
-      editorEmail: r.editedBy ? emailById.get(r.editedBy) ?? null : null,
+      editorEmail: r.editedBy ? (emailById.get(r.editedBy) ?? null) : null,
     }))
 
     res.json({ data, pagination: { limit, offset, total } })

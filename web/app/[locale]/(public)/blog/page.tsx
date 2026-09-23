@@ -11,12 +11,7 @@ import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { breadcrumbJsonLd } from '@/lib/jsonLd'
-import {
-  DEFAULT_LOCALE,
-  SUPPORTED_LOCALES,
-  isLocale,
-  type Locale,
-} from '@/lib/i18n'
+import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
 
 // Пагинация живёт в searchParams, а ISR кеширует страницу без учёта query:
 // из кеша любой ?page=N отдавался бы первой страницей. См. тот же разбор в
@@ -34,9 +29,7 @@ function pathForLocale(locale: Locale): string {
   return locale === DEFAULT_LOCALE ? '/blog' : `/${locale}/blog`
 }
 
-export async function generateMetadata({
-  params,
-}: Pick<Props, 'params'>): Promise<Metadata> {
+export async function generateMetadata({ params }: Pick<Props, 'params'>): Promise<Metadata> {
   const { locale: rawLocale } = await params
   if (!isLocale(rawLocale)) notFound()
   const locale: Locale = rawLocale
@@ -54,9 +47,7 @@ export async function generateMetadata({
   })
 }
 
-async function fetchPosts(
-  page: number,
-): Promise<{ posts: BlogPost[]; total: number }> {
+async function fetchPosts(page: number): Promise<{ posts: BlogPost[]; total: number }> {
   try {
     const res = await listBlogPosts({ page, limit: PAGE_SIZE })
     return { posts: res.data, total: res.pagination.total }
@@ -73,10 +64,7 @@ export default async function BlogListPage({ params, searchParams }: Props) {
   const locale: Locale = rawLocale
   const sp = (await searchParams) ?? {}
   const pageRaw = sp.page
-  const page = Math.max(
-    1,
-    parseInt(typeof pageRaw === 'string' ? pageRaw : '1', 10) || 1,
-  )
+  const page = Math.max(1, parseInt(typeof pageRaw === 'string' ? pageRaw : '1', 10) || 1)
 
   const { posts, total } = await fetchPosts(page)
   const totalPages = Math.ceil(total / PAGE_SIZE)
@@ -103,9 +91,7 @@ export default async function BlogListPage({ params, searchParams }: Props) {
         <span className="mx-2" aria-hidden="true">
           /
         </span>
-        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">
-          Блог
-        </span>
+        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">Блог</span>
       </nav>
 
       {/* B. Блог (LAB CREAM) — v3 LJ hero */}
@@ -116,14 +102,11 @@ export default async function BlogListPage({ params, searchParams }: Props) {
             B.0 / Полевые записи
           </p>
           <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,6vw,5rem)] leading-[0.92] tracking-[-0.045em] mb-6">
-            <em className="italic text-[var(--color-lj-brand)] font-[900]">
-              Блог
-            </em>{' '}
-            о химии
+            <em className="italic text-[var(--color-lj-brand)] font-[900]">Блог</em> о химии
           </h1>
           <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch]">
-            Записи из лаборатории: как устроены реакции, что происходит в
-            наборах и как безопасно повторить опыты дома.
+            Записи из лаборатории: как устроены реакции, что происходит в наборах и как безопасно
+            повторить опыты дома.
           </p>
         </div>
       </LabSection>

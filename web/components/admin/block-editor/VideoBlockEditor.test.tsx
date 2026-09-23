@@ -15,9 +15,7 @@ describe('VideoBlockEditor', () => {
     fireEvent.change(screen.getByLabelText('Провайдер'), {
       target: { value: 'rutube' },
     })
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ provider: 'rutube' }),
-    )
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ provider: 'rutube' }))
   })
 
   it('updates videoId', () => {
@@ -31,8 +29,6 @@ describe('VideoBlockEditor', () => {
     fireEvent.change(screen.getByLabelText('ID видео'), {
       target: { value: 'dQw4w9WgXcQ' },
     })
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ videoId: 'dQw4w9WgXcQ' }),
-    )
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ videoId: 'dQw4w9WgXcQ' }))
   })
 })

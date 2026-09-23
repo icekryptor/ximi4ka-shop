@@ -22,13 +22,10 @@ async function fetchProducts(opts: {
     offset: String(opts.offset),
   })
   if (opts.q) params.set('q', opts.q)
-  const res = await fetch(
-    `${ADMIN_API_URL_SERVER}/api/admin/products?${params.toString()}`,
-    {
-      headers: { cookie: cookieHeader },
-      cache: 'no-store',
-    },
-  )
+  const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/products?${params.toString()}`, {
+    headers: { cookie: cookieHeader },
+    cache: 'no-store',
+  })
   if (!res.ok) {
     throw new Error(`Admin products list failed: ${res.status}`)
   }
@@ -89,10 +86,7 @@ export default async function AdminProductsPage({
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td
-                  colSpan={6}
-                  className="px-4 py-12 text-center text-brand-text-secondary"
-                >
+                <td colSpan={6} className="px-4 py-12 text-center text-brand-text-secondary">
                   {q
                     ? 'Ничего не найдено. Попробуйте другой запрос.'
                     : 'Пока нет товаров. Создайте первый.'}
@@ -100,10 +94,7 @@ export default async function AdminProductsPage({
               </tr>
             ) : (
               data.map((p) => (
-                <tr
-                  key={p.id}
-                  className="border-t border-brand-border hover:bg-brand-bg-soft/50"
-                >
+                <tr key={p.id} className="border-t border-brand-border hover:bg-brand-bg-soft/50">
                   <td className="px-4 py-3">
                     <Link
                       href={`/admin/products/${p.id}`}
@@ -154,12 +145,7 @@ export default async function AdminProductsPage({
             offset={Math.max(0, offset - pagination.limit)}
             label="← Назад"
           />
-          <PageLink
-            disabled={!hasNext}
-            q={q}
-            offset={offset + pagination.limit}
-            label="Вперёд →"
-          />
+          <PageLink disabled={!hasNext} q={q} offset={offset + pagination.limit} label="Вперёд →" />
         </div>
       </div>
     </div>

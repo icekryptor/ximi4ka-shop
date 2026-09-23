@@ -4,21 +4,33 @@ import { LabSection } from './LabSection'
 
 describe('<LabSection>', () => {
   it('renders cream variant with ink text by default', () => {
-    render(<LabSection variant="cream" data-testid="lab-section">hello</LabSection>)
+    render(
+      <LabSection variant="cream" data-testid="lab-section">
+        hello
+      </LabSection>,
+    )
     const el = screen.getByTestId('lab-section')
     expect(el.className).toContain('bg-[var(--color-lj-cream)]')
     expect(el.className).toContain('text-[var(--color-lj-ink)]')
   })
 
   it('renders ink variant with bone text', () => {
-    render(<LabSection variant="ink" data-testid="lab-section">hello</LabSection>)
+    render(
+      <LabSection variant="ink" data-testid="lab-section">
+        hello
+      </LabSection>,
+    )
     const el = screen.getByTestId('lab-section')
     expect(el.className).toContain('bg-[var(--color-lj-ink)]')
     expect(el.className).toContain('text-[var(--color-lj-bone)]')
   })
 
   it('renders as a <section> element (load-bearing semantics)', () => {
-    render(<LabSection variant="cream" data-testid="lab-section">x</LabSection>)
+    render(
+      <LabSection variant="cream" data-testid="lab-section">
+        x
+      </LabSection>,
+    )
     expect(screen.getByTestId('lab-section').tagName).toBe('SECTION')
   })
 
@@ -34,13 +46,21 @@ describe('<LabSection>', () => {
   })
 
   it('exposes --lj-prose-color CSS variable: ink for cream variant', () => {
-    render(<LabSection variant="cream" data-testid="lab-section">x</LabSection>)
+    render(
+      <LabSection variant="cream" data-testid="lab-section">
+        x
+      </LabSection>,
+    )
     const el = screen.getByTestId('lab-section')
     expect(el.style.getPropertyValue('--lj-prose-color')).toBe('var(--color-lj-ink)')
   })
 
   it('exposes --lj-prose-color CSS variable: bone for ink variant', () => {
-    render(<LabSection variant="ink" data-testid="lab-section">x</LabSection>)
+    render(
+      <LabSection variant="ink" data-testid="lab-section">
+        x
+      </LabSection>,
+    )
     const el = screen.getByTestId('lab-section')
     expect(el.style.getPropertyValue('--lj-prose-color')).toBe('var(--color-lj-bone)')
   })

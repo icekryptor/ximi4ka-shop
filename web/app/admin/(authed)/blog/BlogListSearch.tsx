@@ -20,9 +20,7 @@ export function BlogListSearch({ initialQuery }: { initialQuery: string }) {
     else next.delete('q')
     next.delete('offset')
     startTransition(() => {
-      router.push(
-        `/admin/blog${next.toString() ? `?${next.toString()}` : ''}`,
-      )
+      router.push(`/admin/blog${next.toString() ? `?${next.toString()}` : ''}`)
     })
   }
 

@@ -27,9 +27,7 @@ export function RedirectsListControls({
   function navigate(next: URLSearchParams) {
     next.delete('offset')
     startTransition(() => {
-      router.push(
-        `/admin/redirects${next.toString() ? `?${next.toString()}` : ''}`,
-      )
+      router.push(`/admin/redirects${next.toString() ? `?${next.toString()}` : ''}`)
     })
   }
 

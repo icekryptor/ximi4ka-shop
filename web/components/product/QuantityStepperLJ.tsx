@@ -20,9 +20,7 @@ export function QuantityStepperLJ({ value, onChange, min = 1, max = 99 }: Props)
       >
         −
       </button>
-      <span className="px-4 py-2 font-lj-display font-[700] min-w-[3ch] text-center">
-        {value}
-      </span>
+      <span className="px-4 py-2 font-lj-display font-[700] min-w-[3ch] text-center">{value}</span>
       <button
         type="button"
         onClick={inc}

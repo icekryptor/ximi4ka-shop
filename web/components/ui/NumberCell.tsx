@@ -7,12 +7,17 @@ interface Props {
   bigVariant?: 'default' | 'decimal'
   bottomLeft?: string
   bottomRight?: string
-  children?: ReactNode  // viz slot
+  children?: ReactNode // viz slot
 }
 
 export function NumberCell({
-  index, topLabel, big, bigVariant = 'default',
-  bottomLeft, bottomRight, children,
+  index,
+  topLabel,
+  big,
+  bigVariant = 'default',
+  bottomLeft,
+  bottomRight,
+  children,
 }: Props) {
   const tracking = bigVariant === 'decimal' ? 'tracking-[-0.06em]' : 'tracking-[-0.045em]'
   return (
@@ -22,7 +27,9 @@ export function NumberCell({
         <span>{index}</span>
         <span>{topLabel}</span>
       </div>
-      <div className={`lj-num-cell-big font-lj-display font-[900] leading-none ${tracking} text-[clamp(2.5rem,4.8vw,4.25rem)] text-[var(--color-lj-bone)]`}>
+      <div
+        className={`lj-num-cell-big font-lj-display font-[900] leading-none ${tracking} text-[clamp(2.5rem,4.8vw,4.25rem)] text-[var(--color-lj-bone)]`}
+      >
         {big}
       </div>
       {children && <div className="flex items-center min-h-[36px] my-1">{children}</div>}

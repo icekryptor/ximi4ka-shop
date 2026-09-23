@@ -28,21 +28,13 @@ export function QuantityStepper({
   const dec = () => onChange(Math.max(min, value - 1))
   const inc = () => onChange(Math.min(max, value + 1))
 
-  const btn =
-    size === 'sm'
-      ? 'w-7 h-7 text-sm'
-      : 'w-9 h-9 text-base'
-  const cell =
-    size === 'sm' ? 'min-w-7 text-[0.8125rem]' : 'min-w-9 text-[0.9375rem]'
+  const btn = size === 'sm' ? 'w-7 h-7 text-sm' : 'w-9 h-9 text-base'
+  const cell = size === 'sm' ? 'min-w-7 text-[0.8125rem]' : 'min-w-9 text-[0.9375rem]'
 
   const btnClass = `${btn} inline-flex items-center justify-center border border-[var(--color-lj-ink)] rounded-full font-lj-mono leading-none transition-[background,color] duration-200 hover:bg-[var(--color-lj-ink)] hover:text-[var(--color-lj-bone)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-lj-brand-deep)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[var(--color-lj-ink)]`
 
   return (
-    <div
-      className="inline-flex items-center gap-2"
-      role="group"
-      aria-label={ariaLabel}
-    >
+    <div className="inline-flex items-center gap-2" role="group" aria-label={ariaLabel}>
       <button
         type="button"
         onClick={dec}

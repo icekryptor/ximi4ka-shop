@@ -42,8 +42,7 @@ export function RichTextEditor({ value, onChange, placeholder }: Props) {
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class:
-          'min-h-[200px] p-4 prose prose-sm max-w-none focus:outline-none',
+        class: 'min-h-[200px] p-4 prose prose-sm max-w-none focus:outline-none',
         ...(placeholder ? { 'data-placeholder': placeholder } : {}),
       },
     },
@@ -81,12 +80,7 @@ function Toolbar({ editor }: ToolbarProps) {
       editor.chain().focus().extendMarkRange('link').unsetLink().run()
       return
     }
-    editor
-      .chain()
-      .focus()
-      .extendMarkRange('link')
-      .setLink({ href: url })
-      .run()
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
   }, [editor])
 
   return (
@@ -123,18 +117,14 @@ function Toolbar({ editor }: ToolbarProps) {
       <ToolbarButton
         title="Заголовок 2"
         active={editor.isActive('heading', { level: 2 })}
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 2 }).run()
-        }
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
       >
         H2
       </ToolbarButton>
       <ToolbarButton
         title="Заголовок 3"
         active={editor.isActive('heading', { level: 3 })}
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 3 }).run()
-        }
+        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
       >
         H3
       </ToolbarButton>
@@ -160,11 +150,7 @@ function Toolbar({ editor }: ToolbarProps) {
       >
         “
       </ToolbarButton>
-      <ToolbarButton
-        title="Ссылка"
-        active={editor.isActive('link')}
-        onClick={setLink}
-      >
+      <ToolbarButton title="Ссылка" active={editor.isActive('link')} onClick={setLink}>
         🔗
       </ToolbarButton>
       <div className="w-px bg-brand-border mx-1" aria-hidden />
@@ -194,13 +180,7 @@ interface ToolbarButtonProps {
   children: React.ReactNode
 }
 
-function ToolbarButton({
-  title,
-  active,
-  disabled,
-  onClick,
-  children,
-}: ToolbarButtonProps) {
+function ToolbarButton({ title, active, disabled, onClick, children }: ToolbarButtonProps) {
   return (
     <button
       type="button"
@@ -210,9 +190,7 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       className={`px-2 py-1 rounded text-sm font-semibold min-w-8 ${
-        active
-          ? 'bg-brand text-white'
-          : 'hover:bg-white text-brand-text'
+        active ? 'bg-brand text-white' : 'hover:bg-white text-brand-text'
       } disabled:opacity-40 disabled:cursor-not-allowed`}
     >
       {children}

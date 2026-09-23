@@ -91,17 +91,13 @@ describe('BlogPostPage', () => {
       const meta = await generateMetadata(props)
       expect(meta.title).toBe('Почему пламя синее')
       expect(meta.description).toBe('Разбираем химию горения.')
-      expect(meta.alternates?.canonical).toBe(
-        'https://new.ximi4ka.ru/blog/pochemu-plamya-sinee',
-      )
+      expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/blog/pochemu-plamya-sinee')
       // ogImage falls back to the cover when no explicit ogImage is set.
       expect(JSON.stringify(meta.openGraph)).toContain('/uploads/blog/flame.jpg')
     })
 
     it('prefers metaTitle over title', async () => {
-      vi.mocked(getBlogPostBySlug).mockResolvedValue(
-        makePost({ metaTitle: 'SEO заголовок' }),
-      )
+      vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost({ metaTitle: 'SEO заголовок' }))
       const meta = await generateMetadata(props)
       expect(meta.title).toBe('SEO заголовок')
     })
@@ -124,18 +120,16 @@ describe('BlogPostPage', () => {
       ).toBeInTheDocument()
       expect(screen.getByText(/Опыты/)).toBeInTheDocument()
       expect(screen.getByText('1 июня 2026')).toBeInTheDocument()
-      expect(
-        screen.getByText('Пламя окрашивают ионы меди.'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('Пламя окрашивают ионы меди.')).toBeInTheDocument()
     })
 
     it('emits Article JSON-LD with publishedAt and BreadcrumbList with Блог', async () => {
       vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost())
 
       const { container } = render(await BlogPostPage(props))
-      const data = Array.from(
-        container.querySelectorAll('script[type="application/ld+json"]'),
-      ).map((s) => JSON.parse(s.textContent ?? '{}'))
+      const data = Array.from(container.querySelectorAll('script[type="application/ld+json"]')).map(
+        (s) => JSON.parse(s.textContent ?? '{}'),
+      )
 
       const article = data.find((d) => d['@type'] === 'Article')
       expect(article).toMatchObject({

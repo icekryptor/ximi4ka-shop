@@ -56,10 +56,7 @@ export default function CheckoutPage() {
   const shippingRub = calcShippingRub(fields.method, subtotal)
   const totalRub = subtotal + shippingRub
 
-  function setField<K extends keyof CheckoutFormFields>(
-    key: K,
-    value: CheckoutFormFields[K],
-  ) {
+  function setField<K extends keyof CheckoutFormFields>(key: K, value: CheckoutFormFields[K]) {
     setFields((prev) => ({ ...prev, [key]: value }))
   }
 

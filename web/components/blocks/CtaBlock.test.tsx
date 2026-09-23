@@ -61,27 +61,21 @@ describe('<CtaBlock> v3', () => {
 
   it('omits subtext paragraph when not provided', () => {
     const { container } = render(
-      <CtaBlock
-        block={{ type: 'cta', heading: 'x', buttonLabel: 'go', buttonHref: '/' }}
-      />,
+      <CtaBlock block={{ type: 'cta', heading: 'x', buttonLabel: 'go', buttonHref: '/' }} />,
     )
     expect(container.querySelector('p')).toBeNull()
   })
 
   it('preserves data-block="cta" marker for BlockRenderer contract', () => {
     const { container } = render(
-      <CtaBlock
-        block={{ type: 'cta', heading: 'x', buttonLabel: 'go', buttonHref: '/' }}
-      />,
+      <CtaBlock block={{ type: 'cta', heading: 'x', buttonLabel: 'go', buttonHref: '/' }} />,
     )
     expect(container.querySelector('[data-block="cta"]')).not.toBeNull()
   })
 
   it('applies v3.5 bright-pill CTA classes (matches Hero primary pill)', () => {
     const { container } = render(
-      <CtaBlock
-        block={{ type: 'cta', heading: 'x', buttonLabel: 'go', buttonHref: '/' }}
-      />,
+      <CtaBlock block={{ type: 'cta', heading: 'x', buttonLabel: 'go', buttonHref: '/' }} />,
     )
     const link = within(container).getByRole('link')
     expect(link.className).toContain('rounded-full')
@@ -92,9 +86,7 @@ describe('<CtaBlock> v3', () => {
 
   it('uses lab-journal display font for heading', () => {
     const { container } = render(
-      <CtaBlock
-        block={{ type: 'cta', heading: 'Heading', buttonLabel: 'go', buttonHref: '/' }}
-      />,
+      <CtaBlock block={{ type: 'cta', heading: 'Heading', buttonLabel: 'go', buttonHref: '/' }} />,
     )
     const heading = within(container).getByText('Heading')
     expect(heading.className).toContain('font-lj-display')

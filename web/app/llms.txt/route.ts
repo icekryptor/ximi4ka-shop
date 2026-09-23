@@ -10,10 +10,9 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(): Promise<Response> {
   try {
-    const res = await fetch(
-      `${ADMIN_API_URL_SERVER}/api/public/settings/llms.txt`,
-      { next: { revalidate: 300 } },
-    )
+    const res = await fetch(`${ADMIN_API_URL_SERVER}/api/public/settings/llms.txt`, {
+      next: { revalidate: 300 },
+    })
     if (!res.ok) {
       return new Response('', {
         headers: { 'content-type': 'text/plain; charset=utf-8' },

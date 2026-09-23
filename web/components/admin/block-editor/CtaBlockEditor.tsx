@@ -19,9 +19,7 @@ export function CtaBlockEditor({ block, onChange }: Props) {
       <LabeledTextarea
         label="Подтекст"
         value={block.subtext ?? ''}
-        onChange={(subtext) =>
-          onChange({ ...block, subtext: subtext || null })
-        }
+        onChange={(subtext) => onChange({ ...block, subtext: subtext || null })}
       />
       <LabeledInput
         label="Текст кнопки"

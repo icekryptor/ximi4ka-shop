@@ -8,19 +8,11 @@ import { z } from 'zod'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Media } from '../../entities/Media.js'
 import { storage, UPLOADS_DIR } from '../../lib/storage/index.js'
-import {
-  requireAdminAuth,
-  requireCsrfToken,
-} from '../middleware/requireAdminAuth.js'
+import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 import { ApiError, notFound } from '../errors.js'
 
 const MAX_SIZE = 10 * 1024 * 1024 // 10MB
-const ALLOWED_MIME = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/avif',
-])
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif'])
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -40,9 +32,7 @@ mediaRouter.post('/upload', (req, res, next) => {
         'code' in uploadErr &&
         (uploadErr as { code: string }).code === 'LIMIT_FILE_SIZE'
       ) {
-        return next(
-          new ApiError(400, 'file_too_large', 'File exceeds 10MB limit'),
-        )
+        return next(new ApiError(400, 'file_too_large', 'File exceeds 10MB limit'))
       }
       return next(uploadErr)
     }
@@ -52,11 +42,7 @@ mediaRouter.post('/upload', (req, res, next) => {
           throw new ApiError(400, 'missing_file', 'No file uploaded')
         }
         if (!ALLOWED_MIME.has(req.file.mimetype)) {
-          throw new ApiError(
-            400,
-            'invalid_file_type',
-            `Unsupported MIME: ${req.file.mimetype}`,
-          )
+          throw new ApiError(400, 'invalid_file_type', `Unsupported MIME: ${req.file.mimetype}`)
         }
 
         const meta = await sharp(req.file.buffer).metadata()
@@ -65,13 +51,9 @@ mediaRouter.post('/upload', (req, res, next) => {
         // multer decodes the multipart filename as latin1 by default; the
         // browser sends UTF-8. Round-trip to recover Cyrillic, emoji, etc.
         // See: https://github.com/expressjs/multer/issues/1104
-        const rawName = Buffer.from(req.file.originalname, 'latin1').toString(
-          'utf8',
-        )
+        const rawName = Buffer.from(req.file.originalname, 'latin1').toString('utf8')
         const base = rawName.replace(/\.[^.]+$/, '')
-        const slug =
-          slugifyLib(base, { lower: true, strict: true, locale: 'ru' }) ||
-          'image'
+        const slug = slugifyLib(base, { lower: true, strict: true, locale: 'ru' }) || 'image'
         const saved = await storage.save({
           buffer: req.file.buffer,
           mimeType: req.file.mimetype,
@@ -143,10 +125,7 @@ mediaRouter.delete('/:id', async (req, res, next) => {
     // Delete file from disk first; tolerate missing file (log + continue) so
     // the DB row still gets cleaned up and we don't leave an orphan row
     // pointing at nothing. Other unlink errors log but proceed to DB delete.
-    const diskPath = path.join(
-      UPLOADS_DIR,
-      media.url.replace(/^\/uploads\//, ''),
-    )
+    const diskPath = path.join(UPLOADS_DIR, media.url.replace(/^\/uploads\//, ''))
     try {
       await fs.promises.unlink(diskPath)
     } catch (err) {

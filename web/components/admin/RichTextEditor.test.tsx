@@ -8,9 +8,7 @@ import { RichTextEditor } from './RichTextEditor'
 
 describe('RichTextEditor', () => {
   it('renders toolbar with all action buttons', async () => {
-    render(
-      <RichTextEditor value="<p>Hello</p>" onChange={() => undefined} />,
-    )
+    render(<RichTextEditor value="<p>Hello</p>" onChange={() => undefined} />)
     // Editor mounts asynchronously after immediatelyRender:false.
     await waitFor(() => {
       expect(screen.getByTitle('Жирный')).toBeInTheDocument()
@@ -30,10 +28,7 @@ describe('RichTextEditor', () => {
 
   it('renders initial value as HTML in the editable area', async () => {
     const { container } = render(
-      <RichTextEditor
-        value="<p>Начальный текст</p>"
-        onChange={() => undefined}
-      />,
+      <RichTextEditor value="<p>Начальный текст</p>" onChange={() => undefined} />,
     )
     await waitFor(() => {
       expect(container.querySelector('.ProseMirror')).not.toBeNull()
@@ -44,9 +39,7 @@ describe('RichTextEditor', () => {
 
   it('fires onChange with sanitized HTML when toolbar action changes the doc', async () => {
     const onChange = vi.fn<(html: string) => void>()
-    const { container } = render(
-      <RichTextEditor value="<p>a</p>" onChange={onChange} />,
-    )
+    const { container } = render(<RichTextEditor value="<p>a</p>" onChange={onChange} />)
     await waitFor(() => {
       expect(container.querySelector('.ProseMirror')).not.toBeNull()
     })
@@ -79,7 +72,7 @@ describe('RichTextEditor', () => {
     })
     rerender(
       <RichTextEditor
-        value='<p>before</p><script>alert(1)</script><p>after</p>'
+        value="<p>before</p><script>alert(1)</script><p>after</p>"
         onChange={onChange}
       />,
     )
@@ -111,9 +104,7 @@ describe('RichTextEditor', () => {
 
   it('opens a URL prompt when the link button is clicked', async () => {
     const onChange = vi.fn<(html: string) => void>()
-    const promptSpy = vi
-      .spyOn(window, 'prompt')
-      .mockImplementation(() => 'https://example.com')
+    const promptSpy = vi.spyOn(window, 'prompt').mockImplementation(() => 'https://example.com')
     render(<RichTextEditor value="<p>text</p>" onChange={onChange} />)
     await waitFor(() => {
       expect(screen.getByTitle('Ссылка')).toBeInTheDocument()

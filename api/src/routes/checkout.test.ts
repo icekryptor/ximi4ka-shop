@@ -59,10 +59,12 @@ describe('POST /api/checkout', () => {
 
     const res = await request(app)
       .post('/api/checkout')
-      .send(checkoutBody([
-        { productId: p1.id, quantity: 2 },
-        { productId: p2.id, quantity: 1 },
-      ]))
+      .send(
+        checkoutBody([
+          { productId: p1.id, quantity: 2 },
+          { productId: p2.id, quantity: 1 },
+        ]),
+      )
 
     expect(res.status).toBe(201)
     expect(res.body.data.orderNumber).toMatch(/^XM-\d{4}-\d{5}$/)
@@ -136,10 +138,12 @@ describe('POST /api/checkout', () => {
     const p = await seedProduct({ priceRub: 100 })
     const res = await request(app)
       .post('/api/checkout')
-      .send(checkoutBody([
-        { productId: p.id, quantity: 1 },
-        { productId: p.id, quantity: 2 },
-      ]))
+      .send(
+        checkoutBody([
+          { productId: p.id, quantity: 1 },
+          { productId: p.id, quantity: 2 },
+        ]),
+      )
     expect(res.status).toBe(201)
     const items = await AppDataSource.getRepository(OrderItem).find()
     expect(items).toHaveLength(1)
@@ -151,15 +155,15 @@ describe('POST /api/checkout', () => {
     const gone = await seedProduct({ stockStatus: 'out_of_stock', name: 'Распродано' })
     const res = await request(app)
       .post('/api/checkout')
-      .send(checkoutBody([
-        { productId: ok.id, quantity: 1 },
-        { productId: gone.id, quantity: 1 },
-      ]))
+      .send(
+        checkoutBody([
+          { productId: ok.id, quantity: 1 },
+          { productId: gone.id, quantity: 1 },
+        ]),
+      )
     expect(res.status).toBe(409)
     expect(res.body.error.code).toBe('out_of_stock')
-    expect(res.body.error.details.items).toEqual([
-      { productId: gone.id, name: 'Распродано' },
-    ])
+    expect(res.body.error.details.items).toEqual([{ productId: gone.id, name: 'Распродано' }])
     expect(await AppDataSource.getRepository(Order).count()).toBe(0)
   })
 
@@ -169,15 +173,15 @@ describe('POST /api/checkout', () => {
     const missing = '11111111-1111-4111-8111-111111111111'
     const res = await request(app)
       .post('/api/checkout')
-      .send(checkoutBody([
-        { productId: draft.id, quantity: 1 },
-        { productId: missing, quantity: 1 },
-      ]))
+      .send(
+        checkoutBody([
+          { productId: draft.id, quantity: 1 },
+          { productId: missing, quantity: 1 },
+        ]),
+      )
     expect(res.status).toBe(409)
     expect(res.body.error.code).toBe('products_unavailable')
-    expect(res.body.error.details.productIds).toEqual(
-      expect.arrayContaining([draft.id, missing]),
-    )
+    expect(res.body.error.details.productIds).toEqual(expect.arrayContaining([draft.id, missing]))
   })
 
   it('is idempotent by Idempotency-Key header', async () => {
@@ -247,9 +251,12 @@ describe('POST /api/checkout', () => {
     vi.stubEnv('PAYMENT_PROVIDER', 'tbank')
     vi.stubEnv('TBANK_TERMINAL_KEY', 'TestTerminal')
     vi.stubEnv('TBANK_PASSWORD', 'secret')
-    vi.stubGlobal('fetch', vi.fn(async () => {
-      throw new Error('acquiring down')
-    }))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('acquiring down')
+      }),
+    )
 
     const p = await seedProduct()
     const res = await request(app)

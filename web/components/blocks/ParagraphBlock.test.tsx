@@ -30,18 +30,14 @@ describe('<ParagraphBlock> v3', () => {
   })
 
   it('constrains content to a readable max-width', () => {
-    const { container } = render(
-      <ParagraphBlock block={{ type: 'paragraph', html: '<p>x</p>' }} />,
-    )
+    const { container } = render(<ParagraphBlock block={{ type: 'paragraph', html: '<p>x</p>' }} />)
     const root = container.firstChild as HTMLElement
     expect(root.className).toContain('max-w-[60ch]')
   })
 
   it('styles inline <code> with the mono font', () => {
     const { container } = render(
-      <ParagraphBlock
-        block={{ type: 'paragraph', html: '<p>use <code>npm</code> here</p>' }}
-      />,
+      <ParagraphBlock block={{ type: 'paragraph', html: '<p>use <code>npm</code> here</p>' }} />,
     )
     const root = container.firstChild as HTMLElement
     expect(root.className).toMatch(/\[&_code\]:font-lj-mono/)
@@ -62,9 +58,7 @@ describe('<ParagraphBlock> v3', () => {
   })
 
   it('applies the data-block attribute for DOM identification', () => {
-    const { container } = render(
-      <ParagraphBlock block={{ type: 'paragraph', html: '<p>x</p>' }} />,
-    )
+    const { container } = render(<ParagraphBlock block={{ type: 'paragraph', html: '<p>x</p>' }} />)
     expect(container.querySelector('[data-block="paragraph"]')).not.toBeNull()
   })
 })

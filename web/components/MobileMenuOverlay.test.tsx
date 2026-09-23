@@ -14,14 +14,26 @@ const NAV = [
 describe('<MobileMenuOverlay>', () => {
   it('renders nothing when closed', () => {
     const { container } = render(
-      <MobileMenuOverlay open={false} onClose={() => {}} pathname="/" navItems={NAV} cartCount={0} />
+      <MobileMenuOverlay
+        open={false}
+        onClose={() => {}}
+        pathname="/"
+        navItems={NAV}
+        cartCount={0}
+      />,
     )
     expect(container.firstChild).toBeNull()
   })
 
   it('renders all nav items with mono index, label, and description when open', () => {
     render(
-      <MobileMenuOverlay open={true} onClose={() => {}} pathname="/" navItems={NAV} cartCount={0} />
+      <MobileMenuOverlay
+        open={true}
+        onClose={() => {}}
+        pathname="/"
+        navItems={NAV}
+        cartCount={0}
+      />,
     )
     expect(screen.getByText('Каталог')).toBeInTheDocument()
     expect(screen.getByText('найти набор')).toBeInTheDocument()
@@ -32,7 +44,7 @@ describe('<MobileMenuOverlay>', () => {
   it('calls onClose when × close button is clicked', () => {
     const onClose = vi.fn()
     render(
-      <MobileMenuOverlay open={true} onClose={onClose} pathname="/" navItems={NAV} cartCount={0} />
+      <MobileMenuOverlay open={true} onClose={onClose} pathname="/" navItems={NAV} cartCount={0} />,
     )
     fireEvent.click(screen.getByRole('button', { name: /закрыть/i }))
     expect(onClose).toHaveBeenCalled()
@@ -40,14 +52,26 @@ describe('<MobileMenuOverlay>', () => {
 
   it('shows cart count when > 0', () => {
     render(
-      <MobileMenuOverlay open={true} onClose={() => {}} pathname="/" navItems={NAV} cartCount={3} />
+      <MobileMenuOverlay
+        open={true}
+        onClose={() => {}}
+        pathname="/"
+        navItems={NAV}
+        cartCount={3}
+      />,
     )
     expect(screen.getByText(/корзина.*3/i)).toBeInTheDocument()
   })
 
   it('shows (0) when cart empty', () => {
     render(
-      <MobileMenuOverlay open={true} onClose={() => {}} pathname="/" navItems={NAV} cartCount={0} />
+      <MobileMenuOverlay
+        open={true}
+        onClose={() => {}}
+        pathname="/"
+        navItems={NAV}
+        cartCount={0}
+      />,
     )
     expect(screen.getByText(/корзина.*0/i)).toBeInTheDocument()
   })

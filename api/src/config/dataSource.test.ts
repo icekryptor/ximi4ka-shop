@@ -46,7 +46,9 @@ describe('resolveSslFor', () => {
 
   it('lets DATABASE_SSL override the heuristic in both directions', () => {
     expect(resolveSslFor('postgres://u:p@db.example.com:5432/db', 'false')).toBe(false)
-    expect(resolveSslFor('postgres://localhost:5432/db', 'true')).toEqual({ rejectUnauthorized: false })
+    expect(resolveSslFor('postgres://localhost:5432/db', 'true')).toEqual({
+      rejectUnauthorized: false,
+    })
   })
 })
 

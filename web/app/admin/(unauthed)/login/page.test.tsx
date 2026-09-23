@@ -22,19 +22,18 @@ afterEach(() => {
 describe('LoginPage', () => {
   it('renders the Russian heading and form fields', () => {
     render(<LoginPage />)
-    expect(
-      screen.getByRole('heading', { level: 1, name: 'Вход в админку' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Вход в админку' })).toBeInTheDocument()
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
     expect(screen.getByLabelText('Пароль')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Войти' })).toBeInTheDocument()
   })
 
   it('submits credentials and redirects to /admin on success', async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ data: { id: 'u', email: 'a@b.c', role: 'admin' } }), {
-        status: 200,
-      }),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: { id: 'u', email: 'a@b.c', role: 'admin' } }), {
+          status: 200,
+        }),
     )
     globalThis.fetch = fetchMock as unknown as typeof fetch
 
@@ -60,11 +59,12 @@ describe('LoginPage', () => {
   })
 
   it('displays API error message on 401', async () => {
-    const fetchMock = vi.fn(async () =>
-      new Response(
-        JSON.stringify({ error: { code: 'invalid_credentials', message: 'Неверные данные' } }),
-        { status: 401 },
-      ),
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({ error: { code: 'invalid_credentials', message: 'Неверные данные' } }),
+          { status: 401 },
+        ),
     )
     globalThis.fetch = fetchMock as unknown as typeof fetch
 

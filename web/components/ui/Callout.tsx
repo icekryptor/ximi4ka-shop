@@ -3,7 +3,7 @@ type Position = 'right' | 'left'
 interface Props {
   text: string
   position: Position
-  topPercent?: number  // 0-100, vertical offset within parent
+  topPercent?: number // 0-100, vertical offset within parent
   className?: string
 }
 
@@ -15,9 +15,8 @@ interface Props {
  * Typical usage: <article className="callout-host relative"><Callout … /></article>
  */
 export function Callout({ text, position, topPercent = 30, className = '' }: Props) {
-  const sideClass = position === 'right'
-    ? 'right-[-3.5rem] items-start'
-    : 'left-[-3.5rem] items-end'
+  const sideClass =
+    position === 'right' ? 'right-[-3.5rem] items-start' : 'left-[-3.5rem] items-end'
   const flipStyle = position === 'left' ? { transform: 'scaleX(-1)' } : undefined
   return (
     <div
@@ -38,9 +37,7 @@ export function Callout({ text, position, topPercent = 30, className = '' }: Pro
           className="transition-[stroke-dashoffset] duration-[0.8s] [.callout-host:hover_&]:[stroke-dashoffset:0]"
         />
       </svg>
-      <span
-        className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-brand-deep)] bg-[var(--color-lj-cream)] px-1.5 py-0.5 opacity-0 translate-y-1 transition-[opacity,transform] duration-[0.4s] delay-200 [.callout-host:hover_&]:opacity-100 [.callout-host:hover_&]:translate-y-0"
-      >
+      <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-brand-deep)] bg-[var(--color-lj-cream)] px-1.5 py-0.5 opacity-0 translate-y-1 transition-[opacity,transform] duration-[0.4s] delay-200 [.callout-host:hover_&]:opacity-100 [.callout-host:hover_&]:translate-y-0">
         {text}
       </span>
     </div>

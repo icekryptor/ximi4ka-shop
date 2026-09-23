@@ -29,13 +29,7 @@ function makePost(overrides: Partial<BlogPost> = {}): BlogPost {
 
 describe('BlogPostForm', () => {
   it('renders all sections + editorial fields + block editor', () => {
-    render(
-      <BlogPostForm
-        mode="create"
-        onSubmit={async () => undefined}
-        submitting={false}
-      />,
-    )
+    render(<BlogPostForm mode="create" onSubmit={async () => undefined} submitting={false} />)
     expect(screen.getByText('Основные')).toBeInTheDocument()
     expect(screen.getByText('Блоки')).toBeInTheDocument()
     expect(screen.getByText('SEO')).toBeInTheDocument()
@@ -43,19 +37,11 @@ describe('BlogPostForm', () => {
     expect(screen.getByLabelText('Рубрика')).toBeInTheDocument()
     expect(screen.getByLabelText('Обложка')).toBeInTheDocument()
     // Block editor's "Add block" control is rendered inside the Блоки section.
-    expect(
-      screen.getByRole('button', { name: /добавить блок/i }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /добавить блок/i })).toBeInTheDocument()
   })
 
   it('live-transliterates title into slug until slug is edited manually', () => {
-    render(
-      <BlogPostForm
-        mode="create"
-        onSubmit={async () => undefined}
-        submitting={false}
-      />,
-    )
+    render(<BlogPostForm mode="create" onSubmit={async () => undefined} submitting={false} />)
     fireEvent.change(screen.getByLabelText('Заголовок'), {
       target: { value: 'Химия дома' },
     })
@@ -87,16 +73,8 @@ describe('BlogPostForm', () => {
   })
 
   it('shows "Недопустимый slug" on invalid slug', async () => {
-    const onSubmit = vi.fn<(input: AdminBlogPostInput) => Promise<void>>(
-      async () => undefined,
-    )
-    render(
-      <BlogPostForm
-        mode="create"
-        onSubmit={onSubmit}
-        submitting={false}
-      />,
-    )
+    const onSubmit = vi.fn<(input: AdminBlogPostInput) => Promise<void>>(async () => undefined)
+    render(<BlogPostForm mode="create" onSubmit={onSubmit} submitting={false} />)
     fireEvent.change(screen.getByLabelText('Заголовок'), {
       target: { value: 'X' },
     })
@@ -111,16 +89,8 @@ describe('BlogPostForm', () => {
   })
 
   it('calls onSubmit with merged payload on valid form', async () => {
-    const onSubmit = vi.fn<(input: AdminBlogPostInput) => Promise<void>>(
-      async () => undefined,
-    )
-    render(
-      <BlogPostForm
-        mode="create"
-        onSubmit={onSubmit}
-        submitting={false}
-      />,
-    )
+    const onSubmit = vi.fn<(input: AdminBlogPostInput) => Promise<void>>(async () => undefined)
+    render(<BlogPostForm mode="create" onSubmit={onSubmit} submitting={false} />)
     fireEvent.change(screen.getByLabelText('Заголовок'), {
       target: { value: 'Химия дома' },
     })
@@ -182,8 +152,6 @@ describe('BlogPostForm', () => {
         error={apiErr as never}
       />,
     )
-    expect(
-      screen.getByText(/Статья с таким slug уже существует/i),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Статья с таким slug уже существует/i)).toBeInTheDocument()
   })
 })

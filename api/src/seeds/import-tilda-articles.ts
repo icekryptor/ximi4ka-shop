@@ -107,7 +107,9 @@ async function extractArticles(crawlDir: string): Promise<ArticleEntry[]> {
     }
     const blocks = extractArticleBlocks(html, source.title)
     if (blocks.length === 0) throw new Error(`no content extracted for ${source.slug}`)
-    const firstImage = blocks.find((b): b is Extract<ArticleBlock, { type: 'image' }> => b.type === 'image')
+    const firstImage = blocks.find(
+      (b): b is Extract<ArticleBlock, { type: 'image' }> => b.type === 'image',
+    )
     entries.push({
       sourceUrl: source.sourceUrl,
       slug: source.slug,

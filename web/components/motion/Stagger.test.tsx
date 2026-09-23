@@ -9,7 +9,7 @@ describe('Stagger', () => {
         <span>one</span>
         <span>two</span>
         <span>three</span>
-      </Stagger>
+      </Stagger>,
     )
     expect(screen.getByText('one')).toBeInTheDocument()
     expect(screen.getByText('two')).toBeInTheDocument()
@@ -22,7 +22,11 @@ describe('Stagger', () => {
   })
 
   it('renders nothing notable for single child', () => {
-    render(<Stagger><span>solo</span></Stagger>)
+    render(
+      <Stagger>
+        <span>solo</span>
+      </Stagger>,
+    )
     expect(screen.getByText('solo')).toBeInTheDocument()
   })
 })

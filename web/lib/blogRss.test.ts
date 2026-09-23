@@ -43,16 +43,12 @@ describe('generateBlogRss', () => {
     })
     expect(xml).toContain('<item>')
     expect(xml).toContain('<title>Почему пламя синее</title>')
-    expect(xml).toContain(
-      '<link>https://new.ximi4ka.ru/blog/pochemu-plamya-sinee</link>',
-    )
+    expect(xml).toContain('<link>https://new.ximi4ka.ru/blog/pochemu-plamya-sinee</link>')
     expect(xml).toContain('<description>Разбираем химию горения.</description>')
     expect(xml).toContain(
       `<pubDate>${new Date('2026-06-01T00:00:00.000Z').toUTCString()}</pubDate>`,
     )
-    expect(xml).toContain(
-      '<guid>https://new.ximi4ka.ru/blog/pochemu-plamya-sinee</guid>',
-    )
+    expect(xml).toContain('<guid>https://new.ximi4ka.ru/blog/pochemu-plamya-sinee</guid>')
   })
 
   it('falls back to createdAt when publishedAt is missing and omits empty description', () => {
@@ -85,8 +81,6 @@ describe('generateBlogRss', () => {
     const doc = new DOMParser().parseFromString(xml, 'application/xml')
     expect(doc.querySelector('parsererror')).toBeNull()
     expect(doc.querySelectorAll('item')).toHaveLength(2)
-    expect(doc.querySelector('channel > title')?.textContent).toBe(
-      'Блог Ximi4ka',
-    )
+    expect(doc.querySelector('channel > title')?.textContent).toBe('Блог Ximi4ka')
   })
 })

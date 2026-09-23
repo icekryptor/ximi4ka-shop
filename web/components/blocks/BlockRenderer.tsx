@@ -32,10 +32,7 @@ function renderBlock(block: Block, key: number) {
       return <FaqBlock key={key} block={block} />
     case 'product_grid':
       return (
-        <Suspense
-          key={key}
-          fallback={<div className="text-gray-500">Загрузка товаров...</div>}
-        >
+        <Suspense key={key} fallback={<div className="text-gray-500">Загрузка товаров...</div>}>
           {/* ProductGridBlock is async; React 19 handles awaiting it. */}
           <ProductGridBlock block={block} />
         </Suspense>

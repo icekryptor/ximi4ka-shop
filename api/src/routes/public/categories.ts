@@ -42,8 +42,7 @@ publicCategoriesRouter.get('/:slug/products', async (req, res, next) => {
     const catRepo = AppDataSource.getRepository(ProductCategory)
     const category = await catRepo.findOne({ where: { slug: req.params.slug } })
     if (!category) throw notFound('category_not_found', 'Category not found')
-    const [items, total] = await AppDataSource
-      .getRepository(Product)
+    const [items, total] = await AppDataSource.getRepository(Product)
       .createQueryBuilder('p')
       .innerJoin('product_category_links', 'pcl', 'pcl.product_id = p.id')
       // Eager-load images: storefront category cards render

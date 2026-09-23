@@ -26,9 +26,7 @@ describe('Ticker', () => {
 
   it('applies bright gradient surface by default (v3.5)', () => {
     const { container } = render(<Ticker items={items} />)
-    expect(container.firstChild).toHaveClass(
-      'bg-[image:var(--gradient-lj-bright)]',
-    )
+    expect(container.firstChild).toHaveClass('bg-[image:var(--gradient-lj-bright)]')
   })
 
   it('applies ink surface when surface=dark', () => {

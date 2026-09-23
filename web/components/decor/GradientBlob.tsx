@@ -8,13 +8,7 @@ export function GradientBlob({ className = '' }: Props) {
   const gradientId = useId()
 
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 600 600"
-      width="100%"
-      height="100%"
-      className={className}
-    >
+    <svg aria-hidden="true" viewBox="0 0 600 600" width="100%" height="100%" className={className}>
       <defs>
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor="rgb(141, 103, 255)" stopOpacity="1" />

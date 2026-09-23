@@ -53,9 +53,7 @@ describe('parseCharacteristics', () => {
 
   it('matches the characteristics heading case-insensitively', () => {
     const blocks = [
-      charBlock(
-        '<H3>ХАРАКТЕРИСТИКИ</H3><ul><li><strong>Возраст:</strong> с 10 лет</li></ul>',
-      ),
+      charBlock('<H3>ХАРАКТЕРИСТИКИ</H3><ul><li><strong>Возраст:</strong> с 10 лет</li></ul>'),
     ]
     expect(parseCharacteristics(blocks)).toEqual({ Возраст: 'с 10 лет' })
   })
@@ -78,9 +76,7 @@ describe('parseCharacteristics', () => {
   it('skips non-paragraph blocks even if their content looks like characteristics', () => {
     const blocks = [
       { type: 'image', src: '<h3>Характеристики</h3>' },
-      charBlock(
-        '<h3>Характеристики</h3><ul><li><strong>K:</strong> V</li></ul>',
-      ),
+      charBlock('<h3>Характеристики</h3><ul><li><strong>K:</strong> V</li></ul>'),
     ]
     expect(parseCharacteristics(blocks)).toEqual({ K: 'V' })
   })

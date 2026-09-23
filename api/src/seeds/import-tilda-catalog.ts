@@ -323,9 +323,13 @@ function printPlan(entries: CatalogEntry[], args: CliArgs): void {
   console.log(`Source:          ${args.crawlDir ? `crawl ${args.crawlDir}` : CATALOG_JSON_PATH}`)
   console.log(`Products:        ${entries.length} (${withCompareAt} with compare-at price)`)
   console.log(`Images:          ${images} (static.tildacdn.com URLs, re-hosting is a follow-up)`)
-  console.log(`Replace dev seed: ${args.replaceDevSeed ? `yes (${DEV_SEED_PRODUCT_SLUGS.length} products, ${DEV_SEED_CATEGORY_SLUGS.length} categories)` : 'no'}`)
+  console.log(
+    `Replace dev seed: ${args.replaceDevSeed ? `yes (${DEV_SEED_PRODUCT_SLUGS.length} products, ${DEV_SEED_CATEGORY_SLUGS.length} categories)` : 'no'}`,
+  )
   for (const c of CATALOG_CATEGORIES) {
-    console.log(`  ${c.slug.padEnd(10)} ${String(byCategory.get(c.slug) ?? 0).padStart(3)}  ${c.name}`)
+    console.log(
+      `  ${c.slug.padEnd(10)} ${String(byCategory.get(c.slug) ?? 0).padStart(3)}  ${c.name}`,
+    )
   }
   console.log('')
 }

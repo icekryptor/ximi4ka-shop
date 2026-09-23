@@ -24,13 +24,10 @@ async function fetchRedirects(opts: {
     sort: opts.sort,
   })
   if (opts.q) params.set('q', opts.q)
-  const res = await fetch(
-    `${ADMIN_API_URL_SERVER}/api/admin/redirects?${params.toString()}`,
-    {
-      headers: { cookie: cookieHeader },
-      cache: 'no-store',
-    },
-  )
+  const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/redirects?${params.toString()}`, {
+    headers: { cookie: cookieHeader },
+    cache: 'no-store',
+  })
   if (!res.ok) {
     throw new Error(`Admin redirects list failed: ${res.status}`)
   }
@@ -55,8 +52,7 @@ export default async function AdminRedirectsPage({
   const params = (await searchParams) ?? {}
   const q = params.q?.trim() || undefined
   const offset = Number(params.offset ?? 0) || 0
-  const sort =
-    params.sort && VALID_SORTS.has(params.sort) ? params.sort : 'hits_desc'
+  const sort = params.sort && VALID_SORTS.has(params.sort) ? params.sort : 'hits_desc'
 
   const { data, pagination } = await fetchRedirects({
     limit: PAGE_SIZE,
@@ -99,10 +95,7 @@ export default async function AdminRedirectsPage({
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td
-                  colSpan={5}
-                  className="px-4 py-12 text-center text-brand-text-secondary"
-                >
+                <td colSpan={5} className="px-4 py-12 text-center text-brand-text-secondary">
                   {q
                     ? 'Ничего не найдено. Попробуйте другой запрос.'
                     : 'Пока нет редиректов. Создайте первый или импортируйте CSV.'}
@@ -110,13 +103,8 @@ export default async function AdminRedirectsPage({
               </tr>
             ) : (
               data.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-t border-brand-border hover:bg-brand-bg-soft/50"
-                >
-                  <td className="px-4 py-3 font-mono text-xs text-brand-text">
-                    {r.fromPath}
-                  </td>
+                <tr key={r.id} className="border-t border-brand-border hover:bg-brand-bg-soft/50">
+                  <td className="px-4 py-3 font-mono text-xs text-brand-text">{r.fromPath}</td>
                   <td className="px-4 py-3 font-mono text-xs text-brand-text-secondary">
                     {r.toPath}
                   </td>
@@ -125,9 +113,7 @@ export default async function AdminRedirectsPage({
                       {r.statusCode}
                     </span>
                   </td>
-                  <td className="px-4 py-3 font-mono text-brand-text">
-                    {r.hitCount}
-                  </td>
+                  <td className="px-4 py-3 font-mono text-brand-text">{r.hitCount}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-3">
                       <Link
@@ -136,10 +122,7 @@ export default async function AdminRedirectsPage({
                       >
                         Редактировать
                       </Link>
-                      <RedirectDeleteButton
-                        id={r.id}
-                        fromPath={r.fromPath}
-                      />
+                      <RedirectDeleteButton id={r.id} fromPath={r.fromPath} />
                     </div>
                   </td>
                 </tr>
@@ -153,10 +136,7 @@ export default async function AdminRedirectsPage({
         <div>
           Всего: {pagination.total}.{' '}
           {pagination.total > 0
-            ? `Показаны ${offset + 1}–${Math.min(
-                offset + pagination.limit,
-                pagination.total,
-              )}.`
+            ? `Показаны ${offset + 1}–${Math.min(offset + pagination.limit, pagination.total)}.`
             : ''}
         </div>
         <div className="flex gap-2">

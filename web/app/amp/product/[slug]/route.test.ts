@@ -52,15 +52,11 @@ describe('GET /amp/product/[slug]', () => {
     expect(res.headers.get('content-type')).toMatch(/text\/html/)
     const body = await res.text()
     expect(body).toContain('<html amp lang="ru">')
-    expect(body).toContain(
-      '<link rel="canonical" href="https://new.ximi4ka.ru/product/kit">',
-    )
+    expect(body).toContain('<link rel="canonical" href="https://new.ximi4ka.ru/product/kit">')
   })
 
   it('returns 404 when the product is not found', async () => {
-    vi.mocked(getPublishedProduct).mockRejectedValue(
-      new ApiError(404, 'product_not_found', 'nope'),
-    )
+    vi.mocked(getPublishedProduct).mockRejectedValue(new ApiError(404, 'product_not_found', 'nope'))
     const res = await GET(req, { params: Promise.resolve({ slug: 'x' }) })
     expect(res.status).toBe(404)
   })

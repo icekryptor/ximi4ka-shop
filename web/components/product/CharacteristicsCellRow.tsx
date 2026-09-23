@@ -1,7 +1,9 @@
 import { NumberCell } from '@/components/ui/NumberCell'
 import type { UseFact } from './extractKeyFacts'
 
-interface Props { facts: UseFact[] }
+interface Props {
+  facts: UseFact[]
+}
 
 export function CharacteristicsCellRow({ facts }: Props) {
   if (facts.length === 0) return null

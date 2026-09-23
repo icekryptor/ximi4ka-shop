@@ -1,5 +1,10 @@
-interface Fact { label: string; value: string }
-interface Props { facts: Fact[] }
+interface Fact {
+  label: string
+  value: string
+}
+interface Props {
+  facts: Fact[]
+}
 
 export function KeyFactsListLJ({ facts }: Props) {
   if (facts.length === 0) return null

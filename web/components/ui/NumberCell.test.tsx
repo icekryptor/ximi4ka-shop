@@ -11,7 +11,7 @@ describe('<NumberCell>', () => {
         big="2023"
         bottomLeft="основано"
         bottomRight="3 года"
-      />
+      />,
     )
     expect(screen.getByText('01')).toBeInTheDocument()
     expect(screen.getByText('год')).toBeInTheDocument()
@@ -24,23 +24,21 @@ describe('<NumberCell>', () => {
     render(
       <NumberCell index="04" topLabel="реакций" big="161">
         <div data-testid="viz-slot">viz here</div>
-      </NumberCell>
+      </NumberCell>,
     )
     expect(screen.getByTestId('viz-slot')).toBeInTheDocument()
   })
 
   it('applies decimal letter-spacing variant', () => {
     const { container } = render(
-      <NumberCell index="03" topLabel="рейтинг" big="4,9" bigVariant="decimal" />
+      <NumberCell index="03" topLabel="рейтинг" big="4,9" bigVariant="decimal" />,
     )
     const big = container.querySelector('.lj-num-cell-big')
     expect(big?.className).toContain('tracking-[-0.06em]')
   })
 
   it('omits bottom row when both bottom labels missing', () => {
-    const { container } = render(
-      <NumberCell index="01" topLabel="x" big="0" />
-    )
+    const { container } = render(<NumberCell index="01" topLabel="x" big="0" />)
     expect(container.querySelector('.lj-num-cell-bottom')).toBeNull()
   })
 })

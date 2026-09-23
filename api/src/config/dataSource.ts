@@ -79,10 +79,19 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   entities: [
-    Product, ProductImage, ProductCategory,
-    Page, BlogPost, Order, OrderItem,
-    AdminUser, AdminSession, EntityRevision, Redirect,
-    Media, SiteSettings,
+    Product,
+    ProductImage,
+    ProductCategory,
+    Page,
+    BlogPost,
+    Order,
+    OrderItem,
+    AdminUser,
+    AdminSession,
+    EntityRevision,
+    Redirect,
+    Media,
+    SiteSettings,
   ],
   // Module-relative and extension-agnostic on purpose: a cwd-relative
   // 'src/migrations/*.ts' resolves to nothing once the api runs from dist/ in
