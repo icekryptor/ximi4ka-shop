@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import type { ProductCategory } from '@ximi4ka-shop/shared'
 import { MoleculeMotifLJ } from '@/components/decor/MoleculeMotif.lj'
@@ -23,6 +24,25 @@ const MOLECULE_BY_SLUG: Record<string, MoleculeVariant> = {
   'novinki': 'benzene',
 }
 
+// Фото-карточки категорий (web/public/img/categories). Кадры построены под эту
+// плитку: слева пустое фиолетовое поле под текст, товар — справа, поэтому
+// кадр прижат вправо (object-right), а при обрезке 3:2 → 5:4 теряется левый
+// край фона, а не продукт. Ключи — те же слаги, что и в MOLECULE_BY_SLUG;
+// категория без картинки остаётся на градиенте с молекулой.
+const IMAGE_BY_SLUG: Record<string, string> = {
+  kits: '/img/categories/kits.webp',
+  combo: '/img/categories/combo.webp',
+  reagents: '/img/categories/reagents.webp',
+  equipment: '/img/categories/equipment.webp',
+  print: '/img/categories/print.webp',
+  // legacy slugs (pre-import naming)
+  'nabory-dlya-opytov': '/img/categories/kits.webp',
+  'kombo': '/img/categories/combo.webp',
+  'reaktivy': '/img/categories/reagents.webp',
+  'laboratornoe-oborudovanie': '/img/categories/equipment.webp',
+  'pechatnaya-produktsiya': '/img/categories/print.webp',
+}
+
 interface Props {
   category: ProductCategory
   index: number
@@ -34,6 +54,7 @@ interface Props {
 export function CategoryTileLJ({ category, index, productCount }: Props) {
   const pad = (n: number) => String(n).padStart(2, '0')
   const variant = MOLECULE_BY_SLUG[category.slug] ?? 'benzene'
+  const image = IMAGE_BY_SLUG[category.slug]
   // «0 товаров» — сломанное состояние (public API пока не отдаёт счётчик);
   // показываем нейтральное «смотреть →» вместо нуля.
   const countLabel =
@@ -48,10 +69,27 @@ export function CategoryTileLJ({ category, index, productCount }: Props) {
       <span className="absolute top-5 left-6 z-[3] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright-mute)]">
         arr. C-{pad(index + 1)}
       </span>
-      <MoleculeMotifLJ
-        variant={variant}
-        className="absolute right-[-15%] top-[8%] w-[62%] text-[var(--color-lj-on-bright)] opacity-30 pointer-events-none transition-transform duration-700 group-hover/cat:rotate-6 group-hover/cat:scale-105"
-      />
+      {image ? (
+        <>
+          <Image
+            src={image}
+            alt=""
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="object-cover object-right transition-transform duration-700 group-hover/cat:scale-105"
+          />
+          {/* Затемнение снизу-слева: заголовок иногда ложится на край товара. */}
+          <span
+            aria-hidden
+            className="absolute inset-0 z-[1] bg-gradient-to-tr from-black/45 via-black/10 to-transparent pointer-events-none"
+          />
+        </>
+      ) : (
+        <MoleculeMotifLJ
+          variant={variant}
+          className="absolute right-[-15%] top-[8%] w-[62%] text-[var(--color-lj-on-bright)] opacity-30 pointer-events-none transition-transform duration-700 group-hover/cat:rotate-6 group-hover/cat:scale-105"
+        />
+      )}
       <div className="absolute bottom-5 left-6 right-6 z-[2] flex flex-col gap-2">
         <h3 className="font-lj-display font-[700] text-[clamp(1.5rem,2.2vw,2rem)] leading-[0.95] tracking-[-0.035em] text-[var(--color-lj-on-bright)]">
           {category.name}

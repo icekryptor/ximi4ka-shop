@@ -59,9 +59,36 @@ describe('<CategoryTileLJ>', () => {
     expect(link?.className).toContain('lj-lift')
   })
 
-  it('renders an SVG molecule decoration', () => {
-    const { container } = render(<CategoryTileLJ category={cat} index={0} productCount={42} />)
+  it('falls back to the gradient + SVG molecule for a category without art', () => {
+    const plain = { ...cat, slug: 'novaya-kategoriya' } as ProductCategory
+    const { container } = render(<CategoryTileLJ category={plain} index={0} productCount={42} />)
     expect(container.querySelector('svg')).not.toBeNull()
+    expect(container.querySelector('img')).toBeNull()
+  })
+
+  it.each([
+    ['kits', '/img/categories/kits.webp'],
+    ['combo', '/img/categories/combo.webp'],
+    ['reagents', '/img/categories/reagents.webp'],
+    ['equipment', '/img/categories/equipment.webp'],
+    ['print', '/img/categories/print.webp'],
+  ])('shows the photo card for %s', (slug, src) => {
+    const withArt = { ...cat, slug } as ProductCategory
+    const { container } = render(<CategoryTileLJ category={withArt} index={0} productCount={42} />)
+    const img = container.querySelector('img')
+    expect(img).not.toBeNull()
+    // next/image в тестах отдаёт src как есть либо через /_next/image?url=…
+    expect(decodeURIComponent(img!.getAttribute('src') ?? '')).toContain(src)
+    // Картинка декоративная: название категории уже есть в заголовке.
+    expect(img!.getAttribute('alt')).toBe('')
+    // Молекула поверх фото спорила бы с ним — у фото-карточки её нет.
+    expect(container.querySelector('svg')).toBeNull()
+  })
+
+  it('keeps the name readable over the photo', () => {
+    const withArt = { ...cat, slug: 'kits' } as ProductCategory
+    render(<CategoryTileLJ category={withArt} index={0} productCount={42} />)
+    expect(screen.getByRole('heading', { name: 'Реактивы' })).toBeInTheDocument()
   })
 
   it('links to the category page', () => {
