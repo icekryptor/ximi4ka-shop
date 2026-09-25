@@ -1,6 +1,7 @@
 import type {
   BlogPost,
   OrderDto,
+  OrderNotificationDto,
   OrderStatus,
   Page,
   Product,
@@ -480,6 +481,15 @@ export async function adminSetOrderStatus(
   const body = await authedRequest<{ data: OrderDto }>(
     `/api/admin/orders/${encodeURIComponent(id)}/status`,
     { method: 'PATCH', body: JSON.stringify(input) },
+  )
+  return body.data
+}
+
+// «Отправить ещё раз» для уведомлений заказа, которые не дошли.
+export async function adminRetryOrderNotifications(id: string): Promise<OrderNotificationDto[]> {
+  const body = await authedRequest<{ data: OrderNotificationDto[] }>(
+    `/api/admin/orders/${encodeURIComponent(id)}/notifications/retry`,
+    { method: 'POST' },
   )
   return body.data
 }

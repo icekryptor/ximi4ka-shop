@@ -219,6 +219,77 @@ describe('Admin orders', () => {
     expect(res.status).toBe(400)
   })
 
+  it('карточка заказа отдаёт состояние уведомлений', async () => {
+    const order = await seedOrder()
+    const repo = AppDataSource.getRepository(OrderNotification)
+    await repo.save([
+      repo.create({
+        orderId: order.id,
+        channel: 'sheets',
+        eventKey: 'created',
+        sentAt: new Date(),
+        attempts: 1,
+      }),
+      repo.create({
+        orderId: order.id,
+        channel: 'telegram',
+        eventKey: 'created',
+        failedAt: new Date(),
+        attempts: 1,
+        lastError: 'Telegram 403: Forbidden: bot was kicked from the group chat',
+      }),
+    ])
+    const res = await request(app).get(`/api/admin/orders/${order.id}`).set(authHeaders(auth))
+    expect(res.status).toBe(200)
+    expect(res.body.data.notifications).toHaveLength(2)
+    expect(res.body.data.notifications[1]).toMatchObject({
+      channel: 'telegram',
+      eventKey: 'created',
+      attempts: 1,
+      lastError: expect.stringContaining('kicked'),
+    })
+    expect(res.body.data.notifications[1].failedAt).not.toBeNull()
+  })
+
+  it('«Отправить ещё раз» возвращает несданные записи в очередь', async () => {
+    const order = await seedOrder()
+    const repo = AppDataSource.getRepository(OrderNotification)
+    const sent = await repo.save(
+      repo.create({
+        orderId: order.id,
+        channel: 'sheets',
+        eventKey: 'created',
+        sentAt: new Date(),
+        attempts: 1,
+      }),
+    )
+    const failed = await repo.save(
+      repo.create({
+        orderId: order.id,
+        channel: 'telegram',
+        eventKey: 'created',
+        failedAt: new Date(),
+        attempts: 3,
+        lastError: 'x',
+      }),
+    )
+    const res = await request(app)
+      .post(`/api/admin/orders/${order.id}/notifications/retry`)
+      .set(authHeaders(auth))
+    expect(res.status).toBe(200)
+    const retried = await repo.findOneByOrFail({ id: failed.id })
+    expect(retried).toMatchObject({ failedAt: null, attempts: 0, lastError: null })
+    expect(retried.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now())
+    expect((await repo.findOneByOrFail({ id: sent.id })).sentAt).not.toBeNull()
+  })
+
+  it('404 на повтор для неизвестного заказа', async () => {
+    const res = await request(app)
+      .post('/api/admin/orders/00000000-0000-4000-8000-000000000999/notifications/retry')
+      .set(authHeaders(auth))
+    expect(res.status).toBe(404)
+  })
+
   it('rejects missing auth (401) and missing CSRF (403)', async () => {
     const order = await seedOrder()
     const unauth = await request(app).get('/api/admin/orders')
