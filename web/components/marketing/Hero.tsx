@@ -22,7 +22,6 @@ interface VisualProps {
   imageUrl: string
   alt: string
   href: string
-  label?: string
 }
 
 interface Props {
@@ -108,9 +107,6 @@ export function Hero({
             aria-label={visual.alt}
             className="hidden lg:block absolute z-[3] right-[4vw] top-1/2 -translate-y-1/2 w-[clamp(300px,24vw,420px)] aspect-[4/5] rounded-[var(--radius-lj-bright)] bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-lj-bright)] overflow-hidden lj-lift"
           >
-            <span className="absolute top-5 left-6 z-[2] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright-mute)]">
-              {visual.label ?? 'fig. 001 — флагман'}
-            </span>
             <Image
               src={visual.imageUrl}
               alt={visual.alt}

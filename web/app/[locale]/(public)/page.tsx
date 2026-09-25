@@ -238,7 +238,7 @@ export default async function HomePage({ params }: Props) {
           // Без фото слайд не показываем; при <1 валидном слайде Hero скрывает
           // панель и разворачивает заголовок на всю ширину.
           .filter((f) => f.dbProduct && f.dbProduct.images.length > 0)
-          .map((f, i) => {
+          .map((f) => {
             const p = f.dbProduct!
             return {
               productId: p.id,
@@ -248,7 +248,6 @@ export default async function HomePage({ params }: Props) {
               imageUrl: p.images[0].url,
               alt: p.name,
               href: `/product/${p.slug}`,
-              label: `fig. 00${i + 1} — ${f.emphasisWord ?? 'флагман'}`,
             }
           })}
       />

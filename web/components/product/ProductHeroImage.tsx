@@ -17,7 +17,7 @@ export function ProductHeroImage({ images, alt, sku, hoverFormula }: Props) {
   if (images.length === 0) return <SpecimenCard size="pdp" sku={sku} />
   const active = images[activeIdx]
   return (
-    <div className="callout-host group/img flex flex-col gap-4">
+    <div className="group/img flex flex-col gap-4">
       <div
         data-main-image
         className="relative aspect-[4/5] bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color] duration-500 hover:border-[var(--color-lj-ink)]"

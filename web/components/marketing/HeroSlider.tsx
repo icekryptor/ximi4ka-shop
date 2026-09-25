@@ -107,14 +107,7 @@ export function HeroSlider({ slides, autoPlayMs = 6000 }: Props) {
     >
       {/* Яркая градиентная панель-оффер */}
       <div className="relative rounded-[var(--radius-lj-bright)] bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-lj-bright)] p-5 lj-lift">
-        <div
-          className="flex items-center justify-between mb-4"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright-mute)]">
-            {slide.label}
-          </span>
+        <div className="flex items-center justify-end mb-4" aria-live="polite" aria-atomic="true">
           <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright-mute)]">
             {index + 1} / {count}
           </span>

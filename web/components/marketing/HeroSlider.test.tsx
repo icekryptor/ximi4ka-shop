@@ -23,7 +23,6 @@ const SLIDES: HeroSlide[] = [
     imageUrl: '/img/1.jpg',
     alt: 'Химичка 3.0',
     href: '/product/himichka-30',
-    label: 'fig. 001 — Химичка',
   },
   {
     productId: 'p2',
@@ -33,7 +32,6 @@ const SLIDES: HeroSlide[] = [
     imageUrl: '/img/2.jpg',
     alt: 'Мини-Химичка',
     href: '/product/mini-himichka',
-    label: 'fig. 002 — Мини',
   },
   {
     productId: 'p3',
@@ -43,7 +41,6 @@ const SLIDES: HeroSlide[] = [
     imageUrl: '/img/3.jpg',
     alt: 'Электрохимичка',
     href: '/product/elektrohimichka',
-    label: 'fig. 003 — Электро',
   },
 ]
 
