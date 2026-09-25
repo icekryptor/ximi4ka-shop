@@ -1,5 +1,6 @@
 import { createSign } from 'node:crypto'
 import { SHEET_HEADER } from '../notifications/format.js'
+import { RateLimitError } from '../notifications/rateLimit.js'
 
 // Google Sheets API v4 от имени сервисного аккаунта. JWT подписываем сами
 // (RS256, node:crypto) — ради одного токена тянуть googleapis незачем.
@@ -14,6 +15,8 @@ const TOKEN_MARGIN_MS = 60_000
 // Не дожидаемся зависшего соединения вечно — таймаут бросает исключение
 // (не SheetsConfigError), обработчик очереди спланирует повтор.
 const REQUEST_TIMEOUT_MS = 20_000
+// Пауза после 429, если Google не прислал Retry-After.
+const DEFAULT_RETRY_AFTER_MS = 60_000
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
@@ -50,6 +53,13 @@ export function parseServiceAccount(raw: string): ServiceAccount {
     private_key: data.private_key.replace(/\\n/g, '\n'),
     token_uri: data.token_uri,
   }
+}
+
+// Retry-After в секундах; дату (вторая форма заголовка) и мусор не разбираем —
+// берём паузу по умолчанию.
+function retryAfterMs(res: Response): number {
+  const seconds = Number(res.headers.get('retry-after'))
+  return Number.isFinite(seconds) && seconds > 0 ? seconds * 1000 : DEFAULT_RETRY_AFTER_MS
 }
 
 function base64url(input: string | Buffer): string {
@@ -172,6 +182,8 @@ export class GoogleSheetsClient {
     } | null
     if (!res.ok || !data?.access_token) {
       const reason = data?.error_description ?? `код ${res.status}`
+      if (res.status === 429)
+        throw new RateLimitError(`Google не выдал токен: ${reason}`, retryAfterMs(res))
       if (res.status >= 400 && res.status < 500)
         throw new SheetsConfigError(`Google не выдал токен: ${reason}`)
       throw new Error(`Google не выдал токен: ${reason}`)
@@ -203,6 +215,7 @@ export class GoogleSheetsClient {
       | null
     if (!res.ok) {
       const message = `Google Sheets ${res.status}: ${data?.error?.message ?? 'без описания'}`
+      if (res.status === 429) throw new RateLimitError(message, retryAfterMs(res))
       // 400 — чаще всего нет такого листа, 403 — нет доступа, 404 — нет таблицы.
       if (res.status === 400 || res.status === 403 || res.status === 404)
         throw new SheetsConfigError(message)

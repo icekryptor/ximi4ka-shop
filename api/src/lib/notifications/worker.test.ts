@@ -6,7 +6,15 @@ import { OrderItem } from '../../entities/OrderItem.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { SheetsConfigError } from '../google/sheets.js'
 import { enqueueOrderEvent } from './outbox.js'
-import { nextDelayMs, processDueNotifications, type NotificationChannels } from './worker.js'
+import { RateLimitError } from './rateLimit.js'
+import {
+  GIVE_UP_AFTER_MS,
+  MAX_DELIVERIES_PER_TICK,
+  nextDelayMs,
+  processDueNotifications,
+  retryWindowMs,
+  type NotificationChannels,
+} from './worker.js'
 
 const NOW = new Date('2026-09-25T12:00:00Z')
 
@@ -234,19 +242,163 @@ describe('processDueNotifications', () => {
     errorSpy.mockRestore()
   })
 
-  it('через сутки временные ошибки тоже сдаются', async () => {
+  it('сдаётся, когда суммарное окно повторов достигает суток', async () => {
+    // Сдача считается по времени повторов, а не по возрасту записи: запись
+    // сдаётся на той неудаче, после которой окно повторов доходит до суток.
+    const lastAttempts = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].find(
+      (n) => retryWindowMs(n) >= GIVE_UP_AFTER_MS,
+    )!
     const order = await seedOrder()
-    await enqueue(order.id, 'created', new Date(NOW.getTime() - 25 * 3600_000))
+    await enqueue(order.id, 'created', minutesAgo(1))
+    await AppDataSource.query(
+      `UPDATE order_notifications SET attempts = $2 WHERE order_id = $1 AND channel = 'sheets'`,
+      [order.id, lastAttempts - 2],
+    )
     const channels = fakeChannels()
     channels.sheets.upsertOrderRow.mockRejectedValue(new Error('503'))
     const errorSpy = silenceConsoleError()
 
     await processDueNotifications(channels, { now: NOW })
+    let sheets = await row(order.id, 'sheets', 'created')
+    expect(sheets.attempts).toBe(lastAttempts - 1)
+    expect(sheets.failedAt).toBeNull()
 
-    expect((await row(order.id, 'sheets', 'created')).failedAt).not.toBeNull()
+    await processDueNotifications(channels, { now: new Date(sheets.nextAttemptAt.getTime()) })
+    sheets = await row(order.id, 'sheets', 'created')
+    expect(sheets.attempts).toBe(lastAttempts)
+    expect(sheets.failedAt).not.toBeNull()
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('503'))
     expect(errorSpy.mock.calls.flat().join(' ')).not.toContain(FAKE_SECRET)
     errorSpy.mockRestore()
+  })
+
+  it('старая запись, впервые встретившая временную ошибку, уходит в повтор', async () => {
+    // Ключи добавили через три дня после заказа — запись ни разу не
+    // пробовали, у неё целое окно повторов.
+    const order = await seedOrder()
+    await enqueue(order.id, 'created', new Date(NOW.getTime() - 3 * 24 * 3600_000))
+    const channels = fakeChannels()
+    channels.sheets.upsertOrderRow.mockRejectedValue(new Error('503'))
+    const errorSpy = silenceConsoleError()
+
+    const result = await processDueNotifications(channels, { now: NOW })
+
+    expect(result).toEqual({ sent: 1, retried: 1, failed: 0 })
+    const sheets = await row(order.id, 'sheets', 'created')
+    expect(sheets.failedAt).toBeNull()
+    expect(sheets.attempts).toBe(1)
+    expect(sheets.nextAttemptAt.getTime()).toBe(NOW.getTime() + nextDelayMs(1))
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('503'))
+    errorSpy.mockRestore()
+  })
+
+  it('лимит Telegram — пауза, попытка не считается, остальные записи канала ждут', async () => {
+    const orders = [await seedOrder(), await seedOrder(), await seedOrder()]
+    for (const [i, o] of orders.entries()) await enqueue(o.id, 'created', minutesAgo(10 - i))
+    const channels = fakeChannels()
+    channels.telegram.sendMessage.mockRejectedValueOnce(
+      new RateLimitError('Telegram 429: Too Many Requests: retry after 5', 5_000),
+    )
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const result = await processDueNotifications(channels, { now: NOW })
+
+    expect(result).toEqual({ sent: 3, retried: 1, failed: 0 })
+    expect(channels.telegram.sendMessage).toHaveBeenCalledTimes(1)
+    const limited = await row(orders[0].id, 'telegram', 'created')
+    expect(limited.attempts).toBe(0)
+    expect(limited.failedAt).toBeNull()
+    // Пауза не короче 30 с, даже если Telegram просит меньше.
+    expect(limited.nextAttemptAt.getTime()).toBe(NOW.getTime() + 30_000)
+    expect(limited.lastError).toBe('лимит Telegram, повтор через 30 с')
+    for (const o of orders.slice(1)) {
+      const waiting = await row(o.id, 'telegram', 'created')
+      expect(waiting.attempts).toBe(0)
+      expect(waiting.lastError).toBeNull()
+      expect(waiting.nextAttemptAt.getTime()).toBeLessThanOrEqual(NOW.getTime())
+    }
+    // Другой канал доставлен как обычно.
+    expect(channels.sheets.upsertOrderRow).toHaveBeenCalledTimes(3)
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('лимит Telegram'))
+    warnSpy.mockRestore()
+  })
+
+  it('лимит Google — пауза по Retry-After и без сдачи даже у старой записи', async () => {
+    const old = await seedOrder()
+    await enqueue(old.id, 'created', new Date(NOW.getTime() - 3 * 24 * 3600_000))
+    await AppDataSource.query(
+      `UPDATE order_notifications SET attempts = 20 WHERE order_id = $1 AND channel = 'sheets'`,
+      [old.id],
+    )
+    const next = await seedOrder()
+    await enqueue(next.id, 'created', minutesAgo(1))
+    const channels = fakeChannels()
+    channels.sheets.upsertOrderRow.mockRejectedValueOnce(
+      new RateLimitError('Google Sheets 429: Quota exceeded', 90_000),
+    )
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    await processDueNotifications(channels, { now: NOW })
+
+    const limited = await row(old.id, 'sheets', 'created')
+    expect(limited.attempts).toBe(20)
+    expect(limited.failedAt).toBeNull()
+    expect(limited.nextAttemptAt.getTime()).toBe(NOW.getTime() + 90_000)
+    expect(limited.lastError).toBe('лимит Google Таблицы, повтор через 90 с')
+    expect(channels.sheets.upsertOrderRow).toHaveBeenCalledTimes(1)
+    expect((await row(next.id, 'sheets', 'created')).sentAt).toBeNull()
+    expect(channels.telegram.sendMessage).toHaveBeenCalledTimes(2)
+    warnSpy.mockRestore()
+  })
+
+  it('за тик не больше лимита доставок на канал, остальное ждёт следующего тика', async () => {
+    const orders: Order[] = []
+    for (let i = 0; i < MAX_DELIVERIES_PER_TICK.sheets + 2; i += 1) {
+      const o = await seedOrder()
+      await enqueue(o.id, 'created', minutesAgo(60 - i))
+      orders.push(o)
+    }
+    const channels = fakeChannels()
+
+    await processDueNotifications(channels, { now: NOW })
+
+    expect(channels.telegram.sendMessage).toHaveBeenCalledTimes(MAX_DELIVERIES_PER_TICK.telegram)
+    expect(channels.sheets.upsertOrderRow).toHaveBeenCalledTimes(MAX_DELIVERIES_PER_TICK.sheets)
+    // Самые старые — первыми; хвост остаётся готовым к следующему тику.
+    const tail = orders[orders.length - 1]
+    expect((await row(orders[0].id, 'telegram', 'created')).sentAt).not.toBeNull()
+    const waiting = await row(tail.id, 'telegram', 'created')
+    expect(waiting.sentAt).toBeNull()
+    expect(waiting.attempts).toBe(0)
+
+    await processDueNotifications(channels, { now: new Date(NOW.getTime() + 10_000) })
+    expect(channels.telegram.sendMessage).toHaveBeenCalledTimes(
+      2 * MAX_DELIVERIES_PER_TICK.telegram,
+    )
+    expect(channels.sheets.upsertOrderRow).toHaveBeenCalledTimes(orders.length)
+  })
+
+  it('очередь одного канала не вытесняет другой из тика', async () => {
+    // Старый хвост Telegram длиннее партии; запись таблицы моложе всех.
+    for (let i = 0; i < 25; i += 1) {
+      const o = await seedOrder()
+      await enqueue(o.id, 'created', minutesAgo(120 - i))
+      await AppDataSource.query(
+        `UPDATE order_notifications SET sent_at = $2 WHERE order_id = $1 AND channel = 'sheets'`,
+        [o.id, minutesAgo(60)],
+      )
+    }
+    const fresh = await seedOrder()
+    await enqueue(fresh.id, 'created', minutesAgo(1))
+    const channels = fakeChannels()
+
+    await processDueNotifications(channels, { now: NOW })
+
+    expect(channels.sheets.upsertOrderRow).toHaveBeenCalledWith(
+      fresh.orderNumber,
+      expect.any(Array),
+    )
+    expect(channels.telegram.sendMessage).toHaveBeenCalledTimes(MAX_DELIVERIES_PER_TICK.telegram)
   })
 
   it('ненастроенный канал не трогается — его записи ждут', async () => {
@@ -302,6 +454,21 @@ describe('processDueNotifications', () => {
     expect(channels.telegram.sendMessage).toHaveBeenCalledWith(
       expect.stringContaining(`Новый заказ ${healthy.orderNumber}`),
     )
+  })
+})
+
+describe('retryWindowMs', () => {
+  it('сумма запланированных пауз по таблице задержек', () => {
+    const table = [1, 2, 3, 4, 5, 6, 7, 8, 9].map(retryWindowMs)
+    const minutes = table.map((ms) => ms / 60_000)
+    // 1 + 5 + 15 + 60 + 360 + 360 + …
+    expect(minutes).toEqual([1, 6, 21, 81, 441, 801, 1161, 1521, 1881])
+    expect(retryWindowMs(0)).toBe(0)
+  })
+
+  it('впервые доходит до суток на восьмой неудаче', () => {
+    expect(retryWindowMs(7)).toBeLessThan(GIVE_UP_AFTER_MS)
+    expect(retryWindowMs(8)).toBeGreaterThanOrEqual(GIVE_UP_AFTER_MS)
   })
 })
 

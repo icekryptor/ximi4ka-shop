@@ -7,6 +7,7 @@ import {
   parseServiceAccount,
 } from './sheets.js'
 import { SHEET_HEADER } from '../notifications/format.js'
+import { RateLimitError } from '../notifications/rateLimit.js'
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', {
   modulusLength: 2048,
@@ -161,6 +162,52 @@ describe('GoogleSheetsClient', () => {
       .catch((e: unknown) => e)
     expect(err).toBeInstanceOf(Error)
     expect(err).not.toBeInstanceOf(SheetsConfigError)
+  })
+
+  it('429 — RateLimitError с паузой из заголовка Retry-After', async () => {
+    const f = vi
+      .fn()
+      .mockResolvedValueOnce(tokenOk())
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ error: { message: 'Quota exceeded' } }), {
+          status: 429,
+          headers: { 'content-type': 'application/json', 'retry-after': '17' },
+        }),
+      )
+    const err = await client(f)
+      .upsertOrderRow('XM-1', ['XM-1'])
+      .catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(RateLimitError)
+    expect(err).not.toBeInstanceOf(SheetsConfigError)
+    expect((err as RateLimitError).retryAfterMs).toBe(17_000)
+    expect((err as Error).message).not.toContain('ya29.token')
+  })
+
+  it('429 без Retry-After — пауза 60 с', async () => {
+    const f = vi
+      .fn()
+      .mockResolvedValueOnce(tokenOk())
+      .mockResolvedValueOnce(json(429, { error: { message: 'Quota exceeded' } }))
+    const err = await client(f)
+      .upsertOrderRow('XM-1', ['XM-1'])
+      .catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(RateLimitError)
+    expect((err as RateLimitError).retryAfterMs).toBe(60_000)
+  })
+
+  it('429 от выдачи токена — тоже RateLimitError, а не ошибка настройки', async () => {
+    const f = vi.fn().mockResolvedValueOnce(
+      new Response(JSON.stringify({ error: 'rate_limit_exceeded' }), {
+        status: 429,
+        headers: { 'content-type': 'application/json', 'retry-after': '5' },
+      }),
+    )
+    const err = await client(f)
+      .upsertOrderRow('XM-1', ['XM-1'])
+      .catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(RateLimitError)
+    expect(err).not.toBeInstanceOf(SheetsConfigError)
+    expect((err as RateLimitError).retryAfterMs).toBe(5_000)
   })
 
   it('fromEnv без ключей — null', () => {
