@@ -3,6 +3,7 @@ import type { NotificationChannel, OrderEventKey, OrderStatus } from '@ximi4ka-s
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
+import { enqueueCdekShipment } from '../cdek/queue.js'
 
 // Куда сообщаем о каждом событии заказа.
 export const CHANNELS: NotificationChannel[] = ['sheets', 'telegram']
@@ -37,12 +38,13 @@ export async function enqueueOrderEvent(
     .execute()
 }
 
-// Сохраняет смену статуса заказа и, если статус изменился, ставит событие —
-// в одной транзакции. Для вебхука Т-Кассы, сверки и ручной смены статуса в
-// админке. Пишем только колонки, которые эти вызовы меняют (status, paid_at,
-// status_history и привязку платежа из вебхука), а не всю сущность: save()
-// записал бы и устаревший telegram_message_id из памяти поверх id карточки,
-// который обработчик очереди успел сохранить, пока шли сетевые вызовы.
+// Сохраняет смену статуса заказа и, если статус изменился, ставит событие и,
+// при оплате, заказ в очередь СДЭК — в одной транзакции. Для вебхука
+// Т-Кассы, сверки и ручной смены статуса в админке. Пишем только колонки,
+// которые эти вызовы меняют (status, paid_at, status_history и привязку
+// платежа из вебхука), а не всю сущность: save() записал бы и устаревший
+// telegram_message_id из памяти поверх id карточки, который обработчик
+// очереди успел сохранить, пока шли сетевые вызовы.
 export async function saveOrderWithStatusEvent(
   order: Order,
   previousStatus: OrderStatus,
@@ -57,6 +59,10 @@ export async function saveOrderWithStatusEvent(
     })
     const key = order.status === previousStatus ? null : statusEventKey(order.status)
     if (key) await enqueueOrderEvent(em, order.id, key)
+    // Оплаченный заказ — в очередь создания в СДЭК, той же транзакцией.
+    if (order.status === 'paid' && previousStatus !== 'paid') {
+      await enqueueCdekShipment(em, order)
+    }
     return order
   })
 }
