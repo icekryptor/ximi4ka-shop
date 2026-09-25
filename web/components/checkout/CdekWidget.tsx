@@ -20,6 +20,12 @@ export const SELECT_RETRY_FOR_MS = 3_000
 // прекращается: мышь, палец, колесо, клавиши масштаба.
 const USER_MAP_EVENTS = ['pointerdown', 'touchstart', 'wheel', 'keydown'] as const
 
+// Сколько ждём готовности виджета, прежде чем показать строку вместо карты:
+// завис скрипт или Яндекс не отдал карту (§5.2). Чекаут без карты не
+// блокируется — пункт выбирают из списка.
+export const MAP_READY_TIMEOUT_MS = 10_000
+export const MAP_UNAVAILABLE_TEXT = 'Карта недоступна — выберите пункт из списка'
+
 type LngLat = [number, number]
 
 // То, чем пользуемся у экземпляра @cdek-it/widget 4.0.0
@@ -93,8 +99,14 @@ export function CdekWidget({
   onChoose,
 }: CdekWidgetProps) {
   const rootId = `cdek-map-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
+  const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY
   const widgetRef = useRef<WidgetInstance | null>(null)
   const [ready, setReady] = useState(false)
+  const [unavailable, setUnavailable] = useState(!apiKey)
+  // То же, что unavailable, но видно сразу и в колбэках: next/script может
+  // вызвать onReady уже после того, как карта признана недоступной, и тогда
+  // виджет не должен создаваться.
+  const unavailableRef = useRef(!apiKey)
   const onChooseRef = useRef(onChoose)
   // Последние город и пункт: центр при создании виджета и данные для
   // эффектов синхронизации.
@@ -110,36 +122,44 @@ export function CdekWidget({
     latestRef.current = { cityLocation, selectedPoint }
   })
 
-  const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY
-
   function create() {
-    if (widgetRef.current || !window.CDEKWidget) return
+    if (unavailableRef.current || widgetRef.current || !window.CDEKWidget) return
     const { cityLocation: city, selectedPoint: point } = latestRef.current
-    const widget = new window.CDEKWidget({
-      root: rootId,
-      apiKey,
-      servicePath,
-      from: 'Москва',
-      defaultLocation: point?.location ?? city ?? MOSCOW_CENTER,
-      canChoose: true,
-      goods,
-      lang: 'rus',
-      currency: 'RUB',
-      // Только ПВЗ: адрес курьера вводится своими полями под городом, чтобы он
-      // был в одном месте (§5.2). Постаматы — вне задачи (§3): у них свои
-      // тарифы и ячейки, куда наши коробки проходят не всегда.
-      tariffs: { office: [tariffPvz], door: [], pickup: [] },
-      hideDeliveryOptions: { office: false, door: true },
-      forceFilters: { type: 'PVZ' },
-      // Наличные и карта в ПВЗ не нужны — заказ оплачен онлайн.
-      hideFilters: { have_cash: true, have_cashless: true, is_dressing_room: true, type: true },
-      onReady: () => setReady(true),
-      onChoose: (mode: string, _tariff: unknown, target: WidgetOffice) => {
-        if (mode !== 'office') return
-        chosenOnMapRef.current = target.code
-        onChooseRef.current(target)
-      },
-    }) as WidgetInstance
+    let widget: WidgetInstance
+    try {
+      widget = new window.CDEKWidget({
+        root: rootId,
+        apiKey,
+        servicePath,
+        from: 'Москва',
+        defaultLocation: point?.location ?? city ?? MOSCOW_CENTER,
+        canChoose: true,
+        goods,
+        lang: 'rus',
+        currency: 'RUB',
+        // Только ПВЗ: адрес курьера вводится своими полями под городом, чтобы он
+        // был в одном месте (§5.2). Постаматы — вне задачи (§3): у них свои
+        // тарифы и ячейки, куда наши коробки проходят не всегда.
+        tariffs: { office: [tariffPvz], door: [], pickup: [] },
+        hideDeliveryOptions: { office: false, door: true },
+        forceFilters: { type: 'PVZ' },
+        // Наличные и карта в ПВЗ не нужны — заказ оплачен онлайн.
+        hideFilters: { have_cash: true, have_cashless: true, is_dressing_room: true, type: true },
+        onReady: () => setReady(true),
+        onChoose: (mode: string, _tariff: unknown, target: WidgetOffice) => {
+          if (mode !== 'office') return
+          chosenOnMapRef.current = target.code
+          onChooseRef.current(target)
+        },
+      }) as WidgetInstance
+    } catch (err) {
+      // Конструктор упал (битая сборка на CDN, несовместимые настройки) —
+      // карты не будет, список работает.
+      console.warn('cdek widget: не создался —', err instanceof Error ? err.message : err)
+      unavailableRef.current = true
+      setUnavailable(true)
+      return
+    }
     widgetRef.current = widget
     applyGeocoderKey(widget, process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY)
   }
@@ -148,6 +168,7 @@ export function CdekWidget({
   // перемонтировал компонент): второго onReady от next/script может не быть,
   // поэтому создаём сами. При размонтировании экземпляр уничтожаем.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- конструктор виджета упал: одна перерисовка в строку «Карта недоступна»
     if (apiKey) create()
     return () => {
       stopRetryRef.current?.()
@@ -156,6 +177,18 @@ export function CdekWidget({
     // Только на монтирование: create берёт свежие пропсы из latestRef.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Нет готовности за 10 с — вместо карты строка, список работает (§5.2).
+  useEffect(() => {
+    if (ready || unavailable) return
+    const timer = setTimeout(() => {
+      unavailableRef.current = true
+      stopRetryRef.current?.()
+      destroyWidget(widgetRef)
+      setUnavailable(true)
+    }, MAP_READY_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [ready, unavailable])
 
   const cityKey = cityLocation ? cityLocation.join(',') : null
   const pointCode = selectedPoint?.code ?? null
@@ -204,6 +237,7 @@ export function CdekWidget({
   // не возвращает её к пункту и не спорит с ним. Слушаем на погружении:
   // Яндекс.Карты могут останавливать всплытие своих событий, и обработчики
   // React (onWheel и т. п.) их бы не увидели.
+  // Корень карты появляется и пропадает вместе с unavailable.
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
@@ -214,22 +248,30 @@ export function CdekWidget({
     return () => {
       for (const type of USER_MAP_EVENTS) root.removeEventListener(type, stop, { capture: true })
     }
-  }, [])
+  }, [unavailable])
 
-  if (!apiKey) {
+  if (unavailable) {
     return (
       <p
         role="status"
         className="border border-[var(--color-lj-rule)] px-4 py-6 font-lj-body text-base text-[var(--color-lj-ink)] opacity-80"
       >
-        Карта недоступна: не настроен ключ Яндекс.Карт. Напишите нам — оформим доставку вручную.
+        {MAP_UNAVAILABLE_TEXT}
       </p>
     )
   }
 
   return (
     <>
-      <Script src={WIDGET_SRC} strategy="afterInteractive" onReady={create} />
+      <Script
+        src={WIDGET_SRC}
+        strategy="afterInteractive"
+        onReady={create}
+        onError={() => {
+          unavailableRef.current = true
+          setUnavailable(true)
+        }}
+      />
       <div
         id={rootId}
         ref={rootRef}

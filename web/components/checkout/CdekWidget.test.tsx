@@ -2,8 +2,12 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 
 // next/script: onReady — после монтирования, как у уже загруженного
-// скрипта; script.outcome меняет исход для отдельных тестов.
-const script = vi.hoisted(() => ({ outcome: 'ready' as 'ready' | 'error' | 'pending' }))
+// скрипта; script.outcome меняет исход для отдельных тестов. onReady
+// запоминаем, чтобы вызвать его «с опозданием» из теста.
+const script = vi.hoisted(() => ({
+  outcome: 'ready' as 'ready' | 'error' | 'pending',
+  onReady: null as null | (() => void),
+}))
 vi.mock('next/script', async () => {
   const { useEffect } = await import('react')
   return {
@@ -14,6 +18,11 @@ vi.mock('next/script', async () => {
       onReady?: () => void
       onError?: (e: unknown) => void
     }) {
+      // Запоминаем в эффекте, а не в рендере: мутация внешнего объекта в
+      // рендере — нарушение правил хуков.
+      useEffect(() => {
+        script.onReady = onReady ?? null
+      })
       useEffect(() => {
         if (script.outcome === 'ready') onReady?.()
         if (script.outcome === 'error') onError?.(new Error('CDN недоступен'))
@@ -24,7 +33,13 @@ vi.mock('next/script', async () => {
   }
 })
 
-import { CdekWidget, SELECT_RETRY_FOR_MS, SELECT_RETRY_MS } from './CdekWidget'
+import {
+  CdekWidget,
+  MAP_READY_TIMEOUT_MS,
+  MAP_UNAVAILABLE_TEXT,
+  SELECT_RETRY_FOR_MS,
+  SELECT_RETRY_MS,
+} from './CdekWidget'
 
 interface WidgetConfig {
   apiKey: string
@@ -86,6 +101,7 @@ describe('<CdekWidget>', () => {
 
   beforeEach(() => {
     script.outcome = 'ready'
+    script.onReady = null
     process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY = 'ya-key'
     instance = fakeWidget()
     // Вызывается через new: возвращённый объект становится экземпляром.
@@ -97,6 +113,7 @@ describe('<CdekWidget>', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
     if (ORIGINAL_KEY == null) delete process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY
     else process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY = ORIGINAL_KEY
     if (ORIGINAL_GEO_KEY == null) delete process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY
@@ -104,11 +121,59 @@ describe('<CdekWidget>', () => {
     delete (window as unknown as { CDEKWidget?: unknown }).CDEKWidget
   })
 
-  it('без ключа Яндекс.Карт не грузит виджет', () => {
+  it('без ключа Яндекс.Карт — строка вместо карты, виджет не грузится', () => {
     delete process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY
     render(<CdekWidget {...props} />)
-    expect(screen.getByRole('status')).toHaveTextContent(/карта недоступна/i)
+    expect(screen.getByRole('status')).toHaveTextContent(MAP_UNAVAILABLE_TEXT)
+    expect(MAP_UNAVAILABLE_TEXT).toBe('Карта недоступна — выберите пункт из списка')
     expect(ctor).not.toHaveBeenCalled()
+  })
+
+  it('скрипт не загрузился (onError) — строка вместо карты', () => {
+    script.outcome = 'error'
+    delete (window as unknown as { CDEKWidget?: unknown }).CDEKWidget
+    render(<CdekWidget {...props} />)
+    expect(screen.getByRole('status')).toHaveTextContent(MAP_UNAVAILABLE_TEXT)
+  })
+
+  it('10 с без готовности виджета — строка вместо карты, экземпляр убран', () => {
+    vi.useFakeTimers()
+    render(<CdekWidget {...props} />)
+    act(() => vi.advanceTimersByTime(MAP_READY_TIMEOUT_MS - 1))
+    expect(screen.queryByRole('status')).toBeNull()
+    act(() => vi.advanceTimersByTime(1))
+    expect(screen.getByRole('status')).toHaveTextContent(MAP_UNAVAILABLE_TEXT)
+    expect(instance.destroy).toHaveBeenCalledTimes(1)
+  })
+
+  it('виджет успел подготовиться — строка не появляется', () => {
+    vi.useFakeTimers()
+    renderReady()
+    act(() => vi.advanceTimersByTime(MAP_READY_TIMEOUT_MS * 2))
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('после 10 с запоздавший onReady скрипта виджет уже не создаёт', () => {
+    vi.useFakeTimers()
+    script.outcome = 'pending'
+    delete (window as unknown as { CDEKWidget?: unknown }).CDEKWidget
+    render(<CdekWidget {...props} />)
+    act(() => vi.advanceTimersByTime(MAP_READY_TIMEOUT_MS))
+    expect(screen.getByRole('status')).toHaveTextContent(MAP_UNAVAILABLE_TEXT)
+    // Скрипт всё-таки догрузился и зовёт onReady последнего рендера.
+    ;(window as unknown as { CDEKWidget: unknown }).CDEKWidget = ctor
+    act(() => script.onReady?.())
+    expect(ctor).not.toHaveBeenCalled()
+    expect(screen.getByRole('status')).toHaveTextContent(MAP_UNAVAILABLE_TEXT)
+  })
+
+  it('конструктор виджета упал — строка вместо карты, страница не падает', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    ctor.mockImplementation(function () {
+      throw new Error('битая сборка')
+    })
+    expect(() => render(<CdekWidget {...props} />)).not.toThrow()
+    expect(screen.getByRole('status')).toHaveTextContent(MAP_UNAVAILABLE_TEXT)
   })
 
   it('создаёт виджет с нашими местами, прокси, тарифом ПВЗ и ключом', () => {
