@@ -1,4 +1,5 @@
 import type { DeliveryMethod } from '@ximi4ka-shop/shared'
+import { isPostalCode } from './shipping'
 
 // Пороги бесплатной доставки — зеркало api/src/lib/shipping/rates.ts, только
 // для подсказки в интерфейсе. Саму цену доставки считает сервер
@@ -6,11 +7,6 @@ import type { DeliveryMethod } from '@ximi4ka-shop/shared'
 export const SHIPPING_RULES: Record<DeliveryMethod, { freeFromRub: number; priceRub: number }> = {
   cdek_pvz: { freeFromRub: 3000, priceRub: 350 },
   cdek_courier: { freeFromRub: 5000, priceRub: 500 },
-}
-
-export const DELIVERY_LABELS: Record<DeliveryMethod, string> = {
-  cdek_pvz: 'СДЭК — пункт выдачи',
-  cdek_courier: 'СДЭК — курьером',
 }
 
 /** Digits of the full number including the country code, e.g. '79123456789'. */
@@ -57,22 +53,40 @@ export interface CheckoutFormFields {
   phone: string
   email: string
   telegram: string
-  // Квартира, подъезд, этаж — для курьера. Виджет СДЭК геокодирует только
-  // улицу и дом.
-  apartment: string
   comment: string
 }
 
 export type CheckoutFormErrors = Partial<
-  Record<'name' | 'phone' | 'email' | 'telegram' | 'delivery', string>
+  Record<
+    | 'name'
+    | 'phone'
+    | 'email'
+    | 'telegram'
+    | 'city'
+    | 'point'
+    | 'street'
+    | 'postalCode'
+    | 'delivery',
+    string
+  >
 >
+
+// Что выбрано в блоке доставки — для проверки формы (спека §5.3).
+export interface DeliveryFormState {
+  city: { code: number } | null
+  method: DeliveryMethod
+  point: { code: string } | null
+  courier: { street: string; postalCode: string }
+  // Расчёт выбранного способа: оформить можно только с готовой ценой.
+  quoteStatus: 'idle' | 'loading' | 'ready' | 'error'
+}
 
 // Client-side validation with Russian messages. Mirrors the zod schema on
 // the server (checkout.schemas.ts) so a valid form never bounces off a 400.
-// hasDelivery — выбран ли пункт выдачи или адрес на карте СДЭК.
+// Доставка (§5.3): город, способ, пункт или улица с домом, готовая цена.
 export function validateCheckoutForm(
   fields: CheckoutFormFields,
-  hasDelivery: boolean,
+  delivery: DeliveryFormState,
 ): CheckoutFormErrors {
   const errors: CheckoutFormErrors = {}
   if (fields.name.trim() === '') {
@@ -88,8 +102,21 @@ export function validateCheckoutForm(
   if (fields.telegram.trim() !== '' && !normalizeTelegramHandle(fields.telegram)) {
     errors.telegram = 'Проверьте ник: 5–32 латинских букв, цифр или _'
   }
-  if (!hasDelivery) {
-    errors.delivery = 'Выберите пункт выдачи или адрес доставки на карте'
+  if (!delivery.city) {
+    errors.city = 'Укажите город'
+  } else {
+    if (delivery.method === 'cdek_pvz') {
+      if (!delivery.point) errors.point = 'Выберите пункт получения'
+    } else {
+      if (delivery.courier.street.trim() === '') errors.street = 'Укажите улицу и дом'
+      const postal = delivery.courier.postalCode.trim()
+      if (postal !== '' && !isPostalCode(postal)) errors.postalCode = 'Индекс — 6 цифр'
+    }
+    if (delivery.quoteStatus === 'loading') {
+      errors.delivery = 'Считаем доставку — подождите секунду'
+    } else if (delivery.quoteStatus !== 'ready') {
+      errors.delivery = 'Не удалось рассчитать доставку — нажмите «Повторить расчёт»'
+    }
   }
   return errors
 }

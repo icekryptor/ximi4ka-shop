@@ -8,6 +8,7 @@ import {
   clearIdempotencyKey,
   normalizeTelegramHandle,
   type CheckoutFormFields,
+  type DeliveryFormState,
 } from './checkout'
 
 const validFields: CheckoutFormFields = {
@@ -15,8 +16,16 @@ const validFields: CheckoutFormFields = {
   phone: '+7 (912) 345-67-89',
   email: '',
   telegram: '',
-  apartment: '',
   comment: '',
+}
+
+// Город выбран, пункт выбран, цена готова.
+const PVZ_READY: DeliveryFormState = {
+  city: { code: 44 },
+  method: 'cdek_pvz',
+  point: { code: 'MSK65' },
+  courier: { street: '', postalCode: '' },
+  quoteStatus: 'ready',
 }
 
 describe('shipping rules', () => {
@@ -66,30 +75,71 @@ describe('formatPhoneInput (+7 mask)', () => {
 
 describe('validateCheckoutForm', () => {
   it('accepts a valid form', () => {
-    expect(validateCheckoutForm(validFields, true)).toEqual({})
+    expect(validateCheckoutForm(validFields, PVZ_READY)).toEqual({})
   })
 
   it('requires the name', () => {
-    const errors = validateCheckoutForm({ ...validFields, name: '   ' }, true)
+    const errors = validateCheckoutForm({ ...validFields, name: '   ' }, PVZ_READY)
     expect(errors.name).toMatch(/укажите имя/i)
   })
 
   it('requires a complete phone number', () => {
-    const errors = validateCheckoutForm({ ...validFields, phone: '+7 (912) 345' }, true)
+    const errors = validateCheckoutForm({ ...validFields, phone: '+7 (912) 345' }, PVZ_READY)
     expect(errors.phone).toMatch(/телефон/i)
   })
 
   it('rejects a malformed email but allows an empty one', () => {
-    expect(validateCheckoutForm({ ...validFields, email: 'нет-собаки' }, true).email).toMatch(
+    expect(validateCheckoutForm({ ...validFields, email: 'нет-собаки' }, PVZ_READY).email).toMatch(
       /email/i,
     )
-    expect(validateCheckoutForm({ ...validFields, email: '' }, true).email).toBeUndefined()
-    expect(validateCheckoutForm({ ...validFields, email: 'a@b.ru' }, true).email).toBeUndefined()
+    expect(validateCheckoutForm({ ...validFields, email: '' }, PVZ_READY).email).toBeUndefined()
+    expect(
+      validateCheckoutForm({ ...validFields, email: 'a@b.ru' }, PVZ_READY).email,
+    ).toBeUndefined()
   })
 
-  it('требует выбрать пункт выдачи или адрес на карте', () => {
-    const errors = validateCheckoutForm(validFields, false)
-    expect(errors.delivery).toMatch(/пункт выдачи|адрес/i)
+  it('без города — «Укажите город»', () => {
+    expect(validateCheckoutForm(validFields, { ...PVZ_READY, city: null }).city).toBe(
+      'Укажите город',
+    )
+  })
+})
+
+describe('validateCheckoutForm — доставка', () => {
+  it('ПВЗ без пункта — «Выберите пункт получения»', () => {
+    expect(validateCheckoutForm(validFields, { ...PVZ_READY, point: null })).toEqual({
+      point: 'Выберите пункт получения',
+    })
+  })
+
+  it('курьер: улица с домом обязательна, пункт не нужен', () => {
+    const courier: DeliveryFormState = { ...PVZ_READY, method: 'cdek_courier', point: null }
+    expect(validateCheckoutForm(validFields, courier).street).toBe('Укажите улицу и дом')
+    expect(
+      validateCheckoutForm(validFields, {
+        ...courier,
+        courier: { street: 'Тверская ул., 1', postalCode: '' },
+      }),
+    ).toEqual({})
+  })
+
+  it('индекс необязателен, но если указан — 6 цифр', () => {
+    const courier: DeliveryFormState = {
+      ...PVZ_READY,
+      method: 'cdek_courier',
+      point: null,
+      courier: { street: 'Тверская ул., 1', postalCode: '1250' },
+    }
+    expect(validateCheckoutForm(validFields, courier).postalCode).toBe('Индекс — 6 цифр')
+  })
+
+  it('без готовой цены оформить нельзя', () => {
+    expect(
+      validateCheckoutForm(validFields, { ...PVZ_READY, quoteStatus: 'loading' }).delivery,
+    ).toBe('Считаем доставку — подождите секунду')
+    expect(validateCheckoutForm(validFields, { ...PVZ_READY, quoteStatus: 'error' }).delivery).toBe(
+      'Не удалось рассчитать доставку — нажмите «Повторить расчёт»',
+    )
   })
 })
 
@@ -105,10 +155,10 @@ describe('normalizeTelegramHandle (форма)', () => {
 
 describe('validateCheckoutForm — Telegram', () => {
   it('пустой Telegram — не ошибка', () => {
-    expect(validateCheckoutForm({ ...validFields, telegram: '' }, true)).toEqual({})
+    expect(validateCheckoutForm({ ...validFields, telegram: '' }, PVZ_READY)).toEqual({})
   })
   it('невалидный ник — ошибка', () => {
-    const errors = validateCheckoutForm({ ...validFields, telegram: 'мария' }, true)
+    const errors = validateCheckoutForm({ ...validFields, telegram: 'мария' }, PVZ_READY)
     expect(errors.telegram).toMatch(/латинских/)
   })
 })

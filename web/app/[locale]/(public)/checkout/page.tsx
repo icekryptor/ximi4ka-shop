@@ -3,28 +3,14 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { CheckoutRequest, DeliveryDestination, DeliveryQuote } from '@ximi4ka-shop/shared'
+import type { CheckoutRequest } from '@ximi4ka-shop/shared'
 import { useCart } from '@/lib/cart'
-import {
-  ApiError,
-  cdekWidgetServicePath,
-  quoteShipping,
-  submitCheckout,
-  type ShippingQuoteResponse,
-} from '@/lib/api'
+import { ApiError, quoteShipping, submitCheckout, type ShippingQuoteResponse } from '@/lib/api'
 import { formatRub } from '@/lib/stockLabel'
-import {
-  destinationFromWidget,
-  formatPeriod,
-  widgetGoods,
-  type WidgetDoorAddress,
-  type WidgetOfficeAddress,
-} from '@/lib/shipping'
-import { CdekWidget } from '@/components/checkout/CdekWidget'
+import { CdekDelivery } from '@/components/checkout/CdekDelivery'
 import { ERROR_CLASS, FIELD_CLASS, LABEL_CLASS } from '@/components/checkout/fieldStyles'
+import { useCdekDelivery } from '@/components/checkout/useCdekDelivery'
 import {
-  DELIVERY_LABELS,
-  SHIPPING_RULES,
   clearIdempotencyKey,
   formatPhoneInput,
   getOrCreateIdempotencyKey,
@@ -41,18 +27,7 @@ const INITIAL_FIELDS: CheckoutFormFields = {
   phone: '',
   email: '',
   telegram: '',
-  apartment: '',
   comment: '',
-}
-
-type DeliveryChoice =
-  | { mode: 'office'; address: WidgetOfficeAddress }
-  | { mode: 'door'; address: WidgetDoorAddress }
-
-function destinationFor(choice: DeliveryChoice, apartment: string): DeliveryDestination {
-  return choice.mode === 'office'
-    ? destinationFromWidget('office', choice.address)
-    : destinationFromWidget('door', choice.address, apartment)
 }
 
 export default function CheckoutPage() {
@@ -67,13 +42,12 @@ export default function CheckoutPage() {
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  // Места отправления и тарифы — с сервера: по ним виджет считает цены на
-  // карте. Цена в сводке — тоже с сервера, после выбора точки.
+  // Город, способ, пункт или адрес курьера и цены — в блоке доставки (спека §5).
+  const delivery = useCdekDelivery(items)
+
+  // Места отправления и тарифы — для карты СДЭК: по ним она считает цены на
+  // пунктах. Не загрузились — карты нет, а список и курьер работают (§5.2).
   const [shipping, setShipping] = useState<ShippingQuoteResponse | null>(null)
-  const [shippingError, setShippingError] = useState<string | null>(null)
-  const [choice, setChoice] = useState<DeliveryChoice | null>(null)
-  const [quote, setQuote] = useState<DeliveryQuote | null>(null)
-  const [quoting, setQuoting] = useState(false)
 
   const cartKey = items.map((i) => `${i.productId}:${i.quantity}`).join(',')
   useEffect(() => {
@@ -84,7 +58,7 @@ export default function CheckoutPage() {
         if (!cancelled) setShipping(data)
       })
       .catch(() => {
-        if (!cancelled) setShippingError('Не удалось загрузить доставку. Обновите страницу.')
+        // Без мест карта не покажется; цены способов считает блок доставки.
       })
     return () => {
       cancelled = true
@@ -93,36 +67,9 @@ export default function CheckoutPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, cartKey])
 
-  async function handleChoose(
-    mode: 'office' | 'door',
-    _tariff: unknown,
-    address: WidgetOfficeAddress | WidgetDoorAddress,
-  ) {
-    const next = (
-      mode === 'office'
-        ? { mode, address: address as WidgetOfficeAddress }
-        : { mode, address: address as WidgetDoorAddress }
-    ) as DeliveryChoice
-    setChoice(next)
-    setQuote(null)
-    setErrors((prev) => ({ ...prev, delivery: undefined }))
-    setQuoting(true)
-    try {
-      const data = await quoteShipping({
-        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
-        destination: destinationFor(next, ''),
-      })
-      setQuote(data.quote)
-    } catch {
-      setServerError('Не удалось рассчитать доставку. Попробуйте выбрать пункт ещё раз.')
-    } finally {
-      setQuoting(false)
-    }
-  }
-
+  const quote = delivery.quote
   const shippingRub = quote?.customerPriceRub ?? 0
   const totalRub = subtotal + shippingRub
-  const period = quote ? formatPeriod(quote.periodMin, quote.periodMax) : null
 
   function setField<K extends keyof CheckoutFormFields>(key: K, value: CheckoutFormFields[K]) {
     setFields((prev) => ({ ...prev, [key]: value }))
@@ -132,9 +79,16 @@ export default function CheckoutPage() {
     e.preventDefault()
     if (submitting) return
 
-    const validation = validateCheckoutForm(fields, choice !== null && quote !== null)
+    const validation = validateCheckoutForm(fields, {
+      city: delivery.city,
+      method: delivery.method,
+      point: delivery.point,
+      courier: delivery.courier,
+      quoteStatus: delivery.quotes[delivery.method].status,
+    })
     setErrors(validation)
-    if (Object.keys(validation).length > 0 || !choice) return
+    const destination = delivery.destination
+    if (Object.keys(validation).length > 0 || !destination) return
 
     const email = fields.email.trim()
     const telegram = normalizeTelegramHandle(fields.telegram)
@@ -148,7 +102,7 @@ export default function CheckoutPage() {
         ...(telegram ? { telegram } : {}),
       },
       delivery: {
-        ...destinationFor(choice, fields.apartment),
+        ...destination,
         ...(comment !== '' ? { comment } : {}),
       },
     }
@@ -168,7 +122,11 @@ export default function CheckoutPage() {
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 409) {
+        if (err.code === 'delivery_point_unknown') {
+          // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
+          // «Пункт получения», выбор сброшен, список города грузится заново.
+          delivery.rejectPoint(err.message)
+        } else if (err.status === 409) {
           // Наличие/доступность товаров изменились между корзиной и сабмитом.
           setServerError(`${err.message}. Обновите корзину и попробуйте ещё раз.`)
         } else {
@@ -281,78 +239,7 @@ export default function CheckoutPage() {
                 {errors.telegram && <p className={ERROR_CLASS}>{errors.telegram}</p>}
               </div>
 
-              <section aria-labelledby="checkout-delivery" className="flex flex-col gap-3">
-                <h2 id="checkout-delivery" className={`${LABEL_CLASS} m-0`}>
-                  Доставка СДЭК *
-                </h2>
-                <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60 m-0">
-                  До пункта выдачи — бесплатно от {formatRub(SHIPPING_RULES.cdek_pvz.freeFromRub)},
-                  курьером — от {formatRub(SHIPPING_RULES.cdek_courier.freeFromRub)}
-                </p>
-
-                {shipping ? (
-                  // Временный переходник до Task 11: своих полей города и
-                  // пункта на странице ещё нет, карта работает одна.
-                  <CdekWidget
-                    goods={widgetGoods(shipping.packages)}
-                    servicePath={cdekWidgetServicePath(shipping.subtotalRub)}
-                    tariffPvz={shipping.tariffs.pvz}
-                    cityLocation={null}
-                    selectedPoint={null}
-                    onChoose={(office) => void handleChoose('office', null, office)}
-                  />
-                ) : shippingError ? (
-                  <p role="alert" className={ERROR_CLASS}>
-                    {shippingError}
-                  </p>
-                ) : (
-                  <div
-                    aria-busy="true"
-                    className="w-full h-[560px] border border-[var(--color-lj-rule)] animate-pulse"
-                  />
-                )}
-
-                {choice && (
-                  <div
-                    data-testid="delivery-choice"
-                    className="flex flex-col gap-1 px-4 py-4 border border-[var(--color-lj-ink)] bg-[rgba(10,10,10,0.03)]"
-                  >
-                    <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-60">
-                      {DELIVERY_LABELS[choice.mode === 'office' ? 'cdek_pvz' : 'cdek_courier']}
-                    </span>
-                    <span className="font-lj-body text-base text-[var(--color-lj-ink)]">
-                      {choice.mode === 'office'
-                        ? `${choice.address.city}, ${choice.address.address}`
-                        : choice.address.formatted}
-                    </span>
-                    <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70">
-                      {quoting
-                        ? 'Считаем доставку…'
-                        : quote
-                          ? `${quote.customerPriceRub === 0 ? 'Бесплатно' : formatRub(quote.customerPriceRub)}${period ? ` · ${period}` : ''}`
-                          : ''}
-                    </span>
-                  </div>
-                )}
-
-                {choice?.mode === 'door' && (
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="checkout-apartment" className={LABEL_CLASS}>
-                      Квартира, подъезд, этаж
-                    </label>
-                    <input
-                      id="checkout-apartment"
-                      type="text"
-                      autoComplete="address-line2"
-                      value={fields.apartment}
-                      onChange={(e) => setField('apartment', e.target.value)}
-                      className={FIELD_CLASS}
-                    />
-                  </div>
-                )}
-
-                {errors.delivery && <p className={ERROR_CLASS}>{errors.delivery}</p>}
-              </section>
+              <CdekDelivery delivery={delivery} shipping={shipping} errors={errors} />
 
               <div className="flex flex-col gap-2">
                 <label htmlFor="checkout-comment" className={LABEL_CLASS}>
@@ -419,7 +306,7 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={submitting || quoting}
+                disabled={submitting || delivery.quoting}
                 className="inline-flex items-center justify-center gap-3 px-8 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Оформляем…' : 'Оформить заказ →'}
