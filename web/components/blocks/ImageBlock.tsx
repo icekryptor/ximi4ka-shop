@@ -8,8 +8,7 @@ interface Props {
 
 /**
  * Renders a CMS image block via the v3 lab-journal MediaFrame primitive
- * (cream-shade backdrop, ink rule border, mono "arr. img" corner mark,
- * optional caption beneath).
+ * (cream-shade backdrop, ink rule border, optional caption beneath).
  *
  * Uses next/image with `fill` so the frame's CSS aspect-ratio governs the
  * box; aspect defaults to 4/5 (portrait, matches PDP hero) since the shared
@@ -24,7 +23,6 @@ export function ImageBlock({ block }: Props) {
   return (
     <div data-block="image">
       <MediaFrame
-        cornerMark="arr. img"
         caption={block.caption ?? undefined}
         aspectRatio="4/5"
         className="max-w-[var(--max-lj-narrow)] mx-auto"

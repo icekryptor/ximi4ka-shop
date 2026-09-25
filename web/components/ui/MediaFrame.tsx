@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
-  cornerMark: string
   caption?: string
   /** CSS aspect-ratio value, e.g. '4/5', '16/9', '1/1' */
   aspectRatio?: string
@@ -10,16 +9,10 @@ interface Props {
 }
 
 /**
- * Cream-shade backdrop + ink border + mono corner mark + optional caption.
+ * Cream-shade backdrop + ink border + optional caption.
  * Shared by ImageBlock / GalleryBlock / VideoBlock and PDP product images.
  */
-export function MediaFrame({
-  children,
-  cornerMark,
-  caption,
-  aspectRatio = '4/5',
-  className = '',
-}: Props) {
+export function MediaFrame({ children, caption, aspectRatio = '4/5', className = '' }: Props) {
   return (
     <figure className={`flex flex-col gap-3 ${className}`.trim()}>
       <div
@@ -27,9 +20,6 @@ export function MediaFrame({
         className="relative bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color] duration-500 hover:border-[var(--color-lj-ink)]"
         style={{ aspectRatio: aspectRatio.replace('/', ' / ') }}
       >
-        <span className="absolute top-3.5 left-3.5 z-[2] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
-          {cornerMark}
-        </span>
         {children}
       </div>
       {caption && (

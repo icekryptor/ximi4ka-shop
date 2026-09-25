@@ -7,26 +7,21 @@ import { SpecimenCard } from '@/components/ui/SpecimenCard'
 
 interface Props {
   images: ProductImage[]
-  cornerMark: string
   alt: string
   sku: string
   hoverFormula?: string
 }
 
-export function ProductHeroImage({ images, cornerMark, alt, sku, hoverFormula }: Props) {
+export function ProductHeroImage({ images, alt, sku, hoverFormula }: Props) {
   const [activeIdx, setActiveIdx] = useState(0)
   if (images.length === 0) return <SpecimenCard size="pdp" sku={sku} />
   const active = images[activeIdx]
-  const pad = (n: number) => String(n).padStart(2, '0')
   return (
     <div className="callout-host group/img flex flex-col gap-4">
       <div
         data-main-image
         className="relative aspect-[4/5] bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color] duration-500 hover:border-[var(--color-lj-ink)]"
       >
-        <span className="absolute top-3.5 left-3.5 z-[2] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
-          {cornerMark}
-        </span>
         <Image
           src={active.url}
           alt={active.alt || alt}
@@ -53,9 +48,6 @@ export function ProductHeroImage({ images, cornerMark, alt, sku, hoverFormula }:
                 i === activeIdx ? 'border-[var(--color-lj-ink)]' : 'border-[var(--color-lj-rule)]'
               }`}
             >
-              <span className="absolute top-1 left-1 z-[2] font-lj-mono text-[0.5625rem] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-70">
-                arr. {pad(i + 1)}
-              </span>
               <Image
                 src={img.url}
                 alt={img.alt || alt}
