@@ -15,7 +15,6 @@ import { breadcrumbJsonLd, productJsonLd } from '@/lib/jsonLd'
 import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 import { MicroTrustRow, type MicroTrustItem } from '@/components/ui/MicroTrustRow'
 import { LabSection } from '@/components/ui/LabSection'
-import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import {
   ContentsSection,
   ProductHeroImage,
@@ -188,10 +187,6 @@ export default async function ProductPage({ params }: Props) {
 
   const related = await fetchRelatedProducts(product.id)
 
-  // SKU suffix used for hero corner-mark + section coordinate. Falls back
-  // to `XX` when the editor hasn't set a SKU on this product.
-  const skuSuffix = (product.sku ?? 'XX').slice(-2)
-
   // Split the product name on whitespace so the hero H1 can render an
   // off-grid stagger: even-indexed words flush left, odd-indexed words
   // indented `pl-[6vw]` for the hand-typeset journal feel. The first
@@ -236,22 +231,10 @@ export default async function ProductPage({ params }: Props) {
 
       {/* SECTION 1 — HERO (cream). Two-column desktop: gallery + info. */}
       <LabSection variant="cream" className="px-6 pt-12 pb-20 relative">
-        <NotebookHeader
-          section={`P-${skuSuffix}`}
-          label="Карточка набора"
-          page={1}
-          total={6}
-          edition="Ред. 2026.04 / v3"
-        />
         <div className="max-w-[var(--max-lj-content)] mx-auto grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-20">
           {/* IMAGE COLUMN */}
           <div>
-            <ProductHeroImage
-              images={galleryImages}
-              cornerMark={`arr. P-${skuSuffix}`}
-              alt={name}
-              sku={product.sku ?? product.slug}
-            />
+            <ProductHeroImage images={galleryImages} alt={name} sku={product.sku ?? product.slug} />
           </div>
 
           {/* INFO COLUMN */}
@@ -326,11 +309,7 @@ export default async function ProductPage({ params }: Props) {
           с одним заголовком выглядела сломанной (аудит v3.5). */}
       {(useFacts.length > 0 || Object.keys(characteristics).length > 0) && (
         <LabSection variant="ink" className="px-6 py-32 relative">
-          <NotebookHeader section="02" label="Характеристики" page={3} total={6} />
           <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
-            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-              02.0 / Технические данные
-            </p>
             <h2 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
               Что у вас будет в{' '}
               <em className="italic text-[var(--color-lj-brand)] font-[700]">руках</em>
@@ -355,11 +334,7 @@ export default async function ProductPage({ params }: Props) {
           shown in Sections 2 (Что внутри) and 3 (Характеристики). */}
       {filteredDescriptionBlocks.length > 0 && (
         <LabSection variant="cream" className="px-6 py-24">
-          <NotebookHeader section="03" label="Описание" page={4} total={6} />
           <div className="max-w-[var(--max-lj-narrow)] mx-auto">
-            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-              03.0 / Полное описание
-            </p>
             <BlockRenderer blocks={filteredDescriptionBlocks} />
           </div>
         </LabSection>
@@ -371,11 +346,7 @@ export default async function ProductPage({ params }: Props) {
           uses on the homepage. */}
       {related.length > 0 && (
         <LabSection variant="cream" className="px-6 py-24">
-          <NotebookHeader section="04" label="Связанные наборы" page={5} total={6} />
           <div className="max-w-[var(--max-lj-content)] mx-auto">
-            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-8 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-              04.0 / С этим набором покупают
-            </p>
             <h2 className="font-lj-display font-[900] text-[clamp(2rem,4vw,3.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
               Совместимые
               <br />

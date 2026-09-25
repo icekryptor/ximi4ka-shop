@@ -121,9 +121,6 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
     return (
       <section className="bg-[var(--color-lj-cream)] px-6 py-16 min-h-[70vh]">
         <div className="max-w-[var(--max-lj-narrow)] mx-auto flex flex-col items-start gap-6">
-          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70">
-            ЗАКАЗ · НЕ НАЙДЕН
-          </p>
           <h1 className="font-lj-display font-[900] text-[clamp(2rem,4vw,3.5rem)] leading-[0.95] tracking-[-0.045em] m-0 text-[var(--color-lj-ink)]">
             Заказ не найден
           </h1>
@@ -146,9 +143,6 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
       <div className="max-w-[var(--max-lj-narrow)] mx-auto">
         {celebrate ? (
           <header className="mb-12">
-            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
-              ЛАБОРАТОРНЫЙ ЖУРНАЛ · НОВАЯ ЗАПИСЬ
-            </p>
             <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] m-0 mb-6 text-[var(--color-lj-ink)]">
               Заказ <span className="italic text-[var(--color-lj-brand)]">принят!</span>
             </h1>
@@ -174,9 +168,6 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
           </header>
         ) : (
           <header className="mb-12">
-            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
-              ЗАКАЗ · СТАТУС
-            </p>
             <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] m-0 text-[var(--color-lj-ink)]">
               Статус заказа
             </h1>

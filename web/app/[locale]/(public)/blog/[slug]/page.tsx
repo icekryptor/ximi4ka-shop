@@ -7,7 +7,6 @@ import { ApiError, getBlogPostBySlug, listBlogPosts } from '@/lib/api'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { LabSection } from '@/components/ui/LabSection'
-import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { PreFooterCta } from '@/components/marketing'
 import { buildMetadata } from '@/lib/metadata'
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/jsonLd'
@@ -130,10 +129,9 @@ export default async function BlogPostPage({ params }: Props) {
 
       {/* B. Статья (LAB CREAM) — journal entry header */}
       <LabSection variant="cream" className="px-6 pt-12 pb-10">
-        <NotebookHeader section="B" label="Блог" page={1} total={2} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
           <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-            B.1 / {post.rubric ?? 'Статья'}
+            {post.rubric ?? 'Статья'}
           </p>
           <h1 className="font-lj-display font-[900] text-[clamp(2.25rem,5vw,4.25rem)] leading-[0.96] tracking-[-0.045em] mb-5 max-w-[24ch]">
             {title}

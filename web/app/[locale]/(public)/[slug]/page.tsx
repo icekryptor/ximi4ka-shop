@@ -8,7 +8,6 @@ import { buildMetadata, siteUrl } from '@/lib/metadata'
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/jsonLd'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 import { LabSection } from '@/components/ui/LabSection'
-import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { PreFooterCta } from '@/components/marketing'
 
 export const revalidate = 60
@@ -110,15 +109,10 @@ export default async function CmsPage({ params }: Props) {
         ])}
       />
 
-      {/* Hero (LAB CREAM) — v3 LJ: моно-eyebrow с brand-буллетом,
-          Unbounded h1. Аудит v3.5: страница была на v2-компонентах
-          (Section soft + GradientBlob + оранжевая точка). */}
+      {/* Hero (LAB CREAM) — v3 LJ: Unbounded h1. Аудит v3.5: страница была
+          на v2-компонентах (Section soft + GradientBlob + оранжевая точка). */}
       <LabSection variant="cream" className="px-6 pt-28 pb-16">
-        <NotebookHeader section="S" label={title} page={1} total={2} />
         <div className="max-w-[var(--max-lj-narrow)] mx-auto">
-          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-            S.0 / Страница
-          </p>
           <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,6vw,5rem)] leading-[0.95] tracking-[-0.045em] mb-6 max-w-[18ch]">
             {title}
           </h1>
