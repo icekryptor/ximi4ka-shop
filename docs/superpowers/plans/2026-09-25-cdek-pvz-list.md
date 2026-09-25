@@ -13,35 +13,43 @@
 ## Global Constraints
 
 - Новых зависимостей не добавлять.
-- Зависимости: своих `node_modules` у worktree нет. Перед Task 1 выполнить `npm ci` в корне worktree (lockfile не меняется). Симлинк на `node_modules` основного checkout не годится: `@ximi4ka-shop/shared` там указывает на чужой `shared/`.
+- Всё — только в worktree `/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list` (дальше `$WT`), ветка `feat/cdek-pvz-list`. Основной checkout — чужой (там ветка `feat/cdek-orders`), его файлы не трогать; единственное исключение — записи `pvz-api`/`pvz-web` в его `.claude/launch.json` в Task 12.
+- Зависимости: своих `node_modules` у worktree нет — их ставит Task 1 Step 0 (`npm ci`, lockfile не меняется). Симлинк на `node_modules` основного checkout не годится: `@ximi4ka-shop/shared` там указывает на чужой `shared/`.
 - ESM: относительные импорты в api — с суффиксом `.js`; типы — из `@ximi4ka-shop/shared`.
 - Комментарии в коде — по-русски, объясняют «почему», как в соседних файлах.
 - Форматирование — prettier репозитория (`npx prettier --write <файлы>` перед коммитом).
 - Коммиты — маленькие, сообщение по-русски в стиле репозитория (`feat(api): …`, `feat(web): …`), в конце строка `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Не пушить.
-- Тесты api идут против локальной тестовой базы (`TEST_DATABASE_URL`, по умолчанию `localhost/ximi4ka_shop_test`), миграции применяет `src/test/globalSetup.ts`.
+- Тесты api — только на своей тестовой базе: каждую команду `npm test -w api` (и общий `npm test`) запускать с `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz`. Базу `ximi4ka_shop_test` по умолчанию делит ветка `feat/cdek-orders`, а оба набора тестов делают `TRUNCATE`. `src/test/globalSetup.ts` сам создаёт недостающую базу через служебную `postgres` на том же сервере и прогоняет миграции; имя обязано содержать `test`. Хост и пользователь — как у значения по умолчанию (`postgres://localhost:5432/…`).
 - Пункты — «Только ПВЗ с выдачей (`type=PVZ`, `is_handout=true`). Постаматы — вне задачи».
 - Подсказки городов: `GET /api/public/cdek/cities?q=<строка>` проксирует `GET /v2/location/suggest/cities?name=<q>&country_code=RU`; «`q` — от 2 до 100 символов после обрезки пробелов, иначе 400»; ответ `{ data: [{ code, name, fullName }] }`, до 10 записей; «Кеш в памяти на 1 час по `q` в нижнем регистре; лимит 60 запросов в минуту с IP (существующий `rateLimit`)».
 - Пункты города: `GET /api/public/cdek/points?cityCode=<код>` проксирует `GET /v2/deliverypoints?city_code=<код>&type=PVZ&is_handout=true` и `GET /v2/location/cities?code=<код>`; «`cityCode` — положительное целое, иначе 400»; ответ `{ data: { city: { code, name, location: [lng, lat] | null }, points: [{ code, name, address, location: [lng, lat], workTime }] } }`; «Сортировка — по `code`»; «Кеш в памяти на 6 часов по городу; лимит 60 запросов в минуту с IP»; «Ошибка СДЭК — 502 `cdek_unavailable`; пустой список — 200 с `points: []`».
-- Чекаут: «Нет такого пункта — 400 `delivery_point_unknown` «Пункт выдачи не найден — выберите другой». СДЭК недоступен — проверку пропускаем и заказ принимаем».
+- Чекаут: «Нет такого пункта — 400 `delivery_point_unknown` «Пункт выдачи не найден — выберите другой». СДЭК недоступен — проверку пропускаем и заказ принимаем». Пустой список пунктов города приравнивается к «СДЭК недоступен» (проверку пропускаем): в городе, откуда пришёл заказ на ПВЗ, пункты были, а пустота — скорее сбой СДЭК. Пустой список кешируется на 5 минут, не на 6 часов.
 - «Контракт `DeliveryDestination` не меняется»: `{ method: 'cdek_courier', cityCode, postalCode?, address }`, `address` — «<город>, <улица, дом>[, кв. <квартира>]», «Индекс — необязательный, 6 цифр»; ПВЗ — `{ method: 'cdek_pvz', cityCode, deliveryPointCode, address: '<город>, <адрес пункта>' }`.
 - Город: «подсказки от 2 символов, задержка 250 мс, отмена прошлого запроса (`AbortController`), строка «Нальчик · Кабардино-Балкария»»; выбранный город — в `localStorage` (обёрнуто в try/catch), «только код и название города, без персональных данных».
 - Пункт: строка «MSK310 · пр-т Мира, 108», второй строкой часы работы; поиск по словам в коде, названии и адресе, «регистр и «ё/е» не важны, знаки препинания игнорируются»; «показываем первые 50 совпадений; если их больше — строка «Показаны 50 из N — уточните запрос»»; клавиатура «стрелки, Enter, Esc»; разметка `role="combobox"`/`listbox`, `aria-activedescendant`.
 - Курьер: «Улица, дом» (обязательно), «Квартира/офис», «Индекс». «Смена города сбрасывает выбранный пункт, адрес курьера не трогает, цены пересчитываются».
-- Карта: только для «Пункт выдачи»; от 768 px — сразу под полем «Пункт получения», уже — кнопка «Показать на карте», скрипты грузятся по нажатию. Список → карта: `updateLocation(location, 17)`, затем `selectOffice(code)` «каждые 300 мс до 3 с»; смена города — `updateLocation(city.location, 10)`; карта → список: пункта нет в списке города — «Этот пункт в другом городе — смените город»; курьерская вкладка отключена (`tariffs.door = []` и скрытие переключателя); нет ключа, `onError` у `next/script` или 10 с без готовности — «Карта недоступна — выберите пункт из списка».
+- Карта: только для «Пункт выдачи»; от 768 px — сразу под полем «Пункт получения», уже — кнопка «Показать на карте», скрипты грузятся по нажатию. Список → карта: `updateLocation(location, 17)`, затем `selectOffice(code)` «каждые 300 мс до 3 с»; смена города — `updateLocation(city.location, 10)`; карта → список: пункта нет в списке города — «Этот пункт в другом городе — смените город»; курьерская вкладка отключена (`tariffs.door = []` и скрытие переключателя); нет ключа, `onError` у `next/script` или 10 с без готовности — «Карта недоступна — выберите пункт из списка». Решения ревью: пока покупатель меняет город, карта не пересоздаётся и не сворачивается; повтор `selectOffice` прекращается, как только покупатель трогает карту (мышь, палец, колесо, клавиши).
 - Тексты ошибок — дословно из спеки §6: «Не удалось загрузить города» + «Повторить»; «Не удалось загрузить пункты выдачи» + «Повторить»; «В этом городе нет пунктов выдачи СДЭК — выберите курьера»; «Ничего не найдено — попробуйте часть адреса или код пункта».
 - Цену доставки считает только сервер; бесплатная доставка — как сейчас (ПВЗ от 3000 ₽, курьер от 5000 ₽).
+- Цена, которую видит покупатель, равна той, что спишет сервер (решение ревью 25.09). ПВЗ сервер считает только по городу, поэтому хватает расчёта по городу. Курьера чекаут считает по полному адресу (`quote.ts`: `to_location` с `postal_code` и `address`). Поэтому, как только адрес курьера полный (улица с домом; индекс — если введён, то 6 цифр), курьер пересчитывается с тем же `destination`, что уйдёт в заказ, с задержкой 400 мс. Пока ответа нет — «Курьер СДЭК — пересчитываем…», сводка «—», кнопка «Оформить» недоступна; оформить можно только со свежей ценой по полному адресу.
 
 ## Review Focus
 
 1. **Покупатель правит текст города после того, как выбрал пункт.** Ожидание: город и пункт сбрасываются, цены пересчитываются. Старый пункт не уходит в заказ вместе с новым текстом в поле. Тесты — Task 5 (поле отдаёт `null`) и Task 10 (блок сбрасывает пункт).
 2. **Enter в поле «Город» или «Пункт получения» при открытом списке.** Ожидание: Enter выбирает строку, форма заказа не отправляется. Тесты — Task 5 и Task 6 (`keyDown` Enter отменён: `preventDefault`).
 3. **Быстрая смена города: ответ по прошлому городу (пункты, цены, подсказки) приходит позже ответа по новому.** Ожидание: список и цены — нового города. Тесты — Task 10 (пункты), Task 5 (подсказки).
-4. **СДЭК однажды отдал пустой список пунктов для большого города.** Ожидание: пустота не кешируется на 6 часов, следующий запрос снова идёт в СДЭК, а чекаут не отклоняет все заказы в этот город до вечера. Тест — Task 1.
+4. **СДЭК однажды отдал пустой список пунктов для большого города.** Ожидание: пустота живёт в кеше 5 минут, а не 6 часов. Чекаут в это время не отклоняет заказы на ПВЗ в этот город: пустой список — повод пропустить проверку, а не ответить 400. Тесты — Task 1 (срок кеша) и Task 2 (чекаут).
 5. **В `localStorage` лежит мусор, или хранилище бросает исключение (приватный режим Safari).** Ожидание: чекаут открывается без сохранённого города и не падает, выбор города работает. Тест — Task 10.
 
 ## Слияние
 
-Ветка `feat/cdek-orders` ещё не влита. Она тоже меняет `api/src/routes/checkout.ts` (сохраняет `packages` в `delivery_address`), `shared/src/types/order.ts` и `shared/src/index.ts`. Здесь правки этих мест маленькие и локальные: в `checkout.ts` — импорт и один блок сразу после проверки `Idempotency-Key`; в `shared` — новые типы в `types/shipping.ts` и строки в блоке экспорта `index.ts`; `order.ts` не трогаем. Та ветка, что вливается второй, делает rebase на `main` и разрешает конфликты. Там только импорты и соседние блоки.
+Ветка `feat/cdek-orders` ещё не влита. Она тоже меняет:
+
+- `api/src/routes/checkout.ts` — сохраняет `packages` в `delivery_address`;
+- `api/src/routes/checkout.test.ts` — переписывает проверку `deliveryAddress` в первом тесте (строки ~91–110), а здесь в тот же файл добавляются импорт, строка в `afterEach`, helper и тесты в конце;
+- `shared/src/types/order.ts` и `shared/src/index.ts`.
+
+Здесь правки этих мест маленькие и локальные: в `checkout.ts` — импорт и один блок сразу после проверки `Idempotency-Key`; в `shared` — новые типы в `types/shipping.ts` и строки в блоке экспорта `index.ts`; `order.ts` не трогаем. Та ветка, что вливается второй, делает rebase на `main` и разрешает конфликты (там только импорты и соседние блоки). После rebase прогнать оба набора тестов api — `checkout.test.ts` и тесты этапа 4 из `feat/cdek-orders` — на своей тестовой базе.
 
 ---
 
@@ -68,6 +76,8 @@
 
 ### Task 1: API — подсказки городов и пункты выдачи с кешем
 
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить; тесты api — только с `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz` (база `ximi4ka_shop_test` занята другой веткой).
+
 **Files:**
 
 - Modify: `shared/src/types/shipping.ts` (добавить в конец), `shared/src/index.ts:23-28`
@@ -81,7 +91,17 @@
 
 - Consumes: `getCdekClient()` и `setCdekClientForTests()` из `api/src/lib/cdek/index.ts`; `CdekClient.get<T>(path, query)`; `CdekError(status, code, message)`; `rateLimit({ limit, windowMs })`.
 - Produces (shared): `CdekCity { code: number; name: string; fullName: string }`, `CdekPoint { code: string; name: string; address: string; location: [number, number]; workTime: string }`, `CdekCityPoints { city: { code: number; name: string; location: [number, number] | null }; points: CdekPoint[] }`.
-- Produces (api): `TtlCache<T>` (`get`, `set`, `size`, `clear`); `suggestCities(cdek: Pick<CdekClient,'get'>, q: string): Promise<CdekCity[]>`; `getCityPoints(cdek, cityCode: number): Promise<CdekCityPoints>`; `clearCdekLocationCache(): void`; `cdekLocationsRouter` на `/api/public/cdek`.
+- Produces (api): `TtlCache<T>` (`get`, `set(key, value, ttlMs?)`, `size`, `clear`); `suggestCities(cdek: Pick<CdekClient,'get'>, q: string): Promise<CdekCity[]>`; `getCityPoints(cdek, cityCode: number): Promise<CdekCityPoints>`; `EMPTY_POINTS_TTL_MS = 5 * 60_000`; `clearCdekLocationCache(): void`; `cdekLocationsRouter` на `/api/public/cdek`.
+
+- [ ] **Step 0: Зависимости worktree**
+
+```bash
+cd /Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list
+npm ci
+node -p "require('fs').realpathSync('node_modules/@ximi4ka-shop/shared')"
+```
+
+Expected: `npm ci` без ошибок; вторая команда печатает `/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list/shared`. Путь из основного checkout (без `.claude/worktrees/cdek-pvz-list`) — остановиться: тесты и типы пойдут против чужого `shared/`. `require.resolve('@ximi4ka-shop/shared/package.json')` здесь не годится: `exports` пакета не отдаёт `./package.json`, и Node отвечает `ERR_PACKAGE_PATH_NOT_EXPORTED`. `git status --short` после `npm ci` — пусто (`package-lock.json` не изменился).
 
 - [ ] **Step 1: Падающий тест TTL-кеша**
 
@@ -124,6 +144,16 @@ describe('TtlCache', () => {
     expect(cache.get('a')).toBe(10)
     expect(cache.get('b')).toBeUndefined()
   })
+
+  it('у записи может быть свой, более короткий срок', () => {
+    let t = 0
+    const cache = new TtlCache<number>(1_000, 10, () => t)
+    cache.set('long', 1)
+    cache.set('short', 2, 100)
+    t = 100
+    expect(cache.get('short')).toBeUndefined()
+    expect(cache.get('long')).toBe(1)
+  })
 })
 ```
 
@@ -137,7 +167,7 @@ import { describe, it, expect, beforeAll, afterEach, vi } from 'vitest'
 import request from 'supertest'
 import { createApp } from '../app.js'
 import { CdekError, setCdekClientForTests } from '../lib/cdek/index.js'
-import { clearCdekLocationCache } from '../lib/cdek/locations.js'
+import { EMPTY_POINTS_TTL_MS, clearCdekLocationCache } from '../lib/cdek/locations.js'
 
 const CITIES = '/api/public/cdek/cities'
 const POINTS = '/api/public/cdek/points'
@@ -202,6 +232,8 @@ beforeAll(() => {
 afterEach(() => {
   setCdekClientForTests(null)
   clearCdekLocationCache()
+  vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 describe('GET /api/public/cdek/cities', () => {
@@ -263,11 +295,23 @@ describe('GET /api/public/cdek/cities', () => {
     expect(get).toHaveBeenCalledTimes(1)
   })
 
-  it('СДЭК недоступен — 502 cdek_unavailable', async () => {
-    stubCdek({ '/location/suggest/cities': new CdekError(0, 'network_error', 'timeout') })
+  it('СДЭК недоступен — 502 cdek_unavailable; в лог — код ошибки, без текста запроса', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // Сообщение сетевой ошибки содержит адрес запроса с тем, что набрал покупатель.
+    stubCdek({
+      '/location/suggest/cities': new CdekError(
+        0,
+        'network_error',
+        'СДЭК недоступен: fetch …/location/suggest/cities?name=моск failed',
+      ),
+    })
     const res = await request(app).get(CITIES).query({ q: 'моск' })
     expect(res.status).toBe(502)
     expect(res.body.error.code).toBe('cdek_unavailable')
+    expect(warn).toHaveBeenCalledTimes(1)
+    const logged = warn.mock.calls[0]!.join(' ')
+    expect(logged).toContain('network_error')
+    expect(logged).not.toContain('моск')
   })
 })
 
@@ -336,13 +380,30 @@ describe('GET /api/public/cdek/points', () => {
     expect(get).toHaveBeenCalledTimes(2) // пункты + город, один раз
   })
 
-  it('пустой список — 200 с points: [], и его не кешируем: сбой СДЭК не выключит ПВЗ на 6 часов', async () => {
+  it('пустой список — 200 с points: [], в кеше только 5 минут: сбой СДЭК не выключит ПВЗ на 6 часов', async () => {
+    // Подменяем только Date: таймеры supertest и express остаются настоящими.
+    vi.useFakeTimers({ toFake: ['Date'] })
     const get = stubCdek({ '/deliverypoints': [], '/location/cities': MOSCOW_CITY })
     const res = await request(app).get(POINTS).query({ cityCode: 44 })
     expect(res.status).toBe(200)
     expect(res.body.data.points).toEqual([])
     await request(app).get(POINTS).query({ cityCode: 44 })
-    expect(get).toHaveBeenCalledTimes(4)
+    expect(get).toHaveBeenCalledTimes(2) // второй запрос — из кеша
+    vi.setSystemTime(Date.now() + EMPTY_POINTS_TTL_MS)
+    await request(app).get(POINTS).query({ cityCode: 44 })
+    expect(get).toHaveBeenCalledTimes(4) // через 5 минут — снова в СДЭК
+  })
+
+  it('непустой список живёт в кеше дольше 5 минут', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    const get = stubCdek({
+      '/deliverypoints': [rawPoint('MSK1', 'ул. Ленина, 1')],
+      '/location/cities': MOSCOW_CITY,
+    })
+    await request(app).get(POINTS).query({ cityCode: 44 })
+    vi.setSystemTime(Date.now() + EMPTY_POINTS_TTL_MS + 60_000)
+    await request(app).get(POINTS).query({ cityCode: 44 })
+    expect(get).toHaveBeenCalledTimes(2)
   })
 
   it('400 на cityCode, который не положительное целое', async () => {
@@ -354,7 +415,8 @@ describe('GET /api/public/cdek/points', () => {
     expect(get).not.toHaveBeenCalled()
   })
 
-  it('СДЭК недоступен — 502 cdek_unavailable', async () => {
+  it('СДЭК недоступен — 502 cdek_unavailable, в логе код ошибки', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     stubCdek({
       '/deliverypoints': new CdekError(0, 'network_error', 'timeout'),
       '/location/cities': MOSCOW_CITY,
@@ -362,6 +424,7 @@ describe('GET /api/public/cdek/points', () => {
     const res = await request(app).get(POINTS).query({ cityCode: 44 })
     expect(res.status).toBe(502)
     expect(res.body.error.code).toBe('cdek_unavailable')
+    expect(warn.mock.calls[0]!.join(' ')).toContain('network_error')
   })
 
   it('СДЭК ответил не списком — 502, а не падение', async () => {
@@ -374,7 +437,7 @@ describe('GET /api/public/cdek/points', () => {
 
 - [ ] **Step 3: Убедиться, что тесты падают**
 
-Run: `npm test -w api -- src/lib/cdek/locations.test.ts src/routes/cdek-locations.test.ts`
+Run: `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz npm test -w api -- src/lib/cdek/locations.test.ts src/routes/cdek-locations.test.ts`
 Expected: FAIL — `Cannot find module './locations.js'` / `../lib/cdek/locations.js`.
 
 - [ ] **Step 4: Общие типы**
@@ -438,6 +501,10 @@ type Cdek = Pick<CdekClient, 'get'>
 
 export const CITIES_TTL_MS = 60 * 60_000
 export const POINTS_TTL_MS = 6 * 60 * 60_000
+// Пустой список — скорее сбой СДЭК, чем город без ПВЗ: держим его недолго,
+// чтобы не выключить пункты в городе на шесть часов, но и не ходить в СДЭК
+// на каждый запрос.
+export const EMPTY_POINTS_TTL_MS = 5 * 60_000
 export const CITY_SUGGEST_LIMIT = 10
 // Ключ кеша подсказок — то, что набрал покупатель: без предела карта росла бы
 // от случайных строк.
@@ -464,14 +531,15 @@ export class TtlCache<T> {
     return hit.value
   }
 
-  set(key: string, value: T): void {
+  // ttlMs — свой срок для этой записи (по умолчанию — срок кеша).
+  set(key: string, value: T, ttlMs = this.ttlMs): void {
     this.entries.delete(key)
     // Map помнит порядок вставки: первый ключ — самый старый.
     if (this.entries.size >= this.maxEntries) {
       const oldest = this.entries.keys().next().value
       if (oldest !== undefined) this.entries.delete(oldest)
     }
-    this.entries.set(key, { value, expiresAt: this.now() + this.ttlMs })
+    this.entries.set(key, { value, expiresAt: this.now() + ttlMs })
   }
 
   get size(): number {
@@ -494,6 +562,13 @@ export function clearCdekLocationCache(): void {
 
 function badResponse(what: string): CdekError {
   return new CdekError(502, 'bad_response', `СДЭК вернул не список: ${what}`)
+}
+
+// Для логов — только статус и код. Текст сетевой ошибки содержит адрес
+// запроса, а в нём то, что набрал покупатель.
+export function describeCdekError(err: unknown): string {
+  if (err instanceof CdekError) return `${err.status} ${err.code}`
+  return err instanceof Error ? err.name : 'unknown'
 }
 
 function isNumber(value: unknown): value is number {
@@ -548,8 +623,8 @@ export async function suggestCities(cdek: Cdek, q: string): Promise<CdekCity[]> 
 }
 
 // Пункты выдачи города — только ПВЗ с выдачей (§3) — и центр города для
-// карты. Пустой список не кешируем: если СДЭК однажды ответит пустотой по
-// ошибке, ПВЗ в городе не пропадут на шесть часов.
+// карты. Пустой список живёт в кеше 5 минут, а не 6 часов: если СДЭК однажды
+// ответит пустотой по ошибке, ПВЗ в городе быстро вернутся.
 export async function getCityPoints(cdek: Cdek, cityCode: number): Promise<CdekCityPoints> {
   const key = String(cityCode)
   const cached = pointsCache.get(key)
@@ -577,7 +652,7 @@ export async function getCityPoints(cdek: Cdek, cityCode: number): Promise<CdekC
       .filter((p): p is CdekPoint => p !== null)
       .sort(byCode),
   }
-  if (result.points.length > 0) pointsCache.set(key, result)
+  pointsCache.set(key, result, result.points.length > 0 ? POINTS_TTL_MS : EMPTY_POINTS_TTL_MS)
   return result
 }
 ```
@@ -590,7 +665,7 @@ export async function getCityPoints(cdek: Cdek, cityCode: number): Promise<CdekC
 import { Router, type Response } from 'express'
 import { z } from 'zod'
 import { getCdekClient } from '../../lib/cdek/index.js'
-import { getCityPoints, suggestCities } from '../../lib/cdek/locations.js'
+import { describeCdekError, getCityPoints, suggestCities } from '../../lib/cdek/locations.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 
 // Подсказки городов и пункты выдачи для полей чекаута (спека
@@ -603,7 +678,10 @@ const PointsQuery = z.object({
   cityCode: z.coerce.number().int().positive().max(2_147_483_647),
 })
 
-function cdekUnavailable(res: Response): void {
+// 502 и строка в лог: без неё сбой СДЭК на чекауте не заметить. В лог — только
+// статус и код ошибки, без текста запроса (там город, который набрал покупатель).
+function cdekUnavailable(res: Response, what: string, err: unknown): void {
+  console.warn(`cdek: ${what} не загрузились —`, describeCdekError(err))
   res.status(502).json({ error: { code: 'cdek_unavailable', message: 'СДЭК временно недоступен' } })
 }
 
@@ -619,8 +697,8 @@ cdekLocationsRouter.get(
     }
     try {
       res.json({ data: await suggestCities(getCdekClient(), parsed.data.q) })
-    } catch {
-      cdekUnavailable(res)
+    } catch (err) {
+      cdekUnavailable(res, 'подсказки городов', err)
     }
   },
 )
@@ -637,8 +715,8 @@ cdekLocationsRouter.get(
     }
     try {
       res.json({ data: await getCityPoints(getCdekClient(), parsed.data.cityCode) })
-    } catch {
-      cdekUnavailable(res)
+    } catch (err) {
+      cdekUnavailable(res, 'пункты выдачи', err)
     }
   },
 )
@@ -660,7 +738,7 @@ app.use('/api/public/cdek', cdekLocationsRouter)
 
 - [ ] **Step 7: Тесты и типы зелёные**
 
-Run: `npm test -w api -- src/lib/cdek/locations.test.ts src/routes/cdek-locations.test.ts src/routes/cdek-widget.test.ts`
+Run: `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz npm test -w api -- src/lib/cdek/locations.test.ts src/routes/cdek-locations.test.ts src/routes/cdek-widget.test.ts`
 Expected: PASS.
 Run: `npm run typecheck -w shared && npm run typecheck -w api`
 Expected: без ошибок.
@@ -673,8 +751,8 @@ git add shared/src/types/shipping.ts shared/src/index.ts api/src/lib/cdek/locati
 git commit -m "feat(api): подсказки городов и пункты выдачи СДЭК с кешем
 
 GET /api/public/cdek/cities и /points: только ПВЗ с выдачей, урезанная
-форма, кеш в памяти (города — час, пункты — 6 часов, пустой список не
-кешируется), лимит 60 запросов в минуту.
+форма, кеш в памяти (города — час, пункты — 6 часов, пустой список —
+5 минут), лимит 60 запросов в минуту, сбой СДЭК — в лог кодом.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -682,6 +760,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ---
 
 ### Task 2: Чекаут сверяет пункт выдачи со списком города
+
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить; тесты api — только с `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz` (база `ximi4ka_shop_test` занята другой веткой).
 
 **Files:**
 
@@ -691,8 +771,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 **Interfaces:**
 
-- Consumes: `getCityPoints(cdek, cityCode)` (Task 1); `badRequest(code, message)` из `api/src/routes/errors.ts`.
-- Produces: `isKnownDeliveryPoint(cdek: Pick<CdekClient,'get'>, cityCode: number, pointCode: string): Promise<boolean | null>` (`null` — СДЭК не ответил); ответ чекаута 400 `{ error: { code: 'delivery_point_unknown', message: 'Пункт выдачи не найден — выберите другой' } }`. Веб опирается на этот код в Task 11.
+- Consumes: `getCityPoints(cdek, cityCode)`, `describeCdekError(err)` (Task 1); `badRequest(code, message)` из `api/src/routes/errors.ts`.
+- Produces: `isKnownDeliveryPoint(cdek: Pick<CdekClient,'get'>, cityCode: number, pointCode: string): Promise<boolean | null>` (`null` — проверить нечем: СДЭК не ответил или вернул пустой список); ответ чекаута 400 `{ error: { code: 'delivery_point_unknown', message: 'Пункт выдачи не найден — выберите другой' } }`. Веб опирается на этот код в Task 11.
 
 - [ ] **Step 1: Падающие тесты**
 
@@ -780,6 +860,17 @@ it('СДЭК не ответил на список пунктов — заказ
   expect(res.status).toBe(201)
 })
 
+it('СДЭК вернул пустой список пунктов — проверку пропускаем, заказ принимаем', async () => {
+  // Покупатель выбрал пункт из списка, значит пункты в городе были: пустота —
+  // скорее сбой СДЭК, и отвечать 400 на каждый заказ в этот город нельзя.
+  stubCityPoints([])
+  const p = await seedProduct()
+  const res = await request(app)
+    .post('/api/checkout')
+    .send(checkoutBody([{ productId: p.id, quantity: 1 }]))
+  expect(res.status).toBe(201)
+})
+
 it('курьеру список пунктов не нужен', async () => {
   const get = stubCityPoints([])
   const p = await seedProduct()
@@ -793,8 +884,8 @@ it('курьеру список пунктов не нужен', async () => {
 
 - [ ] **Step 2: Убедиться, что падает**
 
-Run: `npm test -w api -- src/routes/checkout.test.ts`
-Expected: FAIL — первый новый тест получает 201 вместо 400. Остальные тесты файла зелёные.
+Run: `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz npm test -w api -- src/routes/checkout.test.ts`
+Expected: FAIL ровно в двух новых тестах: `'400 delivery_point_unknown…'` получает 201 вместо 400, а в `'пункт из списка города — заказ создаётся'` заказ создаётся, но `get` не вызывался с `/deliverypoints`: проверки ещё нет. Три других новых теста зелёные уже сейчас (СДЭК не ответил, пустой список, курьер) — они стерегут поведение, которое не должно сломаться. Старые тесты файла зелёные.
 
 - [ ] **Step 3: Проверка пункта**
 
@@ -802,7 +893,9 @@ Expected: FAIL — первый новый тест получает 201 вме�
 
 ```ts
 // Проверка пункта на чекауте (§4.3): true/false — по списку города из того же
-// кеша, что видел покупатель; null — СДЭК не ответил, проверить нечем.
+// кеша, что видел покупатель; null — проверить нечем. Пустой список тоже null:
+// покупатель выбрал пункт из списка, значит пункты в городе были, и пустота —
+// скорее сбой СДЭК, чем закрытый город. Отвечать 400 на все заказы туда нельзя.
 export async function isKnownDeliveryPoint(
   cdek: Cdek,
   cityCode: number,
@@ -810,8 +903,10 @@ export async function isKnownDeliveryPoint(
 ): Promise<boolean | null> {
   try {
     const { points } = await getCityPoints(cdek, cityCode)
+    if (points.length === 0) return null
     return points.some((p) => p.code === pointCode)
-  } catch {
+  } catch (err) {
+    console.warn('cdek: проверка пункта пропущена —', describeCdekError(err))
     return null
   }
 }
@@ -844,11 +939,11 @@ if (parsed.delivery.method === 'cdek_pvz') {
 }
 ```
 
-Старые тесты с `get: vi.fn()` не ломаются: `undefined` вместо списка — это «СДЭК не ответил», и проверка пропускается.
+Старые тесты с `get: vi.fn()` не ломаются: `undefined` вместо списка — это «СДЭК не ответил», и проверка пропускается (с предупреждением в лог — в выводе тестов это ожидаемо).
 
 - [ ] **Step 4: Тесты зелёные**
 
-Run: `npm test -w api -- src/routes/checkout.test.ts src/routes/cdek-locations.test.ts`
+Run: `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz npm test -w api -- src/routes/checkout.test.ts src/routes/cdek-locations.test.ts`
 Expected: PASS.
 Run: `npm run typecheck -w api` → без ошибок.
 
@@ -868,6 +963,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ---
 
 ### Task 3: Расчёт ПВЗ по городу, без кода пункта
+
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить; тесты api — только с `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz` (база `ximi4ka_shop_test` занята другой веткой).
 
 Спека (§5.1, п. 2) требует цены обоих способов сразу после выбора города, то есть до выбора пункта. Сейчас `POST /api/public/shipping/quote` без `deliveryPointCode` отвечает 400. Код пункта для расчёта не нужен: `toLocation` для ПВЗ берёт только `cityCode`. Поэтому расчёт принимает ПВЗ без кода, а чекаут по-прежнему его требует.
 
@@ -924,7 +1021,7 @@ it('курьер до ввода улицы считается по коду г�
 
 - [ ] **Step 2: Убедиться, что падает**
 
-Run: `npm test -w api -- src/routes/shipping.test.ts`
+Run: `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz npm test -w api -- src/routes/shipping.test.ts`
 Expected: FAIL — первый новый тест получает 400.
 
 - [ ] **Step 3: Тип и схемы**
@@ -1017,7 +1114,7 @@ export async function quoteShipping(payload: {
 
 - [ ] **Step 4: Тесты и типы зелёные**
 
-Run: `npm test -w api -- src/routes/shipping.test.ts src/routes/checkout.test.ts src/lib/shipping`
+Run: `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz npm test -w api -- src/routes/shipping.test.ts src/routes/checkout.test.ts src/lib/shipping`
 Expected: PASS. Чекаут без кода пункта по-прежнему отвечает 400 (`'не принимает ПВЗ без кода пункта…'`).
 Run: `npm run typecheck -w shared && npm run typecheck -w api && npm run typecheck -w web` → без ошибок.
 
@@ -1037,6 +1134,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ---
 
 ### Task 4: Поиск пунктов по словам
+
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить.
 
 **Files:**
 
@@ -1204,6 +1303,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ---
 
 ### Task 5: Поле «Город» с подсказками СДЭК
+
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить.
 
 **Files:**
 
@@ -1743,6 +1844,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 6: Поле «Пункт получения» — список ПВЗ с поиском
 
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить.
+
 **Files:**
 
 - Create: `web/components/checkout/PointCombobox.tsx`
@@ -2070,6 +2173,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ---
 
 ### Task 7: Поля адреса курьера и сборка адреса
+
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить.
 
 **Files:**
 
@@ -2435,6 +2540,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 8: Карта СДЭК управляется списком пунктов
 
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить.
+
 **Files:**
 
 - Modify: `web/lib/shipping.ts` (новый тип после `WidgetTariff`)
@@ -2651,11 +2758,16 @@ describe('<CdekWidget>', () => {
     expect(instance.selectOffice).not.toHaveBeenCalled()
   })
 
-  it('покупатель тронул карту — повтор selectOffice прекращается', () => {
+  it.each([
+    ['нажал на карту', (el: HTMLElement) => fireEvent.pointerDown(el)],
+    ['крутит колесо', (el: HTMLElement) => fireEvent.wheel(el)],
+    ['жмёт клавиши на карте', (el: HTMLElement) => fireEvent.keyDown(el, { key: '+' })],
+    ['коснулся карты пальцем', (el: HTMLElement) => fireEvent.touchStart(el)],
+  ])('покупатель %s — повтор selectOffice прекращается и не спорит с ним', (_what, touch) => {
     vi.useFakeTimers()
     const view = renderReady()
     view.rerender(<CdekWidget {...props} selectedPoint={POINT} />)
-    fireEvent.pointerDown(screen.getByLabelText('Карта пунктов выдачи СДЭК'))
+    touch(screen.getByLabelText('Карта пунктов выдачи СДЭК'))
     act(() => vi.advanceTimersByTime(SELECT_RETRY_FOR_MS))
     expect(instance.selectOffice).toHaveBeenCalledTimes(1)
   })
@@ -2738,6 +2850,9 @@ const WIDGET_SRC = 'https://cdn.jsdelivr.net/npm/@cdek-it/widget@4.0.0/dist/cdek
 // меняет.
 export const SELECT_RETRY_MS = 300
 export const SELECT_RETRY_FOR_MS = 3_000
+// Действия покупателя на карте, после которых повтор selectOffice
+// прекращается: мышь, палец, колесо, клавиши масштаба.
+const USER_MAP_EVENTS = ['pointerdown', 'touchstart', 'wheel', 'keydown'] as const
 
 type LngLat = [number, number]
 
@@ -2822,6 +2937,7 @@ export function CdekWidget({
   // центрировать и выбирать его заново не нужно.
   const chosenOnMapRef = useRef<string | null>(null)
   const stopRetryRef = useRef<(() => void) | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     onChooseRef.current = onChoose
@@ -2918,6 +3034,22 @@ export function CdekWidget({
     return stop
   }, [ready, pointCode])
 
+  // Покупатель сам двигает или масштабирует карту — повтор selectOffice больше
+  // не возвращает её к пункту и не спорит с ним. Слушаем на погружении:
+  // Яндекс.Карты могут останавливать всплытие своих событий, и обработчики
+  // React (onWheel и т. п.) их бы не увидели.
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const stop = () => stopRetryRef.current?.()
+    for (const type of USER_MAP_EVENTS) {
+      root.addEventListener(type, stop, { capture: true, passive: true })
+    }
+    return () => {
+      for (const type of USER_MAP_EVENTS) root.removeEventListener(type, stop, { capture: true })
+    }
+  }, [])
+
   if (!apiKey) {
     return (
       <p
@@ -2934,8 +3066,7 @@ export function CdekWidget({
       <Script src={WIDGET_SRC} strategy="afterInteractive" onReady={create} />
       <div
         id={rootId}
-        // Покупатель сам двигает карту — больше не возвращаем её к пункту.
-        onPointerDown={() => stopRetryRef.current?.()}
+        ref={rootRef}
         className="w-full h-[420px] md:h-[560px] border border-[var(--color-lj-rule)] bg-white"
         aria-label="Карта пунктов выдачи СДЭК"
       />
@@ -3022,6 +3153,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 9: Без карты — строка вместо карты и кнопка на телефоне
 
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить.
+
 **Files:**
 
 - Modify (весь файл): `web/components/checkout/CdekWidget.tsx`
@@ -3050,7 +3183,42 @@ import {
 } from './CdekWidget'
 ```
 
-- тест `'без ключа Яндекс.Карт не грузит виджет'` заменить на четыре теста:
+- мок `next/script` запоминает последний `onReady`, чтобы вызвать его «с опозданием»: `vi.hoisted` и тело `MockScript` заменить на
+
+```tsx
+const script = vi.hoisted(() => ({
+  outcome: 'ready' as 'ready' | 'error' | 'pending',
+  onReady: null as null | (() => void),
+}))
+vi.mock('next/script', async () => {
+  const { useEffect } = await import('react')
+  return {
+    default: function MockScript({
+      onReady,
+      onError,
+    }: {
+      onReady?: () => void
+      onError?: (e: unknown) => void
+    }) {
+      // Запоминаем в эффекте, а не в рендере: мутация внешнего объекта в
+      // рендере — нарушение правил хуков.
+      useEffect(() => {
+        script.onReady = onReady ?? null
+      })
+      useEffect(() => {
+        if (script.outcome === 'ready') onReady?.()
+        if (script.outcome === 'error') onError?.(new Error('CDN недоступен'))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [])
+      return null
+    },
+  }
+})
+```
+
+и в `beforeEach` добавить `script.onReady = null`;
+
+- тест `'без ключа Яндекс.Карт не грузит виджет'` заменить на шесть тестов:
 
 ```tsx
 it('без ключа Яндекс.Карт — строка вместо карты, виджет не грузится', () => {
@@ -3084,7 +3252,32 @@ it('виджет успел подготовиться — строка не п�
   act(() => vi.advanceTimersByTime(MAP_READY_TIMEOUT_MS * 2))
   expect(screen.queryByRole('status')).toBeNull()
 })
+
+it('после 10 с запоздавший onReady скрипта виджет уже не создаёт', () => {
+  vi.useFakeTimers()
+  script.outcome = 'pending'
+  delete (window as unknown as { CDEKWidget?: unknown }).CDEKWidget
+  render(<CdekWidget {...props} />)
+  act(() => vi.advanceTimersByTime(MAP_READY_TIMEOUT_MS))
+  expect(screen.getByRole('status')).toHaveTextContent(MAP_UNAVAILABLE_TEXT)
+  // Скрипт всё-таки догрузился и зовёт onReady последнего рендера.
+  ;(window as unknown as { CDEKWidget: unknown }).CDEKWidget = ctor
+  act(() => script.onReady?.())
+  expect(ctor).not.toHaveBeenCalled()
+  expect(screen.getByRole('status')).toHaveTextContent(MAP_UNAVAILABLE_TEXT)
+})
+
+it('конструктор виджета упал — строка вместо карты, страница не падает', () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  ctor.mockImplementation(function () {
+    throw new Error('битая сборка')
+  })
+  expect(() => render(<CdekWidget {...props} />)).not.toThrow()
+  expect(screen.getByRole('status')).toHaveTextContent(MAP_UNAVAILABLE_TEXT)
+})
 ```
+
+В `afterEach` этого файла добавить `vi.restoreAllMocks()` — чтобы шпион `console.warn` не пережил тест.
 
 `web/components/checkout/PvzMap.test.tsx`:
 
@@ -3174,6 +3367,9 @@ const WIDGET_SRC = 'https://cdn.jsdelivr.net/npm/@cdek-it/widget@4.0.0/dist/cdek
 // меняет.
 export const SELECT_RETRY_MS = 300
 export const SELECT_RETRY_FOR_MS = 3_000
+// Действия покупателя на карте, после которых повтор selectOffice
+// прекращается: мышь, палец, колесо, клавиши масштаба.
+const USER_MAP_EVENTS = ['pointerdown', 'touchstart', 'wheel', 'keydown'] as const
 
 // Сколько ждём готовности виджета, прежде чем показать строку вместо карты:
 // завис скрипт или Яндекс не отдал карту (§5.2). Чекаут без карты не
@@ -3258,6 +3454,10 @@ export function CdekWidget({
   const widgetRef = useRef<WidgetInstance | null>(null)
   const [ready, setReady] = useState(false)
   const [unavailable, setUnavailable] = useState(!apiKey)
+  // То же, что unavailable, но видно сразу и в колбэках: next/script может
+  // вызвать onReady уже после того, как карта признана недоступной, и тогда
+  // виджет не должен создаваться.
+  const unavailableRef = useRef(!apiKey)
   const onChooseRef = useRef(onChoose)
   // Последние город и пункт: центр при создании виджета и данные для
   // эффектов синхронизации.
@@ -3266,6 +3466,7 @@ export function CdekWidget({
   // центрировать и выбирать его заново не нужно.
   const chosenOnMapRef = useRef<string | null>(null)
   const stopRetryRef = useRef<(() => void) | null>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     onChooseRef.current = onChoose
@@ -3273,33 +3474,43 @@ export function CdekWidget({
   })
 
   function create() {
-    if (widgetRef.current || !window.CDEKWidget) return
+    if (unavailableRef.current || widgetRef.current || !window.CDEKWidget) return
     const { cityLocation: city, selectedPoint: point } = latestRef.current
-    const widget = new window.CDEKWidget({
-      root: rootId,
-      apiKey,
-      servicePath,
-      from: 'Москва',
-      defaultLocation: point?.location ?? city ?? MOSCOW_CENTER,
-      canChoose: true,
-      goods,
-      lang: 'rus',
-      currency: 'RUB',
-      // Только ПВЗ: адрес курьера вводится своими полями под городом, чтобы он
-      // был в одном месте (§5.2). Постаматы — вне задачи (§3): у них свои
-      // тарифы и ячейки, куда наши коробки проходят не всегда.
-      tariffs: { office: [tariffPvz], door: [], pickup: [] },
-      hideDeliveryOptions: { office: false, door: true },
-      forceFilters: { type: 'PVZ' },
-      // Наличные и карта в ПВЗ не нужны — заказ оплачен онлайн.
-      hideFilters: { have_cash: true, have_cashless: true, is_dressing_room: true, type: true },
-      onReady: () => setReady(true),
-      onChoose: (mode: string, _tariff: unknown, target: WidgetOffice) => {
-        if (mode !== 'office') return
-        chosenOnMapRef.current = target.code
-        onChooseRef.current(target)
-      },
-    }) as WidgetInstance
+    let widget: WidgetInstance
+    try {
+      widget = new window.CDEKWidget({
+        root: rootId,
+        apiKey,
+        servicePath,
+        from: 'Москва',
+        defaultLocation: point?.location ?? city ?? MOSCOW_CENTER,
+        canChoose: true,
+        goods,
+        lang: 'rus',
+        currency: 'RUB',
+        // Только ПВЗ: адрес курьера вводится своими полями под городом, чтобы он
+        // был в одном месте (§5.2). Постаматы — вне задачи (§3): у них свои
+        // тарифы и ячейки, куда наши коробки проходят не всегда.
+        tariffs: { office: [tariffPvz], door: [], pickup: [] },
+        hideDeliveryOptions: { office: false, door: true },
+        forceFilters: { type: 'PVZ' },
+        // Наличные и карта в ПВЗ не нужны — заказ оплачен онлайн.
+        hideFilters: { have_cash: true, have_cashless: true, is_dressing_room: true, type: true },
+        onReady: () => setReady(true),
+        onChoose: (mode: string, _tariff: unknown, target: WidgetOffice) => {
+          if (mode !== 'office') return
+          chosenOnMapRef.current = target.code
+          onChooseRef.current(target)
+        },
+      }) as WidgetInstance
+    } catch (err) {
+      // Конструктор упал (битая сборка на CDN, несовместимые настройки) —
+      // карты не будет, список работает.
+      console.warn('cdek widget: не создался —', err instanceof Error ? err.message : err)
+      unavailableRef.current = true
+      setUnavailable(true)
+      return
+    }
     widgetRef.current = widget
     applyGeocoderKey(widget, process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY)
   }
@@ -3321,6 +3532,7 @@ export function CdekWidget({
   useEffect(() => {
     if (ready || unavailable) return
     const timer = setTimeout(() => {
+      unavailableRef.current = true
       stopRetryRef.current?.()
       destroyWidget(widgetRef)
       setUnavailable(true)
@@ -3371,6 +3583,23 @@ export function CdekWidget({
     return stop
   }, [ready, pointCode])
 
+  // Покупатель сам двигает или масштабирует карту — повтор selectOffice больше
+  // не возвращает её к пункту и не спорит с ним. Слушаем на погружении:
+  // Яндекс.Карты могут останавливать всплытие своих событий, и обработчики
+  // React (onWheel и т. п.) их бы не увидели.
+  // Корень карты появляется и пропадает вместе с unavailable.
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root) return
+    const stop = () => stopRetryRef.current?.()
+    for (const type of USER_MAP_EVENTS) {
+      root.addEventListener(type, stop, { capture: true, passive: true })
+    }
+    return () => {
+      for (const type of USER_MAP_EVENTS) root.removeEventListener(type, stop, { capture: true })
+    }
+  }, [unavailable])
+
   if (unavailable) {
     return (
       <p
@@ -3388,12 +3617,14 @@ export function CdekWidget({
         src={WIDGET_SRC}
         strategy="afterInteractive"
         onReady={create}
-        onError={() => setUnavailable(true)}
+        onError={() => {
+          unavailableRef.current = true
+          setUnavailable(true)
+        }}
       />
       <div
         id={rootId}
-        // Покупатель сам двигает карту — больше не возвращаем её к пункту.
-        onPointerDown={() => stopRetryRef.current?.()}
+        ref={rootRef}
         className="w-full h-[420px] md:h-[560px] border border-[var(--color-lj-rule)] bg-white"
         aria-label="Карта пунктов выдачи СДЭК"
       />
@@ -3443,7 +3674,7 @@ export function PvzMap(props: CdekWidgetProps) {
 
 Run: `npm test -w web -- components/checkout checkout/page.test.tsx`
 Expected: PASS.
-Run: `npm run typecheck -w web && npm run lint -w web` → без ошибок.
+Run: `npm run typecheck -w web && npm run lint -w web` → без ошибок. Правило `react-hooks/set-state-in-effect` может указать на `create()` в эффекте монтирования: там `setUnavailable` в `catch`. Тогда над этой строкой поставить `// eslint-disable-next-line react-hooks/set-state-in-effect -- конструктор виджета упал: одна перерисовка в строку «Карта недоступна»`. Другие замечания линта не глушить — исправлять.
 
 - [ ] **Step 6: Коммит**
 
@@ -3452,8 +3683,9 @@ npx prettier --write web/components/checkout/CdekWidget.tsx web/components/check
 git add web/components/checkout/CdekWidget.tsx web/components/checkout/CdekWidget.test.tsx web/components/checkout/PvzMap.tsx web/components/checkout/PvzMap.test.tsx
 git commit -m "feat(web): без карты — строка вместо карты и кнопка на телефоне
 
-Нет ключа, скрипт не загрузился или 10 с без готовности — «Карта
-недоступна — выберите пункт из списка». Уже 768 px карта и скрипты
+Нет ключа, скрипт не загрузился, конструктор упал или 10 с без
+готовности — «Карта недоступна — выберите пункт из списка»; поздний
+onReady после этого виджет не создаёт. Уже 768 px карта и скрипты
 Яндекса грузятся по кнопке «Показать на карте».
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
@@ -3462,6 +3694,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ---
 
 ### Task 10: Блок доставки — город, способ, пункт или курьер
+
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить.
 
 **Files:**
 
@@ -3474,7 +3708,13 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 **Interfaces:**
 
 - Consumes: `suggestCdekCities` и `CityCombobox` (Task 5); `PointCombobox`, `pointLabel` (Task 6); `CourierFields`, `CourierAddress`, `EMPTY_COURIER_ADDRESS`, `courierDestination`, `pvzDestination`, `quoteDestination`, `isPostalCode` (Task 7); `WidgetOffice` (Task 8); `PvzMap` (Task 9); `quoteShipping` (Task 3); `formatPeriod`, `widgetGoods` из `web/lib/shipping.ts`; `SHIPPING_RULES` из `web/lib/checkout.ts`.
-- Produces: `getCdekPoints(cityCode: number, opts?: { signal?: AbortSignal }): Promise<CdekCityPoints>`; `useCdekDelivery(items: { productId: string; quantity: number }[]): CdekDeliveryModel`; `CITY_STORAGE_KEY = 'ximi4ka-checkout-city'`, `loadSavedCity()`, `saveCity(city)`; `LoadStatus = 'idle' | 'loading' | 'ready' | 'error'`; `QuoteView { status: LoadStatus; quote: DeliveryQuote | null }`; `CdekDeliveryModel` (поля и методы — в коде ниже); `CdekDelivery({ delivery, shipping, errors })`; `DeliveryErrors = Partial<Record<'city' | 'point' | 'street' | 'postalCode' | 'delivery', string>>`.
+- Produces: `getCdekPoints(cityCode: number, opts?: { signal?: AbortSignal }): Promise<CdekCityPoints>`; `useCdekDelivery(items: { productId: string; quantity: number }[]): CdekDeliveryModel`; `CITY_STORAGE_KEY = 'ximi4ka-checkout-city'`, `COURIER_REQUOTE_DELAY_MS = 400`, `loadSavedCity()`, `saveCity(city)`; `LoadStatus = 'idle' | 'loading' | 'ready' | 'error'`; `QuoteView { status: LoadStatus; quote: DeliveryQuote | null; refining: boolean }` (`refining` — идёт пересчёт курьера по полному адресу); `CdekDeliveryModel` (поля и методы — в коде ниже; `cityLocation` — центр последнего загруженного города, `pointsSeen` — список уже загружался в этом визите); `CdekDelivery({ delivery, shipping, errors })`; `DeliveryErrors = Partial<Record<'city' | 'point' | 'street' | 'postalCode' | 'delivery', string>>`.
+
+Три решения ревью, которые реализует эта задача:
+
+- **Карта переживает смену города.** Первая же буква в поле «Город» сбрасывает город. Раньше это размонтировало карту: виджет уничтожался, а на телефоне она снова сворачивалась за кнопку. Теперь `PvzMap` стоит вне условия `d.city &&` и показывается, пока выбран способ «Пункт выдачи», места загружены, а список либо грузится, либо непустой, либо уже загружался в этом визите. Центр карты — последний загруженный город, пока грузится новый.
+- **Пункт с карты, пока список грузится** — «Список ещё загружается — попробуйте через секунду», а не «нельзя выбрать».
+- **Цена курьера равна той, что спишет сервер.** Как только адрес курьера полный, курьер пересчитывается с тем же `destination`, что уйдёт в заказ (задержка 400 мс). До ответа — «Курьер СДЭК — пересчитываем…», `quoting = true`.
 
 - [ ] **Step 1: Падающие тесты**
 
@@ -3559,6 +3799,8 @@ import { CITY_STORAGE_KEY, useCdekDelivery } from './useCdekDelivery'
 
 const MOSCOW: CdekCity = { code: 44, name: 'Москва', fullName: 'Москва, Россия' }
 const SPB: CdekCity = { code: 137, name: 'Санкт-Петербург', fullName: 'Санкт-Петербург, Россия' }
+const MOSCOW_CENTER: [number, number] = [37.6176, 55.7558]
+const SPB_CENTER: [number, number] = [30.3141, 59.9386]
 const MSK65: CdekPoint = {
   code: 'MSK65',
   name: 'MSK65, Москва, ул. Динамовская',
@@ -3602,13 +3844,18 @@ const SHIPPING: ShippingQuoteResponse = {
   tariffs: { pvz: 136, courier: 137 },
 }
 
-function quoteFor(method: 'cdek_pvz' | 'cdek_courier'): DeliveryQuote {
-  const pvz = method === 'cdek_pvz'
+// Цены «с сервера»: ПВЗ 390 ₽, курьер по городу 600 ₽, курьер по полному
+// адресу (в адресе есть улица — запятая после города) 650 ₽: так видно, какой
+// расчёт попал в сводку.
+function quoteFor(destination: QuoteDestination): DeliveryQuote {
+  const pvz = destination.method === 'cdek_pvz'
+  const fullAddress = !pvz && destination.address.includes(',')
+  const price = pvz ? 390 : fullAddress ? 650 : 600
   return {
-    method,
+    method: destination.method,
     tariffCode: pvz ? 136 : 137,
-    customerPriceRub: pvz ? 390 : 600,
-    cdekPriceRub: pvz ? 390 : 600,
+    customerPriceRub: price,
+    cdekPriceRub: price,
     periodMin: pvz ? 3 : 2,
     periodMax: pvz ? 5 : 2,
     free: false,
@@ -3618,14 +3865,16 @@ function quoteFor(method: 'cdek_pvz' | 'cdek_courier'): DeliveryQuote {
 
 const ITEMS = [{ productId: 'p1', quantity: 2 }]
 
-// Блок доставки как на странице; destination — в разметку, чтобы проверять
-// то, что уйдёт в заказ.
+// Блок доставки как на странице; destination, quoting и цена — в разметку,
+// чтобы проверять то, что уйдёт в заказ и в сводку.
 function Harness({ errors = {} }: { errors?: DeliveryErrors }) {
   const delivery = useCdekDelivery(ITEMS)
   return (
     <>
       <CdekDelivery delivery={delivery} shipping={SHIPPING} errors={errors} />
       <output data-testid="destination">{JSON.stringify(delivery.destination)}</output>
+      <output data-testid="quoting">{String(delivery.quoting)}</output>
+      <output data-testid="quote">{delivery.quote?.customerPriceRub ?? ''}</output>
       <button
         type="button"
         onClick={() => delivery.rejectPoint('Пункт выдачи не найден — выберите другой')}
@@ -3640,11 +3889,14 @@ function destination() {
   return JSON.parse(screen.getByTestId('destination').textContent!)
 }
 
+function cityInput() {
+  return screen.getByRole('combobox', { name: /город/i })
+}
+
 async function chooseCity(city: CdekCity) {
   mockSuggest.mockResolvedValue([city])
-  const input = screen.getByRole('combobox', { name: /город/i })
-  fireEvent.focus(input)
-  fireEvent.change(input, { target: { value: city.name.slice(0, 4) } })
+  fireEvent.focus(cityInput())
+  fireEvent.change(cityInput(), { target: { value: city.name.slice(0, 4) } })
   fireEvent.click(await screen.findByRole('option', { name: city.name }))
 }
 
@@ -3654,6 +3906,13 @@ async function choosePoint(name: RegExp) {
   fireEvent.click(screen.getByRole('option', { name }))
 }
 
+// Вызовы расчёта курьера по полному адресу (а не по одному городу).
+function fullCourierQuotes() {
+  return mockQuote.mock.calls.filter(
+    ([p]) => p.destination?.method === 'cdek_courier' && p.destination.address.includes(','),
+  )
+}
+
 beforeEach(() => {
   window.localStorage.clear()
   mockSuggest.mockReset()
@@ -3661,12 +3920,12 @@ beforeEach(() => {
   mockQuote.mockReset()
   mockGetPoints.mockImplementation(async (code) =>
     code === 44
-      ? pointsOf(MOSCOW, [MSK310, MSK65], [37.6176, 55.7558])
-      : pointsOf(SPB, [SPB1], [30.3141, 59.9386]),
+      ? pointsOf(MOSCOW, [MSK310, MSK65], MOSCOW_CENTER)
+      : pointsOf(SPB, [SPB1], SPB_CENTER),
   )
   mockQuote.mockImplementation(async ({ destination: d }) => ({
     ...SHIPPING,
-    quote: d ? quoteFor(d.method) : null,
+    quote: d ? quoteFor(d) : null,
   }))
   mapOffice.current = null
 })
@@ -3731,7 +3990,7 @@ describe('<CdekDelivery>', () => {
     render(<Harness />)
     await chooseCity(MOSCOW)
     const map = await screen.findByTestId('map')
-    await vi.waitFor(() => expect(map).toHaveAttribute('data-city', '37.6176,55.7558'))
+    await vi.waitFor(() => expect(map).toHaveAttribute('data-city', MOSCOW_CENTER.join(',')))
     await choosePoint(/MSK65/)
     expect(map).toHaveAttribute('data-point', 'MSK65')
 
@@ -3749,10 +4008,72 @@ describe('<CdekDelivery>', () => {
     expect(destination()).toMatchObject({ deliveryPointCode: 'MSK310' })
   })
 
+  it('карта не пересоздаётся при смене города и стоит на прошлом городе, пока грузится новый', async () => {
+    let resolveSpb!: (value: CdekCityPoints) => void
+    render(<Harness />)
+    await chooseCity(MOSCOW)
+    const map = await screen.findByTestId('map')
+    await vi.waitFor(() => expect(map).toHaveAttribute('data-city', MOSCOW_CENTER.join(',')))
+
+    mockGetPoints.mockImplementation(
+      () =>
+        new Promise<CdekCityPoints>((resolve) => {
+          resolveSpb = resolve
+        }),
+    )
+    // Первая буква нового города сбрасывает город — карта остаётся тем же элементом.
+    mockSuggest.mockResolvedValue([SPB])
+    fireEvent.focus(cityInput())
+    fireEvent.change(cityInput(), { target: { value: 'Санк' } })
+    expect(screen.getByTestId('map')).toBe(map)
+    expect(map).toHaveAttribute('data-city', MOSCOW_CENTER.join(','))
+
+    fireEvent.click(await screen.findByRole('option', { name: 'Санкт-Петербург' }))
+    expect(screen.getByTestId('map')).toBe(map)
+    expect(map).toHaveAttribute('data-city', MOSCOW_CENTER.join(','))
+
+    await act(async () => {
+      resolveSpb(pointsOf(SPB, [SPB1], SPB_CENTER))
+    })
+    expect(screen.getByTestId('map')).toBe(map)
+    expect(map).toHaveAttribute('data-city', SPB_CENTER.join(','))
+  })
+
+  it('до первого выбора города карты нет', () => {
+    render(<Harness />)
+    expect(screen.queryByTestId('map')).toBeNull()
+  })
+
+  it('пункт с карты, пока список грузится, — «Список ещё загружается»', async () => {
+    let resolvePoints!: (value: CdekCityPoints) => void
+    mockGetPoints.mockImplementation(
+      () =>
+        new Promise<CdekCityPoints>((resolve) => {
+          resolvePoints = resolve
+        }),
+    )
+    render(<Harness />)
+    await chooseCity(MOSCOW)
+    mapOffice.current = { ...MSK65, city_code: 44, city: 'Москва' }
+    fireEvent.click(await screen.findByRole('button', { name: 'Выбрать на карте' }))
+    expect(
+      screen.getByText('Список ещё загружается — попробуйте через секунду'),
+    ).toBeInTheDocument()
+    expect(destination()).toBeNull()
+
+    await act(async () => {
+      resolvePoints(pointsOf(MOSCOW, [MSK65], MOSCOW_CENTER))
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Выбрать на карте' }))
+    expect(destination()).toMatchObject({ deliveryPointCode: 'MSK65' })
+    expect(screen.queryByText(/Список ещё загружается/)).toBeNull()
+  })
+
   it('пункт с карты из другого города отклоняется с подсказкой', async () => {
     render(<Harness />)
     await chooseCity(MOSCOW)
-    await screen.findByTestId('map')
+    // Ждём список: пока он грузится, подсказка другая (тест выше).
+    await screen.findByRole('combobox', { name: /пункт получения/i })
     mapOffice.current = { ...SPB1, city_code: 137, city: 'Санкт-Петербург' }
     fireEvent.click(screen.getByRole('button', { name: 'Выбрать на карте' }))
     expect(screen.getByText('Этот пункт в другом городе — смените город')).toBeInTheDocument()
@@ -3770,7 +4091,7 @@ describe('<CdekDelivery>', () => {
   })
 
   it('в городе нет ПВЗ — подсказка выбрать курьера, карты нет', async () => {
-    mockGetPoints.mockResolvedValue(pointsOf(MOSCOW, [], [37.6176, 55.7558]))
+    mockGetPoints.mockResolvedValue(pointsOf(MOSCOW, [], MOSCOW_CENTER))
     render(<Harness />)
     await chooseCity(MOSCOW)
     expect(
@@ -3792,6 +4113,62 @@ describe('<CdekDelivery>', () => {
     ).toBeInTheDocument()
   })
 
+  it('курьер: полный адрес пересчитывается тем же destination, что уйдёт в заказ', async () => {
+    render(<Harness />)
+    await chooseCity(MOSCOW)
+    fireEvent.click(await screen.findByRole('radio', { name: /Курьер СДЭК — 600/ }))
+    fireEvent.change(screen.getByLabelText(/улица, дом/i), { target: { value: 'Тверская ул., 1' } })
+
+    // До ответа — «пересчитываем», цены нет, оформить нельзя.
+    expect(screen.getByRole('radio', { name: 'Курьер СДЭК — пересчитываем…' })).toBeChecked()
+    expect(screen.getByTestId('quoting')).toHaveTextContent('true')
+    expect(screen.getByTestId('quote')).toHaveTextContent('')
+
+    expect(await screen.findByRole('radio', { name: /Курьер СДЭК — 650\s₽/ })).toBeChecked()
+    expect(screen.getByTestId('quoting')).toHaveTextContent('false')
+    expect(screen.getByTestId('quote')).toHaveTextContent('650')
+    expect(fullCourierQuotes().at(-1)![0].destination).toEqual(destination())
+    expect(destination()).toEqual({
+      method: 'cdek_courier',
+      cityCode: 44,
+      address: 'Москва, Тверская ул., 1',
+    })
+  })
+
+  it('пересчёт ждёт, пока покупатель допечатает: одна правка за другой — один запрос', async () => {
+    render(<Harness />)
+    await chooseCity(MOSCOW)
+    fireEvent.click(await screen.findByRole('radio', { name: /Курьер СДЭК/ }))
+    const street = screen.getByLabelText(/улица, дом/i)
+    fireEvent.change(street, { target: { value: 'Т' } })
+    fireEvent.change(street, { target: { value: 'Тверская' } })
+    fireEvent.change(street, { target: { value: 'Тверская ул., 1' } })
+    await screen.findByRole('radio', { name: /Курьер СДЭК — 650/ })
+    expect(fullCourierQuotes()).toHaveLength(1)
+  })
+
+  it('недописанный индекс — по нему не считаем; шесть цифр — пересчёт с индексом', async () => {
+    render(<Harness />)
+    await chooseCity(MOSCOW)
+    fireEvent.click(await screen.findByRole('radio', { name: /Курьер СДЭК/ }))
+    fireEvent.change(screen.getByLabelText(/улица, дом/i), { target: { value: 'Тверская ул., 1' } })
+    await screen.findByRole('radio', { name: /Курьер СДЭК — 650/ })
+
+    fireEvent.change(screen.getByLabelText(/индекс/i), { target: { value: '1250' } })
+    await new Promise((resolve) => setTimeout(resolve, 500))
+    expect(fullCourierQuotes()).toHaveLength(1)
+
+    fireEvent.change(screen.getByLabelText(/индекс/i), { target: { value: '125009' } })
+    await vi.waitFor(() => expect(fullCourierQuotes()).toHaveLength(2))
+    expect(fullCourierQuotes()[1]![0].destination).toEqual({
+      method: 'cdek_courier',
+      cityCode: 44,
+      postalCode: '125009',
+      address: 'Москва, Тверская ул., 1',
+    })
+    expect(await screen.findByRole('radio', { name: /Курьер СДЭК — 650/ })).toBeChecked()
+  })
+
   it('сервер не нашёл пункт — выбор сброшен, ошибка у поля, список грузится заново', async () => {
     render(<Harness />)
     await chooseCity(MOSCOW)
@@ -3810,14 +4187,14 @@ describe('<CdekDelivery>', () => {
         ? new Promise<CdekCityPoints>((resolve) => {
             resolveMoscow = resolve
           })
-        : Promise.resolve(pointsOf(SPB, [SPB1], [30.3141, 59.9386])),
+        : Promise.resolve(pointsOf(SPB, [SPB1], SPB_CENTER)),
     )
     render(<Harness />)
     await chooseCity(MOSCOW)
     await chooseCity(SPB)
     const input = await screen.findByRole('combobox', { name: /пункт получения/i })
     await act(async () => {
-      resolveMoscow(pointsOf(MOSCOW, [MSK65], [37.6176, 55.7558]))
+      resolveMoscow(pointsOf(MOSCOW, [MSK65], MOSCOW_CENTER))
     })
     fireEvent.focus(input)
     expect(screen.getByRole('option', { name: /SPB1/ })).toBeInTheDocument()
@@ -3836,7 +4213,7 @@ describe('<CdekDelivery>', () => {
     mockGetPoints.mockClear()
 
     render(<Harness />)
-    expect(screen.getByRole('combobox', { name: /город/i })).toHaveValue('Москва')
+    expect(cityInput()).toHaveValue('Москва')
     await vi.waitFor(() => expect(mockGetPoints).toHaveBeenCalledWith(44, expect.anything()))
     expect(mockSuggest).toHaveBeenCalledTimes(1) // только при первом выборе
   })
@@ -3844,12 +4221,12 @@ describe('<CdekDelivery>', () => {
   it('мусор в хранилище или хранилище недоступно — блок работает без сохранённого города', async () => {
     window.localStorage.setItem(CITY_STORAGE_KEY, '{"code":"44","name":"Москва"}')
     render(<Harness />)
-    expect(screen.getByRole('combobox', { name: /город/i })).toHaveValue('')
+    expect(cityInput()).toHaveValue('')
     cleanup()
 
     window.localStorage.setItem(CITY_STORAGE_KEY, 'не json')
     render(<Harness />)
-    expect(screen.getByRole('combobox', { name: /город/i })).toHaveValue('')
+    expect(cityInput()).toHaveValue('')
     cleanup()
 
     const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
@@ -3922,6 +4299,7 @@ import { getCdekPoints, quoteShipping } from '@/lib/api'
 import {
   EMPTY_COURIER_ADDRESS,
   courierDestination,
+  isPostalCode,
   pvzDestination,
   quoteDestination,
   type CourierAddress,
@@ -3929,6 +4307,9 @@ import {
 } from '@/lib/shipping'
 
 export const CITY_STORAGE_KEY = 'ximi4ka-checkout-city'
+// Пересчёт курьера по полному адресу ждёт, пока покупатель допечатает: на
+// каждую букву в СДЭК не ходим.
+export const COURIER_REQUOTE_DELAY_MS = 400
 
 const METHODS: readonly DeliveryMethod[] = ['cdek_pvz', 'cdek_courier']
 const EMPTY_POINTS: CdekPoint[] = []
@@ -3938,6 +4319,9 @@ export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 export interface QuoteView {
   status: LoadStatus
   quote: DeliveryQuote | null
+  // Идёт пересчёт курьера по полному адресу: цена по городу уже не та, что
+  // спишет сервер.
+  refining: boolean
 }
 
 export interface CdekDeliveryModel {
@@ -3945,14 +4329,20 @@ export interface CdekDeliveryModel {
   method: DeliveryMethod
   pointsStatus: LoadStatus
   points: CdekPoint[]
+  // Центр последнего загруженного города: пока грузится список нового (или
+  // покупатель перепечатывает город), карта стоит на месте.
   cityLocation: [number, number] | null
+  // Список пунктов уже загружался в этом визите — карта не пропадает, пока
+  // покупатель меняет город.
+  pointsSeen: boolean
   point: CdekPoint | null
   courier: CourierAddress
   quotes: Record<DeliveryMethod, QuoteView>
   // Расчёт выбранного способа — для сводки и кнопки «Оформить».
   quote: DeliveryQuote | null
   quoting: boolean
-  // «Куда везём» для заказа; null — чего-то не хватает.
+  // «Куда везём» для заказа; null — чего-то не хватает. Для курьера — ровно
+  // тот destination, по которому посчитана цена.
   destination: DeliveryDestination | null
   mapNotice: string | null
   pointError: string | null
@@ -4008,7 +4398,8 @@ export function saveCity(city: CdekCity | null): void {
 }
 
 // Ответ засчитывается только под своим ключом (город и попытка, для цен ещё и
-// корзина): поздний ответ по прошлому городу не перетрёт новый.
+// корзина, для курьера — полный адрес): поздний ответ по прошлому городу или
+// адресу не перетрёт новый.
 const pointsKeyOf = (cityCode: number, attempt: number) => `${cityCode}#${attempt}`
 const quotesKeyOf = (cityCode: number, cartKey: string, attempt: number) =>
   `${cityCode}#${cartKey}#${attempt}`
@@ -4023,9 +4414,15 @@ interface QuotesResult {
   byMethod: Partial<Record<DeliveryMethod, DeliveryQuote | null>> // null — ошибка
 }
 
+interface CourierQuoteResult {
+  key: string
+  quote: DeliveryQuote | null // null — ошибка
+}
+
 // Состояние блока «Доставка» чекаута (спека §5): город → способ → пункт или
 // адрес курьера. Пункты и цены грузятся при выборе города; смена города
-// сбрасывает пункт, но не адрес курьера (§5.1).
+// сбрасывает пункт, но не адрес курьера (§5.1). Цена курьера по полному
+// адресу пересчитывается, чтобы совпасть с тем, что спишет сервер.
 export function useCdekDelivery(
   items: { productId: string; quantity: number }[],
 ): CdekDeliveryModel {
@@ -4039,15 +4436,29 @@ export function useCdekDelivery(
   const [quotesAttempt, setQuotesAttempt] = useState(0)
   const [pointsResult, setPointsResult] = useState<PointsResult | null>(null)
   const [quotesResult, setQuotesResult] = useState<QuotesResult | null>(null)
-
-  const itemsRef = useRef(items)
-  useEffect(() => {
-    itemsRef.current = items
-  })
+  const [courierQuote, setCourierQuote] = useState<CourierQuoteResult | null>(null)
 
   const cityCode = city?.code ?? null
   const cityName = city?.name ?? ''
   const cartKey = items.map((i) => `${i.productId}:${i.quantity}`).join(',')
+
+  // Полный адрес курьера — тот же destination, что уйдёт в заказ. Индекс, если
+  // введён, должен быть из 6 цифр: с недописанным индексом не пересчитываем.
+  const postalCode = courier.postalCode.trim()
+  const courierFull =
+    city && courier.street.trim() !== '' && (postalCode === '' || isPostalCode(postalCode))
+      ? courierDestination(city, courier)
+      : null
+  const courierKey =
+    courierFull && cartKey !== ''
+      ? `${JSON.stringify(courierFull)}#${cartKey}#${quotesAttempt}`
+      : null
+
+  // Свежие корзина и адрес для отложенных запросов.
+  const latestRef = useRef({ items, courierFull })
+  useEffect(() => {
+    latestRef.current = { items, courierFull }
+  })
 
   useEffect(() => {
     if (cityCode === null) return
@@ -4066,7 +4477,10 @@ export function useCdekDelivery(
   useEffect(() => {
     if (cityCode === null || cartKey === '') return
     const key = quotesKeyOf(cityCode, cartKey, quotesAttempt)
-    const lines = itemsRef.current.map((i) => ({ productId: i.productId, quantity: i.quantity }))
+    const lines = latestRef.current.items.map((i) => ({
+      productId: i.productId,
+      quantity: i.quantity,
+    }))
     let cancelled = false
     const record = (m: DeliveryMethod, quote: DeliveryQuote | null) => {
       if (cancelled) return
@@ -4090,26 +4504,66 @@ export function useCdekDelivery(
     }
   }, [cityCode, cityName, cartKey, quotesAttempt])
 
+  // Курьера сервер считает по полному адресу (postal_code и address в
+  // to_location), и цена может отличаться от расчёта по городу. Показываем и
+  // требуем для оформления ровно ту, что спишет сервер.
+  useEffect(() => {
+    if (courierKey === null) return
+    const key = courierKey
+    let cancelled = false
+    const timer = setTimeout(() => {
+      const { items: current, courierFull: destination } = latestRef.current
+      if (!destination) return
+      quoteShipping({
+        items: current.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+        destination,
+      })
+        .then((data) => {
+          if (!cancelled) setCourierQuote({ key, quote: data.quote })
+        })
+        .catch(() => {
+          if (!cancelled) setCourierQuote({ key, quote: null })
+        })
+    }, COURIER_REQUOTE_DELAY_MS)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [courierKey])
+
   const pointsKey = cityCode === null ? null : pointsKeyOf(cityCode, pointsAttempt)
   const pointsHit = pointsKey !== null && pointsResult?.key === pointsKey ? pointsResult : null
   const pointsStatus: LoadStatus =
     pointsKey === null ? 'idle' : !pointsHit ? 'loading' : pointsHit.data ? 'ready' : 'error'
   const points = pointsHit?.data?.points ?? EMPTY_POINTS
-  const cityLocation = pointsHit?.data?.city.location ?? null
+  // Последний ответ, даже по прошлому городу: карта не прыгает в Москву, пока
+  // грузится новый список.
+  const cityLocation = pointsResult?.data?.city.location ?? null
+  const pointsSeen = pointsResult?.data != null
 
   const quotesKey =
     cityCode === null || cartKey === '' ? null : quotesKeyOf(cityCode, cartKey, quotesAttempt)
   const quotesHit =
     quotesKey !== null && quotesResult?.key === quotesKey ? quotesResult.byMethod : null
-  const quoteView = (m: DeliveryMethod): QuoteView => {
-    if (quotesKey === null) return { status: 'idle', quote: null }
+  const cityQuoteView = (m: DeliveryMethod): QuoteView => {
+    if (quotesKey === null) return { status: 'idle', quote: null, refining: false }
     const q = quotesHit?.[m]
-    if (q === undefined) return { status: 'loading', quote: null }
-    return q ? { status: 'ready', quote: q } : { status: 'error', quote: null }
+    if (q === undefined) return { status: 'loading', quote: null, refining: false }
+    return q
+      ? { status: 'ready', quote: q, refining: false }
+      : { status: 'error', quote: null, refining: false }
   }
+  const courierView: QuoteView =
+    courierKey === null
+      ? cityQuoteView('cdek_courier')
+      : courierQuote?.key !== courierKey
+        ? { status: 'loading', quote: null, refining: true }
+        : courierQuote.quote
+          ? { status: 'ready', quote: courierQuote.quote, refining: false }
+          : { status: 'error', quote: null, refining: false }
   const quotes: Record<DeliveryMethod, QuoteView> = {
-    cdek_pvz: quoteView('cdek_pvz'),
-    cdek_courier: quoteView('cdek_courier'),
+    cdek_pvz: cityQuoteView('cdek_pvz'),
+    cdek_courier: courierView,
   }
 
   const destination: DeliveryDestination | null = !city
@@ -4118,9 +4572,7 @@ export function useCdekDelivery(
       ? point
         ? pvzDestination(city, point)
         : null
-      : courier.street.trim() !== ''
-        ? courierDestination(city, courier)
-        : null
+      : courierFull
 
   function setCity(next: CdekCity | null) {
     setCityState(next)
@@ -4140,13 +4592,21 @@ export function useCdekDelivery(
   // Карта → список (§5.2): пункт с карты ставится, только если он есть в
   // списке города, иначе заказ ушёл бы с пунктом, которого сервер не знает.
   function chooseOnMap(office: WidgetOffice) {
+    if (!city) {
+      setMapNotice('Сначала выберите город — пункт появится в списке')
+      return
+    }
+    if (pointsStatus === 'loading') {
+      setMapNotice('Список ещё загружается — попробуйте через секунду')
+      return
+    }
     const found = points.find((p) => p.code === office.code)
     if (found) {
       setPoint(found)
       return
     }
     setMapNotice(
-      city && office.city_code !== city.code
+      office.city_code !== city.code
         ? 'Этот пункт в другом городе — смените город'
         : 'Этот пункт нельзя выбрать — найдите другой в списке',
     )
@@ -4166,6 +4626,7 @@ export function useCdekDelivery(
     pointsStatus,
     points,
     cityLocation,
+    pointsSeen,
     point,
     courier,
     quotes,
@@ -4224,7 +4685,7 @@ const METHODS: readonly DeliveryMethod[] = ['cdek_pvz', 'cdek_courier']
 // «Пункт выдачи СДЭК — 390 ₽, 3–5 дн.»: цена и срок — с сервера (§5.1, п. 2).
 function methodLabel(method: DeliveryMethod, view: QuoteView): string {
   const title = METHOD_TITLES[method]
-  if (view.status === 'loading') return `${title} — считаем…`
+  if (view.status === 'loading') return `${title} — ${view.refining ? 'пересчитываем' : 'считаем'}…`
   if (view.status === 'error') return `${title} — не удалось рассчитать`
   if (!view.quote) return title
   const price =
@@ -4244,6 +4705,17 @@ export function CdekDelivery({ delivery: d, shipping, errors }: Props) {
   const postalError = postalCode === '' || isPostalCode(postalCode) ? undefined : errors.postalCode
   const deliveryError = d.quotes[d.method].status === 'ready' ? undefined : errors.delivery
   const quoteFailed = METHODS.some((m) => d.quotes[m].status === 'error')
+
+  // Карта стоит вне условия «город выбран»: первая буква в поле «Город»
+  // сбрасывает город, и без этого виджет уничтожался бы и создавался заново
+  // (на телефоне ещё и сворачивался за кнопку). Пока грузится список нового
+  // города или покупатель перепечатывает город, карта остаётся на месте.
+  const pickup = d.method === 'cdek_pvz'
+  const listForMap =
+    d.pointsStatus === 'loading' ||
+    (d.pointsStatus === 'ready' && d.points.length > 0) ||
+    (d.pointsStatus === 'idle' && d.pointsSeen)
+  const showMap = pickup && listForMap
 
   return (
     <section aria-labelledby="checkout-delivery" className="flex flex-col gap-5">
@@ -4288,8 +4760,23 @@ export function CdekDelivery({ delivery: d, shipping, errors }: Props) {
         </fieldset>
       )}
 
-      {d.city && d.method === 'cdek_pvz' && (
-        <PickupPoint delivery={d} shipping={shipping} error={pointError} />
+      {d.city && pickup && <PickupList delivery={d} error={pointError} />}
+
+      {pickup && d.mapNotice && (
+        <p role="status" className={ERROR_CLASS}>
+          {d.mapNotice}
+        </p>
+      )}
+
+      {showMap && shipping && (
+        <PvzMap
+          goods={widgetGoods(shipping.packages)}
+          servicePath={cdekWidgetServicePath(shipping.subtotalRub)}
+          tariffPvz={shipping.tariffs.pvz}
+          cityLocation={d.cityLocation}
+          selectedPoint={d.point}
+          onChoose={d.chooseOnMap}
+        />
       )}
 
       {d.city && d.method === 'cdek_courier' && (
@@ -4305,66 +4792,44 @@ export function CdekDelivery({ delivery: d, shipping, errors }: Props) {
   )
 }
 
-function PickupPoint({
+// Поле «Пункт получения» или статус списка на его месте.
+function PickupList({
   delivery: d,
-  shipping,
   error,
 }: {
   delivery: CdekDeliveryModel
-  shipping: ShippingQuoteResponse | null
   error: string | undefined
 }) {
-  const listReady = d.pointsStatus === 'ready' && d.points.length > 0
-  // Пока грузится список нового города, карта остаётся на месте: виджет
-  // тяжёлый, пересоздавать его на каждую смену города незачем.
-  const showMap = shipping !== null && (d.pointsStatus === 'loading' || listReady)
-
+  if (d.pointsStatus === 'ready' && d.points.length > 0) {
+    return (
+      <PointCombobox
+        id="checkout-point"
+        points={d.points}
+        value={d.point}
+        onChange={d.setPoint}
+        error={error}
+      />
+    )
+  }
   return (
-    <div className="flex flex-col gap-3">
-      {listReady ? (
-        <PointCombobox
-          id="checkout-point"
-          points={d.points}
-          value={d.point}
-          onChange={d.setPoint}
-          error={error}
-        />
+    <div className="flex flex-col gap-2">
+      {d.pointsStatus === 'error' ? (
+        <p role="alert" className={ERROR_CLASS}>
+          Не удалось загрузить пункты выдачи{' '}
+          <button type="button" onClick={d.retryPoints} className="underline">
+            Повторить
+          </button>
+        </p>
+      ) : d.pointsStatus === 'ready' ? (
+        <p role="status" className={HINT_CLASS}>
+          В этом городе нет пунктов выдачи СДЭК — выберите курьера
+        </p>
       ) : (
-        <>
-          {d.pointsStatus === 'error' ? (
-            <p role="alert" className={ERROR_CLASS}>
-              Не удалось загрузить пункты выдачи{' '}
-              <button type="button" onClick={d.retryPoints} className="underline">
-                Повторить
-              </button>
-            </p>
-          ) : d.pointsStatus === 'ready' ? (
-            <p role="status" className={HINT_CLASS}>
-              В этом городе нет пунктов выдачи СДЭК — выберите курьера
-            </p>
-          ) : (
-            <p role="status" className={HINT_CLASS}>
-              Загружаем пункты выдачи…
-            </p>
-          )}
-          {error && <p className={ERROR_CLASS}>{error}</p>}
-        </>
-      )}
-      {d.mapNotice && (
-        <p role="status" className={ERROR_CLASS}>
-          {d.mapNotice}
+        <p role="status" className={HINT_CLASS}>
+          Загружаем пункты выдачи…
         </p>
       )}
-      {showMap && (
-        <PvzMap
-          goods={widgetGoods(shipping.packages)}
-          servicePath={cdekWidgetServicePath(shipping.subtotalRub)}
-          tariffPvz={shipping.tariffs.pvz}
-          cityLocation={d.cityLocation}
-          selectedPoint={d.point}
-          onChoose={d.chooseOnMap}
-        />
-      )}
+      {error && <p className={ERROR_CLASS}>{error}</p>}
     </div>
   )
 }
@@ -4383,9 +4848,10 @@ npx prettier --write web/lib/api.ts web/lib/api.test.ts web/components/checkout/
 git add web/lib/api.ts web/lib/api.test.ts web/components/checkout/useCdekDelivery.ts web/components/checkout/CdekDelivery.tsx web/components/checkout/CdekDelivery.test.tsx
 git commit -m "feat(web): блок доставки — город, способ, пункт или курьер
 
-Пункты и цены обоих способов грузятся по городу; смена города сбрасывает
-пункт и не трогает адрес курьера; карта и список синхронизированы;
-город запоминается в localStorage.
+Пункты и цены обоих способов грузятся по городу; смена города
+сбрасывает пункт и не трогает адрес курьера, карта при этом не
+пересоздаётся; курьер по полному адресу пересчитывается тем же
+destination, что уйдёт в заказ; город запоминается в localStorage.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -4393,6 +4859,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ---
 
 ### Task 11: Чекаут на новом блоке доставки
+
+> Правила задачи: работать только в `$WT` (`/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list`); новых зависимостей не добавлять; не пушить.
 
 **Files:**
 
@@ -4767,19 +5235,30 @@ describe('/checkout page', () => {
     fireEvent.change(screen.getByLabelText(/улица, дом/i), { target: { value: 'Тверская ул., 1' } })
     fireEvent.change(screen.getByLabelText(/квартира/i), { target: { value: '12' } })
     fireEvent.change(screen.getByLabelText(/индекс/i), { target: { value: '125009' } })
-    expect(screen.getByTestId('summary-shipping')).toHaveTextContent('600')
+
+    // Пока курьер пересчитывается по полному адресу — цены нет, оформить нельзя.
+    const button = screen.getByRole('button', { name: /оформить заказ/i })
+    expect(screen.getByRole('radio', { name: 'Курьер СДЭК — пересчитываем…' })).toBeChecked()
+    expect(screen.getByTestId('summary-shipping')).toHaveTextContent('—')
+    expect(button).toBeDisabled()
+
+    await vi.waitFor(() => expect(screen.getByTestId('summary-shipping')).toHaveTextContent('600'))
     expect(screen.getByTestId('summary-total')).toHaveTextContent('2 600')
+    expect(button).toBeEnabled()
+    const courierFull = {
+      method: 'cdek_courier',
+      cityCode: 44,
+      postalCode: '125009',
+      address: 'Москва, Тверская ул., 1, кв. 12',
+    }
+    // Цену посчитали ровно по тому адресу, что уйдёт в заказ.
+    expect(mockQuoteShipping).toHaveBeenCalledWith({ items: ITEMS, destination: courierFull })
 
     submit()
 
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(JSON.parse(init.body as string).delivery).toEqual({
-      method: 'cdek_courier',
-      cityCode: 44,
-      postalCode: '125009',
-      address: 'Москва, Тверская ул., 1, кв. 12',
-    })
+    expect(JSON.parse(init.body as string).delivery).toEqual(courierFull)
   })
 
   it('validates required fields in Russian and does not POST', async () => {
@@ -5409,92 +5888,167 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ### Task 12: Полная проверка, живой прогон в браузере, ревью
 
+> Правила задачи: работать только в `$WT`; новых зависимостей не добавлять; не пушить. Из основного checkout — только чтение `api/.env`/`web/.env.local` и две новые записи в его `.claude/launch.json`.
+
 **Files:** кода не меняет. Правки по итогам ревью — отдельными коммитами с тестом на каждую находку.
+
+Почему прогон так огорожен. В основном checkout `api/.env` указывает на общую dev-базу `ximi4ka_shop` и содержит боевые ключи СДЭК, Telegram рабочего чата, Google Таблицу и ERP. `preview_start` читает `launch.json` из корня проекта сессии — это основной checkout, — и сервер с уже занятым именем (`api`, `web`) переиспользует. Такой api грузит `api/.env` основного checkout, и тестовый заказ уйдёт в общую базу и в рабочий чат. Поэтому серверы этой ветки — отдельные записи `pvz-api`/`pvz-web` на портах 3031/3030 со своей базой, в песочнице СДЭК, без внешних каналов. Перед первым заказом стоит жёсткая проверка. Значения секретов не печатать.
 
 - [ ] **Step 1: Автоматические проверки**
 
-Run: `npm test` (все воркспейсы) → PASS.
+Run: `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_pvz npm test` (все воркспейсы) → PASS.
 Run: `npm run typecheck && npm run lint` → без ошибок.
 Run: `git diff --name-only origin/main...HEAD | grep -E '\.(ts|tsx)$' | xargs grep -n "TODO\|FIXME\|\.only(\|\.skip(" ; true` → пусто.
 
-- [ ] **Step 2: Окружение живого прогона — отдельная база и песочница**
-
-В основном checkout `api/.env` указывает на общую dev-базу `ximi4ka_shop` и содержит боевые ключи СДЭК, Telegram рабочего чата, Google Таблицу и ERP. Тестовые заказы в общей базе подхватит обработчик уведомлений api другого агента, и карточки уйдут в рабочий чат. Поэтому прогон идёт на своей базе, в песочнице СДЭК, без внешних каналов. Значения секретов не печатать.
+- [ ] **Step 2: Файлы окружения worktree**
 
 ```bash
 WT=/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list
 MAIN=/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop
-cp "$MAIN/api/.env" "$WT/api/.env"
-cp "$MAIN/web/.env.local" "$WT/web/.env.local"
-mkdir -p "$WT/.claude" && cp "$MAIN/.claude/launch.json" "$WT/.claude/launch.json"
-# Своя база — копия dev-базы: товары для корзины есть, чужой обработчик её не видит.
-DEV_URL=$(grep '^DATABASE_URL=' "$WT/api/.env" | cut -d= -f2-)
+# Значения в .env — однострочные? Иначе построчный фильтр ниже оставит хвосты секретов.
+awk '!/^[A-Za-z_][A-Za-z0-9_]*=/ && !/^[[:space:]]*#/ && !/^[[:space:]]*$/ {c++} END {print c+0}' "$MAIN/api/.env"
+# ожидание: 0. Иначе — остановиться и разобрать вручную.
+
+DEV_URL=$(grep '^DATABASE_URL=' "$MAIN/api/.env" | cut -d= -f2-)
 LIVE_URL=$(printf '%s' "$DEV_URL" | sed -E 's#/ximi4ka_shop([?]|$)#/ximi4ka_shop_pvz_live\1#')
-psql "$DEV_URL" -c 'CREATE DATABASE ximi4ka_shop_pvz_live'
-pg_dump "$DEV_URL" | psql -q "$LIVE_URL"
-# В копии .env: своя база, песочница СДЭК с общей тестовой учёткой, внешние каналы выключены.
-# DATABASE_URL переписываем без sed: в адресе могут быть «&» и «#».
-grep -Ev '^(DATABASE_URL|CDEK_API_URL|CDEK_CLIENT_ID|CDEK_CLIENT_SECRET|TELEGRAM_BOT_TOKEN|TELEGRAM_CHAT_ID|GOOGLE_SERVICE_ACCOUNT_JSON|GOOGLE_SHEETS_ID|ERP_INBOUND_URL|ERP_SHARED_SECRET)=' \
-  "$WT/api/.env" > "$WT/api/.env.live"
-printf 'DATABASE_URL=%s\nCDEK_API_URL=https://api.edu.cdek.ru/v2\n' "$LIVE_URL" >> "$WT/api/.env.live"
-mv "$WT/api/.env.live" "$WT/api/.env"
+# Своя база — копия dev-базы: товары для корзины есть, чужой api её не видит.
+if ! psql "$DEV_URL" -tAc "select 1 from pg_database where datname = 'ximi4ka_shop_pvz_live'" | grep -q 1; then
+  psql "$DEV_URL" -c 'CREATE DATABASE ximi4ka_shop_pvz_live'
+  pg_dump "$DEV_URL" | psql -q "$LIVE_URL"
+fi
+
+# api/.env worktree: своя база, порт 3031, песочница СДЭК с общей тестовой
+# учёткой; Telegram, Google, ERP, боевые ключи СДЭК и оплата — вырезаны целиком.
+# ERP_* сейчас не читает ни один модуль api, но строки всё равно убираем.
+grep -Ev '^(DATABASE_URL|PORT|WEB_ORIGIN|CDEK_API_URL|CDEK_CLIENT[A-Z_]*|TELEGRAM[A-Z_]*|GOOGLE[A-Z_]*|ERP[A-Z_]*|PAYMENT_PROVIDER|TBANK[A-Z_]*)=' \
+  "$MAIN/api/.env" > "$WT/api/.env"
+printf 'DATABASE_URL=%s\nPORT=3031\nWEB_ORIGIN=http://localhost:3030\nCDEK_API_URL=https://api.edu.cdek.ru/v2\n' "$LIVE_URL" >> "$WT/api/.env"
+# web/.env.local worktree: ключи Яндекса те же, api — на 3031.
+grep -v '^NEXT_PUBLIC_API_URL=' "$MAIN/web/.env.local" > "$WT/web/.env.local"
+echo 'NEXT_PUBLIC_API_URL=http://localhost:3031' >> "$WT/web/.env.local"
+git -C "$WT" status --short   # пусто: .env-файлы в .gitignore
 ```
 
-`api/.env`, `web/.env.local` и `.claude/` в `.gitignore`, в коммит они не попадут. Проверить: `git status --short` — пусто.
+- [ ] **Step 3: Записи `pvz-api`/`pvz-web` в `launch.json` основного checkout**
 
-Порты: `lsof -nP -iTCP:3020 -iTCP:3021 -sTCP:LISTEN`. Если их занимают серверы основного checkout (другой агент), их не трогать. Тогда в `$WT/.claude/launch.json` web запускается на `-p 3030`, в `$WT/api/.env` ставится `PORT=3031` и `WEB_ORIGIN=http://localhost:3030`, в `$WT/web/.env.local` — `NEXT_PUBLIC_API_URL=http://localhost:3031`. Дальше подставлять эти порты вместо 3020/3021.
-
-Поднять оба сервера: `preview_start` `api` и `web` из `$WT/.claude/launch.json`.
-
-- [ ] **Step 3: API вживую (песочница)**
+`$MAIN/.claude/launch.json` в `.gitignore`. Существующие записи (`api`, `web`) не трогать: к ним подключается другой агент. Скрипт добавляет только `pvz-*`, а при повторном запуске заменяет их же. В команде api каналы и боевые ключи ещё раз обнулены переменными окружения: dotenv не перезаписывает уже заданные переменные, даже пустые.
 
 ```bash
-curl -s "http://localhost:3021/api/public/cdek/cities?q=%D0%9C%D0%BE%D1%81%D0%BA" | head -c 400
-# ожидание: {"data":[{"code":44,"name":"Москва","fullName":"Москва, Россия"}, …]}
-curl -s -o /dev/null -w '%{http_code} %{size_download}B %{time_total}s\n' "http://localhost:3021/api/public/cdek/points?cityCode=44"
-curl -s -o /dev/null -w '%{http_code} %{size_download}B %{time_total}s\n' "http://localhost:3021/api/public/cdek/points?cityCode=44"
-# ожидание: 200 оба раза; второй — заметно быстрее (кеш); размер — десятки КБ, не сотни
-curl -s -o /dev/null -w '%{http_code}\n' "http://localhost:3021/api/public/cdek/points?cityCode=abc"   # 400
-curl -s -o /dev/null -w '%{http_code}\n' "http://localhost:3021/api/public/cdek/cities?q=%D0%BC"      # 400
+node -e '
+const fs = require("fs")
+const [path, wt] = process.argv.slice(1)
+const cfg = JSON.parse(fs.readFileSync(path, "utf8"))
+const blank = "TELEGRAM_BOT_TOKEN= TELEGRAM_CHAT_ID= GOOGLE_SERVICE_ACCOUNT_JSON= GOOGLE_SHEETS_ID= CDEK_CLIENT_ID= CDEK_CLIENT_SECRET= ERP_INBOUND_URL= ERP_SHARED_SECRET="
+const web = (extra) => ["-c", `cd ${wt} && NEXT_PUBLIC_API_URL=http://localhost:3031 ${extra}exec npm run dev -w web -- -p 3030`]
+const add = [
+  { name: "pvz-api", runtimeExecutable: "sh", runtimeArgs: ["-c", `cd ${wt} && PORT=3031 WEB_ORIGIN=http://localhost:3030 CDEK_API_URL=https://api.edu.cdek.ru/v2 ${blank} exec npm run dev -w api`], port: 3031 },
+  { name: "pvz-web", runtimeExecutable: "sh", runtimeArgs: web(""), port: 3030 },
+  { name: "pvz-web-nomap", runtimeExecutable: "sh", runtimeArgs: web("NEXT_PUBLIC_YANDEX_MAPS_API_KEY= "), port: 3030 },
+]
+cfg.configurations = cfg.configurations.filter((c) => !add.some((a) => a.name === c.name)).concat(add)
+fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + "\n")
+' "$MAIN/.claude/launch.json" "$WT"
+node -p "require('$MAIN/.claude/launch.json').configurations.map((c) => c.name).join(' ')"
+# ожидание: прежние записи без изменений (web, api и те, что добавил другой агент), в конце — pvz-api pvz-web pvz-web-nomap
+lsof -nP -iTCP:3030 -iTCP:3031 -sTCP:LISTEN
+# ожидание: пусто. Занято — не убивать чужое, выяснить, чьё это.
 ```
 
-- [ ] **Step 4: Браузер, 1280 px**
+Поднять: `preview_start` с `name: "pvz-api"`, затем `name: "pvz-web"`. Не `api`/`web`.
 
-`resize_window` 1280×900, товар в корзину, `/checkout`. Проверить и снять скриншоты:
+- [ ] **Step 4: Жёсткая проверка перед первым заказом**
+
+Не прошла любая строка — остановиться. Серверы `pvz-*` остановить (`preview_stop`), заказов не оформлять, сообщить.
+
+```bash
+# 1. На 3031 слушает api из worktree, а не из основного checkout.
+lsof -a -p "$(lsof -t -iTCP:3031 -sTCP:LISTEN | paste -sd, -)" -d cwd -Fn | grep '^n'
+# ожидание: n/Users/vasilijaistov/Desktop/continuum/ximi4ka-shop/.claude/worktrees/cdek-pvz-list/api
+lsof -a -p "$(lsof -t -iTCP:3030 -sTCP:LISTEN | paste -sd, -)" -d cwd -Fn | grep '^n'
+# ожидание: n…/.claude/worktrees/cdek-pvz-list/web
+# 2. Маршрут есть только в этой ветке — и песочница СДЭК отвечает.
+curl -s -o /dev/null -w '%{http_code}\n' 'http://localhost:3031/api/public/cdek/cities?q=%D0%9C%D0%BE%D1%81%D0%BA'
+# ожидание: 200
+# 3. Внешние каналы, боевые ключи и оплата вырезаны.
+grep -cE '^(TELEGRAM|GOOGLE|CDEK_CLIENT|ERP|PAYMENT_PROVIDER|TBANK)' "$WT/api/.env"
+# ожидание: 0
+grep -c '^DATABASE_URL=.*/ximi4ka_shop_pvz_live' "$WT/api/.env"
+# ожидание: 1
+# 4. Счётчики заказов — до первого заказа.
+psql "$LIVE_URL" -tAc 'select count(*) from orders'
+psql "$DEV_URL" -tAc 'select count(*) from orders'
+```
+
+Все тестовые заказы оформлять на имя вида `Проверка ПВЗ <HHMM>` — по нему заказ видно в базе. После **первого** заказа:
+
+```bash
+psql "$LIVE_URL" -tAc "select count(*) from orders where customer_name like 'Проверка ПВЗ%'"   # ≥ 1
+psql "$DEV_URL" -tAc "select count(*) from orders where customer_name like 'Проверка ПВЗ%'"    # 0
+psql "$LIVE_URL" -tAc 'select count(*) from orders'   # на 1 больше, чем до заказа
+psql "$DEV_URL" -tAc 'select count(*) from orders'    # как до заказа
+```
+
+Счётчик dev-базы вырос, но заказов «Проверка ПВЗ» в ней нет — это заказ другого агента, не тревога. Хоть один «Проверка ПВЗ» в dev-базе — немедленно остановить `pvz-*` и сообщить: заказ ушёл в общую базу.
+
+- [ ] **Step 5: API вживую (песочница)**
+
+```bash
+curl -s "http://localhost:3031/api/public/cdek/cities?q=%D0%9C%D0%BE%D1%81%D0%BA" | head -c 400
+# ожидание: {"data":[{"code":44,"name":"Москва","fullName":"Москва, Россия"}, …]}
+curl -s -o /dev/null -w '%{http_code} %{size_download}B %{time_total}s\n' "http://localhost:3031/api/public/cdek/points?cityCode=44"
+curl -s -o /dev/null -w '%{http_code} %{size_download}B %{time_total}s\n' "http://localhost:3031/api/public/cdek/points?cityCode=44"
+# ожидание: 200 оба раза; второй — заметно быстрее (кеш); размер — десятки КБ, не сотни
+curl -s -o /dev/null -w '%{http_code}\n' "http://localhost:3031/api/public/cdek/points?cityCode=abc"   # 400
+curl -s -o /dev/null -w '%{http_code}\n' "http://localhost:3031/api/public/cdek/cities?q=%D0%BC"      # 400
+```
+
+- [ ] **Step 6: Браузер, 1280 px**
+
+`resize_window` 1280×900, `http://localhost:3030`, товар в корзину, `/checkout`. Проверить и снять скриншоты:
 
 1. «Город»: «Моск» → через ~250 мс подсказки, «Москва» выбрана, под полем «Москва, Россия». В сети запросы `cities` отменяются при быстрой печати (статус `canceled`).
 2. Радио «Пункт выдачи СДЭК — N ₽, …» и «Курьер СДЭК — N ₽, …» — цены пришли с сервера, сводка справа совпадает с выбранным способом.
 3. «Пункт получения»: фокус — список до 50 строк и «Показаны 50 из N — уточните запрос»; запрос из двух слов адреса песочницы (например «динамовская 1») сужает список; стрелки, Enter и Esc работают; Enter не отправляет форму.
-4. Выбор в списке — карта под списком центрируется на пункте и открывает его карточку в пределах 3 с. «Выбрать» на другом пункте карты — пункт появляется в поле списка.
+4. Выбор в списке — карта под списком центрируется на пункте и открывает его карточку в пределах 3 с. «Выбрать» на другом пункте карты — пункт появляется в поле списка. **Отдельно:** выбрать пункт в списке и сразу, в первые 3 с, покрутить колесо над картой и нажать `-`/`+` на карте. Карта не должна прыгать обратно к пункту на масштаб 17. Прыгает — значит, повтор `selectOffice` не остановился (события не дошли до слушателей на погружении у корня карты): разобрать, на каком элементе и каком событии, дописать тест в `CdekWidget.test.tsx`, поправить.
 5. На карте нет вкладки «Курьер» и постаматов. Если постаматы или вкладка видны, `forceFilters`/`hideDeliveryOptions` не сработали: разобрать и поправить с тестом.
-6. Сдвинуть карту в другой город, «Выбрать» пункт там — «Этот пункт в другом городе — смените город», поле пункта не меняется.
-7. Смена города на «Санкт-Петербург» — пункт сброшен, цены пересчитаны, карта уехала в Петербург.
-8. Курьер: «Улица, дом», «Квартира/офис», «Индекс» (только цифры, до 6). Оформить — страница заказа. В админке (`/admin/orders`) адрес «Санкт-Петербург, <улица>, кв. <n>», индекс — в заказе.
-9. ПВЗ: оформить заказ с пунктом из списка — 201, в админке код пункта и «город, адрес пункта».
+6. Сдвинуть карту в другой город, «Выбрать» пункт там — «Этот пункт в другом городе — смените город», поле пункта не меняется. Сразу после смены города, пока список грузится, «Выбрать» на карте — «Список ещё загружается — попробуйте через секунду».
+7. Смена города: стереть «Москва» и ввести «Санкт-Петербург». Карта не пропадает и не перезагружается ни на первой букве, ни пока грузится список. Пункт сброшен, цены пересчитаны, карта уехала в Петербург.
+8. Курьер: «Улица, дом», «Квартира/офис», «Индекс» (только цифры, до 6). После ввода адреса — «Курьер СДЭК — пересчитываем…», сводка «—», кнопка недоступна. Через полсекунды — цена по полному адресу, кнопка доступна. Оформить на имя «Проверка ПВЗ <HHMM>» → страница заказа. **Сразу — проверки Step 4 «после первого заказа».** Затем:
+
+   ```bash
+   psql "$LIVE_URL" -c "select order_number, delivery_method, shipping_rub,
+     delivery_address->>'address' as address, delivery_address->>'postalCode' as postal,
+     delivery_address->'quote'->>'source' as source
+     from orders where customer_name like 'Проверка ПВЗ%' order by created_at desc limit 3"
+   ```
+
+   Ожидание: `cdek_courier`, адрес «Санкт-Петербург, <улица>, кв. <n>», индекс — введённый, `shipping_rub` равен цене курьера, которую показывал чекаут перед нажатием.
+
+9. ПВЗ: оформить заказ с пунктом из списка. Тот же запрос плюс `delivery_address->>'deliveryPointCode'`: код пункта, адрес «город, адрес пункта», `shipping_rub` равен цене ПВЗ на чекауте.
 10. Перезагрузить `/checkout` — город подставлен из прошлого визита, пункты загружены без ввода.
 11. Консоль браузера — без ошибок React (`read_console_messages` с `onlyErrors`).
 
-- [ ] **Step 5: Браузер, 375 px**
+- [ ] **Step 7: Браузер, 375 px**
 
 `resize_window` 375×812, перезагрузить `/checkout`:
 
 1. Под «Пункт получения» — кнопка «Показать на карте». В сети нет запроса к `cdn.jsdelivr.net/npm/@cdek-it/widget` и к Яндексу, пока кнопку не нажали.
-2. Весь путь до заказа — только списком.
-3. Нажать «Показать на карте» — карта грузится, синхронизация как на 1280.
+2. Весь путь до заказа — только списком (имя «Проверка ПВЗ <HHMM>»).
+3. Нажать «Показать на карте» — карта грузится, синхронизация как на 1280. Сменить город — карта остаётся открытой, за кнопку не сворачивается.
 4. Горизонтальной прокрутки нет: `document.documentElement.scrollWidth <= 375` (`javascript_tool`). Выпадающие списки не выходят за экран.
 
-- [ ] **Step 6: Без карты**
+- [ ] **Step 8: Без карты**
 
-В `$WT/web/.env.local` очистить `NEXT_PUBLIC_YANDEX_MAPS_API_KEY=`, перезапустить `web`. На 1280: вместо карты «Карта недоступна — выберите пункт из списка». Оформить заказ через список — проходит до страницы заказа. Вернуть ключ из основного checkout, перезапустить `web`.
+`preview_stop` для `pvz-web`, `preview_start` с `name: "pvz-web-nomap"` (тот же порт 3030, ключ Яндекса обнулён переменной окружения; файлы не трогаем). На 1280: вместо карты «Карта недоступна — выберите пункт из списка». Оформить заказ через список (имя «Проверка ПВЗ <HHMM>») — проходит до страницы заказа, в `$LIVE_URL` он есть. Вернуть `pvz-web`: `preview_stop` для `pvz-web-nomap`, `preview_start` `pvz-web`.
 
-- [ ] **Step 7: Ревью**
+- [ ] **Step 9: Ревью**
 
-`/code-review` по всему диффу ветки и `/security-review`: новые публичные эндпоинты, прокси к договорному ключу СДЭК, `localStorage`, данные покупателя в заказе (спека §7). Найденное исправить отдельными коммитами, у каждой правки — свой тест.
+`/code-review` по всему диффу ветки и `/security-review`: новые публичные эндпоинты, прокси к договорному ключу СДЭК, `localStorage`, данные покупателя в заказе, логи ошибок СДЭК без пользовательских данных (спека §7). Найденное исправить отдельными коммитами, у каждой правки — свой тест.
 
-- [ ] **Step 8: Уборка**
+- [ ] **Step 10: Уборка**
 
-Остановить серверы (`preview_stop`). Удалить скриншоты и разовые файлы из скретчпада. Базу `ximi4ka_shop_pvz_live` и копии `.env` не удалять без согласия владельца: удаление базы необратимо. Упомянуть их в отчёте.
+Остановить `pvz-api` и `pvz-web` (`preview_stop`). Удалить скриншоты и разовые файлы из скретчпада. Базу `ximi4ka_shop_pvz_live`, копии `.env` в worktree и записи `pvz-*` в `launch.json` основного checkout не удалять без согласия владельца: база — копия с данными покупателей, удаление необратимо, а записи нужны для повторного прогона. Перечислить их в отчёте.
 
-- [ ] **Step 9: Выкатка — вне этого плана**
+- [ ] **Step 11: Выкатка — вне этого плана**
 
 Не выполнять. Влить в `main` (push в `main` — автодеплой на прод) — только после отдельного «да» владельца и после слияния с `feat/cdek-orders` (раздел «Слияние»).
