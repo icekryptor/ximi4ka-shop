@@ -252,6 +252,26 @@ rm -rf "$K"
 **Если не доходит:** карточка заказа в админке → «Уведомления»: там видна
 причина. Исправить настройку → «Отправить ещё раз».
 
+**Старые заказы при первом включении.** Всё, что накопилось без ключей, уйдёт
+постепенно: не больше 18 сообщений в минуту в Telegram (иначе чат упрётся в
+лимит) и 60 строк в минуту в таблицу. В чате это будет лента старых карточек.
+Если старые карточки в чате не нужны — до того как добавить ключи Telegram,
+отметить их пропущенными (таблица при этом всё равно заполнится):
+
+```bash
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
+  -c "UPDATE order_notifications SET failed_at = now(), last_error = 'пропущено при включении' WHERE channel = 'telegram' AND sent_at IS NULL AND failed_at IS NULL;"
+```
+
+**Сломалась настройка и сдалось много заказов** (например, отозвали доступ к
+таблице) — после исправления вернуть в очередь все несданные разом, а не
+кнопкой в каждом заказе. Пропущенные при включении остаются пропущенными:
+
+```bash
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
+  -c "UPDATE order_notifications SET failed_at = NULL, attempts = 0, last_error = NULL, next_attempt_at = now() WHERE failed_at IS NOT NULL AND last_error IS DISTINCT FROM 'пропущено при включении';"
+```
+
 ## Хвосты
 
 - Апекс `ximi4ka.ru` остаётся на Tilda; noindex снимать только при его переключении.
