@@ -87,13 +87,6 @@ const YANDEX_MAPS_SCRIPT_PREFIX = 'https://api-maps.yandex.ru'
 declare global {
   interface Window {
     CDEKWidget?: new (config: Record<string, unknown>) => unknown
-    // Яндекс.Карты v3 кладут себя сюда при успешной инициализации. Ключ,
-    // отклонённый Яндексом (403, протух, исчерпана квота), не мешает
-    // @cdek-it/widget всё равно вызвать onReady — карту он не поднимет, но
-    // готовым себя всё равно считает. window.ymaps3 остаётся undefined —
-    // используем это как проверку «карта правда поднялась», а не просто
-    // «виджет позвал onReady».
-    ymaps3?: unknown
   }
 }
 
@@ -113,9 +106,6 @@ export function CdekWidget({
   const apiKey = process.env.NEXT_PUBLIC_YANDEX_MAPS_API_KEY
   const widgetRef = useRef<WidgetInstance | null>(null)
   const [ready, setReady] = useState(false)
-  // Как ready, но читаем свежее значение из таймера готовности (эффект не
-  // перезапускается при каждой смене ready — см. ниже).
-  const readyRef = useRef(false)
   const [unavailable, setUnavailable] = useState(!apiKey)
   // То же, что unavailable, но видно сразу и в колбэках: next/script может
   // вызвать onReady уже после того, как карта признана недоступной, и тогда
@@ -159,10 +149,7 @@ export function CdekWidget({
         forceFilters: { type: 'PVZ' },
         // Наличные и карта в ПВЗ не нужны — заказ оплачен онлайн.
         hideFilters: { have_cash: true, have_cashless: true, is_dressing_room: true, type: true },
-        onReady: () => {
-          readyRef.current = true
-          setReady(true)
-        },
+        onReady: () => setReady(true),
         onChoose: (mode: string, _tariff: unknown, target: WidgetOffice) => {
           if (mode !== 'office') return
           chosenOnMapRef.current = target.code
@@ -196,30 +183,28 @@ export function CdekWidget({
   }, [])
 
   // Нет готовности за 10 с — вместо карты строка, список работает (§5.2).
-  // Таймер запускаем один раз при монтировании (без зависимостей от ready):
-  // отклонённый Яндексом ключ (403, протух, исчерпана квота) не мешает
-  // @cdek-it/widget всё равно позвать onReady — карты при этом нет. Поэтому
-  // проверяем на срабатывании не только ready, но и window.ymaps3: их
-  // обычно ловит слушатель ошибки скрипта ниже (быстрее 10 с), а это —
-  // подстраховка на случай, если Яндекс промолчит без события error.
   useEffect(() => {
-    if (!apiKey) return
+    if (ready || unavailable) return
     const timer = setTimeout(() => {
-      if (unavailableRef.current) return
-      if (readyRef.current && typeof window.ymaps3 !== 'undefined') return
       unavailableRef.current = true
       stopRetryRef.current?.()
       destroyWidget(widgetRef)
       setUnavailable(true)
     }, MAP_READY_TIMEOUT_MS)
     return () => clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [ready, unavailable])
 
   // Скрипт Яндекс.Карт подключает сам @cdek-it/widget (не наш next/script),
-  // и его ошибку не проксирует наружу: отклонённый ключ (403) даёт `error`
-  // прямо на этом <script>. Такие события не всплывают, поэтому слушаем на
-  // погружении от document. Чужие ошибки скриптов (не Яндекс.Карт) не трогаем.
+  // и его ошибку не проксирует наружу: отклонённый ключ (403, протух,
+  // исчерпана квота) даёт `error` прямо на этом <script> — это и есть сигнал
+  // «Яндекс отказал», а не сам факт onReady (виджет зовёт его в любом случае,
+  // даже когда карту Яндекса поднять не смог). Такие события не всплывают,
+  // поэтому слушаем на погружении от document. Чужие ошибки скриптов (не
+  // Яндекс.Карт) не трогаем. Раньше здесь была ещё проверка window.ymaps3 на
+  // таймере готовности — убрана: это поле у Яндекс.Карт v3 не связано с тем,
+  // сколько времени занимает загрузка данных виджета, и на медленной сети
+  // валидный ключ давал бы ложную «Карта недоступна» раньше, чем карта
+  // успевала подняться.
   useEffect(() => {
     const onScriptError = (event: Event) => {
       const target = event.target

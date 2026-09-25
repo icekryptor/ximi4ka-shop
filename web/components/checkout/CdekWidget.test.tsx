@@ -95,13 +95,7 @@ describe('<CdekWidget>', () => {
 
   function renderReady(extra: Partial<typeof props> = {}) {
     const view = render(<CdekWidget {...props} {...extra} />)
-    act(() => {
-      // Настоящая готовность: Яндекс.Карты v3 успели положить себя в window
-      // (иначе таймер готовности не поверит одному onReady — см. тесты про
-      // отклонённый Яндексом ключ ниже).
-      ;(window as unknown as { ymaps3?: unknown }).ymaps3 = {}
-      config().onReady()
-    })
+    act(() => config().onReady())
     return view
   }
 
@@ -140,7 +134,6 @@ describe('<CdekWidget>', () => {
     if (ORIGINAL_GEO_KEY == null) delete process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY
     else process.env.NEXT_PUBLIC_YANDEX_GEOCODER_API_KEY = ORIGINAL_GEO_KEY
     delete (window as unknown as { CDEKWidget?: unknown }).CDEKWidget
-    delete (window as unknown as { ymaps3?: unknown }).ymaps3
   })
 
   it('без ключа Яндекс.Карт — строка вместо карты, виджет не грузится', () => {
@@ -211,15 +204,6 @@ describe('<CdekWidget>', () => {
     renderReady()
     dispatchScriptError('https://cdn.example.com/some-other-script.js')
     expect(screen.queryByRole('status')).toBeNull()
-  })
-
-  it('onReady наступил, но window.ymaps3 так и не появился — тоже строка вместо карты', () => {
-    vi.useFakeTimers()
-    render(<CdekWidget {...props} />)
-    act(() => config().onReady())
-    act(() => vi.advanceTimersByTime(MAP_READY_TIMEOUT_MS))
-    expect(screen.getByRole('status')).toHaveTextContent(MAP_UNAVAILABLE_TEXT)
-    expect(instance.destroy).toHaveBeenCalledTimes(1)
   })
 
   it('создаёт виджет с нашими местами, прокси, тарифом ПВЗ и ключом', () => {
