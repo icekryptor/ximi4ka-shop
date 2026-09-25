@@ -117,6 +117,33 @@ describe('CdekClient — ошибки', () => {
     await expect(client.get('/a')).rejects.toBeInstanceOf(CdekError)
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
+
+  it('ошибка из requests[].errors — код и текст СДЭК', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(token())
+      .mockResolvedValueOnce(
+        json(400, {
+          requests: [
+            {
+              state: 'INVALID',
+              errors: [{ code: 'v2_entity_not_found_im_number', message: 'Entity is not found' }],
+            },
+          ],
+        }),
+      )
+    const client = new CdekClient({
+      baseUrl: 'https://api.edu.cdek.ru/v2',
+      clientId: 'id',
+      clientSecret: 's',
+      fetch: fetchMock,
+    })
+    await expect(client.get('/orders', { im_number: 'XM-1' })).rejects.toMatchObject({
+      status: 400,
+      code: 'v2_entity_not_found_im_number',
+      message: 'Entity is not found',
+    })
+  })
 })
 
 describe('CdekClient.fromEnv', () => {
