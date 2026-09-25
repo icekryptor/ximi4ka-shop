@@ -65,7 +65,7 @@ adminOrdersRouter.get('/:id', async (req, res, next) => {
   }
 })
 
-// Manual status transition: «Отметить оплаченным» / «Отменить».
+// Ручная смена статуса: «Отметить оплаченным» / «Отменить» / «Отметить отправленным».
 adminOrdersRouter.patch('/:id/status', async (req, res, next) => {
   try {
     const id = z.string().uuid().safeParse(req.params.id)

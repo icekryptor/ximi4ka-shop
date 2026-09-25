@@ -6,8 +6,9 @@ export const OrdersListQuerySchema = z.object({
   status: z.enum(['pending', 'paid', 'shipped', 'failed', 'cancelled']).optional(),
 })
 
-// Manual transitions only: a manager can confirm an out-of-band payment or
-// cancel an order. Everything else (failed, pending) is machine-owned.
+// Только ручные переходы: менеджер подтверждает оплату мимо Т-Кассы, отменяет
+// заказ или отмечает оплаченный заказ отправленным. failed и pending ставит
+// только система.
 export const OrderStatusPatchSchema = z.object({
   status: z.enum(['paid', 'cancelled', 'shipped']),
   comment: z.string().trim().max(1000).optional(),

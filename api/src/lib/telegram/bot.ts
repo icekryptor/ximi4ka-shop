@@ -11,7 +11,7 @@ const REQUEST_TIMEOUT_MS = 20_000
 // Пауза после 429, если Telegram не сказал, сколько ждать.
 const DEFAULT_RETRY_AFTER_MS = 30_000
 
-// Бот не в чате, неверный токен, битая разметка — повторять бессмысленно.
+// Бот не в чате, неверный или битый токен, битая разметка — повторять бессмысленно.
 export class TelegramConfigError extends Error {
   constructor(message: string) {
     super(message)
@@ -68,7 +68,8 @@ export class TelegramBot {
         typeof seconds === 'number' && seconds > 0 ? seconds * 1000 : DEFAULT_RETRY_AFTER_MS,
       )
     }
-    if (res.status === 400 || res.status === 401 || res.status === 403)
+    // 404 — так Telegram отвечает на токен неверного формата.
+    if (res.status === 400 || res.status === 401 || res.status === 403 || res.status === 404)
       throw new TelegramConfigError(message)
     throw new Error(message)
   }

@@ -7,9 +7,11 @@ import { OrderNotification } from '../../entities/OrderNotification.js'
 import { SheetsConfigError } from '../google/sheets.js'
 import { enqueueOrderEvent } from './outbox.js'
 import { RateLimitError } from './rateLimit.js'
+import { TelegramBot } from '../telegram/bot.js'
 import {
   GIVE_UP_AFTER_MS,
   MAX_DELIVERIES_PER_TICK,
+  channelsFromEnv,
   nextDelayMs,
   processDueNotifications,
   retryWindowMs,
@@ -454,6 +456,26 @@ describe('processDueNotifications', () => {
     expect(channels.telegram.sendMessage).toHaveBeenCalledWith(
       expect.stringContaining(`Новый заказ ${healthy.orderNumber}`),
     )
+  })
+})
+
+describe('channelsFromEnv', () => {
+  it('битый ключ Google выключает только таблицу — Telegram работает, api не падает', () => {
+    const errorSpy = silenceConsoleError()
+    const channels = channelsFromEnv({
+      GOOGLE_SERVICE_ACCOUNT_JSON: 'не json',
+      GOOGLE_SHEETS_ID: 'SHEET123',
+      TELEGRAM_BOT_TOKEN: FAKE_SECRET,
+      TELEGRAM_CHAT_ID: '-1001234',
+    })
+    expect(channels.sheets).toBeNull()
+    expect(channels.telegram).toBeInstanceOf(TelegramBot)
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Google Таблица выключена — GOOGLE_SERVICE_ACCOUNT_JSON'),
+    )
+    expect(errorSpy.mock.calls.flat().join(' ')).not.toContain(FAKE_SECRET)
+    errorSpy.mockRestore()
   })
 })
 

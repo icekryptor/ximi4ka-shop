@@ -52,6 +52,17 @@ describe('TelegramBot', () => {
     expect((err as Error).message).toMatch(/kicked/)
   })
 
+  it('404 (битый токен) — ошибка настройки', async () => {
+    const f = vi
+      .fn()
+      .mockResolvedValue(json(404, { ok: false, error_code: 404, description: 'Not Found' }))
+    const err = await bot(f)
+      .sendMessage('x')
+      .catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(TelegramConfigError)
+    expect((err as Error).message).toBe('Telegram 404: Not Found')
+  })
+
   it('5xx — временная ошибка', async () => {
     const f = vi
       .fn()
