@@ -1,6 +1,7 @@
 import type {
   BlogPost,
   CdekCity,
+  CdekCityPoints,
   CheckoutRequest,
   CheckoutResponse,
   DeliveryQuote,
@@ -200,6 +201,19 @@ export async function suggestCdekCities(
 ): Promise<CdekCity[]> {
   const body = await request<DataEnvelope<CdekCity[]>>(
     `/api/public/cdek/cities?q=${encodeURIComponent(q)}`,
+    { cache: 'no-store', signal: opts.signal },
+  )
+  return body.data
+}
+
+// Пункты выдачи города и его центр для карты (GET /api/public/cdek/points).
+// signal отменяет запрос, если покупатель успел сменить город.
+export async function getCdekPoints(
+  cityCode: number,
+  opts: { signal?: AbortSignal } = {},
+): Promise<CdekCityPoints> {
+  const body = await request<DataEnvelope<CdekCityPoints>>(
+    `/api/public/cdek/points?cityCode=${cityCode}`,
     { cache: 'no-store', signal: opts.signal },
   )
   return body.data

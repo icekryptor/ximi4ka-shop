@@ -15,6 +15,7 @@ import {
   getOrderStatus,
   searchCatalog,
   suggestCdekCities,
+  getCdekPoints,
 } from './api'
 
 function jsonResponse(status: number, body: unknown, ok = status >= 200 && status < 300) {
@@ -684,7 +685,7 @@ describe('cdekWidgetServicePath', () => {
   })
 })
 
-describe('СДЭК: подсказки городов', () => {
+describe('СДЭК: подсказки городов и пункты', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
@@ -717,5 +718,19 @@ describe('СДЭК: подсказки городов', () => {
       status: 502,
       code: 'cdek_unavailable',
     })
+  })
+
+  it('getCdekPoints: код города в query, без кеша, с отменой', async () => {
+    const payload = { city: { code: 44, name: 'Москва', location: [37.6, 55.7] }, points: [] }
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: payload }))
+    vi.stubGlobal('fetch', fetchMock)
+    const controller = new AbortController()
+
+    expect(await getCdekPoints(44, { signal: controller.signal })).toEqual(payload)
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('http://localhost:3001/api/public/cdek/points?cityCode=44')
+    expect(init.cache).toBe('no-store')
+    expect(init.signal).toBe(controller.signal)
   })
 })
