@@ -1,6 +1,7 @@
 import type { DeliveryDestination } from './shipping.js'
+import type { OrderNotificationDto } from './notifications.js'
 
-export type OrderStatus = 'pending' | 'paid' | 'failed' | 'cancelled'
+export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
 
 // Payment provider actually wired to the order. `manual` — no online payment:
 // the order stays pending and a manager contacts the customer. `tbank` —
@@ -59,6 +60,7 @@ export interface OrderDto {
   customerName: string
   customerPhone: string
   customerEmail: string
+  customerTelegram: string | null
   deliveryAddress: DeliveryAddress
   deliveryMethod: string
   subtotalRub: number
@@ -69,6 +71,7 @@ export interface OrderDto {
   paymentUrl: string | null
   statusHistory: OrderStatusHistoryEntry[]
   items: OrderItem[]
+  notifications?: OrderNotificationDto[]
   createdAt: string
   paidAt: string | null
   erpSyncedAt: string | null

@@ -24,6 +24,7 @@ describe('order UI helpers', () => {
     expect(ORDER_STATUS_LABELS).toEqual({
       pending: 'Ожидает оплаты',
       paid: 'Оплачен',
+      shipped: 'Отправлен',
       failed: 'Ошибка оплаты',
       cancelled: 'Отменён',
     })

@@ -12,6 +12,12 @@ export type {
   PublicOrderStatus,
 } from './types/order.js'
 
+export type {
+  NotificationChannel,
+  OrderEventKey,
+  OrderNotificationDto,
+} from './types/notifications.js'
+
 export type { Product, ProductImage, StockStatus } from './types/product.js'
 
 export type {

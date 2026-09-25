@@ -10,6 +10,7 @@ import { Page } from '../entities/Page.js'
 import { BlogPost } from '../entities/BlogPost.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
+import { OrderNotification } from '../entities/OrderNotification.js'
 import { AdminUser } from '../entities/AdminUser.js'
 import { AdminSession } from '../entities/AdminSession.js'
 import { EntityRevision } from '../entities/EntityRevision.js'
@@ -86,6 +87,7 @@ export const AppDataSource = new DataSource({
     BlogPost,
     Order,
     OrderItem,
+    OrderNotification,
     AdminUser,
     AdminSession,
     EntityRevision,

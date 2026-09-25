@@ -2,5 +2,7 @@ import { expectTypeOf, test } from 'vitest'
 import type { OrderDto } from './order.js'
 
 test('OrderDto.status is a discriminated literal union', () => {
-  expectTypeOf<OrderDto['status']>().toEqualTypeOf<'pending' | 'paid' | 'failed' | 'cancelled'>()
+  expectTypeOf<OrderDto['status']>().toEqualTypeOf<
+    'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
+  >()
 })

@@ -17,6 +17,8 @@ export function orderStatusLabel(status: OrderStatus, provider: PaymentProvider)
       return provider === 'manual' ? 'Принят' : 'Ожидает оплаты'
     case 'paid':
       return 'Оплачен'
+    case 'shipped':
+      return 'Отправлен'
     case 'failed':
       return 'Ошибка оплаты'
     case 'cancelled':
@@ -56,6 +58,12 @@ export function orderTimelineSteps(
         { label: 'Создан', state: 'done', tone: 'default' },
         { label: middleLabel, state: 'done', tone: 'default' },
         { label: 'Оплачен', state: 'active', tone: 'success' },
+      ]
+    case 'shipped':
+      return [
+        { label: 'Создан', state: 'done', tone: 'default' },
+        { label: 'Оплачен', state: 'done', tone: 'default' },
+        { label: 'Отправлен', state: 'active', tone: 'success' },
       ]
     case 'failed':
       return [
