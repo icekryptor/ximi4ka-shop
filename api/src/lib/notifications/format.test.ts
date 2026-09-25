@@ -147,6 +147,35 @@ describe('telegramCard', () => {
     expect(card).toMatch(/— …и ещё \d+ позици(я|и|й)/)
     expect(card).toContain('Статус: создан')
   })
+
+  it('очень длинные адрес и комментарий из «&» — карточка всё равно в лимите', () => {
+    const card = telegramCard({
+      ...order,
+      customerName: '&'.repeat(255),
+      deliveryAddress: {
+        ...order.deliveryAddress,
+        address: '&'.repeat(1000),
+        comment: '&'.repeat(1000),
+      },
+    })
+    expect(card.length).toBeLessThanOrEqual(TELEGRAM_TEXT_LIMIT)
+    expect(card).toContain(`Новый заказ ${order.orderNumber}`)
+    expect(card).toContain(`${'&amp;'.repeat(300)}…`)
+    expect(card).not.toContain('&amp;'.repeat(301))
+    expect(card).toContain('Статус: создан')
+  })
+
+  it('обрезка не рвёт эмодзи пополам', () => {
+    const card = telegramCard({
+      ...order,
+      deliveryAddress: { ...order.deliveryAddress, address: '🧪'.repeat(400), comment: null },
+    })
+    expect(card).toContain(`${'🧪'.repeat(300)}…`)
+    // Нет «висящих» половинок суррогатной пары.
+    expect(card).not.toMatch(
+      /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
+    )
+  })
 })
 
 describe('telegramStatusLine', () => {

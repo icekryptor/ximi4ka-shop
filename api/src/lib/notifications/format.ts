@@ -95,6 +95,18 @@ function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+// Пользовательский текст в карточке ограничен: после экранирования «&» даёт
+// пять символов, и длинные адрес с комментарием выталкивали карточку за лимит
+// Telegram — 400, ошибка настройки, заказ не доходил совсем. Режем по
+// символам (Array.from), чтобы не разорвать эмодзи пополам.
+const CARD_TEXT_LIMIT = 300
+const CARD_NAME_LIMIT = 100
+
+function clip(s: string, limit: number): string {
+  const chars = Array.from(s)
+  return chars.length > limit ? `${chars.slice(0, limit).join('')}…` : s
+}
+
 function pluralPositions(n: number): string {
   const mod10 = n % 10
   const mod100 = n % 100
@@ -140,9 +152,13 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
 }
 
 export function telegramCard(order: NotifiableOrder): string {
-  const contacts = [order.customerName, formatPhone(order.customerPhone)]
+  const contacts = [clip(order.customerName, CARD_NAME_LIMIT), formatPhone(order.customerPhone)]
   if (order.customerTelegram) contacts.push(order.customerTelegram)
-  const { address, deliveryPointCode, comment } = order.deliveryAddress
+  const { deliveryPointCode } = order.deliveryAddress
+  const address = clip(order.deliveryAddress.address, CARD_TEXT_LIMIT)
+  const comment = order.deliveryAddress.comment
+    ? clip(order.deliveryAddress.comment, CARD_TEXT_LIMIT)
+    : order.deliveryAddress.comment
   const where = isPickupPoint(order)
     ? `ПВЗ${deliveryPointCode ? ` ${deliveryPointCode}` : ''}: ${address}`
     : `Курьер: ${address}`
