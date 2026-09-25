@@ -11,6 +11,9 @@ const DEFAULT_TOKEN_URI = 'https://oauth2.googleapis.com/token'
 const API = 'https://sheets.googleapis.com/v4/spreadsheets'
 const LAST_COLUMN = 'L' // 12 колонок SHEET_HEADER
 const TOKEN_MARGIN_MS = 60_000
+// Не дожидаемся зависшего соединения вечно — таймаут бросает исключение
+// (не SheetsConfigError), обработчик очереди спланирует повтор.
+const REQUEST_TIMEOUT_MS = 20_000
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
@@ -156,6 +159,7 @@ export class GoogleSheetsClient {
     const res = await this.fetchImpl(tokenUri, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       body: new URLSearchParams({
         grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
         assertion: `${header}.${claims}.${signature}`,
@@ -191,6 +195,7 @@ export class GoogleSheetsClient {
         Authorization: `Bearer ${token}`,
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
       },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       body: body === undefined ? undefined : JSON.stringify(body),
     })
     const data = (await res.json().catch(() => null)) as

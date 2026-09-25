@@ -3,6 +3,10 @@
 
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
+// Не дожидаемся зависшего соединения вечно — таймаут бросает исключение
+// (не TelegramConfigError), обработчик очереди спланирует повтор.
+const REQUEST_TIMEOUT_MS = 20_000
+
 // Бот не в чате, неверный токен, битая разметка — повторять бессмысленно.
 export class TelegramConfigError extends Error {
   constructor(message: string) {
@@ -33,6 +37,7 @@ export class TelegramBot {
     const res = await this.fetchImpl(`https://api.telegram.org/bot${this.token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       body: JSON.stringify({
         chat_id: this.chatId,
         text: html,

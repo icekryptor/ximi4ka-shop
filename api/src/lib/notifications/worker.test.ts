@@ -78,6 +78,15 @@ function fakeChannels(): NotificationChannels & {
 
 const minutesAgo = (m: number) => new Date(NOW.getTime() - m * 60_000)
 
+// Секретов в этих тестах нет (каналы — фейки), но лог не должен случайно
+// протащить что-то похожее на токен, даже если сообщение об ошибке однажды
+// станет богаче деталями запроса.
+const FAKE_SECRET = 'FAKE_TELEGRAM_BOT_TOKEN_should_never_be_logged'
+
+function silenceConsoleError() {
+  return vi.spyOn(console, 'error').mockImplementation(() => undefined)
+}
+
 describe('processDueNotifications', () => {
   beforeAll(async () => {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize()
@@ -133,6 +142,7 @@ describe('processDueNotifications', () => {
     await enqueue(order.id, 'status:paid', minutesAgo(1))
     const channels = fakeChannels()
     channels.telegram.sendMessage.mockRejectedValueOnce(new Error('socket hang up'))
+    const errorSpy = silenceConsoleError()
 
     await processDueNotifications(channels, { now: NOW })
 
@@ -140,6 +150,25 @@ describe('processDueNotifications', () => {
     const status = await row(order.id, 'telegram', 'status:paid')
     expect(status.attempts).toBe(0)
     expect(status.sentAt).toBeNull()
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('socket hang up'))
+    expect(errorSpy.mock.calls.flat().join(' ')).not.toContain(FAKE_SECRET)
+    errorSpy.mockRestore()
+  })
+
+  it('карточка и статус в одном тике — статус отвечает на свежий id карточки', async () => {
+    const order = await seedOrder({ status: 'paid' })
+    await enqueue(order.id, 'created', minutesAgo(2))
+    await enqueue(order.id, 'status:paid', minutesAgo(1))
+    const channels = fakeChannels()
+
+    const result = await processDueNotifications(channels, { now: NOW })
+
+    expect(result).toEqual({ sent: 4, retried: 0, failed: 0 })
+    expect(channels.telegram.sendMessage).toHaveBeenCalledTimes(2)
+    expect(channels.telegram.sendMessage).toHaveBeenNthCalledWith(2, '✅ оплачен', 501)
+    const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
+    expect(saved.telegramMessageId).toBe(501)
+    expect((await row(order.id, 'telegram', 'status:paid')).sentAt).not.toBeNull()
   })
 
   it('карточка не ушла совсем — статус отдельным сообщением с номером заказа', async () => {
@@ -163,6 +192,7 @@ describe('processDueNotifications', () => {
     await enqueue(order.id, 'created', minutesAgo(1))
     const channels = fakeChannels()
     channels.sheets.upsertOrderRow.mockRejectedValue(new Error('socket hang up'))
+    const errorSpy = silenceConsoleError()
 
     await processDueNotifications(channels, { now: NOW })
     let sheets = await row(order.id, 'sheets', 'created')
@@ -178,6 +208,10 @@ describe('processDueNotifications', () => {
     expect(channels.sheets.upsertOrderRow).toHaveBeenCalledTimes(2)
     sheets = await row(order.id, 'sheets', 'created')
     expect(sheets.attempts).toBe(2)
+
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('socket hang up'))
+    for (const call of errorSpy.mock.calls) expect(call.join(' ')).not.toContain(FAKE_SECRET)
+    errorSpy.mockRestore()
   })
 
   it('ошибка настройки — сразу сдаёмся, без повторов', async () => {
@@ -187,6 +221,7 @@ describe('processDueNotifications', () => {
     channels.sheets.upsertOrderRow.mockRejectedValue(
       new SheetsConfigError('Google Sheets 400: Unable to parse range'),
     )
+    const errorSpy = silenceConsoleError()
 
     const result = await processDueNotifications(channels, { now: NOW })
 
@@ -194,6 +229,9 @@ describe('processDueNotifications', () => {
     const sheets = await row(order.id, 'sheets', 'created')
     expect(sheets.failedAt).not.toBeNull()
     expect(sheets.lastError).toContain('Unable to parse range')
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Unable to parse range'))
+    expect(errorSpy.mock.calls.flat().join(' ')).not.toContain(FAKE_SECRET)
+    errorSpy.mockRestore()
   })
 
   it('через сутки временные ошибки тоже сдаются', async () => {
@@ -201,8 +239,14 @@ describe('processDueNotifications', () => {
     await enqueue(order.id, 'created', new Date(NOW.getTime() - 25 * 3600_000))
     const channels = fakeChannels()
     channels.sheets.upsertOrderRow.mockRejectedValue(new Error('503'))
+    const errorSpy = silenceConsoleError()
+
     await processDueNotifications(channels, { now: NOW })
+
     expect((await row(order.id, 'sheets', 'created')).failedAt).not.toBeNull()
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('503'))
+    expect(errorSpy.mock.calls.flat().join(' ')).not.toContain(FAKE_SECRET)
+    errorSpy.mockRestore()
   })
 
   it('ненастроенный канал не трогается — его записи ждут', async () => {
@@ -214,6 +258,50 @@ describe('processDueNotifications', () => {
     expect(sheets.attempts).toBe(0)
     expect(sheets.sentAt).toBeNull()
     expect((await row(order.id, 'telegram', 'created')).sentAt).not.toBeNull()
+  })
+
+  it('заблокированные статусы не съедают партию — здоровая запись сверху доходит', async () => {
+    // 21 заказ, у каждого карточка ('created' в телеграме) в бэкоффе после
+    // неудачной попытки, а смена статуса уже готова к повтору — раньше эти
+    // «зависшие» строки статуса всё равно попадали в выборку (next_attempt_at
+    // уже прошёл) и съедали место в партии (BATCH_SIZE=20), просто пропускаясь
+    // в цикле — здоровая запись вообще не доходила до обработки.
+    for (let i = 0; i < 21; i += 1) {
+      const order = await seedOrder({ status: 'paid' })
+      await enqueue(order.id, 'created', minutesAgo(120))
+      // Sheets-канал этого заказа не участвует в сценарии — считаем уже
+      // доставленным, чтобы он не занимал место в партии сам по себе.
+      await AppDataSource.query(
+        `UPDATE order_notifications SET sent_at = $2
+         WHERE order_id = $1 AND channel = 'sheets' AND event_key = 'created'`,
+        [order.id, minutesAgo(119)],
+      )
+      // Карточка в телеграме: одна попытка уже была и ушла в бэкофф на час.
+      await AppDataSource.query(
+        `UPDATE order_notifications SET attempts = 1, next_attempt_at = $2
+         WHERE order_id = $1 AND channel = 'telegram' AND event_key = 'created'`,
+        [order.id, new Date(NOW.getTime() + 3_600_000)],
+      )
+      await enqueue(order.id, 'status:paid', minutesAgo(1))
+      await AppDataSource.query(
+        `UPDATE order_notifications SET sent_at = $2
+         WHERE order_id = $1 AND channel = 'sheets' AND event_key = 'status:paid'`,
+        [order.id, minutesAgo(1)],
+      )
+    }
+    const healthy = await seedOrder()
+    await enqueue(healthy.id, 'created', minutesAgo(1))
+
+    const channels = fakeChannels()
+    await processDueNotifications(channels, { now: NOW })
+
+    expect(channels.sheets.upsertOrderRow).toHaveBeenCalledWith(
+      healthy.orderNumber,
+      expect.any(Array),
+    )
+    expect(channels.telegram.sendMessage).toHaveBeenCalledWith(
+      expect.stringContaining(`Новый заказ ${healthy.orderNumber}`),
+    )
   })
 })
 

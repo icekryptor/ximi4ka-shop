@@ -42,20 +42,21 @@ function isConfigError(err: unknown): boolean {
   return err instanceof SheetsConfigError || err instanceof TelegramConfigError
 }
 
+// Только внешний вызов — запись в БД делает вызывающий код одной транзакцией
+// с отметкой доставки (см. processDueNotifications).
 async function deliver(
   row: OrderNotification,
   order: Order,
   channels: NotificationChannels,
-): Promise<void> {
+): Promise<{ telegramMessageId?: number }> {
   if (row.channel === 'sheets') {
     await channels.sheets!.upsertOrderRow(order.orderNumber, sheetRow(order))
-    return
+    return {}
   }
   const bot = channels.telegram!
   if (row.eventKey === 'created') {
-    const messageId = await bot.sendMessage(telegramCard(order))
-    await AppDataSource.getRepository(Order).update(order.id, { telegramMessageId: messageId })
-    return
+    const telegramMessageId = await bot.sendMessage(telegramCard(order))
+    return { telegramMessageId }
   }
   const replyTo = order.telegramMessageId
   await bot.sendMessage(
@@ -66,6 +67,7 @@ async function deliver(
     ),
     replyTo,
   )
+  return {}
 }
 
 export async function processDueNotifications(
@@ -82,14 +84,37 @@ export async function processDueNotifications(
     .where('n.sent_at IS NULL AND n.failed_at IS NULL')
     .andWhere('n.next_attempt_at <= :now', { now })
     .andWhere('n.channel IN (:...enabled)', { enabled })
+    // Порядок внутри «заказ × канал»: пока более ранняя запись не доставлена
+    // и не сдалась, эта ждёт — смена статуса не обгонит карточку. Считаем
+    // «блокирующей» только запись, которая САМА не готова к повтору прямо
+    // сейчас (next_attempt_at в будущем — она в бэкоффе): иначе перманентно
+    // заблокированная строка статуса вечно остаётся «due» по времени и на
+    // каждом тике съедала бы место в партии, не продвигаясь — так вымирала
+    // вся очередь (найдено ревью). Если же блокирующая запись готова к
+    // повтору в этом же тике, обе попадают в партию, а порядок внутри цикла
+    // ниже гарантирует, что статус не уйдёт раньше карточки.
+    .andWhere(
+      `NOT EXISTS (
+        SELECT 1 FROM order_notifications p
+        WHERE p.order_id = n.order_id
+          AND p.channel = n.channel
+          AND p.sent_at IS NULL
+          AND p.failed_at IS NULL
+          AND p.created_at < n.created_at
+          AND p.next_attempt_at > :now
+      )`,
+      { now },
+    )
     .orderBy('n.created_at', 'ASC')
     .addOrderBy('n.id', 'ASC')
     .limit(BATCH_SIZE)
     .getMany()
 
   for (const row of due) {
-    // Порядок внутри «заказ × канал»: пока более ранняя запись не доставлена
-    // и не сдалась, эта ждёт — смена статуса не обгонит карточку.
+    // Догоняющая проверка для строк, попавших в партию вместе: если
+    // блокирующая запись входит в эту же партию и обрабатывается раньше
+    // (сортировка по created_at), к этому моменту она уже либо отправлена
+    // (не блокирует), либо ушла в повтор/сдалась в БД — перечитываем.
     const blocked = await repo
       .createQueryBuilder('p')
       .where('p.order_id = :orderId AND p.channel = :channel', {
@@ -108,8 +133,22 @@ export async function processDueNotifications(
         relations: { items: true },
       })
       if (!order) throw new SheetsConfigError('Заказ удалён')
-      await deliver(row, order, channels)
-      await repo.update(row.id, { sentAt: now, attempts, lastError: null })
+      const delivery = await deliver(row, order, channels)
+      // Id карточки в чате и отметка «доставлено» — одной транзакцией: узкое
+      // окно дубля карточки при падении процесса между двумя отдельными
+      // записями (найдено ревью).
+      await AppDataSource.transaction(async (em) => {
+        if (delivery.telegramMessageId !== undefined) {
+          await em
+            .getRepository(Order)
+            .update(order.id, { telegramMessageId: delivery.telegramMessageId })
+        }
+        await em.getRepository(OrderNotification).update(row.id, {
+          sentAt: now,
+          attempts,
+          lastError: null,
+        })
+      })
       result.sent += 1
     } catch (err) {
       const message = (err instanceof Error ? err.message : String(err)).slice(0, 2000)
