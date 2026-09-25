@@ -26,28 +26,41 @@ export function CdekShipmentPanel({
   orderStatus,
   shipment,
   enabled,
+  workerProblem = null,
 }: {
   orderId: string
   orderStatus: OrderStatus
   shipment: CdekShipmentDto | null
   enabled: boolean
+  // Флаг включён, но обработчик очереди не поднялся (сломанная настройка).
+  workerProblem?: string | null
 }) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const paid = orderStatus === 'paid' || orderStatus === 'shipped'
+  // Обработчику всё равно некому отдать запись — кнопка только плодила бы
+  // висящие «в очереди» без единого шанса уйти в СДЭК (F1).
+  const workerStopped = enabled && !!workerProblem
+  const paidOrShipped = orderStatus === 'paid' || orderStatus === 'shipped'
   const canRetry =
     enabled &&
-    paid &&
-    (!shipment ||
-      shipment.state === 'failed' ||
-      (shipment.state === 'queued' && shipment.attempts > 0))
-  const status = !enabled
-    ? 'автосоздание выключено'
-    : shipment
-      ? STATE_LABELS[shipment.state]
-      : 'не создавался'
+    !workerStopped &&
+    (shipment
+      ? paidOrShipped &&
+        (shipment.state === 'failed' || (shipment.state === 'queued' && shipment.attempts > 0))
+      : // Без записи — только для оплаченного: отправленный без записи почти
+        // наверняка заведён в СДЭК вручную, до автосоздания (F4).
+        orderStatus === 'paid')
+  // Реальное состояние записи показываем независимо от флага (F5) — «нет
+  // записи» описываем по-разному: не заводили вовсе (флаг выключен) или флаг
+  // включён, но автосоздания для этого заказа не было (F4, например заказ
+  // оплачен до включения этапа 4).
+  const status = shipment
+    ? STATE_LABELS[shipment.state]
+    : enabled
+      ? 'не создавался автоматически'
+      : 'автосоздание выключено'
   const pending = shipment && (shipment.state === 'queued' || shipment.state === 'registering')
   const failed = shipment && shipment.state === 'failed'
 
@@ -99,6 +112,14 @@ export function CdekShipmentPanel({
           показываем только число попыток, без времени следующей. */}
       {failed && shipment.attempts > 0 && (
         <p className="text-brand-text-secondary">{`попыток: ${shipment.attempts}`}</p>
+      )}
+      {/* F5: флаг выключен, но запись уже есть — статус выше показывает её
+          настоящее состояние, здесь только поясняем, почему новых попыток
+          не будет. Без записи это же и так сказано в status — дублировать
+          незачем. */}
+      {!enabled && shipment && <p className="text-brand-text-secondary">автосоздание выключено</p>}
+      {workerStopped && (
+        <p className="text-red-600">{`Автосоздание не работает: ${workerProblem}`}</p>
       )}
       {error && <p className="text-red-600">{error}</p>}
       {canRetry && (

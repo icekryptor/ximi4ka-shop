@@ -61,10 +61,93 @@ describe('<CdekShipmentPanel>', () => {
     expect(retry).toHaveBeenCalledWith('o1')
   })
 
-  it('оплаченный заказ без записи — «не создавался» и «Создать в СДЭК»', () => {
+  it('оплаченный заказ без записи — «не создавался автоматически» и «Создать в СДЭК»', () => {
     render(<CdekShipmentPanel orderId="o1" orderStatus="paid" shipment={null} enabled />)
-    expect(screen.getByText('не создавался')).toBeInTheDocument()
+    expect(screen.getByText('не создавался автоматически')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Создать в СДЭК' })).toBeInTheDocument()
+  })
+
+  // F4: без записи кнопку показываем только для оплаченного — отправленный
+  // без записи, скорее всего, заведён в СДЭК вручную (до автосоздания).
+  it('отправленный заказ без записи — «не создавался автоматически», кнопки нет', () => {
+    render(<CdekShipmentPanel orderId="o1" orderStatus="shipped" shipment={null} enabled />)
+    expect(screen.getByText('не создавался автоматически')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  // Существующая запись — правило «оплачен или отправлен» не меняется (F4).
+  it('отправленный заказ с записью об ошибке — кнопка «ещё раз» есть', () => {
+    render(
+      <CdekShipmentPanel
+        orderId="o1"
+        orderStatus="shipped"
+        shipment={{ ...base, state: 'failed', cdekNumber: null, attempts: 1, lastError: 'x' }}
+        enabled
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Создать в СДЭК ещё раз' })).toBeInTheDocument()
+  })
+
+  // F1: обработчик не поднялся при включённом флаге — видно сразу, кнопки нет.
+  it('обработчик не запущен — строка с причиной, кнопки нет', () => {
+    render(
+      <CdekShipmentPanel
+        orderId="o1"
+        orderStatus="paid"
+        shipment={null}
+        enabled
+        workerProblem="Не заданы CDEK_SENDER_NAME"
+      />,
+    )
+    expect(
+      screen.getByText('Автосоздание не работает: Не заданы CDEK_SENDER_NAME'),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('обработчик не запущен, но запись уже в очереди — кнопки всё равно нет', () => {
+    render(
+      <CdekShipmentPanel
+        orderId="o1"
+        orderStatus="paid"
+        shipment={{ ...base, state: 'queued', cdekNumber: null, attempts: 2, lastError: 'x' }}
+        enabled
+        workerProblem="Вне production заказы в боевом СДЭК не создаём"
+      />,
+    )
+    expect(screen.getByText(/Автосоздание не работает/)).toBeInTheDocument()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  // F5: флаг выключен, но запись есть — показываем реальное состояние записи
+  // (а не просто «выключено»), плюс отдельную пометку, и без кнопки.
+  it('флаг выключен, запись создана — номер и ссылка, пометка «автосоздание выключено», без кнопки', () => {
+    render(<CdekShipmentPanel orderId="o1" orderStatus="paid" shipment={base} enabled={false} />)
+    expect(screen.getByText('создан')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '10325990882' })).toBeInTheDocument()
+    expect(screen.getByText('автосоздание выключено')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+
+  it('флаг выключен, запись — ошибка: текст ошибки, пометка «автосоздание выключено», без кнопки', () => {
+    render(
+      <CdekShipmentPanel
+        orderId="o1"
+        orderStatus="paid"
+        shipment={{
+          ...base,
+          state: 'failed',
+          cdekNumber: null,
+          attempts: 3,
+          lastError: 'Неверный телефон',
+        }}
+        enabled={false}
+      />,
+    )
+    expect(screen.getByText('ошибка')).toBeInTheDocument()
+    expect(screen.getByText('Неверный телефон')).toBeInTheDocument()
+    expect(screen.getByText('автосоздание выключено')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).toBeNull()
   })
 
   it('в очереди после неудач — попытки и время следующей, можно повторить сейчас', () => {
@@ -95,7 +178,7 @@ describe('<CdekShipmentPanel>', () => {
     [
       'не оплачен',
       { orderStatus: 'pending' as const, shipment: null, enabled: true },
-      'не создавался',
+      'не создавался автоматически',
     ],
     [
       'регистрируется',

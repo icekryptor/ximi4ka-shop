@@ -219,6 +219,7 @@ export default async function AdminOrderDetailPage({
                   orderStatus={order.status}
                   shipment={order.cdekShipment ?? null}
                   enabled={order.cdekOrdersEnabled ?? false}
+                  workerProblem={order.cdekWorkerProblem ?? null}
                 />
               </div>
             )}
