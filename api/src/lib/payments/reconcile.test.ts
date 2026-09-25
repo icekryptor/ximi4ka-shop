@@ -50,6 +50,16 @@ describe('applyPaymentStatus (mapping rules)', () => {
     expect(order.status).toBe('paid')
   })
 
+  it('shipped is terminal too: a late paid retry does not revert it', () => {
+    const paidAt = new Date('2026-07-01T10:00:00Z')
+    const order = makeOrder({ status: 'shipped', paidAt })
+    expect(applyPaymentStatus(order, 'paid', 'tbank')).toBe(false)
+    expect(applyPaymentStatus(order, 'failed', 'reconcile')).toBe(false)
+    expect(order.status).toBe('shipped')
+    expect(order.paidAt).toBe(paidAt)
+    expect(order.statusHistory).toEqual([])
+  })
+
   it('failed does not override a manual cancellation', () => {
     const order = makeOrder({ status: 'cancelled' })
     expect(applyPaymentStatus(order, 'failed', 'tbank')).toBe(false)
