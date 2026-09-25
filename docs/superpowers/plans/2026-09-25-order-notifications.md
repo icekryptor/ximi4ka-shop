@@ -2084,15 +2084,13 @@ describe('TelegramBot', () => {
   })
 
   it('400/401/403 — ошибка настройки с описанием Telegram', async () => {
-    const f = vi
-      .fn()
-      .mockResolvedValue(
-        json(403, {
-          ok: false,
-          error_code: 403,
-          description: 'Forbidden: bot was kicked from the group chat',
-        }),
-      )
+    const f = vi.fn().mockResolvedValue(
+      json(403, {
+        ok: false,
+        error_code: 403,
+        description: 'Forbidden: bot was kicked from the group chat',
+      }),
+    )
     const err = await bot(f)
       .sendMessage('x')
       .catch((e: unknown) => e)
