@@ -49,6 +49,7 @@ export function CdekShipmentPanel({
       ? STATE_LABELS[shipment.state]
       : 'не создавался'
   const pending = shipment && (shipment.state === 'queued' || shipment.state === 'registering')
+  const failed = shipment && shipment.state === 'failed'
 
   async function retry() {
     setBusy(true)
@@ -93,6 +94,11 @@ export function CdekShipmentPanel({
         <p className="text-brand-text-secondary">
           {`попыток: ${shipment.attempts}, следующая ${formatDateTime(shipment.nextAttemptAt)}`}
         </p>
+      )}
+      {/* Для ошибки nextAttemptAt уже не актуально (повтор — вручную), поэтому
+          показываем только число попыток, без времени следующей. */}
+      {failed && shipment.attempts > 0 && (
+        <p className="text-brand-text-secondary">{`попыток: ${shipment.attempts}`}</p>
       )}
       {error && <p className="text-red-600">{error}</p>}
       {canRetry && (

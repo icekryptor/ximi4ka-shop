@@ -54,6 +54,8 @@ describe('<CdekShipmentPanel>', () => {
     )
     expect(screen.getByText('ошибка')).toBeInTheDocument()
     expect(screen.getByText('Неверный телефон')).toBeInTheDocument()
+    expect(screen.getByText('попыток: 8')).toBeInTheDocument()
+    expect(screen.queryByText(/следующая/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Создать в СДЭК ещё раз' }))
     await waitFor(() => expect(refresh).toHaveBeenCalled())
     expect(retry).toHaveBeenCalledWith('o1')
