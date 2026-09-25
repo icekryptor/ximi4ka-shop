@@ -26,6 +26,7 @@ export type {
   CdekPoint,
   DeliveryDestination,
   DeliveryQuote,
+  QuoteDestination,
   ShippingBox,
   ShippingPackage,
 } from './types/shipping.js'

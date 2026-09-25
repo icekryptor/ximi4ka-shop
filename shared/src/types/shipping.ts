@@ -22,6 +22,15 @@ export type DeliveryDestination =
   | { method: 'cdek_pvz'; cityCode: number; deliveryPointCode: string; address: string }
   | { method: 'cdek_courier'; cityCode?: number; postalCode?: string; address: string }
 
+// Куда считать доставку (POST /api/public/shipping/quote). Для ПВЗ код пункта
+// не обязателен: цену СДЭК считает по городу, и чекаут показывает её сразу
+// после выбора города, до выбора пункта.
+export type QuoteDestination =
+  | (Omit<Extract<DeliveryDestination, { method: 'cdek_pvz' }>, 'deliveryPointCode'> & {
+      deliveryPointCode?: string
+    })
+  | Extract<DeliveryDestination, { method: 'cdek_courier' }>
+
 // Расчёт доставки для покупателя. customerPriceRub — то, что увидит и
 // заплатит покупатель (0 от порога бесплатной доставки); cdekPriceRub — что
 // магазин заплатит СДЭК (null, если калькулятор не ответил).

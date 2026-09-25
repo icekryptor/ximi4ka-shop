@@ -2,8 +2,8 @@ import type {
   BlogPost,
   CheckoutRequest,
   CheckoutResponse,
-  DeliveryDestination,
   DeliveryQuote,
+  QuoteDestination,
   ShippingPackage,
   Page,
   Product,
@@ -222,7 +222,7 @@ export interface ShippingQuoteResponse {
 // цена для покупателя по правилам сервера, та же, что попадёт в заказ.
 export async function quoteShipping(payload: {
   items: Array<{ productId: string; quantity: number }>
-  destination?: DeliveryDestination
+  destination?: QuoteDestination
 }): Promise<ShippingQuoteResponse> {
   const body = await request<DataEnvelope<ShippingQuoteResponse>>(`/api/public/shipping/quote`, {
     method: 'POST',

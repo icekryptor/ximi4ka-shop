@@ -4,14 +4,14 @@ import { getCdekClient } from '../../lib/cdek/index.js'
 import { loadCart } from '../../lib/shipping/cart.js'
 import { packCart } from '../../lib/shipping/pack.js'
 import { deliveryConfigFromEnv, quoteDelivery } from '../../lib/shipping/quote.js'
-import { CheckoutSchema, DeliverySchema } from '../checkout.schemas.js'
+import { CheckoutSchema, QuoteDestinationSchema } from '../checkout.schemas.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 
 export const publicShippingRouter: Router = Router()
 
 const QuoteSchema = z.object({
   items: CheckoutSchema.shape.items,
-  destination: DeliverySchema.optional(),
+  destination: QuoteDestinationSchema.optional(),
 })
 
 // POST /api/public/shipping/quote — расчёт доставки для корзины.
