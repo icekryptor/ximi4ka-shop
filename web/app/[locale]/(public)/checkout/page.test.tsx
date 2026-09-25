@@ -16,26 +16,21 @@ vi.mock('@/lib/checkout', async (importActual) => {
   return { ...actual, redirectTo: (url: string) => mockRedirectTo(url) }
 })
 
-// Виджет СДЭК — внешний скрипт с картой; в тестах вместо него две кнопки,
-// которые отдают выбор так же, как настоящий onChoose.
+// Виджет СДЭК — внешний скрипт с картой; в тестах вместо него кнопка,
+// которая отдаёт пункт так же, как настоящий onChoose.
 const OFFICE = {
   city_code: 270,
   city: 'Новосибирск',
   code: 'NSK1',
   address: 'ул. Кривощековская, 15',
+  location: [82.9346, 55.0415],
 }
-const DOOR = { formatted: 'Москва, Тверская улица, 1', postal_code: '125009', city: 'Москва' }
 
 vi.mock('@/components/checkout/CdekWidget', () => ({
-  CdekWidget: ({ onChoose }: { onChoose: (...args: unknown[]) => void }) => (
-    <div>
-      <button type="button" onClick={() => onChoose('office', { tariff_code: 136 }, OFFICE)}>
-        Выбрать ПВЗ на карте
-      </button>
-      <button type="button" onClick={() => onChoose('door', { tariff_code: 137 }, DOOR)}>
-        Доставить курьером
-      </button>
-    </div>
+  CdekWidget: ({ onChoose }: { onChoose: (office: unknown) => void }) => (
+    <button type="button" onClick={() => onChoose(OFFICE)}>
+      Выбрать ПВЗ на карте
+    </button>
   ),
 }))
 
@@ -189,16 +184,6 @@ describe('/checkout page', () => {
     })
   })
 
-  it('курьер: спрашивает квартиру и считает свою цену', async () => {
-    seedCart(seed)
-    render(<CheckoutPage />)
-    fireEvent.click(await screen.findByRole('button', { name: /курьером/i }))
-    await screen.findByText(/2 дн/)
-    expect(screen.getByLabelText(/квартира/i)).toBeInTheDocument()
-    expect(screen.getByTestId('summary-shipping')).toHaveTextContent('600')
-    expect(screen.getByTestId('summary-total')).toHaveTextContent('2 600')
-  })
-
   it('shows «Бесплатно» when the subtotal clears the free-shipping threshold', async () => {
     seedCart([
       {
@@ -260,28 +245,6 @@ describe('/checkout page', () => {
       expect(mockPush).toHaveBeenCalledWith('/order/XM-2026-00042?new=1')
     })
     expect(loadCart()).toEqual([])
-  })
-
-  it('курьерский заказ уходит с геокодированным адресом и квартирой', async () => {
-    const fetchMock = vi.fn(async () => okCheckoutResponse())
-    vi.stubGlobal('fetch', fetchMock)
-    seedCart(seed)
-    render(<CheckoutPage />)
-    fireEvent.change(screen.getByLabelText(/имя/i), { target: { value: 'Мария' } })
-    fireEvent.change(screen.getByLabelText(/телефон/i), { target: { value: '9123456789' } })
-    fireEvent.click(await screen.findByRole('button', { name: /курьером/i }))
-    await screen.findByText(/2 дн/)
-    fireEvent.change(screen.getByLabelText(/квартира/i), { target: { value: 'кв. 12' } })
-
-    fireEvent.click(screen.getByRole('button', { name: /оформить заказ/i }))
-
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(JSON.parse(init.body as string).delivery).toEqual({
-      method: 'cdek_courier',
-      postalCode: '125009',
-      address: 'Москва, Тверская улица, 1, кв. 12',
-    })
   })
 
   it('передаёт ник Telegram покупателя в едином виде', async () => {

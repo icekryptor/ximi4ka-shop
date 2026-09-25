@@ -31,6 +31,16 @@ export interface WidgetTariff {
   delivery_sum?: number
 }
 
+// Пункт, который виджет отдаёт в onChoose('office', …) — iOffice из
+// dist/cdek-widget.es.d.ts 4.0.0. Берём только то, что используем.
+export interface WidgetOffice {
+  code: string
+  city_code: number
+  city: string
+  address: string
+  location: [number, number]
+}
+
 export function destinationFromWidget(
   mode: 'office',
   address: WidgetOfficeAddress,

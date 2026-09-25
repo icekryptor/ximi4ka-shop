@@ -291,11 +291,15 @@ export default function CheckoutPage() {
                 </p>
 
                 {shipping ? (
+                  // Временный переходник до Task 11: своих полей города и
+                  // пункта на странице ещё нет, карта работает одна.
                   <CdekWidget
                     goods={widgetGoods(shipping.packages)}
                     servicePath={cdekWidgetServicePath(shipping.subtotalRub)}
-                    tariffs={shipping.tariffs}
-                    onChoose={handleChoose}
+                    tariffPvz={shipping.tariffs.pvz}
+                    cityLocation={null}
+                    selectedPoint={null}
+                    onChoose={(office) => void handleChoose('office', null, office)}
                   />
                 ) : shippingError ? (
                   <p role="alert" className={ERROR_CLASS}>
