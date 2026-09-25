@@ -60,6 +60,11 @@ describe('<CourierFields>', () => {
     expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ postalCode: '123456' }))
   })
 
+  it('на поле «Индекс» нет maxlength — браузер обрезает сырое значение раньше нашего фильтра', () => {
+    render(<Controlled onChange={vi.fn()} />)
+    expect(screen.getByLabelText(/Индекс/)).not.toHaveAttribute('maxlength')
+  })
+
   it('показывает ошибки у полей', () => {
     render(
       <CourierFields
