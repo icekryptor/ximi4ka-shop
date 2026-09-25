@@ -354,8 +354,12 @@ describe('processDueNotifications', () => {
   })
 
   it('за тик не больше лимита доставок на канал, остальное ждёт следующего тика', async () => {
+    // 3 за тик (10 с) — около 18 в минуту: Telegram пускает ~20 сообщений в
+    // минуту в группу, Google — ~60 запросов в минуту (upsert — 2–3 запроса).
+    expect(MAX_DELIVERIES_PER_TICK).toEqual({ sheets: 3, telegram: 3 })
+    const perTick = Math.max(...Object.values(MAX_DELIVERIES_PER_TICK))
     const orders: Order[] = []
-    for (let i = 0; i < MAX_DELIVERIES_PER_TICK.sheets + 2; i += 1) {
+    for (let i = 0; i < 2 * perTick + 1; i += 1) {
       const o = await seedOrder()
       await enqueue(o.id, 'created', minutesAgo(60 - i))
       orders.push(o)
@@ -377,7 +381,8 @@ describe('processDueNotifications', () => {
     expect(channels.telegram.sendMessage).toHaveBeenCalledTimes(
       2 * MAX_DELIVERIES_PER_TICK.telegram,
     )
-    expect(channels.sheets.upsertOrderRow).toHaveBeenCalledTimes(orders.length)
+    expect(channels.sheets.upsertOrderRow).toHaveBeenCalledTimes(2 * MAX_DELIVERIES_PER_TICK.sheets)
+    expect((await row(tail.id, 'sheets', 'created')).sentAt).toBeNull()
   })
 
   it('очередь одного канала не вытесняет другой из тика', async () => {
