@@ -63,6 +63,7 @@ function fakeWidget() {
       async () => {},
     ),
     selectOffice: vi.fn<(code: string) => void>(() => {}),
+    clearSelection: vi.fn<() => void>(() => {}),
     destroy: vi.fn(),
   }
 }
@@ -281,6 +282,15 @@ describe('<CdekWidget>', () => {
     view.rerender(<CdekWidget {...props} cityLocation={[30.3, 59.9]} selectedPoint={POINT} />)
     expect(instance.updateLocation).not.toHaveBeenCalledWith([30.3, 59.9], 10)
     expect(instance.updateLocation).toHaveBeenCalledWith(POINT.location, 17)
+  })
+
+  it('пункт сброшен (правка города или отказ сервера) — карта снимает старое выделение', () => {
+    const view = render(<CdekWidget {...props} cityLocation={CITY} selectedPoint={POINT} />)
+    act(() => config().onReady())
+    expect(instance.clearSelection).not.toHaveBeenCalled()
+    view.rerender(<CdekWidget {...props} cityLocation={CITY} />)
+    expect(instance.clearSelection).toHaveBeenCalledTimes(1)
+    expect(instance.updateLocation).toHaveBeenCalledWith(CITY, 10)
   })
 
   it('пункт, выбранный на самой карте, не центрируется и не выбирается повторно', () => {

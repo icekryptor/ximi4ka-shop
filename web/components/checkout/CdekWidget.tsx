@@ -33,6 +33,7 @@ type LngLat = [number, number]
 interface WidgetInstance {
   updateLocation(location: LngLat, zoom?: 10 | 15 | 17): Promise<void>
   selectOffice(code: string): void
+  clearSelection(): void
   destroy(): void
 }
 
@@ -200,11 +201,10 @@ export function CdekWidget({
   // «Яндекс отказал», а не сам факт onReady (виджет зовёт его в любом случае,
   // даже когда карту Яндекса поднять не смог). Такие события не всплывают,
   // поэтому слушаем на погружении от document. Чужие ошибки скриптов (не
-  // Яндекс.Карт) не трогаем. Раньше здесь была ещё проверка window.ymaps3 на
-  // таймере готовности — убрана: это поле у Яндекс.Карт v3 не связано с тем,
-  // сколько времени занимает загрузка данных виджета, и на медленной сети
-  // валидный ключ давал бы ложную «Карта недоступна» раньше, чем карта
-  // успевала подняться.
+  // Яндекс.Карт) не трогаем. На готовность window.ymaps3 не смотрим: это поле
+  // не связано с тем, сколько времени занимает загрузка данных виджета, и на
+  // медленной сети валидный ключ давал бы ложную «Карта недоступна» раньше,
+  // чем карта успевала подняться.
   useEffect(() => {
     const onScriptError = (event: Event) => {
       const target = event.target
@@ -230,6 +230,15 @@ export function CdekWidget({
     const { cityLocation: city, selectedPoint: point } = latestRef.current
     if (!ready || !widget || !city || point) return
     chosenOnMapRef.current = null
+    try {
+      // Пункт мог быть выбран раньше (правка города или отказ сервера,
+      // rejectPoint) — без этого карта продолжала бы подсвечивать его же,
+      // хотя список уже показывает, что выбора нет.
+      widget.clearSelection()
+    } catch {
+      // Виджет ещё не готов снять выделение — не критично, попробует при
+      // следующей смене города или пункта.
+    }
     widget.updateLocation(city, 10).catch(() => {})
   }, [ready, cityKey, pointCode])
 
