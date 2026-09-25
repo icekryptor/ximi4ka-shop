@@ -16,6 +16,16 @@ const NALCHIK: CdekCity = {
   name: 'Нальчик',
   fullName: 'Нальчик, городской округ Нальчик, Кабардино-Балкария, Россия',
 }
+const NOVOSIB: CdekCity = {
+  code: 270,
+  name: 'Новосибирск',
+  fullName: 'Новосибирск, Новосибирская область, Россия',
+}
+const NOVOROS: CdekCity = {
+  code: 438,
+  name: 'Новороссийск',
+  fullName: 'Новороссийск, Краснодарский край, Россия',
+}
 
 // Поле управляемое: значение держит родитель, как на чекауте.
 function Controlled({
@@ -151,6 +161,34 @@ describe('<CityCombobox>', () => {
     // false — у события вызван preventDefault: браузер не отправит форму.
     expect(fireEvent.keyDown(input(), { key: 'Enter' })).toBe(false)
     expect(onChange).not.toHaveBeenCalled()
+  })
+
+  it('Enter сразу после нового ввода не выбирает город из старого списка', async () => {
+    // Для «Новор…» СДЭК отдаёт только Новороссийск — если бы Enter схватил
+    // город из ответа на «Нов», это был бы ещё Новосибирск.
+    mockSuggest.mockImplementation(async (q: string) =>
+      q.startsWith('Новор') ? [NOVOROS] : [NOVOSIB, NOVOROS],
+    )
+    const onChange = vi.fn()
+    render(<Controlled onChange={onChange} />)
+    type('Нов')
+    act(() => vi.advanceTimersByTime(250))
+    await flush()
+    expect(
+      screen.getByRole('option', { name: 'Новосибирск · Новосибирская область' }),
+    ).toBeInTheDocument()
+
+    // Допечатываем и сразу жмём Enter — новый дебаунс ещё не сработал, на
+    // экране старый список для «Нов», а не для «Новороссийск».
+    fireEvent.change(input(), { target: { value: 'Новороссийск' } })
+    fireEvent.keyDown(input(), { key: 'Enter' })
+    expect(onChange).not.toHaveBeenCalled()
+
+    // Дебаунс новой строки сработал — список свежий, и Enter снова выбирает.
+    act(() => vi.advanceTimersByTime(250))
+    await flush()
+    fireEvent.keyDown(input(), { key: 'Enter' })
+    expect(onChange).toHaveBeenLastCalledWith(NOVOROS)
   })
 
   it('Esc закрывает список', async () => {

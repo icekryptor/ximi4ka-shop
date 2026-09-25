@@ -131,8 +131,15 @@ export function CityCombobox({ id, value, onChange, error }: Props) {
       e.preventDefault()
       setActiveIndex((i) => (i <= 0 ? cities.length - 1 : i - 1))
     } else if (e.key === 'Enter') {
-      // Без выделенной строки Enter выбирает первую.
-      choose(cities[activeIndex >= 0 ? activeIndex : 0]!)
+      // Без выделенной строки Enter выбирает первую — но только когда список
+      // точно свежий (status === 'ready'). Пока идёт новый запрос, старые
+      // подсказки остаются на экране (см. комментарий у listOpen), и без
+      // этой проверки Enter выбрал бы город из прошлого, а не текущего ввода.
+      if (activeIndex >= 0) {
+        choose(cities[activeIndex]!)
+      } else if (status === 'ready') {
+        choose(cities[0]!)
+      }
     }
   }
 
