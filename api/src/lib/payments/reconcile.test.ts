@@ -2,6 +2,7 @@ import 'reflect-metadata'
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
+import { OrderNotification } from '../../entities/OrderNotification.js'
 import { applyPaymentStatus } from './orderStatus.js'
 import { reconcilePendingOrders, startReconciliationJob } from './reconcile.js'
 import { ManualProvider } from './manual.js'
@@ -142,6 +143,11 @@ describe('reconcilePendingOrders', () => {
     expect(updated.status).toBe('paid')
     expect(updated.paidAt).not.toBeNull()
     expect(updated.statusHistory[0]).toMatchObject({ by: 'reconcile', to: 'paid' })
+
+    const events = await AppDataSource.getRepository(OrderNotification).find({
+      where: { orderId: stale.id },
+    })
+    expect(events.map((e) => e.eventKey)).toEqual(['status:paid', 'status:paid'])
   })
 
   it('skips fresh orders, orders without external id, and non-pending orders', async () => {

@@ -5,6 +5,7 @@ import { AppDataSource } from '../config/dataSource.js'
 import { Product } from '../entities/Product.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
+import { OrderNotification } from '../entities/OrderNotification.js'
 import { createApp } from '../app.js'
 import { setCdekClientForTests } from '../lib/cdek/index.js'
 
@@ -198,6 +199,24 @@ describe('POST /api/checkout', () => {
       orderNumber: res.body.data.orderNumber,
     })
     expect(order.customerTelegram).toBe('@maria_ivanova')
+  })
+
+  it('ставит «создан» в очередь уведомлений вместе с заказом', async () => {
+    const p = await seedProduct()
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: p.id, quantity: 1 }]))
+    const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+      orderNumber: res.body.data.orderNumber,
+    })
+    const events = await AppDataSource.getRepository(OrderNotification).find({
+      where: { orderId: order.id },
+      order: { channel: 'ASC' },
+    })
+    expect(events.map((e) => [e.channel, e.eventKey])).toEqual([
+      ['sheets', 'created'],
+      ['telegram', 'created'],
+    ])
   })
 
   it('без Telegram — поле пустое', async () => {

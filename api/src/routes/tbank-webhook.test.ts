@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } 
 import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
+import { OrderNotification } from '../entities/OrderNotification.js'
 import { createApp } from '../app.js'
 import { generateToken } from '../lib/payments/token.js'
 
@@ -82,6 +83,11 @@ describe('POST /api/webhooks/tbank', () => {
     expect(updated.paidAt).not.toBeNull()
     expect(updated.statusHistory).toHaveLength(1)
     expect(updated.statusHistory[0]).toMatchObject({ from: 'pending', to: 'paid', by: 'tbank' })
+
+    const events = await AppDataSource.getRepository(OrderNotification).find({
+      where: { orderId: order.id },
+    })
+    expect(events.map((e) => e.eventKey)).toEqual(['status:paid', 'status:paid'])
   })
 
   it('is idempotent: a repeated notification does not duplicate history', async () => {

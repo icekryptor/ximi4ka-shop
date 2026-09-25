@@ -4,6 +4,7 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrdersListQuerySchema, OrderStatusPatchSchema } from './orders.schemas.js'
 import { conflict, notFound } from '../errors.js'
+import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
 import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 
 export const adminOrdersRouter: Router = Router()
@@ -83,7 +84,7 @@ adminOrdersRouter.patch('/:id/status', async (req, res, next) => {
         ...(comment ? { comment } : {}),
       },
     ]
-    const saved = await repo.save(order)
+    const saved = await saveOrderWithStatusEvent(order, from)
     res.json({ data: saved })
   } catch (err) {
     next(err)

@@ -4,6 +4,7 @@ import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
+import { OrderNotification } from '../entities/OrderNotification.js'
 import { createApp } from '../app.js'
 import { authHeaders, loginAsAdmin, type AdminAuth } from './testUtils.js'
 
@@ -133,6 +134,11 @@ describe('Admin orders', () => {
     expect(res.status).toBe(200)
     expect(res.body.data.status).toBe('cancelled')
     expect(res.body.data.paidAt).toBeNull()
+
+    const events = await AppDataSource.getRepository(OrderNotification).find({
+      where: { orderId: order.id },
+    })
+    expect(events.map((e) => e.eventKey)).toEqual(['status:cancelled', 'status:cancelled'])
   })
 
   it('marks a failed order paid (manual override after offline payment)', async () => {

@@ -3,6 +3,7 @@ import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { getCdekClient } from '../lib/cdek/index.js'
+import { enqueueOrderEvent } from '../lib/notifications/outbox.js'
 import { getPaymentProvider } from '../lib/payments/index.js'
 import { loadCart } from '../lib/shipping/cart.js'
 import { packCart } from '../lib/shipping/pack.js'
@@ -111,6 +112,7 @@ checkoutRouter.post('/', async (req, res, next) => {
             }),
           ),
         )
+        await enqueueOrderEvent(em, created.id, 'created')
         return created
       })
     } catch (err) {

@@ -2,6 +2,7 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { getPaymentProvider } from './index.js'
 import { applyPaymentStatus } from './orderStatus.js'
+import { saveOrderWithStatusEvent } from '../notifications/outbox.js'
 import type { PaymentProvider } from './types.js'
 
 // Reconciliation job skeleton: webhooks can get lost (network, deploys),
@@ -40,8 +41,9 @@ export async function reconcilePendingOrders(
   for (const order of pending) {
     const status = await provider.getStatus(order.paymentIntentId!)
     if (status === 'unknown') continue
+    const previousStatus = order.status
     if (applyPaymentStatus(order, status, 'reconcile')) {
-      await repo.save(order)
+      await saveOrderWithStatusEvent(order, previousStatus)
       updated += 1
     }
   }
