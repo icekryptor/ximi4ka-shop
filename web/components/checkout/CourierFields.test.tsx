@@ -39,6 +39,27 @@ describe('<CourierFields>', () => {
     expect(postal).toHaveValue('125009')
   })
 
+  it('вставка с пробелом («191 186») не теряет цифру — нет maxLength на сыром значении', () => {
+    const onChange = vi.fn()
+    render(<Controlled onChange={onChange} />)
+    fireEvent.change(screen.getByLabelText(/индекс/i), { target: { value: '191 186' } })
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ postalCode: '191186' }))
+  })
+
+  it('буква среди цифр («19a1186») отфильтровывается, не обрезает хвост', () => {
+    const onChange = vi.fn()
+    render(<Controlled onChange={onChange} />)
+    fireEvent.change(screen.getByLabelText(/индекс/i), { target: { value: '19a1186' } })
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ postalCode: '191186' }))
+  })
+
+  it('больше шести цифр — берутся первые шесть', () => {
+    const onChange = vi.fn()
+    render(<Controlled onChange={onChange} />)
+    fireEvent.change(screen.getByLabelText(/индекс/i), { target: { value: '1234567890' } })
+    expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ postalCode: '123456' }))
+  })
+
   it('показывает ошибки у полей', () => {
     render(
       <CourierFields

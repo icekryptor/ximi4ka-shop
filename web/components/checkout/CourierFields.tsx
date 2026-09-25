@@ -57,9 +57,11 @@ export function CourierFields({ value, onChange, errors }: Props) {
             type="text"
             inputMode="numeric"
             autoComplete="postal-code"
-            maxLength={6}
             value={value.postalCode}
-            // Только цифры: индекс в России — 6 цифр (§4.4).
+            // Только цифры: индекс в России — 6 цифр (§4.4). maxLength нельзя
+            // ставить на инпут — браузер обрезает СЫРОЕ значение до onChange,
+            // и вставка «191 186» (пробел = лишний символ) теряет цифру:
+            // «191 18» → «19118». Обрезку до 6 делает только этот фильтр.
             onChange={(e) => set('postalCode', e.target.value.replace(/\D/g, '').slice(0, 6))}
             aria-invalid={errors.postalCode ? true : undefined}
             className={FIELD_CLASS}
