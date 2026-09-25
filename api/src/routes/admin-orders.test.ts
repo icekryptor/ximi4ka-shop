@@ -7,6 +7,7 @@ import { OrderItem } from '../entities/OrderItem.js'
 import { OrderNotification } from '../entities/OrderNotification.js'
 import { CdekShipment } from '../entities/CdekShipment.js'
 import { createApp } from '../app.js'
+import { setCdekWorkerStatusForTests } from '../lib/cdek/worker.js'
 import { authHeaders, loginAsAdmin, type AdminAuth } from './testUtils.js'
 
 let seq = 0
@@ -63,6 +64,10 @@ describe('Admin orders', () => {
       'TRUNCATE orders, order_items, admin_sessions, admin_users RESTART IDENTITY CASCADE',
     )
     auth = await loginAsAdmin(app)
+    // Обработчик очереди СДЭК запущен по умолчанию — большинство тестов ниже
+    // проверяют поведение при включённом и рабочем автосоздании; тест на
+    // «обработчик не запущен» (F1) переопределяет статус явно.
+    setCdekWorkerStatusForTests({ running: true, problem: null })
   })
 
   afterEach(() => vi.unstubAllEnvs())
@@ -321,6 +326,7 @@ describe('Admin orders', () => {
 
   it('детали заказа — статус СДЭК и флаг автосоздания', async () => {
     vi.stubEnv('CDEK_ORDERS_ENABLED', '')
+    setCdekWorkerStatusForTests({ running: false, problem: 'не важно при выключенном флаге' })
     const order = await seedOrder({ status: 'paid' })
     await cdekRepo().save(
       cdekRepo().create({ orderId: order.id, state: 'created', cdekNumber: '10325990882' }),
@@ -333,6 +339,26 @@ describe('Admin orders', () => {
       cdekNumber: '10325990882',
       attempts: 0,
     })
+    // Флаг выключен — причину поломки обработчика показывать незачем.
+    expect(res.body.data.cdekWorkerProblem).toBeNull()
+  })
+
+  it('детали заказа — флаг включён, но обработчик не запущен: cdekWorkerProblem с причиной', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    setCdekWorkerStatusForTests({ running: false, problem: 'Не заданы CDEK_SENDER_NAME' })
+    const order = await seedOrder({ status: 'paid' })
+    const res = await request(app).get(`/api/admin/orders/${order.id}`).set(authHeaders(auth))
+    expect(res.status).toBe(200)
+    expect(res.body.data.cdekOrdersEnabled).toBe(true)
+    expect(res.body.data.cdekWorkerProblem).toBe('Не заданы CDEK_SENDER_NAME')
+  })
+
+  it('детали заказа — флаг включён и обработчик запущен: cdekWorkerProblem — null', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    setCdekWorkerStatusForTests({ running: true, problem: null })
+    const order = await seedOrder({ status: 'paid' })
+    const res = await request(app).get(`/api/admin/orders/${order.id}`).set(authHeaders(auth))
+    expect(res.body.data.cdekWorkerProblem).toBeNull()
   })
 
   it('без записи СДЭК — cdekShipment: null', async () => {
@@ -349,6 +375,18 @@ describe('Admin orders', () => {
     expect(res.body.error.code).toBe('cdek_orders_disabled')
   })
 
+  it('повтор СДЭК: флаг включён, но обработчик не запущен — 409', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    setCdekWorkerStatusForTests({ running: false, problem: 'Не заданы CDEK_SENDER_NAME' })
+    const order = await seedOrder({ status: 'paid' })
+    const res = await retryCdek(order.id)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('cdek_worker_stopped')
+    // Запись не создаётся — кнопка не должна плодить записи, которые некому
+    // обработать.
+    expect(await cdekRepo().countBy({ orderId: order.id })).toBe(0)
+  })
+
   it('оплаченный заказ без записи — ставится в очередь', async () => {
     vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
     const order = await seedOrder({ status: 'paid' })
@@ -358,16 +396,26 @@ describe('Admin orders', () => {
     expect(await cdekRepo().countBy({ orderId: order.id })).toBe(1)
   })
 
-  it('ошибка СДЭК — запись возвращается в очередь со свежим окном', async () => {
+  it('ошибка СДЭК — запись возвращается в очередь со свежим окном, submittedAt сброшен', async () => {
     vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
     const order = await seedOrder({ status: 'paid' })
     const failed = await cdekRepo().save(
-      cdekRepo().create({ orderId: order.id, state: 'failed', attempts: 8, lastError: 'x' }),
+      cdekRepo().create({
+        orderId: order.id,
+        state: 'failed',
+        attempts: 8,
+        lastError: 'x',
+        // Место так и не подтверждено, но submittedAt мог остаться от
+        // прежней (не дошедшей) попытки — повтор должен его сбросить (F3):
+        // иначе таймаут регистрации (CDEK_REGISTER_TIMEOUT_MS) отсчитывался
+        // бы от чужого времени.
+        submittedAt: new Date('2026-09-24T10:00:00Z'),
+      }),
     )
     const res = await retryCdek(order.id)
     expect(res.status).toBe(200)
     const row = await cdekRepo().findOneByOrFail({ id: failed.id })
-    expect(row).toMatchObject({ state: 'queued', attempts: 0, lastError: null })
+    expect(row).toMatchObject({ state: 'queued', attempts: 0, lastError: null, submittedAt: null })
     expect(row.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now())
   })
 
@@ -381,12 +429,62 @@ describe('Admin orders', () => {
     },
   )
 
+  it('гонка: запись стала registering между чтением и записью — не сбрасываем (F2)', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    const order = await seedOrder({ status: 'paid' })
+    const row = await cdekRepo().save(
+      cdekRepo().create({
+        orderId: order.id,
+        state: 'registering',
+        cdekUuid: '1aa05817-5e99-4bae-99af-69b3b3c16233',
+      }),
+    )
+    // В БД запись уже registering (воркер успел её забрать между тем, как
+    // админ открыл карточку, и кликом «повторить») — маршрут должен увидеть
+    // это не только на чтении для проверки, но и в самом UPDATE. Подменяем
+    // то, что вернёт первое чтение, будто оно ещё застало queued — честная
+    // симуляция гонки: реальный UPDATE ниже идёт в настоящую БД с настоящим
+    // текущим состоянием, только его WHERE и должен защитить от перезаписи.
+    // Спай — на самом экземпляре репозитория (он один на DataSource+сущность),
+    // а не на прототипе Repository — иначе подменился бы и findOneBy у Order.
+    const spy = vi
+      .spyOn(cdekRepo(), 'findOneBy')
+      .mockImplementationOnce(async () => ({ ...row, state: 'queued' }))
+    const res = await retryCdek(order.id)
+    spy.mockRestore()
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('cdek_registering')
+    const after = await cdekRepo().findOneByOrFail({ id: row.id })
+    expect(after.state).toBe('registering')
+    expect(after.cdekUuid).toBe('1aa05817-5e99-4bae-99af-69b3b3c16233')
+  })
+
   it('неоплаченный заказ и доставка не СДЭК — 409', async () => {
     vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
     const pending = await seedOrder()
     const pickup = await seedOrder({ status: 'paid', deliveryMethod: 'pickup' })
     expect((await retryCdek(pending.id)).body.error.code).toBe('order_not_paid')
     expect((await retryCdek(pickup.id)).body.error.code).toBe('not_cdek_delivery')
+  })
+
+  it('отправленный заказ без записи СДЭК — 409 cdek_not_queued (заведён вручную, F4)', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    const shipped = await seedOrder({ status: 'shipped', paidAt: new Date() })
+    const res = await retryCdek(shipped.id)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('cdek_not_queued')
+    expect(await cdekRepo().countBy({ orderId: shipped.id })).toBe(0)
+  })
+
+  it('отправленный заказ с существующей записью — обычное правило «оплачен или отправлен» (F4)', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    const shipped = await seedOrder({ status: 'shipped', paidAt: new Date() })
+    const failed = await cdekRepo().save(
+      cdekRepo().create({ orderId: shipped.id, state: 'failed', attempts: 3, lastError: 'x' }),
+    )
+    const res = await retryCdek(shipped.id)
+    expect(res.status).toBe(200)
+    expect((await cdekRepo().findOneByOrFail({ id: failed.id })).state).toBe('queued')
   })
 
   it('повтор СДЭК: 404 для неизвестного заказа, 403 без CSRF', async () => {
@@ -397,5 +495,27 @@ describe('Admin orders', () => {
       .post(`/api/admin/orders/${order.id}/cdek/retry`)
       .set('Cookie', `${auth.sessionCookie}; ${auth.csrfCookie}`)
     expect(noCsrf.status).toBe(403)
+  })
+
+  // F6: тот же путь, которым проходит вебхук Т-Кассы и сверка — ручная
+  // отметка «оплачен» в админке (PATCH /:id/status) идёт через
+  // saveOrderWithStatusEvent, который ставит заказ в очередь СДЭК той же
+  // транзакцией (lib/notifications/outbox.ts). Это единственный
+  // маршрутный тест на постановку в очередь — остальное покрыто юнит-тестами
+  // enqueueCdekShipment/processDueShipments.
+  it('админ отмечает заказ оплаченным — заказ становится в очередь СДЭК (маршрут статуса)', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    vi.stubEnv('CDEK_SHIPMENT_POINT', 'MOS4')
+    vi.stubEnv('CDEK_SENDER_COMPANY', 'ИП Тестова')
+    vi.stubEnv('CDEK_SENDER_NAME', 'Тестова Анна')
+    vi.stubEnv('CDEK_SENDER_PHONE', '+79990000000')
+    const order = await seedOrder() // pending, deliveryMethod: cdek_courier
+    const res = await request(app)
+      .patch(`/api/admin/orders/${order.id}/status`)
+      .set(authHeaders(auth))
+      .send({ status: 'paid' })
+    expect(res.status).toBe(200)
+    expect(await cdekRepo().countBy({ orderId: order.id })).toBe(1)
+    expect((await cdekRepo().findOneByOrFail({ orderId: order.id })).state).toBe('queued')
   })
 })

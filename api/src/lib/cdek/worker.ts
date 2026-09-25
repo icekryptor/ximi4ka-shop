@@ -250,14 +250,42 @@ export async function processDueShipments(
   return result
 }
 
+// Статус обработчика — виден админке (docs/superpowers/specs/2026-09-25-cdek-auto-orders-design.md
+// §8): без него заказ мог висеть «в очереди» без единого шанса уйти в СДЭК,
+// а «Создать в СДЭК» в админке только плодил бы такие же зависшие записи.
+// CdekConfigError.message и сообщение боевого-URL-гварда перечисляют только
+// ИМЕНА переменных/фиксированный текст — значения окружения сюда не попадают.
+export interface CdekWorkerStatus {
+  running: boolean
+  problem: string | null
+}
+
+let workerStatus: CdekWorkerStatus = {
+  running: false,
+  problem: 'Обработчик очереди СДЭК не запущен',
+}
+
+export function cdekWorkerStatus(): CdekWorkerStatus {
+  return workerStatus
+}
+
+// Только для тестов: выставить статус без запуска интервалов (например,
+// чтобы проверить маршруты админки при «включён, но не запущен»).
+export function setCdekWorkerStatusForTests(status: CdekWorkerStatus): void {
+  workerStatus = status
+}
+
 // Запускается из api/src/index.ts. null — создание заказов в СДЭК выключено
-// или не настроено; причина — в лог.
+// или не настроено; причина — в лог и в cdekWorkerStatus() для админки.
 export function startCdekShipmentWorker({
   env = process.env,
   cdek,
   intervalMs = CDEK_WORKER_INTERVAL_MS,
 }: { env?: NodeJS.ProcessEnv; cdek?: CdekApi; intervalMs?: number } = {}): NodeJS.Timeout | null {
-  if (!cdekOrdersEnabled(env)) return null
+  if (!cdekOrdersEnabled(env)) {
+    workerStatus = { running: false, problem: null }
+    return null
+  }
   let config: CdekOrderConfig
   let baseUrl: string
   try {
@@ -266,15 +294,21 @@ export function startCdekShipmentWorker({
   } catch (err) {
     // Нет реквизитов (CdekConfigError) или боевая среда без ключей — не
     // стартуем; записи в очереди ждут, пока настройку не поправят.
-    console.error(`cdek: создание заказов выключено — ${(err as Error).message}`)
+    const message = (err as Error).message
+    console.error(`cdek: создание заказов выключено — ${message}`)
+    workerStatus = { running: false, problem: message }
     return null
   }
   // В api/.env лежат боевые ключи: обычный npm run dev не должен заводить
-  // настоящие заказы.
+  // настоящие заказы. С боевыми ключами песочница отклонит авторизацию
+  // (CdekClient.fromEnv уходит на публичную тестовую учётку только когда
+  // CDEK_CLIENT_ID/CDEK_CLIENT_SECRET пусты) — просим очистить и их.
   if (env.NODE_ENV !== 'production' && baseUrl === PROD_BASE_URL) {
     console.error(
-      `cdek: вне production заказы в боевом СДЭК не создаём — задайте CDEK_API_URL=${TEST_BASE_URL}`,
+      `cdek: вне production заказы в боевом СДЭК не создаём — задайте CDEK_API_URL=${TEST_BASE_URL} ` +
+        'и очистите CDEK_CLIENT_ID/CDEK_CLIENT_SECRET (с боевыми ключами песочница отклонит авторизацию)',
     )
+    workerStatus = { running: false, problem: 'Вне production заказы в боевом СДЭК не создаём' }
     return null
   }
   const deps: CdekShipmentDeps = { cdek: cdek ?? getCdekClient(), config }
@@ -289,5 +323,6 @@ export function startCdekShipmentWorker({
       })
   }, intervalMs)
   timer.unref()
+  workerStatus = { running: true, problem: null }
   return timer
 }

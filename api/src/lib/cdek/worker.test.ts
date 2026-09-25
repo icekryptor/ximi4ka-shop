@@ -11,6 +11,7 @@ import {
   CDEK_POLL_INTERVAL_MS,
   CDEK_REGISTER_TIMEOUT_MS,
   MAX_SHIPMENTS_PER_TICK,
+  cdekWorkerStatus,
   processDueShipments,
   startCdekShipmentWorker,
 } from './worker.js'
@@ -520,18 +521,31 @@ describe('startCdekShipmentWorker', () => {
   }
   const cdek = { get: vi.fn(), post: vi.fn() }
 
-  it('флаг выключен — не стартует', () => {
-    expect(startCdekShipmentWorker({ env: { ...env, CDEK_ORDERS_ENABLED: '' }, cdek })).toBeNull()
+  // Статус модуля виден админке (F1) — этот тест должен идти первым в блоке:
+  // проверяет значение до того, как остальные тесты его перезапишут.
+  it('исходный статус — не запущен, до первого вызова startCdekShipmentWorker', () => {
+    expect(cdekWorkerStatus()).toEqual({
+      running: false,
+      problem: 'Обработчик очереди СДЭК не запущен',
+    })
   })
 
-  it('нет реквизитов — не стартует, в логе чего не хватает', () => {
+  it('флаг выключен — не стартует', () => {
+    expect(startCdekShipmentWorker({ env: { ...env, CDEK_ORDERS_ENABLED: '' }, cdek })).toBeNull()
+    expect(cdekWorkerStatus()).toEqual({ running: false, problem: null })
+  })
+
+  it('нет реквизитов — не стартует, в логе чего не хватает, статус хранит причину', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     expect(startCdekShipmentWorker({ env: { ...env, CDEK_SENDER_NAME: '' }, cdek })).toBeNull()
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('CDEK_SENDER_NAME'))
+    // CdekConfigError.message перечисляет только ИМЕНА переменных — значения
+    // окружения в статус попасть не могут.
+    expect(cdekWorkerStatus()).toEqual({ running: false, problem: 'Не заданы CDEK_SENDER_NAME' })
     spy.mockRestore()
   })
 
-  it('вне production на боевом СДЭК — не стартует', () => {
+  it('вне production на боевом СДЭК — не стартует, в логе — обе причины ключей', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const prod = {
       ...env,
@@ -541,16 +555,25 @@ describe('startCdekShipmentWorker', () => {
     }
     expect(startCdekShipmentWorker({ env: prod, cdek })).toBeNull()
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('api.edu.cdek.ru'))
+    // F6: боевые ключи в песочнице ведут к отказу авторизации — просим не
+    // только сменить URL, но и очистить CDEK_CLIENT_ID/CDEK_CLIENT_SECRET.
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('CDEK_CLIENT_ID'))
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('CDEK_CLIENT_SECRET'))
+    expect(cdekWorkerStatus()).toEqual({
+      running: false,
+      problem: 'Вне production заказы в боевом СДЭК не создаём',
+    })
     spy.mockRestore()
   })
 
-  it('песочница вне production — стартует', () => {
+  it('песочница вне production — стартует, статус — запущен', () => {
     const timer = startCdekShipmentWorker({ env, cdek, intervalMs: 60_000 })
     expect(timer).not.toBeNull()
+    expect(cdekWorkerStatus()).toEqual({ running: true, problem: null })
     clearInterval(timer!)
   })
 
-  it('production на боевом СДЭК — стартует', () => {
+  it('production на боевом СДЭК — стартует, статус — запущен', () => {
     const prod = {
       ...env,
       CDEK_API_URL: undefined,
@@ -560,6 +583,7 @@ describe('startCdekShipmentWorker', () => {
     }
     const timer = startCdekShipmentWorker({ env: prod, cdek, intervalMs: 60_000 })
     expect(timer).not.toBeNull()
+    expect(cdekWorkerStatus()).toEqual({ running: true, problem: null })
     clearInterval(timer!)
   })
 })

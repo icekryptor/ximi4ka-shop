@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
-import { IsNull, Not } from 'typeorm'
+import { IsNull, In, Not } from 'typeorm'
 import type { CdekShipmentDto } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
@@ -12,6 +12,7 @@ import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
 import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 import { cdekOrdersEnabled } from '../../lib/cdek/orders.js'
 import { enqueueCdekShipment, isCdekDelivery } from '../../lib/cdek/queue.js'
+import { cdekWorkerStatus } from '../../lib/cdek/worker.js'
 
 export const adminOrdersRouter: Router = Router()
 
@@ -79,12 +80,18 @@ adminOrdersRouter.get('/:id', async (req, res, next) => {
       relations: { items: true },
     })
     if (!order) throw notFound('order_not_found', 'Заказ не найден')
+    const ordersEnabled = cdekOrdersEnabled()
     res.json({
       data: {
         ...order,
         notifications: await orderNotifications(order.id),
         cdekShipment: await cdekShipment(order.id),
-        cdekOrdersEnabled: cdekOrdersEnabled(),
+        cdekOrdersEnabled: ordersEnabled,
+        // Флаг выключен — почему обработчик не запущен неважно, он и не
+        // должен быть запущен. Флаг включён — если обработчик всё же не
+        // поднялся (настройка сломана), админ должен это увидеть, а не
+        // гадать по 0 попыток «в очереди» (F1).
+        cdekWorkerProblem: ordersEnabled ? cdekWorkerStatus().problem : null,
       },
     })
   } catch (err) {
@@ -172,6 +179,14 @@ adminOrdersRouter.post('/:id/cdek/retry', async (req, res, next) => {
     if (!cdekOrdersEnabled()) {
       throw conflict('cdek_orders_disabled', 'Создание заказов в СДЭК выключено')
     }
+    // Флаг включён, но обработчик не поднялся (сломанная настройка) — класть
+    // записи в очередь некому, кнопка только создавала бы висящие записи (F1).
+    if (!cdekWorkerStatus().running) {
+      throw conflict(
+        'cdek_worker_stopped',
+        'Обработчик очереди СДЭК не запущен — проверьте настройки сервера',
+      )
+    }
     if (order.status !== 'paid' && order.status !== 'shipped') {
       throw conflict('order_not_paid', 'Заказ не оплачен')
     }
@@ -180,6 +195,15 @@ adminOrdersRouter.post('/:id/cdek/retry', async (req, res, next) => {
     }
     const repo = AppDataSource.getRepository(CdekShipment)
     const existing = await repo.findOneBy({ orderId: order.id })
+    // Без записи и уже отправлен — вручную заведённый в СДЭК заказ (принят до
+    // включения автосоздания или до самого этапа 4): создавать не предлагаем,
+    // это не «оплачен, но забыли поставить в очередь» (F4).
+    if (!existing && order.status !== 'paid') {
+      throw conflict(
+        'cdek_not_queued',
+        'Заказ отправлен до автосоздания — создайте в СДЭК вручную, если нужно',
+      )
+    }
     if (existing?.state === 'created') {
       throw conflict('cdek_already_created', 'Заказ уже создан в СДЭК')
     }
@@ -187,12 +211,25 @@ adminOrdersRouter.post('/:id/cdek/retry', async (req, res, next) => {
       throw conflict('cdek_registering', 'СДЭК ещё регистрирует заказ')
     }
     if (existing) {
-      await repo.update(existing.id, {
-        state: 'queued',
-        attempts: 0,
-        lastError: null,
-        nextAttemptAt: new Date(),
-      })
+      // Между чтением выше и этим UPDATE обработчик мог успеть перевести
+      // запись в registering — условие в WHERE защищает от перезаписи его
+      // прогресса тем же способом, что и он сам (F2). submittedAt сбрасываем:
+      // повтор начинает регистрацию заново, старое время начала — не про
+      // текущую попытку (F3); cdekUuid не трогаем — обработчик всегда сперва
+      // ищет заказ по номеру, прежний uuid не мешает.
+      const result = await repo.update(
+        { id: existing.id, state: In(['queued', 'failed']) },
+        {
+          state: 'queued',
+          attempts: 0,
+          lastError: null,
+          nextAttemptAt: new Date(),
+          submittedAt: null,
+        },
+      )
+      if (!result.affected) {
+        throw conflict('cdek_registering', 'СДЭК ещё регистрирует заказ')
+      }
     } else {
       await enqueueCdekShipment(AppDataSource.manager, order)
     }

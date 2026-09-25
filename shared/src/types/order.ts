@@ -79,6 +79,9 @@ export interface OrderDto {
   // Заказ в СДЭК (только в деталях админки).
   cdekShipment?: CdekShipmentDto | null
   cdekOrdersEnabled?: boolean
+  // Флаг включён, но обработчик очереди не запущен (сломанная настройка) —
+  // причина для админки; null — обработчик в порядке или флаг выключен.
+  cdekWorkerProblem?: string | null
   createdAt: string
   paidAt: string | null
   erpSyncedAt: string | null
