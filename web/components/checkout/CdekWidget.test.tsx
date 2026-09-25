@@ -44,8 +44,10 @@ interface WidgetConfig {
 function fakeWidget() {
   return {
     yandexApi: { geocodeSrc: 'https://geocode-maps.yandex.ru/1.x/?apikey=ya-key&lang=ru_RU' },
-    updateLocation: vi.fn(async (_location: [number, number], _zoom?: number) => {}),
-    selectOffice: vi.fn((_code: string) => {}),
+    updateLocation: vi.fn<(location: [number, number], zoom: number) => Promise<void>>(
+      async () => {},
+    ),
+    selectOffice: vi.fn<(code: string) => void>(() => {}),
     destroy: vi.fn(),
   }
 }
