@@ -18,6 +18,10 @@ interface Props {
   value: CdekPoint | null
   onChange: (point: CdekPoint) => void
   error?: string
+  // Поле невалидно, но текст ошибки показан снаружи (общим параграфом, а не
+  // тут) — например, когда список приходится перерисовывать целиком и текст
+  // ошибки живёт отдельным узлом, чтобы не пропадать вместе со списком.
+  invalid?: boolean
 }
 
 // «MSK310 · пр-т Мира, 108» — как строка списка у Тильды.
@@ -28,7 +32,7 @@ export function pointLabel(point: Pick<CdekPoint, 'code' | 'address'>): string {
 // «Пункт получения» — список ПВЗ города с поиском по словам (спека §5.1, п. 3).
 // Пока список закрыт, в поле — выбранный пункт; при фокусе поле пустеет под
 // запрос, а выбранный пункт остаётся в подсказке.
-export function PointCombobox({ id, points, value, onChange, error }: Props) {
+export function PointCombobox({ id, points, value, onChange, error, invalid }: Props) {
   const listboxId = useId()
   const optionIdBase = useId()
   const [open, setOpen] = useState(false)
@@ -96,7 +100,7 @@ export function PointCombobox({ id, points, value, onChange, error }: Props) {
           aria-controls={listboxId}
           aria-autocomplete="list"
           aria-activedescendant={open && activeIndex >= 0 ? optionId(activeIndex) : undefined}
-          aria-invalid={error ? true : undefined}
+          aria-invalid={error || invalid ? true : undefined}
           autoComplete="off"
           placeholder={value ? pointLabel(value) : 'Код пункта или часть адреса'}
           value={open ? query : value ? pointLabel(value) : ''}

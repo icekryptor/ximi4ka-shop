@@ -436,7 +436,9 @@ describe('<CdekDelivery>', () => {
     expect(await screen.findByText('Пункт выдачи не найден — выберите другой')).toBeInTheDocument()
     expect(destination()).toBeNull()
     await vi.waitFor(() => expect(mockGetPoints).toHaveBeenCalledTimes(2))
-    expect(await screen.findByRole('combobox', { name: /пункт получения/i })).toHaveValue('')
+    const pointInput = await screen.findByRole('combobox', { name: /пункт получения/i })
+    expect(pointInput).toHaveValue('')
+    expect(pointInput).toHaveAttribute('aria-invalid', 'true')
   })
 
   it('поздний ответ по прошлому городу не перетирает пункты нового', async () => {
@@ -458,6 +460,93 @@ describe('<CdekDelivery>', () => {
     fireEvent.focus(input)
     expect(screen.getByRole('option', { name: /SPB1/ })).toBeInTheDocument()
     expect(screen.queryByRole('option', { name: /MSK65/ })).toBeNull()
+  })
+
+  it('поздний расчёт цены по прошлому городу не перетирает цену нового', async () => {
+    // Питер отвечает сразу (390 совпал бы с обычной ценой ПВЗ — используем
+    // заведомо другую цену 999, чтобы отличить её от московской).
+    const pendingMoscow: Partial<
+      Record<'cdek_pvz' | 'cdek_courier', (value: ShippingQuoteResponse) => void>
+    > = {}
+    mockQuote.mockImplementation(({ destination: d }) => {
+      if (!d) return Promise.resolve({ ...SHIPPING, quote: null })
+      if (d.cityCode === 44) {
+        return new Promise<ShippingQuoteResponse>((resolve) => {
+          pendingMoscow[d.method] = resolve
+        })
+      }
+      return Promise.resolve({
+        ...SHIPPING,
+        quote: { ...quoteFor(d), customerPriceRub: 999, cdekPriceRub: 999 },
+      })
+    })
+    render(<Harness />)
+    await chooseCity(MOSCOW)
+    await chooseCity(SPB)
+    expect(
+      await screen.findByRole('radio', { name: /Пункт выдачи СДЭК — 999\s₽/ }),
+    ).toBeInTheDocument()
+
+    // Поздний ответ по Москве (город, который уже сменили) не должен
+    // перетереть цену Петербурга.
+    await act(async () => {
+      pendingMoscow.cdek_pvz?.({
+        ...SHIPPING,
+        quote: quoteFor({ method: 'cdek_pvz', cityCode: 44, address: 'Москва' }),
+      })
+    })
+    expect(screen.getByRole('radio', { name: /Пункт выдачи СДЭК — 999\s₽/ })).toBeInTheDocument()
+    expect(screen.queryByRole('radio', { name: /Пункт выдачи СДЭК — 390\s₽/ })).toBeNull()
+  })
+
+  it('поздний расчёт курьера по старому адресу не перетирает цену нового адреса', async () => {
+    const pendingByAddress: Record<string, (value: ShippingQuoteResponse) => void> = {}
+    mockQuote.mockImplementation(({ destination: d }) => {
+      if (d?.method === 'cdek_courier' && d.address.includes(',')) {
+        return new Promise<ShippingQuoteResponse>((resolve) => {
+          pendingByAddress[d.address] = resolve
+        })
+      }
+      return Promise.resolve({ ...SHIPPING, quote: d ? quoteFor(d) : null })
+    })
+    render(<Harness />)
+    await chooseCity(MOSCOW)
+    fireEvent.click(await screen.findByRole('radio', { name: /Курьер СДЭК/ }))
+    const street = screen.getByLabelText(/улица, дом/i)
+
+    // Первый адрес — ждём, пока пройдёт задержка пересчёта и запрос реально уйдёт.
+    fireEvent.change(street, { target: { value: 'Тверская ул., 1' } })
+    await vi.waitFor(() => expect(pendingByAddress['Москва, Тверская ул., 1']).toBeDefined())
+
+    // Покупатель успел исправить адрес до ответа сервера — уходит второй запрос.
+    fireEvent.change(street, { target: { value: 'Ленина ул., 2' } })
+    await vi.waitFor(() => expect(pendingByAddress['Москва, Ленина ул., 2']).toBeDefined())
+
+    await act(async () => {
+      pendingByAddress['Москва, Ленина ул., 2']!({
+        ...SHIPPING,
+        quote: {
+          ...quoteFor({ method: 'cdek_courier', cityCode: 44, address: 'Москва, Ленина ул., 2' }),
+          customerPriceRub: 700,
+          cdekPriceRub: 700,
+        },
+      })
+    })
+    expect(await screen.findByRole('radio', { name: /Курьер СДЭК — 700\s₽/ })).toBeChecked()
+
+    // Поздний ответ по старому адресу не должен перетереть текущую цену.
+    await act(async () => {
+      pendingByAddress['Москва, Тверская ул., 1']!({
+        ...SHIPPING,
+        quote: quoteFor({
+          method: 'cdek_courier',
+          cityCode: 44,
+          address: 'Москва, Тверская ул., 1',
+        }),
+      })
+    })
+    expect(screen.getByRole('radio', { name: /Курьер СДЭК — 700\s₽/ })).toBeChecked()
+    expect(screen.queryByRole('radio', { name: /Курьер СДЭК — 650\s₽/ })).toBeNull()
   })
 
   it('город запоминается и подставляется при следующем визите', async () => {
@@ -510,6 +599,10 @@ describe('<CdekDelivery>', () => {
     rerender(<Harness errors={{ city: 'Укажите город', point: 'Выберите пункт получения' }} />)
     expect(screen.queryByText('Укажите город')).toBeNull()
     expect(await screen.findByText('Выберите пункт получения')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: /пункт получения/i })).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
     await choosePoint(/MSK65/)
     expect(screen.queryByText('Выберите пункт получения')).toBeNull()
   })

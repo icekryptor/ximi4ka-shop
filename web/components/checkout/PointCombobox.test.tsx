@@ -121,4 +121,11 @@ describe('<PointCombobox>', () => {
     expect(screen.getByText('Выберите пункт получения')).toBeInTheDocument()
     expect(input()).toHaveAttribute('aria-invalid', 'true')
   })
+
+  it('invalid без своего текста ошибки — тоже помечает поле', () => {
+    // Текст ошибки показан снаружи (общим параграфом), а поле всё равно
+    // должно нести aria-invalid — иначе экранный диктор не свяжет ошибку с ним.
+    render(<PointCombobox id="point" points={FEW} value={null} onChange={vi.fn()} invalid />)
+    expect(input()).toHaveAttribute('aria-invalid', 'true')
+  })
 })
