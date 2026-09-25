@@ -1,4 +1,4 @@
-import type { DeliveryDestination } from './shipping.js'
+import type { DeliveryDestination, ShippingPackage } from './shipping.js'
 import type { OrderNotificationDto } from './notifications.js'
 
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
@@ -41,6 +41,9 @@ export interface DeliveryAddress {
     periodMax: number | null
     source: 'cdek' | 'fallback'
   } | null
+  // Места отправления на момент заказа (packCart) — по ним создаётся заказ в
+  // СДЭК. У заказов до этапа 4 поля нет.
+  packages?: ShippingPackage[]
 }
 
 // One entry per status transition — appended by the checkout flow, the

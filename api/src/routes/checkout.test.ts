@@ -91,7 +91,8 @@ describe('POST /api/checkout', () => {
     expect(order.totalRub).toBe(2800)
     expect(order.deliveryMethod).toBe('cdek_pvz')
     // Под тестами СДЭК «недоступен» — ставка фиксированная, и это видно в заказе.
-    expect(order.deliveryAddress).toEqual({
+    const { packages, ...address } = order.deliveryAddress
+    expect(address).toEqual({
       address: 'Москва, ул. Ленина, 1',
       comment: 'после 18:00',
       cityCode: 44,
@@ -105,6 +106,10 @@ describe('POST /api/checkout', () => {
         source: 'fallback',
       },
     })
+    // Места, по которым считали цену, — по ним потом создаётся заказ в СДЭК.
+    expect(packages).toHaveLength(1)
+    expect(packages![0]).toMatchObject({ box: 'small', estimated: true })
+    expect(packages![0].items).toEqual(expect.arrayContaining([{ productId: p1.id, quantity: 2 }]))
     expect(order.items).toHaveLength(2)
     const item1 = order.items.find((i) => i.productId === p1.id)!
     expect(item1.quantity).toBe(2)
