@@ -21,6 +21,7 @@ import {
   type WidgetOfficeAddress,
 } from '@/lib/shipping'
 import { CdekWidget } from '@/components/checkout/CdekWidget'
+import { ERROR_CLASS, FIELD_CLASS, LABEL_CLASS } from '@/components/checkout/fieldStyles'
 import {
   DELIVERY_LABELS,
   SHIPPING_RULES,
@@ -53,15 +54,6 @@ function destinationFor(choice: DeliveryChoice, apartment: string): DeliveryDest
     ? destinationFromWidget('office', choice.address)
     : destinationFromWidget('door', choice.address, apartment)
 }
-
-const FIELD_CLASS =
-  'w-full px-4 py-3 bg-transparent border border-[var(--color-lj-rule)] rounded-none font-lj-body text-base text-[var(--color-lj-ink)] placeholder:opacity-40 focus:outline-none focus:border-[var(--color-lj-ink)] transition-colors'
-
-const LABEL_CLASS =
-  'font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-70'
-
-const ERROR_CLASS =
-  'font-lj-mono text-[length:var(--text-lj-mono-xs)] tracking-[0.04em] text-[var(--color-stock-danger)]'
 
 export default function CheckoutPage() {
   const router = useRouter()

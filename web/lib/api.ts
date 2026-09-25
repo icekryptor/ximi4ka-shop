@@ -1,5 +1,6 @@
 import type {
   BlogPost,
+  CdekCity,
   CheckoutRequest,
   CheckoutResponse,
   DeliveryQuote,
@@ -186,6 +187,19 @@ export async function searchCatalog(
 ): Promise<SearchResult> {
   const body = await request<DataEnvelope<SearchResult>>(
     `/api/public/search?q=${encodeURIComponent(q)}`,
+    { cache: 'no-store', signal: opts.signal },
+  )
+  return body.data
+}
+
+// Подсказки городов СДЭК для чекаута (GET /api/public/cdek/cities). signal
+// отменяет устаревший запрос, пока покупатель печатает.
+export async function suggestCdekCities(
+  q: string,
+  opts: { signal?: AbortSignal } = {},
+): Promise<CdekCity[]> {
+  const body = await request<DataEnvelope<CdekCity[]>>(
+    `/api/public/cdek/cities?q=${encodeURIComponent(q)}`,
     { cache: 'no-store', signal: opts.signal },
   )
   return body.data
