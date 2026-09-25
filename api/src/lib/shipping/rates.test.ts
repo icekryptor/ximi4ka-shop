@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { calcShippingRub } from './shipping.js'
+import { calcShippingRub } from './rates.js'
 
 describe('calcShippingRub', () => {
   it('СДЭК ПВЗ: 350 ₽ below 3000 ₽, free from 3000 ₽ (inclusive)', () => {

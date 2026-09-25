@@ -4,6 +4,7 @@ import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
+import { OrderNotification } from '../entities/OrderNotification.js'
 import { createApp } from '../app.js'
 import { authHeaders, loginAsAdmin, type AdminAuth } from './testUtils.js'
 
@@ -84,6 +85,16 @@ describe('Admin orders', () => {
     expect(res.body.data[0].id).toBe(paid.id)
   })
 
+  it('фильтрует отправленные заказы', async () => {
+    await seedOrder({ status: 'paid', paidAt: new Date() })
+    const shipped = await seedOrder({ status: 'shipped', paidAt: new Date() })
+
+    const res = await request(app).get('/api/admin/orders?status=shipped').set(authHeaders(auth))
+    expect(res.status).toBe(200)
+    expect(res.body.data).toHaveLength(1)
+    expect(res.body.data[0].id).toBe(shipped.id)
+  })
+
   it('returns the detail with items', async () => {
     const order = await seedOrder()
     await seedItem(order.id)
@@ -133,6 +144,11 @@ describe('Admin orders', () => {
     expect(res.status).toBe(200)
     expect(res.body.data.status).toBe('cancelled')
     expect(res.body.data.paidAt).toBeNull()
+
+    const events = await AppDataSource.getRepository(OrderNotification).find({
+      where: { orderId: order.id },
+    })
+    expect(events.map((e) => e.eventKey)).toEqual(['status:cancelled', 'status:cancelled'])
   })
 
   it('marks a failed order paid (manual override after offline payment)', async () => {
@@ -163,6 +179,47 @@ describe('Admin orders', () => {
     expect(res.body.error.code).toBe('order_already_paid')
   })
 
+  it('отмечает оплаченный заказ отправленным и ставит событие', async () => {
+    const paid = await seedOrder({ status: 'paid', paidAt: new Date() })
+    const res = await request(app)
+      .patch(`/api/admin/orders/${paid.id}/status`)
+      .set(authHeaders(auth))
+      .send({ status: 'shipped', comment: 'сдали в ПВЗ' })
+    expect(res.status).toBe(200)
+    expect(res.body.data.status).toBe('shipped')
+    const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: paid.id })
+    expect(saved.statusHistory.at(-1)).toMatchObject({
+      from: 'paid',
+      to: 'shipped',
+      by: 'admin',
+      comment: 'сдали в ПВЗ',
+    })
+    const events = await AppDataSource.getRepository(OrderNotification).find({
+      where: { orderId: paid.id },
+    })
+    expect(events.map((e) => e.eventKey)).toEqual(['status:shipped', 'status:shipped'])
+  })
+
+  it('409, если отправить неоплаченный заказ', async () => {
+    const pending = await seedOrder()
+    const res = await request(app)
+      .patch(`/api/admin/orders/${pending.id}/status`)
+      .set(authHeaders(auth))
+      .send({ status: 'shipped' })
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('order_not_paid')
+  })
+
+  it('409 на изменение отправленного заказа', async () => {
+    const shipped = await seedOrder({ status: 'shipped', paidAt: new Date() })
+    const res = await request(app)
+      .patch(`/api/admin/orders/${shipped.id}/status`)
+      .set(authHeaders(auth))
+      .send({ status: 'cancelled' })
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('order_already_shipped')
+  })
+
   it('rejects invalid status values with 400', async () => {
     const order = await seedOrder()
     const res = await request(app)
@@ -170,6 +227,77 @@ describe('Admin orders', () => {
       .set(authHeaders(auth))
       .send({ status: 'failed' })
     expect(res.status).toBe(400)
+  })
+
+  it('карточка заказа отдаёт состояние уведомлений', async () => {
+    const order = await seedOrder()
+    const repo = AppDataSource.getRepository(OrderNotification)
+    await repo.save([
+      repo.create({
+        orderId: order.id,
+        channel: 'sheets',
+        eventKey: 'created',
+        sentAt: new Date(),
+        attempts: 1,
+      }),
+      repo.create({
+        orderId: order.id,
+        channel: 'telegram',
+        eventKey: 'created',
+        failedAt: new Date(),
+        attempts: 1,
+        lastError: 'Telegram 403: Forbidden: bot was kicked from the group chat',
+      }),
+    ])
+    const res = await request(app).get(`/api/admin/orders/${order.id}`).set(authHeaders(auth))
+    expect(res.status).toBe(200)
+    expect(res.body.data.notifications).toHaveLength(2)
+    expect(res.body.data.notifications[1]).toMatchObject({
+      channel: 'telegram',
+      eventKey: 'created',
+      attempts: 1,
+      lastError: expect.stringContaining('kicked'),
+    })
+    expect(res.body.data.notifications[1].failedAt).not.toBeNull()
+  })
+
+  it('«Отправить ещё раз» возвращает несданные записи в очередь', async () => {
+    const order = await seedOrder()
+    const repo = AppDataSource.getRepository(OrderNotification)
+    const sent = await repo.save(
+      repo.create({
+        orderId: order.id,
+        channel: 'sheets',
+        eventKey: 'created',
+        sentAt: new Date(),
+        attempts: 1,
+      }),
+    )
+    const failed = await repo.save(
+      repo.create({
+        orderId: order.id,
+        channel: 'telegram',
+        eventKey: 'created',
+        failedAt: new Date(),
+        attempts: 3,
+        lastError: 'x',
+      }),
+    )
+    const res = await request(app)
+      .post(`/api/admin/orders/${order.id}/notifications/retry`)
+      .set(authHeaders(auth))
+    expect(res.status).toBe(200)
+    const retried = await repo.findOneByOrFail({ id: failed.id })
+    expect(retried).toMatchObject({ failedAt: null, attempts: 0, lastError: null })
+    expect(retried.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now())
+    expect((await repo.findOneByOrFail({ id: sent.id })).sentAt).not.toBeNull()
+  })
+
+  it('404 на повтор для неизвестного заказа', async () => {
+    const res = await request(app)
+      .post('/api/admin/orders/00000000-0000-4000-8000-000000000999/notifications/retry')
+      .set(authHeaders(auth))
+    expect(res.status).toBe(404)
   })
 
   it('rejects missing auth (401) and missing CSRF (403)', async () => {

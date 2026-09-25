@@ -1,4 +1,7 @@
-export type OrderStatus = 'pending' | 'paid' | 'failed' | 'cancelled'
+import type { DeliveryDestination } from './shipping.js'
+import type { OrderNotificationDto } from './notifications.js'
+
+export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
 
 // Payment provider actually wired to the order. `manual` — no online payment:
 // the order stays pending and a manager contacts the customer. `tbank` —
@@ -25,6 +28,19 @@ export interface OrderItem {
 export interface DeliveryAddress {
   address: string
   comment: string | null
+  // Из виджета СДЭК. У заказов до интеграции этих полей нет.
+  cityCode?: number | null
+  deliveryPointCode?: string | null
+  postalCode?: string | null
+  // Расчёт доставки на момент заказа. source: 'fallback' — калькулятор СДЭК
+  // не ответил, взята фиксированная ставка: такой заказ стоит проверить.
+  quote?: {
+    tariffCode: number
+    cdekPriceRub: number | null
+    periodMin: number | null
+    periodMax: number | null
+    source: 'cdek' | 'fallback'
+  } | null
 }
 
 // One entry per status transition — appended by the checkout flow, the
@@ -44,6 +60,7 @@ export interface OrderDto {
   customerName: string
   customerPhone: string
   customerEmail: string
+  customerTelegram: string | null
   deliveryAddress: DeliveryAddress
   deliveryMethod: string
   subtotalRub: number
@@ -54,6 +71,7 @@ export interface OrderDto {
   paymentUrl: string | null
   statusHistory: OrderStatusHistoryEntry[]
   items: OrderItem[]
+  notifications?: OrderNotificationDto[]
   createdAt: string
   paidAt: string | null
   erpSyncedAt: string | null
@@ -63,8 +81,9 @@ export interface OrderDto {
 
 export interface CheckoutRequest {
   items: Array<{ productId: string; quantity: number }>
-  customer: { name: string; phone: string; email?: string }
-  delivery: { method: DeliveryMethod; address: string; comment?: string }
+  customer: { name: string; phone: string; email?: string; telegram?: string }
+  // Куда везём — из виджета СДЭК (см. DeliveryDestination) + комментарий.
+  delivery: DeliveryDestination & { comment?: string }
 }
 
 export interface CheckoutResponse {

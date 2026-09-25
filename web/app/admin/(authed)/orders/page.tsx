@@ -10,6 +10,7 @@ import {
   PAYMENT_PROVIDER_LABELS,
   formatDateTime,
   formatRub,
+  isOrderStatus,
 } from './orderUi'
 
 // Server-side list fetch — same pattern as the products list: cookies are
@@ -42,13 +43,10 @@ const STATUS_FILTERS: Array<{ value: OrderStatus | undefined; label: string }> =
   { value: undefined, label: 'Все' },
   { value: 'pending', label: ORDER_STATUS_LABELS.pending },
   { value: 'paid', label: ORDER_STATUS_LABELS.paid },
+  { value: 'shipped', label: ORDER_STATUS_LABELS.shipped },
   { value: 'failed', label: ORDER_STATUS_LABELS.failed },
   { value: 'cancelled', label: ORDER_STATUS_LABELS.cancelled },
 ]
-
-function isOrderStatus(value: string | undefined): value is OrderStatus {
-  return value === 'pending' || value === 'paid' || value === 'failed' || value === 'cancelled'
-}
 
 interface SearchParams {
   status?: string

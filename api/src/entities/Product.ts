@@ -1,4 +1,5 @@
 import 'reflect-metadata'
+import type { ShippingBox } from '@ximi4ka-shop/shared'
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -70,6 +71,19 @@ export class Product {
 
   @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
   translations!: Record<string, unknown>
+
+  // Доставка СДЭК — см. api/src/lib/shipping/pack.ts.
+  @Column({ type: 'integer', name: 'weight_g', nullable: true })
+  weightG!: number | null
+
+  @Column({ type: 'jsonb', name: 'ship_boxes', default: () => "'[]'::jsonb" })
+  shipBoxes!: ShippingBox[]
+
+  @Column({ type: 'integer', name: 'loose_units', default: 1 })
+  looseUnits!: number
+
+  @Column({ type: 'varchar', length: 16, name: 'min_box', nullable: true })
+  minBox!: ShippingBox | null
 
   @OneToMany(() => ProductImage, (img) => img.product)
   images!: ProductImage[]

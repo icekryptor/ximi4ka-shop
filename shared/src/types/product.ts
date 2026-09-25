@@ -1,3 +1,5 @@
+import type { ShippingBox } from './shipping.js'
+
 export type StockStatus = 'in_stock' | 'out_of_stock' | 'preorder'
 
 export interface ProductImage {
@@ -26,6 +28,12 @@ export interface Product {
   canonicalUrl: string | null
   noindex: boolean
   translations: Record<string, unknown>
+  // Данные для доставки. Необязательны в типе, чтобы фикстуры витрины не
+  // обязаны были их знать; API отдаёт их всегда.
+  weightG?: number | null
+  shipBoxes?: ShippingBox[]
+  looseUnits?: number
+  minBox?: ShippingBox | null
   images: ProductImage[]
   createdAt: string
   updatedAt: string

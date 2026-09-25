@@ -1,12 +1,12 @@
 import { beforeEach, describe, it, expect } from 'vitest'
 import {
   SHIPPING_RULES,
-  calcShippingRub,
   formatPhoneInput,
   phoneDigits,
   validateCheckoutForm,
   getOrCreateIdempotencyKey,
   clearIdempotencyKey,
+  normalizeTelegramHandle,
   type CheckoutFormFields,
 } from './checkout'
 
@@ -14,8 +14,8 @@ const validFields: CheckoutFormFields = {
   name: 'Мария',
   phone: '+7 (912) 345-67-89',
   email: '',
-  method: 'cdek_pvz',
-  address: 'Москва, ул. Ленина, 1',
+  telegram: '',
+  apartment: '',
   comment: '',
 }
 
@@ -26,13 +26,6 @@ describe('shipping rules', () => {
 
   it('mirror the server: курьер 500 ₽ / бесплатно от 5000 ₽', () => {
     expect(SHIPPING_RULES.cdek_courier).toEqual({ freeFromRub: 5000, priceRub: 500 })
-  })
-
-  it('charges below the threshold and is free at/above it (inclusive)', () => {
-    expect(calcShippingRub('cdek_pvz', 2999)).toBe(350)
-    expect(calcShippingRub('cdek_pvz', 3000)).toBe(0)
-    expect(calcShippingRub('cdek_courier', 4999)).toBe(500)
-    expect(calcShippingRub('cdek_courier', 5000)).toBe(0)
   })
 })
 
@@ -73,28 +66,50 @@ describe('formatPhoneInput (+7 mask)', () => {
 
 describe('validateCheckoutForm', () => {
   it('accepts a valid form', () => {
-    expect(validateCheckoutForm(validFields)).toEqual({})
+    expect(validateCheckoutForm(validFields, true)).toEqual({})
   })
 
   it('requires the name', () => {
-    const errors = validateCheckoutForm({ ...validFields, name: '   ' })
+    const errors = validateCheckoutForm({ ...validFields, name: '   ' }, true)
     expect(errors.name).toMatch(/укажите имя/i)
   })
 
   it('requires a complete phone number', () => {
-    const errors = validateCheckoutForm({ ...validFields, phone: '+7 (912) 345' })
+    const errors = validateCheckoutForm({ ...validFields, phone: '+7 (912) 345' }, true)
     expect(errors.phone).toMatch(/телефон/i)
   })
 
   it('rejects a malformed email but allows an empty one', () => {
-    expect(validateCheckoutForm({ ...validFields, email: 'нет-собаки' }).email).toMatch(/email/i)
-    expect(validateCheckoutForm({ ...validFields, email: '' }).email).toBeUndefined()
-    expect(validateCheckoutForm({ ...validFields, email: 'a@b.ru' }).email).toBeUndefined()
+    expect(validateCheckoutForm({ ...validFields, email: 'нет-собаки' }, true).email).toMatch(
+      /email/i,
+    )
+    expect(validateCheckoutForm({ ...validFields, email: '' }, true).email).toBeUndefined()
+    expect(validateCheckoutForm({ ...validFields, email: 'a@b.ru' }, true).email).toBeUndefined()
   })
 
-  it('requires the address', () => {
-    const errors = validateCheckoutForm({ ...validFields, address: '' })
-    expect(errors.address).toMatch(/адрес/i)
+  it('требует выбрать пункт выдачи или адрес на карте', () => {
+    const errors = validateCheckoutForm(validFields, false)
+    expect(errors.delivery).toMatch(/пункт выдачи|адрес/i)
+  })
+})
+
+describe('normalizeTelegramHandle (форма)', () => {
+  it('приводит ник к виду @username', () => {
+    expect(normalizeTelegramHandle('t.me/maria_ivanova')).toBe('@maria_ivanova')
+    expect(normalizeTelegramHandle('@maria_ivanova')).toBe('@maria_ivanova')
+  })
+  it('null для невалидного', () => {
+    expect(normalizeTelegramHandle('мария')).toBeNull()
+  })
+})
+
+describe('validateCheckoutForm — Telegram', () => {
+  it('пустой Telegram — не ошибка', () => {
+    expect(validateCheckoutForm({ ...validFields, telegram: '' }, true)).toEqual({})
+  })
+  it('невалидный ник — ошибка', () => {
+    const errors = validateCheckoutForm({ ...validFields, telegram: 'мария' }, true)
+    expect(errors.telegram).toMatch(/латинских/)
   })
 })
 

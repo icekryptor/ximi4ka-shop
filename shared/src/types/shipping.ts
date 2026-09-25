@@ -1,0 +1,39 @@
+// Коробки, в которых магазин отправляет заказы (размеры — от владельца,
+// 23.09.2026). Наборы едут в своих коробках, мелочь раскладывается по
+// количеству предметов: малая — до 5, средняя — до 15, большая — больше.
+export type ShippingBox = 'small' | 'medium' | 'elektro' | 'large'
+
+// Одно место отправления СДЭК. Вес — в граммах, габариты — в сантиметрах,
+// как их ждёт API и виджет.
+export interface ShippingPackage {
+  box: ShippingBox
+  weightG: number
+  lengthCm: number
+  widthCm: number
+  heightCm: number
+  // Вес хотя бы одного товара неизвестен и взят по умолчанию.
+  estimated: boolean
+  items: { productId: string; quantity: number }[]
+}
+
+// Куда везём: ПВЗ — код пункта и код города СДЭК (их отдаёт виджет),
+// курьер — адрес, геокодированный виджетом.
+export type DeliveryDestination =
+  | { method: 'cdek_pvz'; cityCode: number; deliveryPointCode: string; address: string }
+  | { method: 'cdek_courier'; cityCode?: number; postalCode?: string; address: string }
+
+// Расчёт доставки для покупателя. customerPriceRub — то, что увидит и
+// заплатит покупатель (0 от порога бесплатной доставки); cdekPriceRub — что
+// магазин заплатит СДЭК (null, если калькулятор не ответил).
+export interface DeliveryQuote {
+  method: 'cdek_pvz' | 'cdek_courier'
+  tariffCode: number
+  customerPriceRub: number
+  cdekPriceRub: number | null
+  periodMin: number | null
+  periodMax: number | null
+  free: boolean
+  // cdek — цена от калькулятора; fallback — СДЭК не ответил, взята
+  // фиксированная ставка.
+  source: 'cdek' | 'fallback'
+}

@@ -493,7 +493,12 @@ describe('api client', () => {
     const payload = {
       items: [{ productId: 'p1', quantity: 2 }],
       customer: { name: 'Мария', phone: '+79123456789' },
-      delivery: { method: 'cdek_pvz' as const, address: 'Москва' },
+      delivery: {
+        method: 'cdek_pvz' as const,
+        cityCode: 44,
+        deliveryPointCode: 'MSK1',
+        address: 'Москва',
+      },
     }
 
     it('POSTs /api/checkout with the Idempotency-Key header and unwraps data', async () => {
@@ -646,5 +651,34 @@ describe('API base resolution', () => {
       NEXT_PUBLIC_API_URL: 'https://new.ximi4ka.ru',
     })
     expect(url.startsWith('https://new.ximi4ka.ru/')).toBe(true)
+  })
+})
+
+describe('quoteShipping', () => {
+  it('шлёт корзину и адрес на расчёт доставки и отдаёт data', async () => {
+    const data = {
+      subtotalRub: 1000,
+      packages: [],
+      quote: null,
+      tariffs: { pvz: 136, courier: 137 },
+    }
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data }))
+    vi.stubGlobal('fetch', fetchMock)
+    const { quoteShipping } = await import('./api')
+
+    const result = await quoteShipping({ items: [{ productId: 'p1', quantity: 2 }] })
+
+    expect(result).toEqual(data)
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toMatch(/\/api\/public\/shipping\/quote$/)
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ items: [{ productId: 'p1', quantity: 2 }] })
+  })
+})
+
+describe('cdekWidgetServicePath', () => {
+  it('ведёт на прокси виджета с целой суммой корзины', async () => {
+    const { cdekWidgetServicePath } = await import('./api')
+    expect(cdekWidgetServicePath(2999.6)).toMatch(/\/api\/public\/cdek\/widget\?subtotal=3000$/)
   })
 })

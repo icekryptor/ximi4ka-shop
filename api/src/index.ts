@@ -3,6 +3,7 @@ import pino from 'pino'
 import { createApp } from './app.js'
 import { AppDataSource } from './config/dataSource.js'
 import { startReconciliationJob } from './lib/payments/reconcile.js'
+import { startNotificationWorker } from './lib/notifications/worker.js'
 
 const logger = pino()
 const port = Number(process.env.PORT ?? 3001)
@@ -20,6 +21,12 @@ async function bootstrap() {
   // No-op unless PAYMENT_PROVIDER=tbank.
   if (startReconciliationJob()) {
     logger.info('payment reconciliation job started (tbank)')
+  }
+
+  // Очередь уведомлений о заказах → Google Таблица и Telegram.
+  // No-op, если ни один канал не настроен.
+  if (startNotificationWorker()) {
+    logger.info('order notifications worker started')
   }
 }
 

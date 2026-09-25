@@ -1,8 +1,8 @@
 import type { DeliveryMethod } from '@ximi4ka-shop/shared'
 
-// Client-side mirror of api/src/lib/shipping.ts — the checkout form shows a
-// live total before anything hits the server. The server recomputes and is
-// the source of truth; these values only affect the preview.
+// Пороги бесплатной доставки — зеркало api/src/lib/shipping/rates.ts, только
+// для подсказки в интерфейсе. Саму цену доставки считает сервер
+// (/api/public/shipping/quote) по калькулятору СДЭК.
 export const SHIPPING_RULES: Record<DeliveryMethod, { freeFromRub: number; priceRub: number }> = {
   cdek_pvz: { freeFromRub: 3000, priceRub: 350 },
   cdek_courier: { freeFromRub: 5000, priceRub: 500 },
@@ -11,11 +11,6 @@ export const SHIPPING_RULES: Record<DeliveryMethod, { freeFromRub: number; price
 export const DELIVERY_LABELS: Record<DeliveryMethod, string> = {
   cdek_pvz: 'СДЭК — пункт выдачи',
   cdek_courier: 'СДЭК — курьером',
-}
-
-export function calcShippingRub(method: DeliveryMethod, subtotalRub: number): number {
-  const rule = SHIPPING_RULES[method]
-  return subtotalRub >= rule.freeFromRub ? 0 : rule.priceRub
 }
 
 /** Digits of the full number including the country code, e.g. '79123456789'. */
@@ -43,20 +38,42 @@ export function formatPhoneInput(raw: string): string {
   return out
 }
 
+// Ник Telegram покупателя → «@username»; null — не ник. Зеркало
+// api/src/lib/telegramHandle.ts.
+const TELEGRAM_HANDLE_RE = /^[A-Za-z0-9_]{5,32}$/
+
+export function normalizeTelegramHandle(raw: string): string | null {
+  const bare = raw
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^(?:www\.)?(?:t\.me|telegram\.me)\//i, '')
+    .replace(/\/+$/, '')
+    .replace(/^@/, '')
+  return TELEGRAM_HANDLE_RE.test(bare) ? `@${bare}` : null
+}
+
 export interface CheckoutFormFields {
   name: string
   phone: string
   email: string
-  method: DeliveryMethod
-  address: string
+  telegram: string
+  // Квартира, подъезд, этаж — для курьера. Виджет СДЭК геокодирует только
+  // улицу и дом.
+  apartment: string
   comment: string
 }
 
-export type CheckoutFormErrors = Partial<Record<'name' | 'phone' | 'email' | 'address', string>>
+export type CheckoutFormErrors = Partial<
+  Record<'name' | 'phone' | 'email' | 'telegram' | 'delivery', string>
+>
 
 // Client-side validation with Russian messages. Mirrors the zod schema on
 // the server (checkout.schemas.ts) so a valid form never bounces off a 400.
-export function validateCheckoutForm(fields: CheckoutFormFields): CheckoutFormErrors {
+// hasDelivery — выбран ли пункт выдачи или адрес на карте СДЭК.
+export function validateCheckoutForm(
+  fields: CheckoutFormFields,
+  hasDelivery: boolean,
+): CheckoutFormErrors {
   const errors: CheckoutFormErrors = {}
   if (fields.name.trim() === '') {
     errors.name = 'Укажите имя'
@@ -68,8 +85,11 @@ export function validateCheckoutForm(fields: CheckoutFormFields): CheckoutFormEr
   if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.email = 'Проверьте email — похоже, в нём опечатка'
   }
-  if (fields.address.trim() === '') {
-    errors.address = 'Укажите адрес доставки'
+  if (fields.telegram.trim() !== '' && !normalizeTelegramHandle(fields.telegram)) {
+    errors.telegram = 'Проверьте ник: 5–32 латинских букв, цифр или _'
+  }
+  if (!hasDelivery) {
+    errors.delivery = 'Выберите пункт выдачи или адрес доставки на карте'
   }
   return errors
 }

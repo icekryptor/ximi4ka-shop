@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import type { OrderDto } from '@ximi4ka-shop/shared'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import { OrderStatusActions } from './OrderStatusActions'
+import { OrderNotifications } from './OrderNotifications'
 import {
   DELIVERY_METHOD_LABELS,
   HISTORY_ACTOR_LABELS,
@@ -182,6 +183,10 @@ export default async function AdminOrderDetailPage({
                 <dt className="text-xs text-brand-text-secondary">E-mail</dt>
                 <dd className="text-brand-text">{order.customerEmail || '—'}</dd>
               </div>
+              <div>
+                <dt className="text-xs text-brand-text-secondary">Telegram</dt>
+                <dd className="text-brand-text">{order.customerTelegram || '—'}</dd>
+              </div>
             </dl>
           </section>
 
@@ -246,13 +251,21 @@ export default async function AdminOrderDetailPage({
           <section className="bg-white rounded-2xl border border-brand-border p-4">
             <h2 className="text-lg font-semibold text-brand-text">Действия</h2>
             <div className="mt-3">
-              {order.status === 'paid' ? (
+              {order.status === 'shipped' ? (
                 <p className="text-sm text-brand-text-secondary">
-                  Заказ оплачен — ручное изменение статуса недоступно.
+                  Заказ отправлен — ручное изменение статуса недоступно.
                 </p>
               ) : (
                 <OrderStatusActions orderId={order.id} status={order.status} />
               )}
+            </div>
+          </section>
+
+          {/* Уведомления */}
+          <section className="bg-white rounded-2xl border border-brand-border p-4">
+            <h2 className="text-lg font-semibold text-brand-text">Уведомления</h2>
+            <div className="mt-3">
+              <OrderNotifications orderId={order.id} notifications={order.notifications ?? []} />
             </div>
           </section>
         </div>

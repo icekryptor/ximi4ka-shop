@@ -3,6 +3,7 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { TBankProvider } from '../../lib/payments/tbank.js'
 import { applyPaymentStatus } from '../../lib/payments/orderStatus.js'
+import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
 
 export const tbankWebhookRouter: Router = Router()
 
@@ -51,8 +52,9 @@ tbankWebhookRouter.post('/', async (req, res, next) => {
     }
     // Idempotent by payment_intent_id + status: a repeat notification for an
     // already-applied status is a no-op inside applyPaymentStatus.
+    const previousStatus = order.status
     if (applyPaymentStatus(order, event.status, 'tbank')) changed = true
-    if (changed) await repo.save(order)
+    if (changed) await saveOrderWithStatusEvent(order, previousStatus)
 
     res.status(200).type('text/plain').send('OK')
   } catch (err) {

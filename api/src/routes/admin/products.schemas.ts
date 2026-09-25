@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { TranslationsSchema } from './i18n.js'
 
+export const ShippingBoxSchema = z.enum(['small', 'medium', 'elektro', 'large'])
+
 export const CreateProductSchema = z.object({
   slug: z
     .string()
@@ -21,6 +23,11 @@ export const CreateProductSchema = z.object({
   canonicalUrl: z.string().max(500).nullable().optional(),
   noindex: z.boolean().default(false),
   translations: TranslationsSchema.default({}),
+  // Доставка СДЭК — см. api/src/lib/shipping/pack.ts.
+  weightG: z.number().int().positive().max(50_000).nullable().optional(),
+  shipBoxes: z.array(ShippingBoxSchema).max(10).optional(),
+  looseUnits: z.number().int().min(1).max(500).optional(),
+  minBox: ShippingBoxSchema.nullable().optional(),
 })
 
 export const UpdateProductSchema = CreateProductSchema.partial()

@@ -1,6 +1,7 @@
 import type {
   BlogPost,
   OrderDto,
+  OrderNotificationDto,
   OrderStatus,
   Page,
   Product,
@@ -472,14 +473,23 @@ export async function adminGetOrder(id: string): Promise<OrderDto> {
   return body.data
 }
 
-// Manual transitions only — «Отметить оплаченным» / «Отменить».
+// Ручные переходы: «Оплачен», «Отменить», «Отправлен» (только из оплаченного).
 export async function adminSetOrderStatus(
   id: string,
-  input: { status: 'paid' | 'cancelled'; comment?: string },
+  input: { status: 'paid' | 'cancelled' | 'shipped'; comment?: string },
 ): Promise<OrderDto> {
   const body = await authedRequest<{ data: OrderDto }>(
     `/api/admin/orders/${encodeURIComponent(id)}/status`,
     { method: 'PATCH', body: JSON.stringify(input) },
+  )
+  return body.data
+}
+
+// «Отправить ещё раз» для уведомлений заказа, которые не дошли.
+export async function adminRetryOrderNotifications(id: string): Promise<OrderNotificationDto[]> {
+  const body = await authedRequest<{ data: OrderNotificationDto[] }>(
+    `/api/admin/orders/${encodeURIComponent(id)}/notifications/retry`,
+    { method: 'POST' },
   )
   return body.data
 }

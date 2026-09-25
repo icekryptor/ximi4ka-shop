@@ -224,6 +224,54 @@ rm -rf "$K"
 сид-паролем `admin-password-change-me`, который лежит открытым в
 `api/src/seeds/seed.ts`. Меняется в `/admin` под этим же аккаунтом.
 
+## Уведомления о заказах
+
+Каждый заказ уходит строкой в Google Таблицу и карточкой в рабочий Telegram-чат
+(дизайн — `docs/superpowers/specs/2026-09-25-order-notifications-design.md`).
+Ключи — в `deploy/app.env`, после правки — `bash deploy/deploy.sh --no-pull`.
+Пока ключей нет, канал выключен, записи копятся в очереди и уйдут потом.
+
+**Бот:**
+
+1. @BotFather → `/newbot` → токен в `TELEGRAM_BOT_TOKEN`.
+2. Добавить бота в рабочую группу и написать в ней любое сообщение.
+3. Открыть `https://api.telegram.org/bot<токен>/getUpdates`, взять
+   `message.chat.id` (у групп отрицательный) → `TELEGRAM_CHAT_ID`.
+
+**Таблица:**
+
+1. Google Cloud Console → проект → включить Google Sheets API.
+2. «IAM и администрирование» → «Сервисные аккаунты» → создать → «Ключи» → JSON.
+3. JSON целиком, одной строкой или в base64 → `GOOGLE_SERVICE_ACCOUNT_JSON`.
+4. Создать таблицу, открыть доступ «Редактор» для почты сервисного аккаунта
+   (`…@….iam.gserviceaccount.com`). Кроме него — только команда: в таблице
+   персональные данные покупателей.
+5. id таблицы — часть адреса между `/d/` и `/edit` → `GOOGLE_SHEETS_ID`.
+   Лист — `Заказы` (иначе задать `GOOGLE_SHEETS_TAB`).
+
+**Если не доходит:** карточка заказа в админке → «Уведомления»: там видна
+причина. Исправить настройку → «Отправить ещё раз».
+
+**Старые заказы при первом включении.** Всё, что накопилось без ключей, уйдёт
+постепенно: не больше 18 сообщений в минуту в Telegram и 18 строк в минуту в
+таблицу (иначе и чат, и таблица упрутся в лимиты). В чате это будет лента старых карточек.
+Если старые карточки в чате не нужны — до того как добавить ключи Telegram,
+отметить их пропущенными (таблица при этом всё равно заполнится):
+
+```bash
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
+  -c "UPDATE order_notifications SET failed_at = now(), last_error = 'пропущено при включении' WHERE channel = 'telegram' AND sent_at IS NULL AND failed_at IS NULL;"
+```
+
+**Сломалась настройка и сдалось много заказов** (например, отозвали доступ к
+таблице) — после исправления вернуть в очередь все несданные разом, а не
+кнопкой в каждом заказе. Пропущенные при включении остаются пропущенными:
+
+```bash
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
+  -c "UPDATE order_notifications SET failed_at = NULL, attempts = 0, last_error = NULL, next_attempt_at = now() WHERE failed_at IS NOT NULL AND last_error IS DISTINCT FROM 'пропущено при включении';"
+```
+
 ## Хвосты
 
 - Апекс `ximi4ka.ru` остаётся на Tilda; noindex снимать только при его переключении.

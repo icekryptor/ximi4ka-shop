@@ -2,6 +2,7 @@ import 'reflect-metadata'
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
+import { OrderNotification } from '../../entities/OrderNotification.js'
 import { applyPaymentStatus } from './orderStatus.js'
 import { reconcilePendingOrders, startReconciliationJob } from './reconcile.js'
 import { ManualProvider } from './manual.js'
@@ -47,6 +48,16 @@ describe('applyPaymentStatus (mapping rules)', () => {
     const order = makeOrder({ status: 'paid', paidAt: new Date() })
     expect(applyPaymentStatus(order, 'failed', 'tbank')).toBe(false)
     expect(order.status).toBe('paid')
+  })
+
+  it('shipped is terminal too: a late paid retry does not revert it', () => {
+    const paidAt = new Date('2026-07-01T10:00:00Z')
+    const order = makeOrder({ status: 'shipped', paidAt })
+    expect(applyPaymentStatus(order, 'paid', 'tbank')).toBe(false)
+    expect(applyPaymentStatus(order, 'failed', 'reconcile')).toBe(false)
+    expect(order.status).toBe('shipped')
+    expect(order.paidAt).toBe(paidAt)
+    expect(order.statusHistory).toEqual([])
   })
 
   it('failed does not override a manual cancellation', () => {
@@ -142,6 +153,11 @@ describe('reconcilePendingOrders', () => {
     expect(updated.status).toBe('paid')
     expect(updated.paidAt).not.toBeNull()
     expect(updated.statusHistory[0]).toMatchObject({ by: 'reconcile', to: 'paid' })
+
+    const events = await AppDataSource.getRepository(OrderNotification).find({
+      where: { orderId: stale.id },
+    })
+    expect(events.map((e) => e.eventKey)).toEqual(['status:paid', 'status:paid'])
   })
 
   it('skips fresh orders, orders without external id, and non-pending orders', async () => {

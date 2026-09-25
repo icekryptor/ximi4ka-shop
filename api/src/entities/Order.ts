@@ -37,6 +37,24 @@ export class Order {
   @Column({ type: 'varchar', length: 255, name: 'customer_email' })
   customerEmail!: string
 
+  // Ник покупателя в виде «@username» (lib/telegramHandle.ts). Необязателен.
+  @Column({ type: 'varchar', length: 33, name: 'customer_telegram', nullable: true })
+  customerTelegram!: string | null
+
+  // id карточки заказа в рабочем чате: на неё бот отвечает сменами статуса.
+  // bigint pg отдаёт строкой — приводим к числу, id сообщений Telegram
+  // укладываются в Number.MAX_SAFE_INTEGER.
+  @Column({
+    type: 'bigint',
+    name: 'telegram_message_id',
+    nullable: true,
+    transformer: {
+      to: (value: number | null) => value,
+      from: (value: string | null) => (value == null ? null : Number(value)),
+    },
+  })
+  telegramMessageId!: number | null
+
   @Column({ type: 'jsonb', name: 'delivery_address' })
   deliveryAddress!: DeliveryAddress
 

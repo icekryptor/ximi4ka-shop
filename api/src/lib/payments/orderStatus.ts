@@ -10,6 +10,9 @@ import type { PaymentStatus } from './types.js'
 //     idempotent);
 //   * `paid` is terminal — nothing downgrades it (a late REJECTED
 //     retry must not undo a confirmed payment);
+//   * `shipped` is terminal the same way: Т-Касса retries unanswered
+//     notifications for up to a month, and a late CONFIRMED must not turn
+//     an already shipped order back into «оплачен»;
 //   * `failed` only applies to `pending` orders — a manually cancelled
 //     order stays cancelled;
 //   * `paid` DOES apply to cancelled/failed orders: if the money actually
@@ -22,7 +25,7 @@ export function applyPaymentStatus(
 ): boolean {
   if (status === 'pending') return false
   if (order.status === status) return false
-  if (order.status === 'paid') return false
+  if (order.status === 'paid' || order.status === 'shipped') return false
   if (status === 'failed' && order.status !== 'pending') return false
 
   const from = order.status

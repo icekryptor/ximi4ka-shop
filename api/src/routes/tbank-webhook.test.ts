@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } 
 import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
+import { OrderNotification } from '../entities/OrderNotification.js'
 import { createApp } from '../app.js'
 import { generateToken } from '../lib/payments/token.js'
 
@@ -82,6 +83,11 @@ describe('POST /api/webhooks/tbank', () => {
     expect(updated.paidAt).not.toBeNull()
     expect(updated.statusHistory).toHaveLength(1)
     expect(updated.statusHistory[0]).toMatchObject({ from: 'pending', to: 'paid', by: 'tbank' })
+
+    const events = await AppDataSource.getRepository(OrderNotification).find({
+      where: { orderId: order.id },
+    })
+    expect(events.map((e) => e.eventKey)).toEqual(['status:paid', 'status:paid'])
   })
 
   it('is idempotent: a repeated notification does not duplicate history', async () => {
@@ -116,6 +122,31 @@ describe('POST /api/webhooks/tbank', () => {
     const updated = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
     expect(updated.status).toBe('paid')
     expect(updated.statusHistory).toHaveLength(0)
+  })
+
+  it('a late CONFIRMED retry does not revert a shipped order', async () => {
+    const paidAt = new Date('2026-07-01T10:00:00Z')
+    const history = [
+      { from: 'pending', to: 'paid', at: '2026-07-01T10:00:00.000Z', by: 'tbank' },
+      { from: 'paid', to: 'shipped', at: '2026-07-02T10:00:00.000Z', by: 'admin' },
+    ]
+    const order = await seedOrder({
+      status: 'shipped',
+      paidAt,
+      statusHistory: history as Order['statusHistory'],
+    })
+    const res = await request(app)
+      .post('/api/webhooks/tbank')
+      .send(notification({ OrderId: order.orderNumber }))
+    expect(res.status).toBe(200)
+    expect(res.text).toBe('OK')
+    const updated = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
+    expect(updated.status).toBe('shipped')
+    expect(updated.statusHistory).toEqual(history)
+    const events = await AppDataSource.getRepository(OrderNotification).count({
+      where: { orderId: order.id },
+    })
+    expect(events).toBe(0)
   })
 
   it('ignores intermediate statuses (FORM_SHOWED) but still answers OK', async () => {
