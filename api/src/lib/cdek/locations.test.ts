@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { TtlCache } from './locations.js'
+import { describe, it, expect, vi } from 'vitest'
+import { TtlCache, clearCdekLocationCache, getCityPoints } from './locations.js'
 
 describe('TtlCache', () => {
   it('отдаёт значение до истечения срока и забывает после', () => {
@@ -43,5 +43,39 @@ describe('TtlCache', () => {
     t = 100
     expect(cache.get('short')).toBeUndefined()
     expect(cache.get('long')).toBe(1)
+  })
+})
+
+describe('getCityPoints', () => {
+  it('обрезает пробелы по краям name, address и workTime (живой пример — песочница Петербурга)', async () => {
+    clearCdekLocationCache()
+    const get = vi.fn(async (path: string) => {
+      if (path === '/deliverypoints') {
+        return [
+          {
+            code: 'SPB310',
+            name: ' SPB310, Санкт-Петербург ',
+            work_time: ' Пн-Пт 10:00-20:00 ',
+            location: {
+              address: 'пр-т Народного Ополчения, 10, 221н ',
+              longitude: 30.2,
+              latitude: 59.9,
+            },
+          },
+        ]
+      }
+      if (path === '/location/cities') return [{ city: 'Санкт-Петербург' }]
+      throw new Error(`неожиданный запрос: ${path}`)
+    })
+    const result = await getCityPoints({ get }, 137)
+    expect(result.points).toEqual([
+      {
+        code: 'SPB310',
+        name: 'SPB310, Санкт-Петербург',
+        address: 'пр-т Народного Ополчения, 10, 221н',
+        location: [30.2, 59.9],
+        workTime: 'Пн-Пт 10:00-20:00',
+      },
+    ])
   })
 })

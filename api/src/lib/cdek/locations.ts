@@ -103,12 +103,15 @@ function toPoint(raw: unknown): CdekPoint | null {
   const loc = r?.location
   if (!r || typeof r.code !== 'string' || !loc) return null
   if (!isNumber(loc.longitude) || !isNumber(loc.latitude)) return null
+  // СДЭК иногда отдаёт адрес/название/часы работы с пробелами по краям (живой
+  // пример — «пр-т Народного Ополчения, 10, 221н » в песочнице Петербурга) —
+  // обрезаем, иначе пробел всплывает в строке варианта на чекауте.
   return {
     code: r.code,
-    name: typeof r.name === 'string' ? r.name : r.code,
-    address: typeof loc.address === 'string' ? loc.address : '',
+    name: typeof r.name === 'string' ? r.name.trim() : r.code,
+    address: typeof loc.address === 'string' ? loc.address.trim() : '',
     location: [loc.longitude, loc.latitude],
-    workTime: typeof r.work_time === 'string' ? r.work_time : '',
+    workTime: typeof r.work_time === 'string' ? r.work_time.trim() : '',
   }
 }
 
