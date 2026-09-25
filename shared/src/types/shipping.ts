@@ -37,3 +37,28 @@ export interface DeliveryQuote {
   // фиксированная ставка.
   source: 'cdek' | 'fallback'
 }
+
+// Город из подсказок СДЭК (GET /api/public/cdek/cities). name — первая часть
+// full_name («Москва»), fullName — вся строка («Нальчик, городской округ
+// Нальчик, Кабардино-Балкария, Россия»).
+export interface CdekCity {
+  code: number
+  name: string
+  fullName: string
+}
+
+// Пункт выдачи для списка и карты на чекауте (GET /api/public/cdek/points):
+// только то, что показываем. location — [долгота, широта], как у виджета.
+export interface CdekPoint {
+  code: string
+  name: string
+  address: string
+  location: [number, number]
+  workTime: string
+}
+
+export interface CdekCityPoints {
+  // location — центр города для карты; null, если СДЭК его не знает.
+  city: { code: number; name: string; location: [number, number] | null }
+  points: CdekPoint[]
+}

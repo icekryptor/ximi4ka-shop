@@ -21,6 +21,9 @@ export type {
 export type { Product, ProductImage, StockStatus } from './types/product.js'
 
 export type {
+  CdekCity,
+  CdekCityPoints,
+  CdekPoint,
   DeliveryDestination,
   DeliveryQuote,
   ShippingBox,
