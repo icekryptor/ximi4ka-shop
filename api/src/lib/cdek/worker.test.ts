@@ -115,13 +115,18 @@ describe('processDueShipments', () => {
     const order = await seedOrder()
     const s = await seedShipment(order.id)
     const cdek = fakeCdek()
+    // Перед POST обработчик всегда проверяет, не знает ли СДЭК заказ уже под
+    // нашим номером (даже на первой попытке — attempts=0, без uuid).
+    cdek.get.mockRejectedValue(
+      new CdekError(400, 'v2_entity_not_found_im_number', 'Entity is not found'),
+    )
     cdek.post.mockResolvedValue(accepted())
 
     expect(await processDueShipments({ cdek, config }, { now: NOW })).toMatchObject({
       submitted: 1,
     })
 
-    expect(cdek.get).not.toHaveBeenCalled()
+    expect(cdek.get).toHaveBeenCalledWith('/orders', { im_number: order.orderNumber })
     expect(cdek.post).toHaveBeenCalledWith(
       '/orders',
       expect.objectContaining({
@@ -281,13 +286,36 @@ describe('processDueShipments', () => {
     })
   })
 
-  it('ошибка данных на POST (400) — сразу failed', async () => {
+  it('первая попытка: по номеру уже нашли ACCEPTED — POST не шлём, подхватываем uuid', async () => {
     const order = await seedOrder()
     const s = await seedShipment(order.id)
     const cdek = fakeCdek()
+    cdek.get.mockResolvedValue(accepted('4dd05817-5e99-4bae-99af-69b3b3c16233'))
+
+    expect(await processDueShipments({ cdek, config }, { now: NOW })).toMatchObject({
+      submitted: 1,
+    })
+
+    expect(cdek.post).not.toHaveBeenCalled()
+    expect(cdek.get).toHaveBeenCalledWith('/orders', { im_number: order.orderNumber })
+    expect(await shipment(s.id)).toMatchObject({
+      state: 'registering',
+      cdekUuid: '4dd05817-5e99-4bae-99af-69b3b3c16233',
+      attempts: 0,
+    })
+  })
+
+  it('ошибка данных на POST (400) — сразу failed, текст СДЭК не идёт в лог', async () => {
+    const order = await seedOrder()
+    const s = await seedShipment(order.id)
+    const cdek = fakeCdek()
+    cdek.get.mockRejectedValue(
+      new CdekError(400, 'v2_entity_not_found_im_number', 'Entity is not found'),
+    )
     cdek.post.mockRejectedValue(
       new CdekError(400, 'v2_field_is_empty', '[packages[0].items] is empty'),
     )
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
     await processDueShipments({ cdek, config }, { now: NOW })
 
@@ -295,6 +323,85 @@ describe('processDueShipments', () => {
       state: 'failed',
       attempts: 1,
       lastError: '[packages[0].items] is empty',
+    })
+    for (const call of errorSpy.mock.calls) {
+      expect(call.map(String).join(' ')).not.toContain('[packages[0].items] is empty')
+    }
+  })
+
+  it('POST 400 с несколькими ошибками СДЭК — failed с обоими текстами', async () => {
+    const order = await seedOrder()
+    const s = await seedShipment(order.id)
+    const cdek = fakeCdek()
+    cdek.get.mockRejectedValue(
+      new CdekError(400, 'v2_entity_not_found_im_number', 'Entity is not found'),
+    )
+    cdek.post.mockRejectedValue(
+      new CdekError(400, 'v2_multiple_errors', 'СДЭК отклонил заказ', [
+        { code: 'a', message: 'Неверный телефон' },
+        { code: 'b', message: 'Неверный индекс' },
+      ]),
+    )
+
+    await processDueShipments({ cdek, config }, { now: NOW })
+
+    const row = await shipment(s.id)
+    expect(row.state).toBe('failed')
+    expect(row.lastError).toContain('Неверный телефон')
+    expect(row.lastError).toContain('Неверный индекс')
+  })
+
+  it('POST 400 без кода СДЭК (http_error) — временная ошибка, повтор', async () => {
+    const order = await seedOrder()
+    const s = await seedShipment(order.id)
+    const cdek = fakeCdek()
+    cdek.get.mockRejectedValue(
+      new CdekError(400, 'v2_entity_not_found_im_number', 'Entity is not found'),
+    )
+    cdek.post.mockRejectedValue(new CdekError(400, 'http_error', 'СДЭК ответил 400'))
+
+    await processDueShipments({ cdek, config }, { now: NOW })
+
+    expect(await shipment(s.id)).toMatchObject({
+      state: 'queued',
+      attempts: 1,
+      nextAttemptAt: at(60_000),
+    })
+  })
+
+  it('POST — отказ в токене (auth_failed) — временная ошибка, повтор', async () => {
+    const order = await seedOrder()
+    const s = await seedShipment(order.id)
+    const cdek = fakeCdek()
+    cdek.get.mockRejectedValue(
+      new CdekError(400, 'v2_entity_not_found_im_number', 'Entity is not found'),
+    )
+    cdek.post.mockRejectedValue(
+      new CdekError(400, 'auth_failed', 'СДЭК не выдал токен — проверьте ключи'),
+    )
+
+    await processDueShipments({ cdek, config }, { now: NOW })
+
+    expect(await shipment(s.id)).toMatchObject({
+      state: 'queued',
+      attempts: 1,
+      nextAttemptAt: at(60_000),
+    })
+  })
+
+  it('поиск по номеру вернул не «не найдено» — временная ошибка, повтор', async () => {
+    const order = await seedOrder()
+    const s = await seedShipment(order.id)
+    const cdek = fakeCdek()
+    cdek.get.mockRejectedValue(new CdekError(400, 'v2_bad_request', 'Неверный запрос'))
+
+    await processDueShipments({ cdek, config }, { now: NOW })
+
+    expect(cdek.post).not.toHaveBeenCalled()
+    expect(await shipment(s.id)).toMatchObject({
+      state: 'queued',
+      attempts: 1,
+      nextAttemptAt: at(60_000),
     })
   })
 
@@ -323,7 +430,7 @@ describe('processDueShipments', () => {
     expect(cdek.post).not.toHaveBeenCalled()
     const row = await shipment(s.id)
     expect(row.state).toBe('failed')
-    expect(row.lastError).toContain('не оплачен')
+    expect(row.lastError).toContain('отменён')
   })
 
   it('сдаётся, когда окно повторов достигает суток', async () => {

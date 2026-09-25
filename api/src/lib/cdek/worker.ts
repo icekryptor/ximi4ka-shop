@@ -23,7 +23,10 @@ import {
 // queued → POST /v2/orders → registering → опрос GET /v2/orders/{uuid} →
 // created | failed. Тик — раз в 10 с, одна обработка за раз внутри процесса:
 // api — один контейнер, как у уведомлений, блокировки строк не нужны. От
-// дублей защищает наш номер в `number` и поиск по нему перед повтором POST.
+// дублей защищает наш номер в `number` и поиск по нему перед КАЖДЫМ POST —
+// не только повторным: счётчик attempts сбрасывается ручным повтором в
+// админке, а рестарт процесса сразу после первого POST оставляет запись
+// с attempts=0 и без uuid, хотя заказ мог уже уйти в СДЭК.
 
 export const CDEK_WORKER_INTERVAL_MS = 10_000
 export const CDEK_POLL_INTERVAL_MS = 15_000
@@ -68,13 +71,37 @@ function errorsText(request: CdekRequestState | undefined): string {
 
 // Повтор тех же данных не поможет: СДЭК отверг заказ по существу.
 function isPermanent(err: unknown): boolean {
-  if (err instanceof CdekDataError) return true
-  return (
-    err instanceof CdekError &&
-    err.status >= 400 &&
-    err.status < 500 &&
-    ![401, 403, 408, 429].includes(err.status)
-  )
+  return err instanceof CdekDataError
+}
+
+// СДЭК отверг тело заказа по существу (design §7: «4xx с errors[] на POST»).
+// Распознаём только это: код ошибки СДЭК есть и это не голый HTTP-статус
+// (`http_error` — сервер ответил 4xx без опознанного тела, например прокси
+// или неверный CDEK_API_URL) и не отказ в токене (`auth_failed` — ключи
+// временно не работают, не данные заказа); 401/403/408/429 — тоже временные.
+// Поиск по номеру и опрос статуса такие коды не проходят через эту функцию:
+// там 4xx значит «не знаем» или «ещё не готово», а не «данные заказа неверны».
+function asDataError(err: unknown): CdekDataError | null {
+  if (!(err instanceof CdekError)) return null
+  if (err.status < 400 || err.status >= 500) return null
+  if ([401, 403, 408, 429].includes(err.status)) return null
+  if (err.code === 'http_error' || err.code === 'auth_failed') return null
+  const items = Array.isArray(err.details)
+    ? (err.details as { code?: string; message?: string }[])
+    : []
+  const text = items
+    .map((e) => e.message ?? e.code)
+    .filter(Boolean)
+    .join('; ')
+  return new CdekDataError(text || err.message)
+}
+
+// Код ошибки в лог сервера — без текста СДЭК: он может содержать эхо данных
+// покупателя (design §9 — полный текст виден только в админке, в last_error).
+function errCode(err: unknown): string {
+  if (err instanceof CdekError) return err.code
+  if (err instanceof Error) return err.name
+  return 'unknown_error'
 }
 
 // Заказ, который СДЭК уже знает под нашим номером. «Не найдено» — не ошибка.
@@ -95,28 +122,33 @@ async function submit(
 ): Promise<Outcome> {
   const repo = AppDataSource.getRepository(CdekShipment)
   if (!PAID_STATUSES.has(order.status)) {
-    throw new CdekDataError(`Заказ не оплачен (статус ${order.status}) — в СДЭК не отправляем`)
+    const message =
+      order.status === 'cancelled'
+        ? 'Заказ отменён — в СДЭК не отправляем'
+        : `Заказ не оплачен (статус ${order.status}) — в СДЭК не отправляем`
+    throw new CdekDataError(message)
   }
-  // Прошлая попытка могла дойти до СДЭК, а ответ — потеряться.
-  if (s.attempts > 0 || s.cdekUuid) {
-    const known = await findByNumber(cdek, order.orderNumber)
-    const uuid = known?.entity?.uuid
-    if (uuid && createRequest(known)?.state !== 'INVALID') {
-      await repo.update(s.id, {
-        state: 'registering',
-        cdekUuid: uuid,
-        submittedAt: s.submittedAt ?? now,
-        nextAttemptAt: now,
-        lastError: null,
-      })
-      return 'submitted'
-    }
+  // Перед каждым POST проверяем, не знает ли СДЭК заказ уже под нашим
+  // номером — прошлая попытка могла дойти, а ответ потеряться.
+  const known = await findByNumber(cdek, order.orderNumber)
+  const knownUuid = known?.entity?.uuid
+  if (knownUuid && createRequest(known)?.state !== 'INVALID') {
+    await repo.update(s.id, {
+      state: 'registering',
+      cdekUuid: knownUuid,
+      submittedAt: s.submittedAt ?? now,
+      nextAttemptAt: now,
+      lastError: null,
+    })
+    return 'submitted'
   }
   const { packages, lines } = await loadShipmentInput(order)
-  const res = await cdek.post<CdekOrderInfo>(
-    '/orders',
-    buildCdekOrder(order, packages, lines, config),
-  )
+  let res: CdekOrderInfo
+  try {
+    res = await cdek.post<CdekOrderInfo>('/orders', buildCdekOrder(order, packages, lines, config))
+  } catch (err) {
+    throw asDataError(err) ?? err
+  }
   const uuid = res?.entity?.uuid
   if (!uuid) throw new CdekError(0, 'no_uuid', 'СДЭК принял заказ, но не вернул его uuid')
   await repo.update(s.id, {
@@ -182,7 +214,7 @@ async function processShipment(
     const attempts = s.attempts + 1
     if (isPermanent(err) || retryWindowMs(attempts) >= GIVE_UP_AFTER_MS) {
       await repo.update(s.id, { state: 'failed', attempts, lastError: message })
-      console.error(`cdek: заказ ${s.orderId} не создан в СДЭК — ${message}`)
+      console.error(`cdek: заказ ${s.orderId} не создан в СДЭК — ${errCode(err)}`)
       return 'failed'
     }
     await repo.update(s.id, {
@@ -190,7 +222,7 @@ async function processShipment(
       lastError: message,
       nextAttemptAt: new Date(now.getTime() + nextDelayMs(attempts)),
     })
-    console.warn(`cdek: заказ ${s.orderId} — ${message}, повтор по расписанию`)
+    console.warn(`cdek: заказ ${s.orderId} — ${errCode(err)}, повтор по расписанию`)
     return 'retried'
   }
 }
