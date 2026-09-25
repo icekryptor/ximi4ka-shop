@@ -8,6 +8,7 @@ import { OrderItem } from '../entities/OrderItem.js'
 import { OrderNotification } from '../entities/OrderNotification.js'
 import { createApp } from '../app.js'
 import { setCdekClientForTests } from '../lib/cdek/index.js'
+import { clearCdekLocationCache } from '../lib/cdek/locations.js'
 
 async function seedProduct(overrides: Partial<Product> = {}): Promise<Product> {
   const repo = AppDataSource.getRepository(Product)
@@ -40,6 +41,28 @@ function checkoutBody(items: Array<{ productId: string; quantity: number }>) {
   }
 }
 
+// Список пунктов города 44 так, как его отдаёт СДЭК (урезан). Калькулятор
+// «не отвечает» — цена фиксированная, как в соседних тестах.
+function stubCityPoints(codes: string[]) {
+  const get = vi.fn()
+  get.mockImplementation(async (path: string) =>
+    path === '/deliverypoints'
+      ? codes.map((code) => ({
+          code,
+          name: `${code}, Москва`,
+          work_time: 'Пн-Пт 10:00-20:00',
+          location: { address: 'ул. Ленина, 1', longitude: 37.6, latitude: 55.7 },
+        }))
+      : [{ code: 44, city: 'Москва', longitude: 37.6176, latitude: 55.7558 }],
+  )
+  setCdekClientForTests({
+    get,
+    post: vi.fn().mockRejectedValue(new Error('offline')),
+    raw: vi.fn(),
+  })
+  return get
+}
+
 describe('POST /api/checkout', () => {
   let app: ReturnType<typeof createApp>
 
@@ -60,6 +83,7 @@ describe('POST /api/checkout', () => {
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
     setCdekClientForTests(null)
+    clearCdekLocationCache()
   })
 
   it('creates a pending order with DB-recomputed prices and snapshots', async () => {
@@ -387,5 +411,67 @@ describe('POST /api/checkout', () => {
     })
     expect(order.status).toBe('pending')
     expect(order.paymentIntentId).toBeNull()
+  })
+
+  it('400 delivery_point_unknown: пункта нет в списке города — заказ не создаётся', async () => {
+    stubCityPoints(['MSK1', 'MSK65'])
+    const p = await seedProduct()
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: p.id, quantity: 1 }]))
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatchObject({
+      code: 'delivery_point_unknown',
+      message: 'Пункт выдачи не найден — выберите другой',
+    })
+    expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+  })
+
+  it('пункт из списка города — заказ создаётся', async () => {
+    const get = stubCityPoints(['MSK123'])
+    const p = await seedProduct()
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: p.id, quantity: 1 }]))
+    expect(res.status).toBe(201)
+    expect(get).toHaveBeenCalledWith('/deliverypoints', {
+      city_code: 44,
+      type: 'PVZ',
+      is_handout: true,
+    })
+  })
+
+  it('СДЭК не ответил на список пунктов — заказ принимаем: оформление важнее', async () => {
+    setCdekClientForTests({
+      get: vi.fn().mockRejectedValue(new Error('timeout')),
+      post: vi.fn().mockRejectedValue(new Error('timeout')),
+      raw: vi.fn(),
+    })
+    const p = await seedProduct()
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: p.id, quantity: 1 }]))
+    expect(res.status).toBe(201)
+  })
+
+  it('СДЭК вернул пустой список пунктов — проверку пропускаем, заказ принимаем', async () => {
+    // Покупатель выбрал пункт из списка, значит пункты в городе были: пустота —
+    // скорее сбой СДЭК, и отвечать 400 на каждый заказ в этот город нельзя.
+    stubCityPoints([])
+    const p = await seedProduct()
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: p.id, quantity: 1 }]))
+    expect(res.status).toBe(201)
+  })
+
+  it('курьеру список пунктов не нужен', async () => {
+    const get = stubCityPoints([])
+    const p = await seedProduct()
+    const body = checkoutBody([{ productId: p.id, quantity: 1 }])
+    body.delivery = { method: 'cdek_courier', cityCode: 44, address: 'Москва, Тверская ул., 1' }
+    const res = await request(app).post('/api/checkout').send(body)
+    expect(res.status).toBe(201)
+    expect(get).not.toHaveBeenCalled()
   })
 })

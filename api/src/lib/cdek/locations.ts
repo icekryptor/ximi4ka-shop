@@ -165,3 +165,22 @@ export async function getCityPoints(cdek: Cdek, cityCode: number): Promise<CdekC
   pointsCache.set(key, result, result.points.length > 0 ? POINTS_TTL_MS : EMPTY_POINTS_TTL_MS)
   return result
 }
+
+// Проверка пункта на чекауте (§4.3): true/false — по списку города из того же
+// кеша, что видел покупатель; null — проверить нечем. Пустой список тоже null:
+// покупатель выбрал пункт из списка, значит пункты в городе были, и пустота —
+// скорее сбой СДЭК, чем закрытый город. Отвечать 400 на все заказы туда нельзя.
+export async function isKnownDeliveryPoint(
+  cdek: Cdek,
+  cityCode: number,
+  pointCode: string,
+): Promise<boolean | null> {
+  try {
+    const { points } = await getCityPoints(cdek, cityCode)
+    if (points.length === 0) return null
+    return points.some((p) => p.code === pointCode)
+  } catch (err) {
+    console.warn('cdek: проверка пункта пропущена —', describeCdekError(err))
+    return null
+  }
+}
