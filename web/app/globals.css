@@ -57,15 +57,6 @@
   size-adjust: 107.12%;
 }
 
-@font-face {
-  font-family: 'JetBrains Mono Fallback';
-  src: local('Arial');
-  ascent-override: 75.79%;
-  descent-override: 22.29%;
-  line-gap-override: 0%;
-  size-adjust: 134.59%;
-}
-
 :root {
   --background: #ffffff;
   --foreground: #1c1528;
@@ -182,10 +173,15 @@
      resolves the loop by reading the inherited custom property, so the
      fallback chain only kicks in pre-hydration or if the JS download
      fails. Keep these alongside the v2 --font-display / --font-sans /
-     --font-mono tokens above; both coexist until Stage 6 cleanup. */
+     --font-mono tokens above; both coexist until Stage 6 cleanup.
+     `--font-lj-mono` no longer loads JetBrains Mono (removed 09.2026):
+     it now resolves to the same IBM Plex Sans as --font-sans. The
+     `-mono` name stays as-is — renaming the utility (font-lj-mono) would
+     touch ~200 call sites across ~60 files, better done as its own pass
+     once the СДЭК branches touching those same files have merged. */
   --font-lj-display: var(--font-lj-display), 'Unbounded', system-ui, sans-serif;
   --font-lj-body: var(--font-lj-body), 'Inter', system-ui, sans-serif;
-  --font-lj-mono: var(--font-lj-mono), 'JetBrains Mono', ui-monospace, monospace;
+  --font-lj-mono: var(--font-plex), 'IBM Plex Sans', system-ui, sans-serif;
 
   /* Type scale (additive — old --text-* stay until Stage 5) */
   --text-lj-mega: clamp(2.75rem, 9vw, 9.5rem);

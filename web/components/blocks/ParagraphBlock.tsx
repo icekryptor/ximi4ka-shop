@@ -14,7 +14,7 @@ interface Props {
  *                                                    in brand purple (lab annotation
  *                                                    feel, not visual shouting)
  *   [&_a]:underline + offset-4                    — links underlined, hover deepens
- *   [&_code]:font-mono + brand-deep               — inline code in JetBrains Mono
+ *   [&_code]:font-lj-mono + brand-deep             — inline code in the lj mono utility
  *   [&_p]:mb-4 + [&_p:last-child]:mb-0            — paragraph rhythm
  *
  * HTML is sanitized via isomorphic-dompurify before injection (defense-in-depth;
