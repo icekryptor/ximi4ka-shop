@@ -19,9 +19,10 @@ describe('<Footer> v3 colophon', () => {
     expect(container.querySelector('svg[role="img"][aria-label*="ХИМИЧКА"]')).not.toBeNull()
   })
 
-  it('renders the edition tag with year', () => {
+  it('does not render the journal edition tag ("Ред. 2026.04 · v3")', () => {
     render(<Footer />)
-    expect(screen.getByText(/ред\..*2026/i)).toBeInTheDocument()
+    expect(screen.queryByText(/ред\.\s*2026\.\d/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/лабораторный журнал/i)).not.toBeInTheDocument()
   })
 
   it('renders copyright', () => {
