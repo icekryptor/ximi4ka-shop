@@ -1,5 +1,6 @@
 import type { DeliveryDestination, ShippingPackage } from './shipping.js'
 import type { OrderNotificationDto } from './notifications.js'
+import type { CdekShipmentDto } from './cdek.js'
 
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
 
@@ -75,6 +76,9 @@ export interface OrderDto {
   statusHistory: OrderStatusHistoryEntry[]
   items: OrderItem[]
   notifications?: OrderNotificationDto[]
+  // Заказ в СДЭК (только в деталях админки).
+  cdekShipment?: CdekShipmentDto | null
+  cdekOrdersEnabled?: boolean
   createdAt: string
   paidAt: string | null
   erpSyncedAt: string | null

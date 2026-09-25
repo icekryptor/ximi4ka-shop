@@ -1,10 +1,11 @@
 import 'reflect-metadata'
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { OrderNotification } from '../entities/OrderNotification.js'
+import { CdekShipment } from '../entities/CdekShipment.js'
 import { createApp } from '../app.js'
 import { authHeaders, loginAsAdmin, type AdminAuth } from './testUtils.js'
 
@@ -63,6 +64,8 @@ describe('Admin orders', () => {
     )
     auth = await loginAsAdmin(app)
   })
+
+  afterEach(() => vi.unstubAllEnvs())
 
   it('lists orders newest-first with pagination', async () => {
     await seedOrder()
@@ -309,6 +312,90 @@ describe('Admin orders', () => {
       .patch(`/api/admin/orders/${order.id}/status`)
       .set('Cookie', `${auth.sessionCookie}; ${auth.csrfCookie}`)
       .send({ status: 'paid' })
+    expect(noCsrf.status).toBe(403)
+  })
+
+  const cdekRepo = () => AppDataSource.getRepository(CdekShipment)
+  const retryCdek = (id: string) =>
+    request(app).post(`/api/admin/orders/${id}/cdek/retry`).set(authHeaders(auth))
+
+  it('детали заказа — статус СДЭК и флаг автосоздания', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', '')
+    const order = await seedOrder({ status: 'paid' })
+    await cdekRepo().save(
+      cdekRepo().create({ orderId: order.id, state: 'created', cdekNumber: '10325990882' }),
+    )
+    const res = await request(app).get(`/api/admin/orders/${order.id}`).set(authHeaders(auth))
+    expect(res.status).toBe(200)
+    expect(res.body.data.cdekOrdersEnabled).toBe(false)
+    expect(res.body.data.cdekShipment).toMatchObject({
+      state: 'created',
+      cdekNumber: '10325990882',
+      attempts: 0,
+    })
+  })
+
+  it('без записи СДЭК — cdekShipment: null', async () => {
+    const order = await seedOrder()
+    const res = await request(app).get(`/api/admin/orders/${order.id}`).set(authHeaders(auth))
+    expect(res.body.data.cdekShipment).toBeNull()
+  })
+
+  it('повтор СДЭК при выключенном флаге — 409', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', '')
+    const order = await seedOrder({ status: 'paid' })
+    const res = await retryCdek(order.id)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('cdek_orders_disabled')
+  })
+
+  it('оплаченный заказ без записи — ставится в очередь', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    const order = await seedOrder({ status: 'paid' })
+    const res = await retryCdek(order.id)
+    expect(res.status).toBe(200)
+    expect(res.body.data).toMatchObject({ state: 'queued', attempts: 0 })
+    expect(await cdekRepo().countBy({ orderId: order.id })).toBe(1)
+  })
+
+  it('ошибка СДЭК — запись возвращается в очередь со свежим окном', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    const order = await seedOrder({ status: 'paid' })
+    const failed = await cdekRepo().save(
+      cdekRepo().create({ orderId: order.id, state: 'failed', attempts: 8, lastError: 'x' }),
+    )
+    const res = await retryCdek(order.id)
+    expect(res.status).toBe(200)
+    const row = await cdekRepo().findOneByOrFail({ id: failed.id })
+    expect(row).toMatchObject({ state: 'queued', attempts: 0, lastError: null })
+    expect(row.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now())
+  })
+
+  it.each(['created', 'registering'] as const)(
+    'запись в %s — 409, дубль не создаём',
+    async (state) => {
+      vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+      const order = await seedOrder({ status: 'paid' })
+      await cdekRepo().save(cdekRepo().create({ orderId: order.id, state }))
+      expect((await retryCdek(order.id)).status).toBe(409)
+    },
+  )
+
+  it('неоплаченный заказ и доставка не СДЭК — 409', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    const pending = await seedOrder()
+    const pickup = await seedOrder({ status: 'paid', deliveryMethod: 'pickup' })
+    expect((await retryCdek(pending.id)).body.error.code).toBe('order_not_paid')
+    expect((await retryCdek(pickup.id)).body.error.code).toBe('not_cdek_delivery')
+  })
+
+  it('повтор СДЭК: 404 для неизвестного заказа, 403 без CSRF', async () => {
+    const unknown = await retryCdek('00000000-0000-4000-8000-000000000999')
+    expect(unknown.status).toBe(404)
+    const order = await seedOrder({ status: 'paid' })
+    const noCsrf = await request(app)
+      .post(`/api/admin/orders/${order.id}/cdek/retry`)
+      .set('Cookie', `${auth.sessionCookie}; ${auth.csrfCookie}`)
     expect(noCsrf.status).toBe(403)
   })
 })

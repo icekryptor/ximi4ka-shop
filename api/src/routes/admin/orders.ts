@@ -1,13 +1,17 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { IsNull, Not } from 'typeorm'
+import type { CdekShipmentDto } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
+import { CdekShipment } from '../../entities/CdekShipment.js'
 import { OrdersListQuerySchema, OrderStatusPatchSchema } from './orders.schemas.js'
 import { conflict, notFound } from '../errors.js'
 import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
 import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
+import { cdekOrdersEnabled } from '../../lib/cdek/orders.js'
+import { enqueueCdekShipment, isCdekDelivery } from '../../lib/cdek/queue.js'
 
 export const adminOrdersRouter: Router = Router()
 
@@ -28,6 +32,22 @@ async function orderNotifications(orderId: string) {
     failedAt: n.failedAt?.toISOString() ?? null,
     lastError: n.lastError,
   }))
+}
+
+function cdekShipmentDto(s: CdekShipment): CdekShipmentDto {
+  return {
+    state: s.state,
+    cdekNumber: s.cdekNumber,
+    attempts: s.attempts,
+    nextAttemptAt: s.nextAttemptAt.toISOString(),
+    lastError: s.lastError,
+    updatedAt: s.updatedAt.toISOString(),
+  }
+}
+
+async function cdekShipment(orderId: string): Promise<CdekShipmentDto | null> {
+  const s = await AppDataSource.getRepository(CdekShipment).findOneBy({ orderId })
+  return s ? cdekShipmentDto(s) : null
 }
 
 // List — newest first, optional status filter.
@@ -59,7 +79,14 @@ adminOrdersRouter.get('/:id', async (req, res, next) => {
       relations: { items: true },
     })
     if (!order) throw notFound('order_not_found', 'Заказ не найден')
-    res.json({ data: { ...order, notifications: await orderNotifications(order.id) } })
+    res.json({
+      data: {
+        ...order,
+        notifications: await orderNotifications(order.id),
+        cdekShipment: await cdekShipment(order.id),
+        cdekOrdersEnabled: cdekOrdersEnabled(),
+      },
+    })
   } catch (err) {
     next(err)
   }
@@ -128,6 +155,48 @@ adminOrdersRouter.post('/:id/notifications/retry', async (req, res, next) => {
       { failedAt: null, attempts: 0, lastError: null, nextAttemptAt: new Date() },
     )
     res.json({ data: await orderNotifications(id.data) })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// «Создать в СДЭК ещё раз»: запись возвращается в очередь со свежим окном
+// повторов, у оплаченного заказа без записи — создаётся. Созданный или ещё
+// регистрирующийся заказ не трогаем — иначе дубль.
+adminOrdersRouter.post('/:id/cdek/retry', async (req, res, next) => {
+  try {
+    const id = z.string().uuid().safeParse(req.params.id)
+    if (!id.success) throw notFound('order_not_found', 'Заказ не найден')
+    const order = await AppDataSource.getRepository(Order).findOneBy({ id: id.data })
+    if (!order) throw notFound('order_not_found', 'Заказ не найден')
+    if (!cdekOrdersEnabled()) {
+      throw conflict('cdek_orders_disabled', 'Создание заказов в СДЭК выключено')
+    }
+    if (order.status !== 'paid' && order.status !== 'shipped') {
+      throw conflict('order_not_paid', 'Заказ не оплачен')
+    }
+    if (!isCdekDelivery(order.deliveryMethod)) {
+      throw conflict('not_cdek_delivery', 'Доставка не СДЭК')
+    }
+    const repo = AppDataSource.getRepository(CdekShipment)
+    const existing = await repo.findOneBy({ orderId: order.id })
+    if (existing?.state === 'created') {
+      throw conflict('cdek_already_created', 'Заказ уже создан в СДЭК')
+    }
+    if (existing?.state === 'registering') {
+      throw conflict('cdek_registering', 'СДЭК ещё регистрирует заказ')
+    }
+    if (existing) {
+      await repo.update(existing.id, {
+        state: 'queued',
+        attempts: 0,
+        lastError: null,
+        nextAttemptAt: new Date(),
+      })
+    } else {
+      await enqueueCdekShipment(AppDataSource.manager, order)
+    }
+    res.json({ data: cdekShipmentDto(await repo.findOneByOrFail({ orderId: order.id })) })
   } catch (err) {
     next(err)
   }
