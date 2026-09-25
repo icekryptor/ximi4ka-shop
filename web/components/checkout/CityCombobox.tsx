@@ -117,6 +117,12 @@ export function CityCombobox({ id, value, onChange, error }: Props) {
       setActiveIndex(-1)
       return
     }
+    if (e.key === 'Enter' && (searching || listOpen)) {
+      // Пока идёт поиск или показан список — даже «Город не найден» без
+      // единой подсказки — Enter не должен уходить дальше и отправлять форму
+      // заказа. Ниже, если пункт выбирать нечем, просто выходим.
+      e.preventDefault()
+    }
     if (!listOpen || cities.length === 0) return
     if (e.key === 'ArrowDown') {
       e.preventDefault()
@@ -125,9 +131,7 @@ export function CityCombobox({ id, value, onChange, error }: Props) {
       e.preventDefault()
       setActiveIndex((i) => (i <= 0 ? cities.length - 1 : i - 1))
     } else if (e.key === 'Enter') {
-      // Enter выбирает город, а не отправляет форму заказа; без выделенной
-      // строки — первую.
-      e.preventDefault()
+      // Без выделенной строки Enter выбирает первую.
       choose(cities[activeIndex >= 0 ? activeIndex : 0]!)
     }
   }

@@ -64,7 +64,7 @@ vi.mock('@/components/checkout/CdekWidget', () => ({
 }))
 
 // vi.fn типизирован дженериком, а не именованным неиспользуемым параметром —
-// без предупреждения @typescript-eslint/no-unused-vars (как в c965f1a).
+// без предупреждения @typescript-eslint/no-unused-vars.
 const mockSuggest = vi.fn<(q: string) => Promise<CdekCity[]>>(async () => [MOSCOW])
 const mockGetPoints = vi.fn<(cityCode: number) => Promise<CdekCityPoints>>(
   async () => MOSCOW_POINTS,
@@ -288,7 +288,12 @@ describe('/checkout page', () => {
     expect(screen.getByTestId('summary-shipping')).toHaveTextContent('—')
     expect(button).toBeDisabled()
 
-    await vi.waitFor(() => expect(screen.getByTestId('summary-shipping')).toHaveTextContent('600'))
+    // 400 мс задержки пересчёта плюс обработка мока — ближе к таймауту по
+    // умолчанию (наблюдалось 815 мс), поэтому таймаут увеличен явно.
+    await vi.waitFor(
+      () => expect(screen.getByTestId('summary-shipping')).toHaveTextContent('600'),
+      { timeout: 2000 },
+    )
     expect(screen.getByTestId('summary-total')).toHaveTextContent('2 600')
     expect(button).toBeEnabled()
     const courierFull = {
@@ -305,6 +310,36 @@ describe('/checkout page', () => {
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(JSON.parse(init.body as string).delivery).toEqual(courierFull)
+  })
+
+  it('курьер: сервер не смог посчитать полный адрес — ошибка, ничего не отправляется', async () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    seedCart(seed)
+    render(<CheckoutPage />)
+    fillContacts()
+    await chooseCity()
+    fireEvent.click(screen.getByRole('radio', { name: /курьер сдэк/i }))
+    // Пересчёт по полному адресу — на этот раз сервер не ответил.
+    mockQuoteShipping.mockRejectedValueOnce(new Error('502'))
+    fireEvent.change(screen.getByLabelText(/улица, дом/i), { target: { value: 'Тверская ул., 1' } })
+    fireEvent.change(screen.getByLabelText(/индекс/i), { target: { value: '125009' } })
+
+    await vi.waitFor(
+      () =>
+        expect(
+          screen.getByRole('radio', { name: 'Курьер СДЭК — не удалось рассчитать' }),
+        ).toBeChecked(),
+      { timeout: 2000 },
+    )
+    expect(screen.getByTestId('summary-shipping')).toHaveTextContent('—')
+
+    submit()
+
+    expect(
+      await screen.findByText('Не удалось рассчитать доставку — нажмите «Повторить расчёт»'),
+    ).toBeInTheDocument()
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('validates required fields in Russian and does not POST', async () => {

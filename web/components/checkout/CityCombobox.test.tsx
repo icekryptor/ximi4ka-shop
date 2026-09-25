@@ -140,6 +140,19 @@ describe('<CityCombobox>', () => {
     expect(onChange).toHaveBeenLastCalledWith(NALCHIK)
   })
 
+  it('ничего не найдено — Enter не отправляет форму', async () => {
+    const onChange = vi.fn()
+    mockSuggest.mockResolvedValueOnce([])
+    render(<Controlled onChange={onChange} />)
+    type('Абырвалг')
+    act(() => vi.advanceTimersByTime(250))
+    await flush()
+    expect(screen.getByText('Город не найден — проверьте название')).toBeInTheDocument()
+    // false — у события вызван preventDefault: браузер не отправит форму.
+    expect(fireEvent.keyDown(input(), { key: 'Enter' })).toBe(false)
+    expect(onChange).not.toHaveBeenCalled()
+  })
+
   it('Esc закрывает список', async () => {
     render(<Controlled onChange={vi.fn()} />)
     type('На')
