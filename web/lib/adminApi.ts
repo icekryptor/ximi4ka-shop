@@ -472,10 +472,10 @@ export async function adminGetOrder(id: string): Promise<OrderDto> {
   return body.data
 }
 
-// Manual transitions only — «Отметить оплаченным» / «Отменить».
+// Ручные переходы: «Оплачен», «Отменить», «Отправлен» (только из оплаченного).
 export async function adminSetOrderStatus(
   id: string,
-  input: { status: 'paid' | 'cancelled'; comment?: string },
+  input: { status: 'paid' | 'cancelled' | 'shipped'; comment?: string },
 ): Promise<OrderDto> {
   const body = await authedRequest<{ data: OrderDto }>(
     `/api/admin/orders/${encodeURIComponent(id)}/status`,

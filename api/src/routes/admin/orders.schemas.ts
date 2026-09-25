@@ -9,6 +9,6 @@ export const OrdersListQuerySchema = z.object({
 // Manual transitions only: a manager can confirm an out-of-band payment or
 // cancel an order. Everything else (failed, pending) is machine-owned.
 export const OrderStatusPatchSchema = z.object({
-  status: z.enum(['paid', 'cancelled']),
+  status: z.enum(['paid', 'cancelled', 'shipped']),
   comment: z.string().trim().max(1000).optional(),
 })

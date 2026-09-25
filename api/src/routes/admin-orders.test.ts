@@ -169,6 +169,47 @@ describe('Admin orders', () => {
     expect(res.body.error.code).toBe('order_already_paid')
   })
 
+  it('отмечает оплаченный заказ отправленным и ставит событие', async () => {
+    const paid = await seedOrder({ status: 'paid', paidAt: new Date() })
+    const res = await request(app)
+      .patch(`/api/admin/orders/${paid.id}/status`)
+      .set(authHeaders(auth))
+      .send({ status: 'shipped', comment: 'сдали в ПВЗ' })
+    expect(res.status).toBe(200)
+    expect(res.body.data.status).toBe('shipped')
+    const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: paid.id })
+    expect(saved.statusHistory.at(-1)).toMatchObject({
+      from: 'paid',
+      to: 'shipped',
+      by: 'admin',
+      comment: 'сдали в ПВЗ',
+    })
+    const events = await AppDataSource.getRepository(OrderNotification).find({
+      where: { orderId: paid.id },
+    })
+    expect(events.map((e) => e.eventKey)).toEqual(['status:shipped', 'status:shipped'])
+  })
+
+  it('409, если отправить неоплаченный заказ', async () => {
+    const pending = await seedOrder()
+    const res = await request(app)
+      .patch(`/api/admin/orders/${pending.id}/status`)
+      .set(authHeaders(auth))
+      .send({ status: 'shipped' })
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('order_not_paid')
+  })
+
+  it('409 на изменение отправленного заказа', async () => {
+    const shipped = await seedOrder({ status: 'shipped', paidAt: new Date() })
+    const res = await request(app)
+      .patch(`/api/admin/orders/${shipped.id}/status`)
+      .set(authHeaders(auth))
+      .send({ status: 'cancelled' })
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('order_already_shipped')
+  })
+
   it('rejects invalid status values with 400', async () => {
     const order = await seedOrder()
     const res = await request(app)

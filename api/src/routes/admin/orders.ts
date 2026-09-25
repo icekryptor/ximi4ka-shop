@@ -64,10 +64,17 @@ adminOrdersRouter.patch('/:id/status', async (req, res, next) => {
     if (order.status === status) {
       throw conflict('status_unchanged', 'Заказ уже находится в этом статусе')
     }
-    // A paid order is settled money — refunds are a separate future flow,
-    // not a status PATCH.
-    if (order.status === 'paid') {
+    // «Отправлен» ставится только оплаченному заказу. Оплаченный заказ — это
+    // деньги: вернуть его в другое состояние можно только отправкой (возвраты —
+    // отдельная будущая история). Отправленный заказ вручную не меняется.
+    if (status === 'shipped' && order.status !== 'paid') {
+      throw conflict('order_not_paid', 'Отправить можно только оплаченный заказ')
+    }
+    if (order.status === 'paid' && status !== 'shipped') {
       throw conflict('order_already_paid', 'Оплаченный заказ нельзя изменить вручную')
+    }
+    if (order.status === 'shipped') {
+      throw conflict('order_already_shipped', 'Отправленный заказ нельзя изменить вручную')
     }
 
     const now = new Date()
