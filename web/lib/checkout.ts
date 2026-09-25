@@ -38,17 +38,34 @@ export function formatPhoneInput(raw: string): string {
   return out
 }
 
+// Ник Telegram покупателя → «@username»; null — не ник. Зеркало
+// api/src/lib/telegramHandle.ts.
+const TELEGRAM_HANDLE_RE = /^[A-Za-z0-9_]{5,32}$/
+
+export function normalizeTelegramHandle(raw: string): string | null {
+  const bare = raw
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^(?:www\.)?(?:t\.me|telegram\.me)\//i, '')
+    .replace(/\/+$/, '')
+    .replace(/^@/, '')
+  return TELEGRAM_HANDLE_RE.test(bare) ? `@${bare}` : null
+}
+
 export interface CheckoutFormFields {
   name: string
   phone: string
   email: string
+  telegram: string
   // Квартира, подъезд, этаж — для курьера. Виджет СДЭК геокодирует только
   // улицу и дом.
   apartment: string
   comment: string
 }
 
-export type CheckoutFormErrors = Partial<Record<'name' | 'phone' | 'email' | 'delivery', string>>
+export type CheckoutFormErrors = Partial<
+  Record<'name' | 'phone' | 'email' | 'telegram' | 'delivery', string>
+>
 
 // Client-side validation with Russian messages. Mirrors the zod schema on
 // the server (checkout.schemas.ts) so a valid form never bounces off a 400.
@@ -67,6 +84,9 @@ export function validateCheckoutForm(
   const email = fields.email.trim()
   if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.email = 'Проверьте email — похоже, в нём опечатка'
+  }
+  if (fields.telegram.trim() !== '' && !normalizeTelegramHandle(fields.telegram)) {
+    errors.telegram = 'Проверьте ник: 5–32 латинских букв, цифр или _'
   }
   if (!hasDelivery) {
     errors.delivery = 'Выберите пункт выдачи или адрес доставки на карте'

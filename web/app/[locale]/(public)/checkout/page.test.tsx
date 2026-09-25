@@ -284,6 +284,25 @@ describe('/checkout page', () => {
     })
   })
 
+  it('передаёт ник Telegram покупателя в едином виде', async () => {
+    const fetchMock = vi.fn(async () => okCheckoutResponse())
+    vi.stubGlobal('fetch', fetchMock)
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await fillValidForm()
+    fireEvent.change(screen.getByLabelText(/telegram/i), { target: { value: 'maria_ivanova' } })
+
+    fireEvent.click(screen.getByRole('button', { name: /оформить заказ/i }))
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    expect(JSON.parse(init.body as string).customer).toEqual({
+      name: 'Мария',
+      phone: '+79123456789',
+      telegram: '@maria_ivanova',
+    })
+  })
+
   it('reuses the same Idempotency-Key when retrying after a network failure', async () => {
     const fetchMock = vi
       .fn()

@@ -6,6 +6,7 @@ import {
   validateCheckoutForm,
   getOrCreateIdempotencyKey,
   clearIdempotencyKey,
+  normalizeTelegramHandle,
   type CheckoutFormFields,
 } from './checkout'
 
@@ -13,6 +14,7 @@ const validFields: CheckoutFormFields = {
   name: 'Мария',
   phone: '+7 (912) 345-67-89',
   email: '',
+  telegram: '',
   apartment: '',
   comment: '',
 }
@@ -88,6 +90,26 @@ describe('validateCheckoutForm', () => {
   it('требует выбрать пункт выдачи или адрес на карте', () => {
     const errors = validateCheckoutForm(validFields, false)
     expect(errors.delivery).toMatch(/пункт выдачи|адрес/i)
+  })
+})
+
+describe('normalizeTelegramHandle (форма)', () => {
+  it('приводит ник к виду @username', () => {
+    expect(normalizeTelegramHandle('t.me/maria_ivanova')).toBe('@maria_ivanova')
+    expect(normalizeTelegramHandle('@maria_ivanova')).toBe('@maria_ivanova')
+  })
+  it('null для невалидного', () => {
+    expect(normalizeTelegramHandle('мария')).toBeNull()
+  })
+})
+
+describe('validateCheckoutForm — Telegram', () => {
+  it('пустой Telegram — не ошибка', () => {
+    expect(validateCheckoutForm({ ...validFields, telegram: '' }, true)).toEqual({})
+  })
+  it('невалидный ник — ошибка', () => {
+    const errors = validateCheckoutForm({ ...validFields, telegram: 'мария' }, true)
+    expect(errors.telegram).toMatch(/латинских/)
   })
 })
 

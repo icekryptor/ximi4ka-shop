@@ -27,6 +27,7 @@ import {
   clearIdempotencyKey,
   formatPhoneInput,
   getOrCreateIdempotencyKey,
+  normalizeTelegramHandle,
   phoneDigits,
   redirectTo,
   validateCheckoutForm,
@@ -38,6 +39,7 @@ const INITIAL_FIELDS: CheckoutFormFields = {
   name: '',
   phone: '',
   email: '',
+  telegram: '',
   apartment: '',
   comment: '',
 }
@@ -143,6 +145,7 @@ export default function CheckoutPage() {
     if (Object.keys(validation).length > 0 || !choice) return
 
     const email = fields.email.trim()
+    const telegram = normalizeTelegramHandle(fields.telegram)
     const comment = fields.comment.trim()
     const payload: CheckoutRequest = {
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
@@ -150,6 +153,7 @@ export default function CheckoutPage() {
         name: fields.name.trim(),
         phone: `+${phoneDigits(fields.phone)}`,
         ...(email !== '' ? { email } : {}),
+        ...(telegram ? { telegram } : {}),
       },
       delivery: {
         ...destinationFor(choice, fields.apartment),
@@ -266,6 +270,23 @@ export default function CheckoutPage() {
                   className={FIELD_CLASS}
                 />
                 {errors.email && <p className={ERROR_CLASS}>{errors.email}</p>}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label htmlFor="checkout-telegram" className={LABEL_CLASS}>
+                  Telegram
+                </label>
+                <input
+                  id="checkout-telegram"
+                  type="text"
+                  autoComplete="off"
+                  placeholder="@username — если удобнее написать туда"
+                  value={fields.telegram}
+                  onChange={(e) => setField('telegram', e.target.value)}
+                  aria-invalid={errors.telegram ? true : undefined}
+                  className={FIELD_CLASS}
+                />
+                {errors.telegram && <p className={ERROR_CLASS}>{errors.telegram}</p>}
               </div>
 
               <section aria-labelledby="checkout-delivery" className="flex flex-col gap-3">

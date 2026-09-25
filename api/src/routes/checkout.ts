@@ -75,6 +75,7 @@ checkoutRouter.post('/', async (req, res, next) => {
             customerName: parsed.customer.name,
             customerPhone: parsed.customer.phone,
             customerEmail: parsed.customer.email ?? '',
+            customerTelegram: parsed.customer.telegram ?? null,
             deliveryAddress: {
               address: delivery.address,
               comment: delivery.comment ?? null,

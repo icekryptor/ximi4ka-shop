@@ -188,6 +188,38 @@ describe('POST /api/checkout', () => {
     expect(res.status).toBe(400)
   })
 
+  it('сохраняет ник Telegram покупателя в едином виде', async () => {
+    const p = await seedProduct()
+    const base = checkoutBody([{ productId: p.id, quantity: 1 }])
+    const body = { ...base, customer: { ...base.customer, telegram: 't.me/maria_ivanova' } }
+    const res = await request(app).post('/api/checkout').send(body)
+    expect(res.status).toBe(201)
+    const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+      orderNumber: res.body.data.orderNumber,
+    })
+    expect(order.customerTelegram).toBe('@maria_ivanova')
+  })
+
+  it('без Telegram — поле пустое', async () => {
+    const p = await seedProduct()
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: p.id, quantity: 1 }]))
+    const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+      orderNumber: res.body.data.orderNumber,
+    })
+    expect(order.customerTelegram).toBeNull()
+  })
+
+  it('400 на ник, который не может быть ником Telegram', async () => {
+    const p = await seedProduct()
+    const base = checkoutBody([{ productId: p.id, quantity: 1 }])
+    const res = await request(app)
+      .post('/api/checkout')
+      .send({ ...base, customer: { ...base.customer, telegram: 'мария' } })
+    expect(res.status).toBe(400)
+  })
+
   it('increments the order number sequence between orders', async () => {
     const p = await seedProduct()
     const first = await request(app)

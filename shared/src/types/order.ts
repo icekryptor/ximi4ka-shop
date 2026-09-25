@@ -81,7 +81,7 @@ export interface OrderDto {
 
 export interface CheckoutRequest {
   items: Array<{ productId: string; quantity: number }>
-  customer: { name: string; phone: string; email?: string }
+  customer: { name: string; phone: string; email?: string; telegram?: string }
   // Куда везём — из виджета СДЭК (см. DeliveryDestination) + комментарий.
   delivery: DeliveryDestination & { comment?: string }
 }
