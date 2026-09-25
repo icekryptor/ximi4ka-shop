@@ -10,6 +10,12 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   cancelled: 'Отменён',
 }
 
+// Статус из адреса (?status=…) — только из известных; список берём из подписей,
+// чтобы новый статус не выпал из фильтра.
+export function isOrderStatus(value: string | undefined): value is OrderStatus {
+  return value !== undefined && Object.hasOwn(ORDER_STATUS_LABELS, value)
+}
+
 export const ORDER_STATUS_BADGE_CLASSES: Record<OrderStatus, string> = {
   pending: 'bg-amber-100 text-amber-700',
   paid: 'bg-green-100 text-green-700',

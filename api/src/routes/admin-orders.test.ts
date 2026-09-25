@@ -85,6 +85,16 @@ describe('Admin orders', () => {
     expect(res.body.data[0].id).toBe(paid.id)
   })
 
+  it('фильтрует отправленные заказы', async () => {
+    await seedOrder({ status: 'paid', paidAt: new Date() })
+    const shipped = await seedOrder({ status: 'shipped', paidAt: new Date() })
+
+    const res = await request(app).get('/api/admin/orders?status=shipped').set(authHeaders(auth))
+    expect(res.status).toBe(200)
+    expect(res.body.data).toHaveLength(1)
+    expect(res.body.data[0].id).toBe(shipped.id)
+  })
+
   it('returns the detail with items', async () => {
     const order = await seedOrder()
     await seedItem(order.id)

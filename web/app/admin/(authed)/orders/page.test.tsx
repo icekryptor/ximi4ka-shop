@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import AdminOrdersPage from './page'
 import AdminOrderDetailPage from './[id]/page'
 import { OrderStatusActions } from './[id]/OrderStatusActions'
-import { ORDER_STATUS_LABELS, formatRub } from './orderUi'
+import { ORDER_STATUS_LABELS, formatRub, isOrderStatus } from './orderUi'
 
 // Server components (list + detail) run on the server and call
 // cookies()/fetch() — narrow smoke tests ensure they stay async. The status
@@ -28,6 +28,13 @@ describe('order UI helpers', () => {
       failed: 'Ошибка оплаты',
       cancelled: 'Отменён',
     })
+  })
+  it('isOrderStatus принимает каждый статус, включая «Отправлен», и ничего лишнего', () => {
+    for (const status of Object.keys(ORDER_STATUS_LABELS)) expect(isOrderStatus(status)).toBe(true)
+    expect(isOrderStatus('shipped')).toBe(true)
+    expect(isOrderStatus('refunded')).toBe(false)
+    expect(isOrderStatus(undefined)).toBe(false)
+    expect(isOrderStatus('constructor')).toBe(false)
   })
   it('formats rubles with the ru-RU thousands separator', () => {
     expect(formatRub(4500).endsWith('₽')).toBe(true)
