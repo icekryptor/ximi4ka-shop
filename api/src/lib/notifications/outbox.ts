@@ -7,6 +7,13 @@ import { OrderNotification } from '../../entities/OrderNotification.js'
 // Куда сообщаем о каждом событии заказа.
 export const CHANNELS: NotificationChannel[] = ['sheets', 'telegram']
 
+// Куда уходит событие. Карточка нового заказа — в таблицу и в чат; смены
+// статуса — только в таблицу: ответы на карточку заспамливали рабочий чат и
+// мешали складу (решение владельца, docs/superpowers/specs/2026-09-25-cdek-auto-orders-design.md §6).
+export function channelsForEvent(eventKey: OrderEventKey): NotificationChannel[] {
+  return eventKey === 'created' ? CHANNELS : ['sheets']
+}
+
 // pending — стартовое состояние, отдельным событием не считается: о нём
 // сообщает `created`.
 export function statusEventKey(status: OrderStatus): OrderEventKey | null {
@@ -25,7 +32,7 @@ export async function enqueueOrderEvent(
     .createQueryBuilder()
     .insert()
     .into(OrderNotification)
-    .values(CHANNELS.map((channel) => ({ orderId, channel, eventKey })))
+    .values(channelsForEvent(eventKey).map((channel) => ({ orderId, channel, eventKey })))
     .orIgnore()
     .execute()
 }

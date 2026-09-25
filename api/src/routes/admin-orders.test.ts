@@ -148,7 +148,7 @@ describe('Admin orders', () => {
     const events = await AppDataSource.getRepository(OrderNotification).find({
       where: { orderId: order.id },
     })
-    expect(events.map((e) => e.eventKey)).toEqual(['status:cancelled', 'status:cancelled'])
+    expect(events.map((e) => e.eventKey)).toEqual(['status:cancelled'])
   })
 
   it('marks a failed order paid (manual override after offline payment)', async () => {
@@ -197,7 +197,7 @@ describe('Admin orders', () => {
     const events = await AppDataSource.getRepository(OrderNotification).find({
       where: { orderId: paid.id },
     })
-    expect(events.map((e) => e.eventKey)).toEqual(['status:shipped', 'status:shipped'])
+    expect(events.map((e) => e.eventKey)).toEqual(['status:shipped'])
   })
 
   it('409, если отправить неоплаченный заказ', async () => {

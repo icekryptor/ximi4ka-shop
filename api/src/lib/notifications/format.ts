@@ -1,4 +1,4 @@
-import type { DeliveryAddress, OrderEventKey, OrderStatus } from '@ximi4ka-shop/shared'
+import type { DeliveryAddress, OrderStatus } from '@ximi4ka-shop/shared'
 
 // Что показываем людям в таблице и в чате. Чистые функции без сети — вся
 // логика вида уведомлений тестируется здесь.
@@ -44,13 +44,6 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   shipped: 'отправлен',
   cancelled: 'отменён',
   failed: 'оплата не прошла',
-}
-
-const STATUS_ICONS: Record<Exclude<OrderStatus, 'pending'>, string> = {
-  paid: '✅',
-  shipped: '📦',
-  cancelled: '✖️',
-  failed: '⚠️',
 }
 
 export const TELEGRAM_TEXT_LIMIT = 4096
@@ -189,16 +182,4 @@ export function telegramCard(order: NotifiableOrder): string {
   if (hidden > 0) lines.push(`— …и ещё ${hidden} ${pluralPositions(hidden)}`)
 
   return [...head, ...lines, ...tail].join('\n')
-}
-
-export function telegramStatusLine(
-  orderNumber: string,
-  eventKey: Exclude<OrderEventKey, 'created'>,
-  standalone: boolean,
-): string {
-  const status = eventKey.slice('status:'.length) as Exclude<OrderStatus, 'pending'>
-  const label = STATUS_LABELS[status]
-  return standalone
-    ? `${STATUS_ICONS[status]} Заказ ${escapeHtml(orderNumber)}: ${label}`
-    : `${STATUS_ICONS[status]} ${label}`
 }

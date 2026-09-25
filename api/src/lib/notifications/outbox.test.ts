@@ -53,12 +53,20 @@ describe('outbox', () => {
     await AppDataSource.query('TRUNCATE orders RESTART IDENTITY CASCADE')
   })
 
-  it('ставит событие в оба канала', async () => {
+  it('новый заказ — в оба канала', async () => {
     const order = await seedOrder()
     await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'created'))
     expect((await rows(order.id)).map((r) => [r.channel, r.eventKey])).toEqual([
       ['sheets', 'created'],
       ['telegram', 'created'],
+    ])
+  })
+
+  it('смена статуса — только в таблицу: ответы в чате мешают складу', async () => {
+    const order = await seedOrder()
+    await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'status:paid'))
+    expect((await rows(order.id)).map((r) => [r.channel, r.eventKey])).toEqual([
+      ['sheets', 'status:paid'],
     ])
   })
 
@@ -86,7 +94,7 @@ describe('outbox', () => {
     await saveOrderWithStatusEvent(order, 'pending')
     const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
     expect(saved.status).toBe('paid')
-    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid', 'status:paid'])
+    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid'])
   })
 
   it('без смены статуса событие не ставится, привязка платежа сохраняется', async () => {
@@ -121,6 +129,6 @@ describe('outbox', () => {
     expect(saved.status).toBe('paid')
     expect(saved.paidAt).toEqual(paidAt)
     expect(saved.statusHistory).toEqual(stale.statusHistory)
-    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid', 'status:paid'])
+    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid'])
   })
 })
