@@ -89,10 +89,38 @@ describe('outbox', () => {
     expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid', 'status:paid'])
   })
 
-  it('без смены статуса событие не ставится', async () => {
+  it('без смены статуса событие не ставится, привязка платежа сохраняется', async () => {
     const order = await seedOrder()
-    order.customerName = 'Мария Иванова'
+    order.paymentIntentId = '777888'
     await saveOrderWithStatusEvent(order, 'pending')
     expect(await rows(order.id)).toHaveLength(0)
+    const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
+    expect(saved.paymentIntentId).toBe('777888')
+  })
+
+  it('устаревшая сущность не затирает id карточки, записанный обработчиком', async () => {
+    // Сверка: заказ загружен, пока шли сетевые вызовы обработчик очереди
+    // успел записать id карточки, затем сохраняется устаревшая сущность.
+    const order = await seedOrder()
+    const stale = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
+    expect(stale.telegramMessageId).toBeNull()
+    await AppDataSource.query(`UPDATE orders SET telegram_message_id = 501 WHERE id = $1`, [
+      order.id,
+    ])
+
+    const paidAt = new Date('2026-09-25T12:00:00Z')
+    stale.status = 'paid'
+    stale.paidAt = paidAt
+    stale.statusHistory = [
+      { from: 'pending', to: 'paid', at: paidAt.toISOString(), by: 'reconcile' },
+    ]
+    await saveOrderWithStatusEvent(stale, 'pending')
+
+    const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
+    expect(saved.telegramMessageId).toBe(501)
+    expect(saved.status).toBe('paid')
+    expect(saved.paidAt).toEqual(paidAt)
+    expect(saved.statusHistory).toEqual(stale.statusHistory)
+    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid', 'status:paid'])
   })
 })
