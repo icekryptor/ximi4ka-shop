@@ -210,6 +210,12 @@ describe('/checkout page', () => {
     expect(screen.getByTestId('summary-shipping')).toHaveTextContent('—')
   })
 
+  it('над заголовком нет декоративной метки «Корзина → Оформление»', () => {
+    seedCart(seed)
+    render(<CheckoutPage />)
+    expect(screen.queryByText(/корзина\s*→\s*оформление/i)).not.toBeInTheDocument()
+  })
+
   it('masks the phone as +7 (XXX) XXX-XX-XX while typing', () => {
     seedCart(seed)
     render(<CheckoutPage />)
