@@ -19,4 +19,16 @@ describe('<CharacteristicsTableLJ>', () => {
     const { container } = render(<CharacteristicsTableLJ characteristics={{}} />)
     expect(container.firstChild).toBeNull()
   })
+
+  it('uses ink text and rules on the light surface', () => {
+    const { container } = render(
+      <CharacteristicsTableLJ
+        characteristics={{ Возраст: '10+', Объем: '50 мл' }}
+        surface="light"
+      />,
+    )
+    const row = container.querySelector('[data-char-row]')!
+    expect(row.className).toContain('var(--color-lj-rule)')
+    expect(screen.getByText('10+').className).toContain('var(--color-lj-ink)')
+  })
 })

@@ -1,9 +1,11 @@
-export { ContentsSection } from './ContentsSection'
+export { ContentsSection, extractContentsHtml } from './ContentsSection'
 
 // v3 Lab Journal product surfaces
 export { ProductHeroImage } from './ProductHeroImage'
 export { ProductPriceBlockLJ } from './ProductPriceBlockLJ'
 export { StockChip } from './StockChip'
+export { ProductTabsLJ } from './ProductTabsLJ'
+export type { ProductTab } from './ProductTabsLJ'
 export { QuantityStepperLJ } from './QuantityStepperLJ'
 export { MobileBuyBarLJ } from './MobileBuyBarLJ'
 export { KeyFactsListLJ } from './KeyFactsListLJ'

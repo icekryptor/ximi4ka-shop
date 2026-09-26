@@ -11,7 +11,7 @@ export function QuantityStepperLJ({ value, onChange, min = 1, max = 99 }: Props)
   const dec = () => onChange(Math.max(min, value - 1))
   const inc = () => onChange(Math.min(max, value + 1))
   return (
-    <div className="inline-flex items-center border border-[var(--color-lj-ink)] rounded-full overflow-hidden">
+    <div className="inline-flex items-center border border-[var(--color-lj-ink)] rounded-full overflow-hidden bg-white text-[var(--color-lj-ink)]">
       <button
         type="button"
         onClick={dec}
@@ -20,7 +20,9 @@ export function QuantityStepperLJ({ value, onChange, min = 1, max = 99 }: Props)
       >
         −
       </button>
-      <span className="px-4 py-2 font-lj-display font-[700] min-w-[3ch] text-center">{value}</span>
+      <span className="px-4 py-2 font-lj-mono font-bold text-base min-w-[3ch] text-center">
+        {value}
+      </span>
       <button
         type="button"
         onClick={inc}

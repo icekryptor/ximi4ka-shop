@@ -12,12 +12,12 @@ interface Props {
 }
 
 /**
- * Detects whether the long-description has a structured «Состав» paragraph
- * block (typical for kit products imported from Tilda) and renders an
- * ink LabSection «Что внутри» with the parsed list. Returns null otherwise
- * so the consuming page can render this unconditionally.
+ * Sanitized body of the long-description «Состав» paragraph block (typical
+ * for kit products imported from Tilda), without its `<h3>Состав</h3>`
+ * heading. Null when the product has no such block. Shared by the ink
+ * «Что внутри» section and the «Состав» tab on the product page.
  */
-export function ContentsSection({ blocks, className = '' }: Props) {
+export function extractContentsHtml(blocks: unknown[]): string | null {
   if (!Array.isArray(blocks)) return null
 
   const sostavBlock = blocks.find((b): b is Block => {
@@ -30,9 +30,17 @@ export function ContentsSection({ blocks, className = '' }: Props) {
   if (!sostavBlock) return null
 
   const rawHtml = (sostavBlock as { html?: string }).html ?? ''
-  // Strip the leading <h3>Состав</h3> — we render our own «Что внутри» heading.
-  const bodyHtml = rawHtml.replace(CONTENTS_HEADING_RE, '').trim()
-  const cleaned = sanitizeHtml(bodyHtml)
+  return sanitizeHtml(rawHtml.replace(CONTENTS_HEADING_RE, '').trim())
+}
+
+/**
+ * Renders an ink LabSection «Что внутри» with the parsed «Состав» list.
+ * Returns null otherwise so the consuming page can render this
+ * unconditionally.
+ */
+export function ContentsSection({ blocks, className = '' }: Props) {
+  const cleaned = extractContentsHtml(blocks)
+  if (cleaned == null) return null
 
   return (
     <LabSection variant="ink" className={`px-6 py-32 ${className}`.trim()}>
