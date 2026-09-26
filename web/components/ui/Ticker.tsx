@@ -1,4 +1,4 @@
-type TickerSurface = 'bright' | 'dark' | 'soft'
+type TickerSurface = 'bright' | 'dark' | 'ink' | 'soft'
 
 interface Props {
   items: string[]
@@ -11,12 +11,15 @@ interface Props {
 const surfaceClass: Record<TickerSurface, string> = {
   bright: 'bg-[image:var(--gradient-lj-bright)] text-[var(--color-lj-on-bright)]',
   dark: 'bg-[var(--color-lj-ink)] text-[var(--color-lj-bone)]',
+  // Полоса фактов над hero по макету Figma (17:234): чёрная, белые текст и точки.
+  ink: 'bg-[var(--color-lj-ink)] text-[var(--color-lj-on-bright)]',
   soft: 'bg-[var(--color-lj-cream-shade)] text-[var(--color-lj-ink)]',
 }
 
 const dotClass: Record<TickerSurface, string> = {
   bright: 'bg-[var(--color-lj-on-bright)]',
   dark: 'bg-[var(--color-lj-brand)]',
+  ink: 'bg-[var(--color-lj-on-bright)]',
   soft: 'bg-[var(--color-lj-brand)]',
 }
 

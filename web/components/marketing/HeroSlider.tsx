@@ -14,7 +14,8 @@ interface Props {
 }
 
 /**
- * Hero-слайдер флагманских наборов (v3.5 «Лабораторный журнал, ярче»).
+ * Hero-слайдер флагманских наборов по макету Figma (61:18477): слайд без
+ * подложки на фиолетовом hero, под ним ‹ «N / M» и точки ›.
  *
  * Лёгкий, без карусель-библиотек: один активный слайд рендерится,
  * остальные держатся смонтированными только через фото-precache Next/Image
@@ -93,7 +94,7 @@ export function HeroSlider({ slides, autoPlayMs = 6000 }: Props) {
 
   return (
     <div
-      className="relative w-[clamp(300px,26vw,440px)]"
+      className="relative flex w-[clamp(300px,25.6vw,420px)] flex-col gap-[23px]"
       role="group"
       aria-roledescription="карусель"
       aria-label="Флагманские наборы"
@@ -105,19 +106,13 @@ export function HeroSlider({ slides, autoPlayMs = 6000 }: Props) {
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      {/* Яркая градиентная панель-оффер */}
-      <div className="relative rounded-[var(--radius-lj-bright)] bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-lj-bright)] p-5 lj-lift">
-        <div className="flex items-center justify-end mb-4" aria-live="polite" aria-atomic="true">
-          <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright-mute)]">
-            {index + 1} / {count}
-          </span>
-        </div>
-
-        {/* Фото: object-cover + скругление, вписано в контейнер (без квадратных углов) */}
+      {/* Слайд без подложки: фото, название и цена лежат прямо на фиолетовом
+          hero (Figma 61:18495). */}
+      <div className="flex flex-col gap-[15px]">
         <Link
           href={slide.href}
           aria-label={`Смотреть набор: ${slide.name}`}
-          className="group relative block aspect-[4/5] rounded-[var(--radius-lj-bright-sm)] overflow-hidden bg-white/95"
+          className="group relative block aspect-[369/360] overflow-hidden rounded-[25px] bg-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
         >
           <Image
             key={slide.imageUrl}
@@ -130,37 +125,37 @@ export function HeroSlider({ slides, autoPlayMs = 6000 }: Props) {
           />
         </Link>
 
-        {/* Название + цена */}
-        <div className="mt-5">
-          <Link
-            href={slide.href}
-            className="font-lj-display font-[700] text-[clamp(1.25rem,1.6vw,1.75rem)] leading-[1.02] tracking-[-0.035em] text-[var(--color-lj-on-bright)] hover:opacity-90 transition-opacity"
-          >
-            {slide.name}
-          </Link>
-          <p className="mt-2 font-lj-display font-[900] text-[clamp(2rem,2.6vw,3rem)] leading-none tracking-[-0.045em] text-[var(--color-lj-on-bright)]">
-            {formatPriceRub(slide.priceRub)}&nbsp;₽
-          </p>
-        </div>
-
-        {/* CTA: в корзину (градиент lj-cta-bright, но инвертирован — белая пилюля на градиенте) + смотреть */}
-        <div className="mt-5 flex items-center gap-3">
-          <span className="relative inline-flex">
-            <button
-              type="button"
-              onClick={handleAdd}
-              className="inline-flex items-center gap-2 px-6 py-3.5 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full bg-white text-[var(--color-lj-brand-deep)] shadow-[0_6px_16px_-6px_rgba(60,20,120,0.4)] transition-transform duration-300 hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              href={slide.href}
+              className="min-w-0 font-lj-mazzard font-[400] text-[1.44rem] leading-[1.02] tracking-[-0.035em] transition-opacity hover:opacity-90"
             >
-              {added ? 'Добавлено ✓' : 'В корзину →'}
-            </button>
-            <AddToCartBurst burstKey={burstKey} />
-          </span>
-          <Link
-            href={slide.href}
-            className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright)] underline-offset-4 hover:underline"
-          >
-            смотреть →
-          </Link>
+              {slide.name}
+            </Link>
+            <p className="shrink-0 whitespace-nowrap font-lj-mazzard font-[300] text-[2.34rem] leading-none tracking-[-0.045em]">
+              {formatPriceRub(slide.priceRub)}&nbsp;₽
+            </p>
+          </div>
+
+          <div className="flex items-stretch gap-2.5">
+            <span className="relative flex flex-1">
+              <button
+                type="button"
+                onClick={handleAdd}
+                className="lj-btn lj-btn-white flex-1 px-7 py-3.5 text-[var(--color-lj-brand-deep)]"
+              >
+                {added ? 'Добавлено ✓' : 'В корзину →'}
+              </button>
+              <AddToCartBurst burstKey={burstKey} />
+            </span>
+            <Link
+              href={slide.href}
+              className="lj-btn lj-btn-outline-light flex-1 px-3.5 font-[700] text-[0.875rem] leading-[1.18] tracking-normal"
+            >
+              Смотреть →
+            </Link>
+          </div>
         </div>
 
         <span role="status" aria-live="polite" className="sr-only">
@@ -168,47 +163,50 @@ export function HeroSlider({ slides, autoPlayMs = 6000 }: Props) {
         </span>
       </div>
 
-      {/* Стрелки + точки — только при > 1 слайда */}
+      {/* ‹ счётчик + точки › — только при > 1 слайда */}
       {count > 1 && (
-        <>
+        <div className="flex items-start justify-between">
           <button
             type="button"
             onClick={prev}
             aria-label="Предыдущий набор"
-            className="absolute top-1/2 -left-3 -translate-y-1/2 z-[2] grid place-items-center w-10 h-10 rounded-full bg-white text-[var(--color-lj-ink)] shadow-[0_6px_16px_-6px_rgba(0,0,0,0.35)] transition-transform duration-300 hover:scale-105 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-lj-brand-deep)]"
+            className="-mx-2 inline-flex h-6 items-center px-2 text-base leading-6 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-white"
           >
             ‹
           </button>
+          <div className="flex flex-col items-center gap-2">
+            <span
+              aria-live="polite"
+              aria-atomic="true"
+              className="font-lj-mazzard font-[700] text-[0.875rem] leading-[1.18]"
+            >
+              {index + 1} / {count}
+            </span>
+            <div className="flex items-center gap-2" role="tablist" aria-label="Выбор набора">
+              {slides.map((s, i) => (
+                <button
+                  key={s.slug}
+                  type="button"
+                  role="tab"
+                  aria-selected={i === index}
+                  aria-label={`Набор ${i + 1}: ${s.name}`}
+                  onClick={() => go(i)}
+                  className={`rounded-[4px] bg-[var(--color-lj-on-bright)] transition-all duration-300 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                    i === index ? 'h-1.5 w-[18px]' : 'size-[5px] hover:opacity-80'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
           <button
             type="button"
             onClick={next}
             aria-label="Следующий набор"
-            className="absolute top-1/2 -right-3 -translate-y-1/2 z-[2] grid place-items-center w-10 h-10 rounded-full bg-white text-[var(--color-lj-ink)] shadow-[0_6px_16px_-6px_rgba(0,0,0,0.35)] transition-transform duration-300 hover:scale-105 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-lj-brand-deep)]"
+            className="-mx-2 inline-flex h-6 items-center px-2 text-base leading-6 transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-white"
           >
             ›
           </button>
-          <div
-            className="mt-4 flex items-center justify-center gap-2"
-            role="tablist"
-            aria-label="Выбор набора"
-          >
-            {slides.map((s, i) => (
-              <button
-                key={s.slug}
-                type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-label={`Набор ${i + 1}: ${s.name}`}
-                onClick={() => go(i)}
-                className={`h-2 rounded-full transition-all duration-300 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-lj-brand-deep)] ${
-                  i === index
-                    ? 'w-6 bg-[var(--color-lj-brand)]'
-                    : 'w-2 bg-[var(--color-lj-ink)]/25 hover:bg-[var(--color-lj-ink)]/45'
-                }`}
-              />
-            ))}
-          </div>
-        </>
+        </div>
       )}
     </div>
   )

@@ -4,10 +4,11 @@ import { Hero } from './Hero'
 import type { HeroSlide } from '@/lib/heroSlides'
 
 vi.mock('next/image', () => ({
-  default: ({ fill, priority, sizes, ...rest }: Record<string, unknown>) => {
+  default: ({ fill, priority, sizes, unoptimized, ...rest }: Record<string, unknown>) => {
     void fill
     void priority
     void sizes
+    void unoptimized
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
     return <img {...(rest as Record<string, unknown>)} />
   },
@@ -47,75 +48,69 @@ const SLIDES: HeroSlide[] = [
   },
 ]
 
-describe('<Hero> v3', () => {
-  it('renders headline rows with brand-purple emphasis word', () => {
-    render(
-      <Hero
-        eyebrow="Опыты в коробке · Москва, с 2017"
-        headlineRows={[
-          { text: 'Опыт', emphasis: true },
-          { text: 'вместо', offset: true },
-          { text: 'объяснений' },
-        ]}
-        trailLine="— химия, которую держат в руках"
-        lead="3 набора. От реакций меди до электролиза."
-        primaryCta={{ label: 'Открыть каталог', href: '/catalog' }}
-        secondaryCta={{ label: 'Что мы делаем', href: '#manifesto' }}
-        tickerItems={['H₂O', 'NaCl']}
-      />,
-    )
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Опыт.*вместо.*объяснений/s)
-    expect(screen.getByText('— химия, которую держат в руках')).toBeInTheDocument()
+const BASE = {
+  title: 'ХИМИЧКА',
+  subtitle: 'Наборы для опытов',
+  lead: '3 набора: от реакций меди до электролиза.',
+  primaryCta: { label: 'Открыть каталог', href: '/catalog' },
+  secondaryCta: { label: 'Что мы делаем', href: '#manifesto' },
+}
+
+describe('<Hero> по макету Figma «Главная — 1440» (17:129)', () => {
+  it('renders the two-line headline, lead and both CTAs', () => {
+    render(<Hero {...BASE} />)
+    const h1 = screen.getByRole('heading', { level: 1 })
+    expect(h1).toHaveTextContent(/ХИМИЧКА.*Наборы для опытов/s)
+    expect(screen.getByText('3 набора: от реакций меди до электролиза.')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Открыть каталог/ })).toHaveAttribute(
       'href',
       '/catalog',
     )
+    expect(screen.getByRole('link', { name: 'Что мы делаем' })).toHaveAttribute(
+      'href',
+      '#manifesto',
+    )
   })
 
-  it('emphasis row gets brand-purple italic class', () => {
-    const { container } = render(
-      <Hero
-        eyebrow="x"
-        headlineRows={[{ text: 'Опыт', emphasis: true }, { text: 'rest' }]}
-        trailLine="t"
-        lead="l"
-        primaryCta={{ label: 'a', href: '/' }}
-      />,
+  it('is a solid purple section with rounded bottom corners', () => {
+    const { container } = render(<Hero {...BASE} />)
+    const section = container.querySelector('section')!
+    expect(section.className).toContain('bg-[var(--color-lj-bright-start)]')
+    expect(section.className).toContain('rounded-b-')
+    expect(section.className).toContain('text-[var(--color-lj-on-bright)]')
+  })
+
+  it('sets the headline rows in Mazzard ExtraBold Italic and Light Italic', () => {
+    render(<Hero {...BASE} />)
+    const strong = screen.getByText('ХИМИЧКА')
+    const light = screen.getByText('Наборы для опытов')
+    expect(strong.className).toContain('font-lj-mazzard')
+    expect(strong.className).toContain('font-[800]')
+    expect(strong.className).toContain('italic')
+    expect(light.className).toContain('font-[300]')
+    expect(light.className).toContain('italic')
+  })
+
+  it('uses the white and light-outline buttons from the Button atom', () => {
+    render(<Hero {...BASE} />)
+    expect(screen.getByRole('link', { name: /Открыть каталог/ }).className).toContain(
+      'lj-btn-white',
     )
-    const emphasisSpan = container.querySelector('.lj-headline-emphasis')
-    expect(emphasisSpan).not.toBeNull()
-    expect(emphasisSpan?.textContent).toBe('Опыт')
+    expect(screen.getByRole('link', { name: 'Что мы делаем' }).className).toContain(
+      'lj-btn-outline-light',
+    )
+  })
+
+  it('drops the old eyebrow, trail line and formula ticker', () => {
+    const { container } = render(<Hero {...BASE} />)
+    expect(screen.queryByText(/Опыты в коробке/)).toBeNull()
+    expect(container.querySelector('[class*="lj-ticker"]')).toBeNull()
   })
 
   it('renders the hero slider with price + CTA when slides are provided', () => {
-    render(
-      <Hero
-        eyebrow="x"
-        headlineRows={[{ text: 'Опыт', emphasis: true }]}
-        trailLine="t"
-        lead="l"
-        primaryCta={{ label: 'Открыть каталог', href: '/catalog' }}
-        slides={SLIDES}
-      />,
-    )
+    render(<Hero {...BASE} slides={SLIDES} />)
     expect(screen.getByRole('group', { name: 'Флагманские наборы' })).toBeInTheDocument()
     expect(screen.getByText(/3\s399/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /В корзину/ })).toBeInTheDocument()
-  })
-
-  it('shrinks the headline (no mega size) when a slider is present', () => {
-    const { container } = render(
-      <Hero
-        eyebrow="x"
-        headlineRows={[{ text: 'Опыт', emphasis: true }]}
-        trailLine="t"
-        lead="l"
-        primaryCta={{ label: 'a', href: '/' }}
-        slides={SLIDES}
-      />,
-    )
-    const h1 = container.querySelector('h1')!
-    expect(h1.className).not.toContain('var(--text-lj-mega)')
-    expect(h1.className).toContain('clamp(2.5rem,5vw,5.5rem)')
   })
 })

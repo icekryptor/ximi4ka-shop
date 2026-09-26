@@ -130,4 +130,17 @@ describe('<HeroSlider>', () => {
     const img = within(screen.getByRole('group', { name: 'Флагманские наборы' })).getByRole('img')
     expect(img.className).toContain('object-cover')
   })
+
+  it('has no card background: photo, title and price sit on the hero surface', () => {
+    const { container } = render(<HeroSlider slides={SLIDES} />)
+    expect(container.querySelector('[class*="gradient-lj-bright"]')).toBeNull()
+    const img = screen.getByRole('img', { name: SLIDES[0].alt })
+    expect(img.closest('a')!.className).toContain('rounded-[25px]')
+  })
+
+  it('links «Смотреть →» to the product page next to «В корзину →»', () => {
+    render(<HeroSlider slides={SLIDES} />)
+    expect(screen.getByRole('link', { name: 'Смотреть →' })).toHaveAttribute('href', SLIDES[0].href)
+    expect(screen.getByRole('button', { name: 'В корзину →' }).className).toContain('lj-btn-white')
+  })
 })

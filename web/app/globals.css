@@ -211,9 +211,11 @@
 
   /* === v3 — Лабораторный Журнал === */
 
-  /* Cream Lab — daylight surface family */
-  --color-lj-cream: #f2efe8;
-  --color-lj-cream-shade: #e8e3d7;
+  /* Daylight surface family. С 26.09.2026 витрина белая: имена «cream»
+     остались от v3 (на них ~30 мест), значения теперь нейтральные —
+     фон белый, подложки фото и hover светло-серые вместо бежевых. */
+  --color-lj-cream: #ffffff;
+  --color-lj-cream-shade: #f4f4f4;
   --color-lj-cream-line: rgba(10, 10, 10, 0.05);
 
   /* Ink Lab — nocturnal surface family */
@@ -286,6 +288,9 @@
   --radius-lj-bright-sm: 24px;
   --shadow-lj-bright:
     0 16px 40px -12px rgba(131, 110, 254, 0.45), 0 6px 16px -6px rgba(200, 86, 255, 0.25);
+  /* Сплошной фиолетовый hero (Figma: переменная lj/bright-start) —
+     первый цвет градиента --gradient-lj-bright. */
+  --color-lj-bright-start: #8d67ff;
   --color-lj-on-bright: #ffffff;
   --color-lj-on-bright-mute: rgba(255, 255, 255, 0.78);
 }
@@ -556,6 +561,28 @@ body {
   }
   .lj-btn-outline:hover:not(:disabled) {
     background-color: rgba(103, 3, 255, 0.06);
+  }
+  /* Белые кнопки на фиолетовом hero: White — «Открыть каталог» и
+     «В корзину →» (цвет текста задаёт место вызова), Outline-light —
+     «Что мы делаем» и «Смотреть →». */
+  .lj-btn-white {
+    background-color: #ffffff;
+    color: var(--color-lj-ink);
+  }
+  .lj-btn-white:hover:not(:disabled) {
+    background-color: #f4f1ff;
+  }
+  .lj-btn-outline-light {
+    border: 1px solid var(--color-lj-on-bright);
+    background-color: transparent;
+    color: var(--color-lj-on-bright);
+  }
+  .lj-btn-outline-light:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+  .lj-btn-white:focus-visible,
+  .lj-btn-outline-light:focus-visible {
+    outline-color: var(--color-lj-on-bright);
   }
 }
 
