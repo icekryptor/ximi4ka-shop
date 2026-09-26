@@ -17,6 +17,16 @@ describe('<GridOverlay>', () => {
     expect(el.style.backgroundImage).toContain('var(--color-lj-ink-line)')
   })
 
+  it('renders a dashed light grid tile when surface=bright', () => {
+    const { container } = render(<GridOverlay surface="bright" />)
+    const el = container.firstChild as HTMLElement
+    // Пунктир #F4F1FF с прозрачностью 10% (Decor/LabGrid на фиолетовом hero).
+    expect(el.style.backgroundImage).toContain('data:image/svg+xml')
+    expect(decodeURIComponent(el.style.backgroundImage)).toContain('stroke-dasharray')
+    expect(decodeURIComponent(el.style.backgroundImage)).toContain('#F4F1FF')
+    expect(el.style.backgroundSize).toBe('64px 64px')
+  })
+
   it('respects custom size prop for grid spacing', () => {
     const { container } = render(<GridOverlay size={48} />)
     const el = container.firstChild as HTMLElement

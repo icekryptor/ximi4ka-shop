@@ -34,6 +34,14 @@ describe('Ticker', () => {
     expect(container.firstChild).toHaveClass('bg-[var(--color-lj-ink)]')
   })
 
+  it('applies black surface with white text and dots when surface=ink (Figma 17:234)', () => {
+    const { container } = render(<Ticker items={items} surface="ink" />)
+    const root = container.firstChild as HTMLElement
+    expect(root).toHaveClass('bg-[var(--color-lj-ink)]')
+    expect(root).toHaveClass('text-[var(--color-lj-on-bright)]')
+    expect(root.querySelector('[aria-hidden="true"]')).toHaveClass('bg-[var(--color-lj-on-bright)]')
+  })
+
   it('applies soft cream surface when surface=soft', () => {
     const { container } = render(<Ticker items={items} surface="soft" />)
     expect(container.firstChild).toHaveClass('bg-[var(--color-lj-cream-shade)]')

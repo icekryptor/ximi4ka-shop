@@ -146,14 +146,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   })
 }
 
-// v3.5: факты для яркого маркиз-тикера между hero и каталогом.
+// Факты для чёрной бегущей строки над hero — тексты и цифры по макету Figma (17:234).
 const FACTS_TICKER = [
   '161 опыт',
   '62 реактива',
   'доставка СДЭК',
-  'от 8 лет',
+  'от 10 лет',
   '4,9 из 5 на WB и Ozon',
-  '20 000+ покупателей',
+  '30 000+ покупателей',
 ]
 
 export default async function HomePage({ params }: Props) {
@@ -162,10 +162,9 @@ export default async function HomePage({ params }: Props) {
   const locale: Locale = rawLocale
   const { page, products, settings, categories } = await fetchHome()
 
-  // Hero copy is hard-coded in v3 (Lab Journal direction). The CMS-driven
-  // eyebrow/title/lead path was retired with the v2 dark hero. If the editorial
-  // story needs to vary again, reintroduce pickField() here and pass the values
-  // through the v3 Hero's headlineRows/trailLine/lead props.
+  // Текст hero зашит в код по макету Figma «Главная — 1440» (17:129). Если
+  // его снова понадобится менять из CMS, верните pickField() здесь и
+  // передайте значения в title/subtitle/lead у Hero.
 
   const blocks = (pickField<unknown[]>(
     page as unknown as Record<string, unknown>,
@@ -211,15 +210,14 @@ export default async function HomePage({ params }: Props) {
       <JsonLd data={websiteJsonLd()} />
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
 
-      {/* 1. Hero (LAB CREAM) */}
+      {/* Маркиз-тикер фактов — чёрный и над hero, как в макете (17:234):
+          скруглённый низ фиолетового hero ложится на белый фон. */}
+      <Ticker items={FACTS_TICKER} surface="ink" />
+
+      {/* 1. Hero — фиолетовый, по макету Figma (17:129) */}
       <Hero
-        eyebrow="Опыты в коробке · Москва, с 2017"
-        headlineRows={[
-          { text: 'Опыт', emphasis: true },
-          { text: 'вместо', offset: true },
-          { text: 'объяснений' },
-        ]}
-        trailLine="Химия, которую держат в руках."
+        title="ХИМИЧКА"
+        subtitle="Наборы для опытов"
         lead="3 набора: от реакций меди до электролиза. Внутри реагенты, лабораторная посуда и протоколы к каждому опыту. Ребёнок проводит их своими руками — то, что в учебнике осталось картинкой на видео."
         primaryCta={{ label: 'Открыть каталог', href: '/catalog' }}
         secondaryCta={{ label: 'Что мы делаем', href: '#manifesto' }}
@@ -242,9 +240,6 @@ export default async function HomePage({ params }: Props) {
             }
           })}
       />
-
-      {/* 1.5 Маркиз-тикер фактов (v3.5 BRIGHT) */}
-      <Ticker items={FACTS_TICKER} surface="bright" />
 
       {/* 2. v3 Catalog — asymmetric 3-card row (LAB CREAM) */}
       <section className="bg-[var(--color-lj-cream)] px-6 py-32 relative">
