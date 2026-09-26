@@ -39,6 +39,32 @@ describe('Header v3', () => {
     expect(svg).not.toBeNull()
   })
 
+  it('renders the bar as a floating pill 10px below the top edge', () => {
+    const { container } = render(<Header />)
+    const header = container.querySelector('header') as HTMLElement
+    // Сама шапка — прозрачная липкая полоса с отступом 10px (pt-2.5),
+    // клики сквозь отступ проходят к странице.
+    expect(header.className).toMatch(/(^|\s)sticky(\s|$)/)
+    expect(header.className).toMatch(/(^|\s)top-0(\s|$)/)
+    expect(header.className).toMatch(/(^|\s)pt-2\.5(\s|$)/)
+    expect(header.className).toContain('pointer-events-none')
+    expect(header.className).not.toContain('border-b')
+    const pill = screen.getByTestId('header-pill')
+    expect(pill.className).toMatch(/(^|\s)rounded-full(\s|$)/)
+    expect(pill.className).toContain('pointer-events-auto')
+    expect(within(pill).getByRole('link', { name: /химичка/i })).toBeInTheDocument()
+    expect(within(pill).getByTestId('header-cart-button')).toBeInTheDocument()
+  })
+
+  it('opens the mobile search as a separate panel under the pill', () => {
+    render(<Header />)
+    fireEvent.click(screen.getByRole('button', { name: 'Открыть поиск' }))
+    const panel = screen.getByTestId('header-mobile-search')
+    expect(screen.getByTestId('header-pill')).not.toContainElement(panel)
+    expect(panel.className).toContain('pointer-events-auto')
+    expect(panel.className).toContain('md:hidden')
+  })
+
   it('lets the wordmark shrink below md so the mobile row fits 360–390px', () => {
     // Логотип 1.75rem → ~199px шириной. Вместе с лупой, корзиной и «МЕНЮ»
     // ряд не помещался в 390 − 2×24px и давал горизонтальный скролл.

@@ -77,11 +77,17 @@ export function Header({ headerPromoText = null }: HeaderProps) {
         </div>
       ) : null}
 
+      {/* Шапка — плавающая пилюля в 10px от верхнего края. Сам <header>
+          прозрачный и не ловит клики (отступ вокруг пилюли кликается насквозь),
+          его высота вместе с отступом уходит в --lj-header-height. */}
       <header
         ref={headerRef}
-        className="sticky top-0 z-[50] w-full border-b border-[var(--color-lj-rule)] bg-[var(--color-lj-cream)]/95 backdrop-blur"
+        className="pointer-events-none sticky top-0 z-[50] w-full px-2.5 pt-2.5"
       >
-        <div className="max-w-[var(--max-lj-content)] mx-auto flex items-center justify-between gap-4 px-6 py-4">
+        <div
+          data-testid="header-pill"
+          className="pointer-events-auto max-w-[var(--max-lj-content)] mx-auto flex items-center justify-between gap-4 rounded-full border border-[var(--color-lj-rule-soft)] bg-[var(--color-lj-cream)]/90 backdrop-blur shadow-[0_6px_24px_rgba(10,10,10,0.06)] py-2.5 pl-4 pr-3 md:pl-6 md:pr-2.5"
+        >
           {/* На мобильном логотип (~199px при 1.75rem) — единственное, что
               может сжиматься: лупа, корзина и «МЕНЮ» вместе с ним не помещались
               в 390px и давали горизонтальный скролл. Высота остаётся прежней,
@@ -168,9 +174,13 @@ export function Header({ headerPromoText = null }: HeaderProps) {
           </div>
         </div>
 
-        {/* Мобильный ряд поиска — во всю ширину под верхней панелью. */}
+        {/* Мобильный поиск — отдельная плашка под пилюлей: второй ряд внутри
+            rounded-full сломал бы форму. */}
         {mobileSearchOpen ? (
-          <div className="md:hidden border-t border-[var(--color-lj-rule)] px-6 py-3">
+          <div
+            data-testid="header-mobile-search"
+            className="pointer-events-auto md:hidden mt-2 rounded-3xl border border-[var(--color-lj-rule-soft)] bg-[var(--color-lj-cream)] shadow-[0_6px_24px_rgba(10,10,10,0.06)] px-4 py-3"
+          >
             <div className="[&>div]:max-w-none">
               <HeaderSearch />
             </div>
