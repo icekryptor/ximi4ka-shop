@@ -82,12 +82,16 @@ export function Header({ headerPromoText = null }: HeaderProps) {
         className="sticky top-0 z-[50] w-full border-b border-[var(--color-lj-rule)] bg-[var(--color-lj-cream)]/95 backdrop-blur"
       >
         <div className="max-w-[var(--max-lj-content)] mx-auto flex items-center justify-between gap-4 px-6 py-4">
+          {/* На мобильном логотип (~199px при 1.75rem) — единственное, что
+              может сжиматься: лупа, корзина и «МЕНЮ» вместе с ним не помещались
+              в 390px и давали горизонтальный скролл. Высота остаётся прежней,
+              сужается только ширина, знак масштабируется пропорционально. */}
           <Link
             href="/"
             aria-label="ХИМИЧКА — на главную"
-            className="text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand-deep)] transition-colors"
+            className="max-md:min-w-0 text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand-deep)] transition-colors"
           >
-            <HeaderLogo size={1.75} />
+            <HeaderLogo size={1.75} className="max-md:max-w-full" />
           </Link>
 
           <nav
