@@ -5,6 +5,7 @@ import { ProductCard } from '@/components/ProductCard'
 import { LabSection } from '@/components/ui/LabSection'
 import { CatalogPromoBanner } from '@/components/catalog/CatalogPromoBanner'
 import { CatalogGroupSection } from '@/components/catalog/CatalogGroupSection'
+import { CompactProductRow } from '@/components/catalog/CompactProductRow'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
@@ -111,7 +112,13 @@ export default async function CatalogPage({ params }: Props) {
                     title={group.category.name}
                     href={categoryPath(group.category.slug)}
                     layout={density}
-                    toggleable={hasViewToggle(group.category.slug)}
+                    list={
+                      hasViewToggle(group.category.slug)
+                        ? group.products.map((p) => (
+                            <CompactProductRow key={p.id} product={p} images={p.images} />
+                          ))
+                        : undefined
+                    }
                   >
                     {group.products.map((p) => (
                       <ProductCard

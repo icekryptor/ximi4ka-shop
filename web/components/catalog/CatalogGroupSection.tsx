@@ -10,11 +10,15 @@ interface Props {
   title: string
   /** «Вся категория →». */
   href: string
-  /** Сетка по умолчанию: 'kit' — 4 колонки, 'compact' — 6 колонок. */
+  /** Сетка: 'kit' — 4 колонки, 'compact' — 6 колонок. */
   layout: CatalogGridLayout
-  /** Переключатель «крупные / компактные карточки» в строке заголовка. */
-  toggleable?: boolean
-  /** Карточки товаров — рендерятся на сервере, здесь меняется только сетка. */
+  /**
+   * Вид «списком» (строки CompactProductRow). Если передан — в строке
+   * заголовка появляется переключатель «плиткой / списком», и группа
+   * открывается списком, как во фрейме Figma 56:10373.
+   */
+  list?: ReactNode
+  /** Карточки товаров для вида «плиткой» — рендерятся на сервере. */
   children: ReactNode
 }
 
@@ -25,21 +29,17 @@ const GRID: Record<CatalogGridLayout, string> = {
   compact: 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-5 gap-y-8',
 }
 
+type CatalogView = 'grid' | 'list'
+
 /**
  * Секция каталога: заголовок категории (Mazzard Light Italic, линия снизу),
  * ссылка на категорию и сетка карточек. Для длинных групп (реактивы) в строке
- * заголовка — переключатель плотности из макета: две крупные карточки или
- * компактные ряды. Активная кнопка — фиолетовая.
+ * заголовка — переключатель вида из макета: плиткой или списком. Активная
+ * кнопка — фиолетовая. Смонтирован только выбранный вид.
  */
-export function CatalogGroupSection({
-  headingId,
-  title,
-  href,
-  layout,
-  toggleable = false,
-  children,
-}: Props) {
-  const [current, setCurrent] = useState<CatalogGridLayout>(layout)
+export function CatalogGroupSection({ headingId, title, href, layout, list, children }: Props) {
+  const [view, setView] = useState<CatalogView>(list ? 'list' : 'grid')
+  const showList = list != null && view === 'list'
 
   return (
     <section aria-labelledby={headingId}>
@@ -57,30 +57,29 @@ export function CatalogGroupSection({
           >
             Вся категория →
           </Link>
-          {toggleable ? (
+          {list != null ? (
             <div role="group" aria-label="Вид карточек" className="flex gap-[5px]">
-              <ViewButton
-                label="Крупные карточки"
-                pressed={current === 'kit'}
-                onClick={() => setCurrent('kit')}
-              >
-                <LargeCardsIcon />
+              <ViewButton label="Плиткой" pressed={!showList} onClick={() => setView('grid')}>
+                <GridIcon />
               </ViewButton>
-              <ViewButton
-                label="Компактные карточки"
-                pressed={current === 'compact'}
-                onClick={() => setCurrent('compact')}
-              >
-                <CompactCardsIcon />
+              <ViewButton label="Списком" pressed={showList} onClick={() => setView('list')}>
+                <ListIcon />
               </ViewButton>
             </div>
           ) : null}
         </div>
       </div>
 
-      <div data-testid="catalog-grid" className={GRID[current]}>
-        {children}
-      </div>
+      {showList ? (
+        // Строки из макета идут через 20px, у каждой своя линия снизу.
+        <div data-testid="catalog-list" className="flex flex-col gap-5">
+          {list}
+        </div>
+      ) : (
+        <div data-testid="catalog-grid" className={GRID[layout]}>
+          {children}
+        </div>
+      )}
     </section>
   )
 }
@@ -124,7 +123,7 @@ function TextLines({ x, y }: { x: number; y: number }) {
   )
 }
 
-function LargeCardsIcon() {
+function GridIcon() {
   return (
     <svg width="50" height="50" viewBox="0 0 50 50" fill="currentColor" aria-hidden="true">
       <rect x="6.11" y="9.16" width="17.27" height="17.68" rx="1.92" />
@@ -135,7 +134,7 @@ function LargeCardsIcon() {
   )
 }
 
-function CompactCardsIcon() {
+function ListIcon() {
   return (
     <svg width="50" height="50" viewBox="0 0 50 50" fill="currentColor" aria-hidden="true">
       <rect x="9.88" y="10.82" width="12.56" height="12.56" rx="1.87" />
