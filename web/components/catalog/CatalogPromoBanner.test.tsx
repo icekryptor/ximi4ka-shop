@@ -24,4 +24,11 @@ describe('CatalogPromoBanner', () => {
     expect(banner.className).toContain('bg-[image:var(--gradient-lj-bright)]')
     expect(banner.className).toContain('rounded-[var(--radius-lj-bright)]')
   })
+
+  it('sets the headline in Mazzard light italic without the molecule decor (Figma «Каталог — 1440»)', () => {
+    const { container } = render(<CatalogPromoBanner headline="Оффер" />)
+    const headline = within(container).getByRole('heading', { name: 'Оффер' })
+    expect(headline).toHaveClass('font-lj-mazzard', 'font-light', 'italic')
+    expect(container.querySelector('svg')).toBeNull()
+  })
 })

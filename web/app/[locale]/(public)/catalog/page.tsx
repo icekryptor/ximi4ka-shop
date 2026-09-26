@@ -4,11 +4,12 @@ import { notFound } from 'next/navigation'
 import { ProductCard } from '@/components/ProductCard'
 import { LabSection } from '@/components/ui/LabSection'
 import { CatalogPromoBanner } from '@/components/catalog/CatalogPromoBanner'
+import { CatalogGroupSection } from '@/components/catalog/CatalogGroupSection'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { breadcrumbJsonLd } from '@/lib/jsonLd'
-import { fetchCatalog, densityForSlug } from '@/lib/catalogApi'
+import { fetchCatalog, densityForSlug, hasViewToggle } from '@/lib/catalogApi'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -68,7 +69,7 @@ export default async function CatalogPage({ params }: Props) {
       {/* Хлебные крошки */}
       <nav
         aria-label="breadcrumbs"
-        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70"
+        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.03em] opacity-70"
       >
         <Link href={homePath} className="hover:opacity-100">
           Главная
@@ -82,9 +83,9 @@ export default async function CatalogPage({ params }: Props) {
       {/* Витрина каталога (LAB CREAM) */}
       <LabSection variant="cream" className="px-6 pt-12 pb-24">
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,6vw,5.5rem)] leading-[0.92] tracking-[-0.045em] mb-8">
-            <em className="italic text-[var(--color-lj-brand)] font-[900]">Каталог</em> целиком
-          </h1>
+          {/* В макете страница открывается сразу промо-баннером, видимого
+              заголовка нет — h1 остаётся для поисковиков и скринридеров. */}
+          <h1 className="sr-only">Каталог</h1>
 
           {/* Промо-баннер */}
           <div className="mb-16">
@@ -104,49 +105,25 @@ export default async function CatalogPage({ params }: Props) {
               {groups.map((group) => {
                 const density = densityForSlug(group.category.slug)
                 return (
-                  <section key={group.category.id} aria-labelledby={`cat-${group.category.id}`}>
-                    <div className="flex items-baseline justify-between gap-4 flex-wrap mb-8 border-b border-[var(--color-lj-rule)] pb-4">
-                      <h2
-                        id={`cat-${group.category.id}`}
-                        className="font-lj-display font-[700] text-[clamp(1.75rem,3vw,2.75rem)] leading-[0.95] tracking-[-0.035em]"
-                      >
-                        {group.category.name}
-                      </h2>
-                      <Link
-                        href={categoryPath(group.category.slug)}
-                        className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] opacity-70 hover:opacity-100 hover:text-[var(--color-lj-brand-deep)] transition-opacity"
-                      >
-                        Вся категория →
-                      </Link>
-                    </div>
-
-                    {density === 'compact' ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-5 gap-y-8">
-                        {group.products.map((p) => (
-                          <ProductCard
-                            key={p.id}
-                            product={p}
-                            stats={{ reagents: 0, instruments: 0, reactions: 0 }}
-                            statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
-                            images={p.images}
-                            density="compact"
-                          />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                        {group.products.map((p) => (
-                          <ProductCard
-                            key={p.id}
-                            product={p}
-                            stats={{ reagents: 0, instruments: 0, reactions: 0 }}
-                            statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
-                            images={p.images}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </section>
+                  <CatalogGroupSection
+                    key={group.category.id}
+                    headingId={`cat-${group.category.id}`}
+                    title={group.category.name}
+                    href={categoryPath(group.category.slug)}
+                    layout={density}
+                    toggleable={hasViewToggle(group.category.slug)}
+                  >
+                    {group.products.map((p) => (
+                      <ProductCard
+                        key={p.id}
+                        product={p}
+                        stats={{ reagents: 0, instruments: 0, reactions: 0 }}
+                        statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+                        images={p.images}
+                        density={density}
+                      />
+                    ))}
+                  </CatalogGroupSection>
                 )
               })}
             </div>

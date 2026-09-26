@@ -56,13 +56,29 @@ describe('Header v3', () => {
     expect(within(pill).getByTestId('header-cart-button')).toBeInTheDocument()
   })
 
+  it('keeps the desktop pill as wide as its content instead of stretching it', () => {
+    render(<Header />)
+    const pill = screen.getByTestId('header-pill')
+    expect(pill.className).toContain('lg:w-fit')
+    expect(pill.className).toContain('lg:justify-start')
+    expect(pill.className).not.toContain('max-w-[var(--max-lj-content)]')
+  })
+
+  it('puts the search right after the wordmark and before the nav (Figma order)', () => {
+    render(<Header />)
+    const pill = screen.getByTestId('header-pill')
+    const search = within(pill).getByRole('combobox')
+    const nav = within(pill).getByRole('navigation', { name: 'Основная навигация' })
+    expect(search.compareDocumentPosition(nav) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('opens the mobile search as a separate panel under the pill', () => {
     render(<Header />)
     fireEvent.click(screen.getByRole('button', { name: 'Открыть поиск' }))
     const panel = screen.getByTestId('header-mobile-search')
     expect(screen.getByTestId('header-pill')).not.toContainElement(panel)
     expect(panel.className).toContain('pointer-events-auto')
-    expect(panel.className).toContain('md:hidden')
+    expect(panel.className).toContain('xl:hidden')
   })
 
   it('lets the wordmark shrink below md so the mobile row fits 360–390px', () => {

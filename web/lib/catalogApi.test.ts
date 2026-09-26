@@ -5,7 +5,7 @@ vi.mock('@/lib/api', () => ({
   listCategories: vi.fn(),
 }))
 
-import { fetchCatalog, densityForSlug, COMPACT_SLUGS } from './catalogApi'
+import { fetchCatalog, densityForSlug, hasViewToggle, COMPACT_SLUGS } from './catalogApi'
 import { listCategories, listPublishedProducts } from '@/lib/api'
 
 function product(id: string, categoryIds: string[]) {
@@ -46,6 +46,14 @@ function category(id: string, slug: string) {
     translations: {},
   }
 }
+
+describe('hasViewToggle', () => {
+  it('gives only reagents the large/compact toggle (Figma «Каталог — 1440»)', () => {
+    expect(hasViewToggle('reagents')).toBe(true)
+    expect(hasViewToggle('equipment')).toBe(false)
+    expect(hasViewToggle('kits')).toBe(false)
+  })
+})
 
 describe('densityForSlug', () => {
   it('maps kits/combo to kit density', () => {
