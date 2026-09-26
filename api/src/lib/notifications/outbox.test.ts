@@ -1,11 +1,12 @@
 import 'reflect-metadata'
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
+import { CdekShipment } from '../../entities/CdekShipment.js'
 import { enqueueOrderEvent, saveOrderWithStatusEvent, statusEventKey } from './outbox.js'
 
-async function seedOrder(): Promise<Order> {
+async function seedOrder(overrides: Partial<Order> = {}): Promise<Order> {
   const repo = AppDataSource.getRepository(Order)
   return repo.save(
     repo.create({
@@ -21,6 +22,7 @@ async function seedOrder(): Promise<Order> {
       totalRub: 100,
       paymentProvider: 'manual',
       statusHistory: [],
+      ...overrides,
     }),
   )
 }
@@ -52,13 +54,25 @@ describe('outbox', () => {
   beforeEach(async () => {
     await AppDataSource.query('TRUNCATE orders RESTART IDENTITY CASCADE')
   })
+  afterEach(() => vi.unstubAllEnvs())
 
-  it('ставит событие в оба канала', async () => {
+  const shipments = (orderId: string) =>
+    AppDataSource.getRepository(CdekShipment).findBy({ orderId })
+
+  it('новый заказ — в оба канала', async () => {
     const order = await seedOrder()
     await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'created'))
     expect((await rows(order.id)).map((r) => [r.channel, r.eventKey])).toEqual([
       ['sheets', 'created'],
       ['telegram', 'created'],
+    ])
+  })
+
+  it('смена статуса — только в таблицу: ответы в чате мешают складу', async () => {
+    const order = await seedOrder()
+    await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'status:paid'))
+    expect((await rows(order.id)).map((r) => [r.channel, r.eventKey])).toEqual([
+      ['sheets', 'status:paid'],
     ])
   })
 
@@ -86,7 +100,7 @@ describe('outbox', () => {
     await saveOrderWithStatusEvent(order, 'pending')
     const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
     expect(saved.status).toBe('paid')
-    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid', 'status:paid'])
+    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid'])
   })
 
   it('без смены статуса событие не ставится, привязка платежа сохраняется', async () => {
@@ -121,6 +135,46 @@ describe('outbox', () => {
     expect(saved.status).toBe('paid')
     expect(saved.paidAt).toEqual(paidAt)
     expect(saved.statusHistory).toEqual(stale.statusHistory)
-    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid', 'status:paid'])
+    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid'])
+  })
+
+  it('оплата заказа СДЭК ставит его в очередь создания в СДЭК', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    const order = await seedOrder()
+    order.status = 'paid'
+    await saveOrderWithStatusEvent(order, 'pending')
+    expect(await shipments(order.id)).toMatchObject([{ state: 'queued', attempts: 0 }])
+  })
+
+  it('вебхук и сверка дважды отметили оплату — одна запись', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    const order = await seedOrder()
+    order.status = 'paid'
+    await Promise.all([
+      saveOrderWithStatusEvent(order, 'pending'),
+      saveOrderWithStatusEvent(order, 'pending'),
+    ])
+    expect(await shipments(order.id)).toHaveLength(1)
+  })
+
+  it('флаг выключен — в очередь СДЭК не ставим', async () => {
+    // dotenv читает api/.env и под тестами — не полагаемся на то, что там пусто.
+    vi.stubEnv('CDEK_ORDERS_ENABLED', '')
+    const order = await seedOrder()
+    order.status = 'paid'
+    await saveOrderWithStatusEvent(order, 'pending')
+    expect(await shipments(order.id)).toHaveLength(0)
+  })
+
+  it('доставка не СДЭК и не оплата — не ставим', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    const pickup = await seedOrder({ deliveryMethod: 'pickup' })
+    pickup.status = 'paid'
+    await saveOrderWithStatusEvent(pickup, 'pending')
+    const cancelled = await seedOrder()
+    cancelled.status = 'cancelled'
+    await saveOrderWithStatusEvent(cancelled, 'pending')
+    expect(await shipments(pickup.id)).toHaveLength(0)
+    expect(await shipments(cancelled.id)).toHaveLength(0)
   })
 })

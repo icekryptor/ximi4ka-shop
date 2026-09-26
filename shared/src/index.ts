@@ -18,6 +18,8 @@ export type {
   OrderNotificationDto,
 } from './types/notifications.js'
 
+export type { CdekShipmentDto, CdekShipmentState } from './types/cdek.js'
+
 export type { Product, ProductImage, StockStatus } from './types/product.js'
 
 export type {

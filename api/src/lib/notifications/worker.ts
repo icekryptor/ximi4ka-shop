@@ -1,10 +1,10 @@
-import type { NotificationChannel, OrderEventKey } from '@ximi4ka-shop/shared'
+import type { NotificationChannel } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { GoogleSheetsClient, SheetsConfigError } from '../google/sheets.js'
 import { TelegramBot, TelegramConfigError } from '../telegram/bot.js'
-import { sheetRow, telegramCard, telegramStatusLine } from './format.js'
+import { sheetRow, telegramCard } from './format.js'
 import { CHANNELS } from './outbox.js'
 import { RateLimitError } from './rateLimit.js'
 
@@ -83,20 +83,13 @@ async function deliver(
     return {}
   }
   const bot = channels.telegram!
-  if (row.eventKey === 'created') {
-    const telegramMessageId = await bot.sendMessage(telegramCard(order))
-    return { telegramMessageId }
+  if (row.eventKey !== 'created') {
+    // Статусы в чат больше не ставятся (channelsForEvent). Такая запись могла
+    // остаться только от прошлой версии — не отправляем.
+    throw new TelegramConfigError('Смены статуса в Telegram отключены')
   }
-  const replyTo = order.telegramMessageId
-  await bot.sendMessage(
-    telegramStatusLine(
-      order.orderNumber,
-      row.eventKey as Exclude<OrderEventKey, 'created'>,
-      replyTo == null,
-    ),
-    replyTo,
-  )
-  return {}
+  const telegramMessageId = await bot.sendMessage(telegramCard(order))
+  return { telegramMessageId }
 }
 
 type RowOutcome = 'sent' | 'retried' | 'failed' | 'rateLimited'

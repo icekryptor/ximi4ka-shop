@@ -70,10 +70,12 @@ checkoutRouter.post('/', async (req, res, next) => {
     const { lines, subtotalRub, packLines } = await loadCart(parsed.items)
     const { delivery } = parsed
 
+    const packages = packCart(packLines)
+
     // Цену доставки считает только сервер: сумма, которую показал виджет, —
     // подсказка для интерфейса, клиенту не доверяем.
     const quote = await quoteDelivery(
-      { destination: delivery, subtotalRub, packages: packCart(packLines) },
+      { destination: delivery, subtotalRub, packages },
       { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
     )
     const shippingRub = quote.customerPriceRub
@@ -106,6 +108,7 @@ checkoutRouter.post('/', async (req, res, next) => {
                 periodMax: quote.periodMax,
                 source: quote.source,
               },
+              packages,
             },
             deliveryMethod: delivery.method,
             subtotalRub,

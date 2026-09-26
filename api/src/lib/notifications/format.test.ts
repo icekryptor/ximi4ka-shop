@@ -4,7 +4,6 @@ import {
   TELEGRAM_TEXT_LIMIT,
   sheetRow,
   telegramCard,
-  telegramStatusLine,
   type NotifiableOrder,
 } from './format.js'
 
@@ -174,21 +173,6 @@ describe('telegramCard', () => {
     // Нет «висящих» половинок суррогатной пары.
     expect(card).not.toMatch(
       /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
-    )
-  })
-})
-
-describe('telegramStatusLine', () => {
-  it('ответ на карточку — коротко', () => {
-    expect(telegramStatusLine('XM-2026-00042', 'status:paid', false)).toBe('✅ оплачен')
-    expect(telegramStatusLine('XM-2026-00042', 'status:shipped', false)).toBe('📦 отправлен')
-    expect(telegramStatusLine('XM-2026-00042', 'status:cancelled', false)).toBe('✖️ отменён')
-    expect(telegramStatusLine('XM-2026-00042', 'status:failed', false)).toBe('⚠️ оплата не прошла')
-  })
-
-  it('без карточки — с номером заказа', () => {
-    expect(telegramStatusLine('XM-2026-00042', 'status:paid', true)).toBe(
-      '✅ Заказ XM-2026-00042: оплачен',
     )
   })
 })

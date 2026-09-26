@@ -1,5 +1,6 @@
 import type {
   BlogPost,
+  CdekShipmentDto,
   OrderDto,
   OrderNotificationDto,
   OrderStatus,
@@ -489,6 +490,15 @@ export async function adminSetOrderStatus(
 export async function adminRetryOrderNotifications(id: string): Promise<OrderNotificationDto[]> {
   const body = await authedRequest<{ data: OrderNotificationDto[] }>(
     `/api/admin/orders/${encodeURIComponent(id)}/notifications/retry`,
+    { method: 'POST' },
+  )
+  return body.data
+}
+
+// «Создать в СДЭК [ещё раз]» — ставит заказ в очередь создания повторно.
+export async function adminRetryCdekShipment(id: string): Promise<CdekShipmentDto> {
+  const body = await authedRequest<{ data: CdekShipmentDto }>(
+    `/api/admin/orders/${encodeURIComponent(id)}/cdek/retry`,
     { method: 'POST' },
   )
   return body.data
