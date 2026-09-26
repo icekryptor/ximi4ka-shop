@@ -190,11 +190,11 @@ Auto-switches text colors based on variant. Body becomes `bone`, rules become `r
 <NumberCell
   index="01"
   topLabel="год"
-  big="2023"                       // string OR { countTo: 20000, suffix: '+' }
-  bottomLeft="основано"            // brand-purple atomic-mass label
+  big="2023" // string OR { countTo: 20000, suffix: '+' }
+  bottomLeft="основано" // brand-purple atomic-mass label
   bottomRight="3 года"
 >
-  <Timeline points={['23','24','25','26']} active={0} />
+  <Timeline points={['23', '24', '25', '26']} active={0} />
 </NumberCell>
 ```
 
