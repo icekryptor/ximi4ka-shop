@@ -217,6 +217,9 @@
   --color-lj-cream: #ffffff;
   --color-lj-cream-shade: #f4f4f4;
   --color-lj-cream-line: rgba(10, 10, 10, 0.05);
+  /* Песочная подложка отдельных секций («Смотрите также» на странице
+     товара) — в Figma это переменная lj/cream #F2EFE8. */
+  --color-lj-sand: #f2efe8;
 
   /* Ink Lab — nocturnal surface family */
   --color-lj-ink: #0a0a0a;

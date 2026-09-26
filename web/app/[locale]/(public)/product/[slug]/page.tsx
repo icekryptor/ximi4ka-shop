@@ -13,19 +13,16 @@ import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata, siteUrl } from '@/lib/metadata'
 import { breadcrumbJsonLd, productJsonLd } from '@/lib/jsonLd'
 import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
-import { MicroTrustRow, type MicroTrustItem } from '@/components/ui/MicroTrustRow'
 import { LabSection } from '@/components/ui/LabSection'
 import {
-  ContentsSection,
   ProductHeroImage,
   ProductPriceBlockLJ,
+  ProductTabsLJ,
   StockChip,
-  KeyFactsListLJ,
   CharacteristicsTableLJ,
-  CharacteristicsCellRow,
+  extractContentsHtml,
   extractGalleryImages,
-  extractKeyFacts,
-  extractUseFacts,
+  type ProductTab,
 } from '@/components/product'
 import { ProductCard } from '@/components/ProductCard'
 import { PreFooterCta } from '@/components/marketing/PreFooterCta'
@@ -36,19 +33,9 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } f
 
 export const revalidate = 60
 
-// Static trust signals for the v3 hero column. Lab-journal vocabulary
-// drops the emoji icons that v2 used — bullets render as brand-purple
-// `•` via MicroTrustRow's `before:` pseudo when no icon is provided.
-const MICRO_TRUST_ITEMS: MicroTrustItem[] = [
-  { label: 'Безопасные реактивы' },
-  { label: 'Доставка от 3 дней' },
-  { label: 'Возврат 14 дней' },
-]
-
-// Headings that ContentsSection (Section 2) and CharacteristicsTableLJ
-// (Section 3) already render. Section 4's BlockRenderer must skip the
-// blocks containing these headings so the same content isn't shown three
-// times. Both block types use the `<h3>…</h3>` paragraph wrapper convention
+// Headings whose blocks the «Состав» and «Характеристики» tabs already
+// render. The «Описание» tab's BlockRenderer must skip them so the same
+// content isn't shown twice. Both block types use the `<h3>…</h3>` paragraph wrapper convention
 // that ContentsSection / parseCharacteristics match against.
 const EXCLUDED_HEADING_RE = /<h3[^>]*>\s*(?:состав|что внутри|характеристики)\s*<\/h3>/i
 
@@ -173,25 +160,48 @@ export default async function ProductPage({ params }: Props) {
     product.longDescriptionBlocks) as unknown[]
 
   const characteristics = parseCharacteristics(longDescriptionBlocks)
-  const keyFacts = extractKeyFacts(characteristics)
-  const useFacts = extractUseFacts(characteristics)
+  const contentsHtml = extractContentsHtml(longDescriptionBlocks)
   const galleryImages = extractGalleryImages(product)
 
-  // Section 4 (Описание) re-renders the long description as prose. Drop
-  // the «Состав» and «Характеристики» blocks here so they're not shown
-  // three times — Section 2 (ContentsSection) and Section 3 (Характеристики
-  // table) already render that content with bespoke v3 typography.
+  // «Описание» re-renders the long description as prose. Drop the «Состав»
+  // and «Характеристики» blocks here — their own tabs render that content.
   const filteredDescriptionBlocks = Array.isArray(longDescriptionBlocks)
     ? longDescriptionBlocks.filter((b) => !isDuplicatedSectionBlock(b))
     : []
 
+  // Вкладки под ценой (Figma «Товар — 1440»): пустые не показываем.
+  const tabs: ProductTab[] = []
+  if (filteredDescriptionBlocks.length > 0) {
+    tabs.push({
+      id: 'description',
+      label: 'Описание',
+      content: <BlockRenderer blocks={filteredDescriptionBlocks} className="space-y-4" />,
+    })
+  }
+  if (contentsHtml) {
+    tabs.push({
+      id: 'contents',
+      label: 'Состав',
+      content: (
+        <div
+          className="lj-prose font-lj-body text-[1.0625rem] leading-[1.6] text-[var(--color-lj-ink)] [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_li]:mb-1"
+          dangerouslySetInnerHTML={{ __html: contentsHtml }}
+        />
+      ),
+    })
+  }
+  if (Object.keys(characteristics).length > 0) {
+    tabs.push({
+      id: 'specs',
+      label: 'Характеристики',
+      content: <CharacteristicsTableLJ characteristics={characteristics} surface="light" />,
+    })
+  }
+
   const related = await fetchRelatedProducts(product.id)
 
-  // Split the product name on whitespace so the hero H1 can render an
-  // off-grid stagger: even-indexed words flush left, odd-indexed words
-  // indented `pl-[6vw]` for the hand-typeset journal feel. The first
-  // word lights up brand-purple italic.
-  const nameWords = name.split(/\s+/)
+  // Первое слово названия — фиолетовое (Figma: «Набор» lj/brand).
+  const [firstWord, ...restWords] = name.split(/\s+/)
 
   return (
     <>
@@ -208,156 +218,76 @@ export default async function ProductPage({ params }: Props) {
         ])}
       />
 
-      {/* Mono breadcrumb trail — sits above SECTION 1, on the page bg
-          (cream is the section, this nav is on the body's bone-ish bg). */}
+      {/* Хлебные крошки (Figma Breadcrumbs, Levels=3, Current=Ink):
+          IBM Plex 11/16.5, uppercase, весь блок 70%. Выровнены по
+          колонкам hero ниже. */}
       <nav
         aria-label="breadcrumbs"
-        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-70"
+        className="box-content max-w-[1260px] mx-auto px-6 pt-6 flex flex-wrap gap-x-2 font-lj-mono text-[length:var(--text-lj-mono-xs)] leading-[1.5] uppercase tracking-[0.03em] text-[var(--color-lj-ink)] opacity-70"
       >
-        <Link href="/" className="hover:opacity-100">
+        <Link href="/" className="hover:text-[var(--color-lj-brand)]">
           Главная
         </Link>
-        <span className="mx-2" aria-hidden="true">
-          /
-        </span>
-        <Link href="/categories" className="hover:opacity-100">
+        <span aria-hidden="true">/</span>
+        <Link href="/categories" className="hover:text-[var(--color-lj-brand)]">
           Каталог
         </Link>
-        <span className="mx-2" aria-hidden="true">
-          /
-        </span>
-        <span className="opacity-100">{name}</span>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{name}</span>
       </nav>
 
-      {/* SECTION 1 — HERO (cream). Two-column desktop: gallery + info. */}
-      <LabSection variant="cream" className="px-6 pt-12 pb-20 relative">
-        <div className="max-w-[var(--max-lj-content)] mx-auto grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-20">
-          {/* IMAGE COLUMN */}
-          <div>
-            <ProductHeroImage images={galleryImages} alt={name} sku={product.sku ?? product.slug} />
-          </div>
+      {/* SECTION 1 — HERO (Figma «Section 1 — Hero», 33:790): галерея 660
+          и колонка 560 с зазором 40; на узких экранах — стопкой. */}
+      <LabSection variant="cream" className="px-6 pt-12 pb-20">
+        <div className="max-w-[1260px] mx-auto grid gap-10 lg:grid-cols-[minmax(0,660fr)_minmax(0,560fr)] lg:items-start">
+          <ProductHeroImage images={galleryImages} alt={name} sku={product.sku ?? product.slug} />
 
-          {/* INFO COLUMN */}
-          <div className="flex flex-col gap-6 pt-4">
-            {/* SKU header — brand-purple bullet then mono SKU label */}
-            <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] inline-flex items-center gap-2 before:content-[''] before:w-1.5 before:h-1.5 before:bg-[var(--color-lj-brand)] before:rounded-full">
-              № {product.sku ?? product.slug}
-            </p>
+          <div className="flex flex-col gap-10 min-w-0">
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col items-start gap-5">
+                <StockChip status={product.stockStatus} />
 
-            {/* OFF-GRID H1 — для коротких имён (≤3 слов) лесенка
-                «ручного набора»: чётные слова у края, нечётные с отступом.
-                Длинные DB-названия (аудит: «Набор химика для опытов … 161
-                в 1» давал 9 строк-лесенку) переносятся естественно, кегль
-                чуть меньше. Первое слово — brand-italic в обоих случаях. */}
-            {nameWords.length <= 3 ? (
-              <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] uppercase">
-                {nameWords.map((word, i) => (
-                  <span key={i} className={`block ${i % 2 === 1 ? 'pl-[6vw]' : ''}`}>
-                    {i === 0 ? (
-                      <em className="not-italic-fix italic text-[var(--color-lj-brand)] font-[900]">
-                        {word}
-                      </em>
-                    ) : (
-                      word
-                    )}
-                  </span>
-                ))}
-              </h1>
-            ) : (
-              <h1 className="font-lj-display font-[900] text-[clamp(1.875rem,3.4vw,3rem)] leading-[1.02] tracking-[-0.04em] uppercase text-balance">
-                <em className="not-italic-fix italic text-[var(--color-lj-brand)] font-[900]">
-                  {nameWords[0]}
-                </em>{' '}
-                {nameWords.slice(1).join(' ')}
-              </h1>
-            )}
+                <h1 className="font-lj-mazzard font-light italic text-[clamp(2rem,5vw,3rem)] leading-[1.02] tracking-[-0.04em] text-[var(--color-lj-ink)]">
+                  <span className="text-[var(--color-lj-brand)]">{firstWord}</span>
+                  {restWords.length > 0 && ` ${restWords.join(' ')}`}
+                </h1>
 
-            {/* Trail line — small mono follow-up under the headline */}
-            <p className="font-lj-mono text-sm text-[var(--color-lj-ink)] opacity-55 max-w-[36ch]">
-              — настоящие реактивы, без подделок
-            </p>
+                {shortDescription && (
+                  <p className="font-lj-mono text-[1.0625rem] leading-[1.5] text-[var(--color-lj-ink)] opacity-78">
+                    {shortDescription}
+                  </p>
+                )}
+              </div>
 
-            {shortDescription && (
-              <p className="text-[1.0625rem] leading-[1.5] text-[var(--color-lj-ink)] opacity-78 max-w-[48ch]">
-                {shortDescription}
-              </p>
-            )}
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-5">
+                <ProductPriceBlockLJ
+                  priceRub={product.priceRub}
+                  compareAtPriceRub={product.compareAtPriceRub}
+                />
+                <AddToCartWithQuantity product={product} />
+              </div>
+            </div>
 
-            <ProductPriceBlockLJ
-              priceRub={product.priceRub}
-              compareAtPriceRub={product.compareAtPriceRub}
-            />
-
-            <StockChip status={product.stockStatus} />
-
-            <AddToCartWithQuantity product={product} />
-
-            <MicroTrustRow items={MICRO_TRUST_ITEMS} />
-
-            {/* Spec sheet — KeyFactsListLJ no-renders when keyFacts is empty */}
-            <KeyFactsListLJ facts={keyFacts} />
+            <ProductTabsLJ tabs={tabs} />
           </div>
         </div>
       </LabSection>
 
-      {/* SECTION 2 — «Что внутри». Self-no-renders when «Состав» block
-          isn't present in the long description. */}
-      <ContentsSection blocks={longDescriptionBlocks} />
-
-      {/* SECTION 3 — Характеристики (ink data sheet). Скрывается целиком,
-          когда у товара нет распарсенных характеристик — пустая ink-секция
-          с одним заголовком выглядела сломанной (аудит v3.5). */}
-      {(useFacts.length > 0 || Object.keys(characteristics).length > 0) && (
-        <LabSection variant="ink" className="px-6 py-32 relative">
-          <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
-            <h2 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
-              Что у вас будет в{' '}
-              <em className="italic text-[var(--color-lj-brand)] font-[700]">руках</em>
-            </h2>
-            <div className="mb-16">
-              <CharacteristicsCellRow facts={useFacts} />
-            </div>
-            {Object.keys(characteristics).length > 0 && (
-              <div className="mt-16">
-                <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-6">
-                  Полный список характеристик
-                </p>
-                <CharacteristicsTableLJ characteristics={characteristics} />
-              </div>
-            )}
-          </div>
-        </LabSection>
-      )}
-
-      {/* SECTION 4 — Описание (cream prose). Renders when CMS provided
-          long-description blocks remain after stripping content already
-          shown in Sections 2 (Что внутри) and 3 (Характеристики). */}
-      {filteredDescriptionBlocks.length > 0 && (
-        <LabSection variant="cream" className="px-6 py-24">
-          <div className="max-w-[var(--max-lj-narrow)] mx-auto">
-            <BlockRenderer blocks={filteredDescriptionBlocks} />
-          </div>
-        </LabSection>
-      )}
-
-      {/* SECTION 5 — Related products (cream). 3-up grid mirroring the
-          asymmetric homepage catalog. Stats are placeholders pending a
-          future `kit_stats` admin field; this is the same pattern Task 4.3
-          uses on the homepage. */}
+      {/* SECTION 2 — «Смотрите также» (Figma 33:792): песочный фон, три
+          карточки лесенкой 0 / 64 / 128. Stats are placeholders pending a
+          future `kit_stats` admin field; the homepage uses the same
+          pattern. Заголовок — Mazzard ExtraLight Italic по макету; пока
+          файла этого начертания нет, браузер берёт Light Italic. */}
       {related.length > 0 && (
-        <LabSection variant="cream" className="px-6 py-24">
-          <div className="max-w-[var(--max-lj-content)] mx-auto">
-            <h2 className="font-lj-display font-[900] text-[clamp(2rem,4vw,3.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
-              Совместимые
-              <br />
-              <em className="italic text-[var(--color-lj-brand)] font-[900]">наборы</em>
+        <section className="bg-[var(--color-lj-sand)] text-[var(--color-lj-ink)] px-6 py-16 md:py-24">
+          <div className="max-w-[var(--max-lj-content)] mx-auto flex flex-col gap-12 md:gap-16">
+            <h2 className="flex flex-wrap gap-x-3 md:gap-x-5 font-lj-mazzard font-extralight italic text-[clamp(2.5rem,6vw,4.5rem)] leading-[0.92] tracking-[-0.06em]">
+              <span>Смотрите</span>
+              <span className="text-[var(--color-lj-brand)]">также</span>
             </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr_1.1fr] gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {related.slice(0, 3).map((p, i) => {
-                /* Asymmetric stagger mirrors the homepage catalog row
-                   (Task 4.4): first card flush, second offset 16, third
-                   offset 32. */
-                const stagger = i === 0 ? 'lg:mt-0' : i === 1 ? 'lg:mt-16' : 'lg:mt-32'
+                const stagger = i === 0 ? '' : i === 1 ? 'md:pt-16' : 'md:pt-32'
                 return (
                   <div key={p.id} className={stagger}>
                     {/* TODO(Task 4.4 follow-up): wire real stats once admin
@@ -374,10 +304,10 @@ export default async function ProductPage({ params }: Props) {
               })}
             </div>
           </div>
-        </LabSection>
+        </section>
       )}
 
-      {/* SECTION 6 — Pre-footer dark CTA. Already migrated to ink LJ. */}
+      {/* SECTION 3 — Pre-footer dark CTA. Already migrated to ink LJ. */}
       <PreFooterCta
         title="Не нашли подходящий набор?"
         lead="В каталоге собраны наборы для разных возрастов и научных направлений."

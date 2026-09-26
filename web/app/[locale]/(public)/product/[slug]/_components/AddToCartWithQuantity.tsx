@@ -11,8 +11,8 @@ interface Props {
 }
 
 /**
- * v3 add-to-cart row. Combines the lab-journal QuantityStepperLJ and an
- * ink-pill primary button so the user-selected quantity flows through to
+ * v3 add-to-cart row. Combines the lab-journal QuantityStepperLJ and the
+ * Figma Button Primary/L («В корзину →», градиент, скругление 4px) so the user-selected quantity flows through to
  * the cart in a single click. Carries a `data-add-to-cart-row` sentinel
  * attribute used by `<MobileBuyBar>` (via `MobileBuyBarMount`) to decide
  * when to slide its sticky bar into view.
@@ -45,25 +45,26 @@ export function AddToCartWithQuantity({ product }: Props) {
   }
 
   return (
-    <div data-add-to-cart-row className="flex flex-wrap items-center gap-4">
+    <div data-add-to-cart-row className="relative flex flex-wrap items-center gap-4">
       <QuantityStepperLJ value={quantity} onChange={setQuantity} />
       <span className="relative inline-flex">
         <button
           type="button"
           onClick={handleAdd}
           disabled={isOutOfStock}
-          className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright disabled:opacity-50 disabled:cursor-not-allowed"
+          className="lj-btn lj-btn-primary rounded-[4px] px-7 py-4"
         >
           {isOutOfStock ? 'Нет в наличии' : 'В корзину →'}
         </button>
         <AddToCartBurst burstKey={burstKey} />
       </span>
       {/* Постоянно смонтированный live-регион: скринридер озвучивает
-          добавление даже когда визуальный текст скрыт/появляется. */}
+          добавление даже когда визуальный текст скрыт/появляется.
+          Абсолютно под рядом — не сдвигает кнопки при появлении. */}
       <span
         role="status"
         aria-live="polite"
-        className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-stock-success)]"
+        className="absolute right-0 top-full mt-2 whitespace-nowrap font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-stock-success)]"
       >
         {confirmed ? 'Товар добавлен ✓' : ''}
       </span>

@@ -12,6 +12,9 @@ import { ProductGridBlock } from './ProductGridBlock'
 
 interface Props {
   blocks: unknown[]
+  // Вертикальный ритм между блоками; вкладка «Описание» на странице
+  // товара использует 16px по макету.
+  className?: string
 }
 
 function renderBlock(block: Block, key: number) {
@@ -40,11 +43,11 @@ function renderBlock(block: Block, key: number) {
   }
 }
 
-export function BlockRenderer({ blocks }: Props) {
+export function BlockRenderer({ blocks, className = 'space-y-6' }: Props) {
   const validBlocks = blocks.filter(isBlock)
   if (validBlocks.length === 0) return null
   return (
-    <div className="space-y-6" data-block-renderer>
+    <div className={className} data-block-renderer>
       {validBlocks.map((block, i) => renderBlock(block, i))}
     </div>
   )

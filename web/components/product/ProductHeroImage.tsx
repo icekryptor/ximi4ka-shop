@@ -20,13 +20,13 @@ export function ProductHeroImage({ images, alt, sku, hoverFormula }: Props) {
     <div className="group/img flex flex-col gap-4">
       <div
         data-main-image
-        className="relative aspect-[4/5] bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color] duration-500 hover:border-[var(--color-lj-ink)]"
+        className="relative aspect-square bg-white border border-[var(--color-lj-rule)] rounded-[5px] overflow-hidden"
       >
         <Image
           src={active.url}
           alt={active.alt || alt}
           fill
-          sizes="(max-width: 768px) 100vw, 50vw"
+          sizes="(max-width: 1024px) 100vw, 660px"
           className="object-cover"
           preload={activeIdx === 0}
         />
@@ -37,15 +37,18 @@ export function ProductHeroImage({ images, alt, sku, hoverFormula }: Props) {
         )}
       </div>
       {images.length > 1 && (
-        <div data-thumbnails className="flex gap-3">
+        <div data-thumbnails className="flex gap-3 overflow-x-auto">
           {images.map((img, i) => (
             <button
               key={img.id}
               type="button"
               onClick={() => setActiveIdx(i)}
               aria-label={`Show image ${i + 1}`}
-              className={`relative aspect-square w-20 bg-[var(--color-lj-cream-shade)] border overflow-hidden transition-[border-color] duration-300 ${
-                i === activeIdx ? 'border-[var(--color-lj-ink)]' : 'border-[var(--color-lj-rule)]'
+              aria-current={i === activeIdx}
+              className={`relative aspect-square w-20 shrink-0 bg-white border rounded-[5px] overflow-hidden transition-[border-color] duration-300 ${
+                i === activeIdx
+                  ? 'border-[var(--color-lj-brand)]'
+                  : 'border-[var(--color-lj-rule)] hover:border-[var(--color-lj-ink)]'
               }`}
             >
               <Image

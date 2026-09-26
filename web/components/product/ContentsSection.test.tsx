@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { ContentsSection } from './ContentsSection'
+import { ContentsSection, extractContentsHtml } from './ContentsSection'
 
 const sostavHtml =
   '<h3>Состав</h3>\n<strong>17 реактивов:</strong><br><ul>' +
@@ -68,5 +68,19 @@ describe('ContentsSection', () => {
     const root = container.querySelector('section')
     expect(root).not.toBeNull()
     expect(root?.className).toContain('my-custom-class')
+  })
+})
+
+describe('extractContentsHtml', () => {
+  it('returns the sanitized Состав body without its heading', () => {
+    const html = extractContentsHtml([{ type: 'paragraph', html: sostavHtml }])
+    expect(html).not.toBeNull()
+    expect(html).not.toMatch(/<h3/i)
+    expect(html).toContain('нитрат серебра')
+  })
+
+  it('returns null when there is no Состав block', () => {
+    expect(extractContentsHtml([{ type: 'paragraph', html: '<p>просто текст</p>' }])).toBeNull()
+    expect(extractContentsHtml(null as unknown as unknown[])).toBeNull()
   })
 })
