@@ -16,7 +16,6 @@ import { buildMetadata } from '@/lib/metadata'
 import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
 import { LabSection } from '@/components/ui/LabSection'
 import { Ticker } from '@/components/ui'
-import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { Hero, PreFooterCta, Manifesto, DEFAULT_TESTIMONIALS } from '@/components/marketing'
 import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
 import { HowItWorksStepLJ } from '@/components/marketing/HowItWorksStepLJ'
@@ -26,12 +25,11 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } f
 export const revalidate = 60
 
 // v3 Lab Journal — hardcoded catalog of 3 flagship sets. Marketing decoration
-// (callouts, stats, hover formulas, chips, badges) lives here; each `slug`
-// resolves to a real DB product at request time so the cards render real
-// product photos. The drift unit test (page.test.tsx) catches any slug here
-// that doesn't exist in the DB. `export` is required for that test;
-// `as const` preserves literal types so `badgeVariant`/`callout.position`
-// stay narrow without redundant casts.
+// (stats, hover formulas, chips, badges) lives here; each `slug` resolves to
+// a real DB product at request time so the cards render real product photos.
+// The drift unit test (page.test.tsx) catches any slug here that doesn't
+// exist in the DB. `export` is required for that test; `as const` preserves
+// literal types so `badgeVariant` stays narrow without redundant casts.
 // NOTE: `name`, `shortDescription`, and `priceRub` here are FALLBACK-ONLY
 // values used by the synthetic Product literal when a slug doesn't resolve
 // in the DB (drift / outage). In normal operation the DB-resolved product's
@@ -49,11 +47,9 @@ export const SITE_CATALOG = [
     badgeVariant: 'brand' as const,
     elementSymbol: 'Cu',
     emphasisWord: 'Химичка',
-    cornerMark: 'arr. 01',
     hoverFormula: 'Cu + 2 AgNO₃ → Cu(NO₃)₂ + 2 Ag↓',
     chips: ['безопасно', 'ярко', 'от 10 лет'],
     stats: { reagents: 18, instruments: 12, reactions: 161 },
-    callout: { text: '161 реакция', position: 'right' as const, topPercent: 28 },
     staggerOffset: 0,
   },
   {
@@ -67,11 +63,9 @@ export const SITE_CATALOG = [
     badgeVariant: 'outline' as const,
     elementSymbol: 'NaCl',
     emphasisWord: 'Мини-',
-    cornerMark: 'arr. 02',
     hoverFormula: 'Pocket lab · 18 реактивов',
     chips: ['подарок', 'от 8 лет'],
     stats: { reagents: 18, instruments: 4, reactions: 161 },
-    callout: { text: 'от 1 799 ₽', position: 'left' as const, topPercent: 60 },
     staggerOffset: 4, // rem
   },
   {
@@ -84,11 +78,9 @@ export const SITE_CATALOG = [
     badgeVariant: 'ink' as const,
     elementSymbol: 'e⁻',
     emphasisWord: 'Электро',
-    cornerMark: 'arr. 03',
     hoverFormula: '2 H₂O → 2 H₂↑ + O₂↑',
     chips: ['ток', 'гальваника', 'от 12 лет'],
     stats: { reagents: 14, instruments: 20, reactions: 74 },
-    callout: { text: '20 инструментов', position: 'right' as const, topPercent: 18 },
     staggerOffset: 8, // rem
   },
 ] as const
@@ -204,8 +196,8 @@ export default async function HomePage({ params }: Props) {
   // First six categories featured on the homepage; full list lives at /categories.
   const featuredCategories = categories.slice(0, 6)
 
-  // Hybrid resolution: SITE_CATALOG keeps the marketing decoration (callouts,
-  // stats, chips, hover formulas) in code, but each flagship slug resolves to
+  // Hybrid resolution: SITE_CATALOG keeps the marketing decoration (stats,
+  // chips, hover formulas) in code, but each flagship slug resolves to
   // a DB product at request time so the cards render real product photos. If
   // a slug doesn't resolve (drift), we log + render the SpecimenCard fallback
   // via empty images[]. The unit test (page.test.tsx) catches drift at CI
@@ -246,7 +238,7 @@ export default async function HomePage({ params }: Props) {
           // Без фото слайд не показываем; при <1 валидном слайде Hero скрывает
           // панель и разворачивает заголовок на всю ширину.
           .filter((f) => f.dbProduct && f.dbProduct.images.length > 0)
-          .map((f, i) => {
+          .map((f) => {
             const p = f.dbProduct!
             return {
               productId: p.id,
@@ -256,7 +248,6 @@ export default async function HomePage({ params }: Props) {
               imageUrl: p.images[0].url,
               alt: p.name,
               href: `/product/${p.slug}`,
-              label: `fig. 00${i + 1} — ${f.emphasisWord ?? 'флагман'}`,
             }
           })}
       />
@@ -269,9 +260,6 @@ export default async function HomePage({ params }: Props) {
         <div className="max-w-[var(--max-lj-content)] mx-auto">
           <div className="flex justify-between items-end mb-24 gap-8 flex-wrap">
             <div>
-              <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-                03.0 / Что собрать сегодня
-              </p>
               <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.75rem)] leading-[0.92] tracking-[-0.045em]">
                 Готовые
                 <br />
@@ -321,12 +309,10 @@ export default async function HomePage({ params }: Props) {
                     elementSymbol={entry.elementSymbol}
                     badge={entry.badge}
                     badgeVariant={entry.badgeVariant}
-                    cornerMark={entry.cornerMark}
                     hoverFormula={entry.hoverFormula}
                     chips={[...entry.chips]}
                     stats={entry.stats}
                     statMaxes={SITE_CATALOG_STAT_MAXES}
-                    callout={entry.callout}
                     images={entry.dbProduct?.images ?? []}
                   />
                 </div>
@@ -338,7 +324,6 @@ export default async function HomePage({ params }: Props) {
 
       {/* 3. Manifesto (DARK) */}
       <Manifesto
-        eyebrow="02.0 / Принципы лаборатории"
         statementParts={[
           { text: 'В коробке — настоящая ' },
           { text: 'химия', emphasis: true },
@@ -349,11 +334,7 @@ export default async function HomePage({ params }: Props) {
 
       {/* 4. Каталог по интересам (LAB CREAM) — v3 LJ tiles with molecule motifs */}
       <LabSection variant="cream" className="px-6 py-32">
-        <NotebookHeader section="04" label="Каталог" page={4} total={9} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-            04.0 / Каталог
-          </p>
           <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
             Каталог по
             <br />
@@ -361,11 +342,10 @@ export default async function HomePage({ params }: Props) {
           </h2>
           {featuredCategories.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {featuredCategories.map((cat, i) => (
+              {featuredCategories.map((cat) => (
                 <CategoryTileLJ
                   key={cat.id}
                   category={cat}
-                  index={i}
                   // TODO(productCount): public /api/public/categories does not
                   // currently return productCount. Stage 8.C.2 (categories
                   // rewrite) will plumb the count through; for now show 0.
@@ -383,11 +363,7 @@ export default async function HomePage({ params }: Props) {
 
       {/* 5. Как это работает (DARK INK) — v3 LJ NumberCell steps */}
       <LabSection variant="ink" id="how-it-works" className="px-6 py-32 relative">
-        <NotebookHeader section="05" label="Процесс" page={5} total={9} />
         <div className="max-w-[var(--max-lj-narrow)] mx-auto relative z-[2]">
-          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-            05.0 / Процесс
-          </p>
           <h2 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3.5rem)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[20ch]">
             От заказа до <em className="italic text-[var(--color-lj-brand)] font-[700]">опыта</em> —
             три шага
@@ -417,11 +393,7 @@ export default async function HomePage({ params }: Props) {
 
       {/* 6. Что говорят родители (LAB CREAM) — v3 LJ lab-citation quotes */}
       <LabSection variant="cream" className="px-6 py-32">
-        <NotebookHeader section="06" label="Отзывы" page={6} total={9} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-            06.0 / Отзывы
-          </p>
           <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
             Что говорят
             <br />
@@ -449,11 +421,7 @@ export default async function HomePage({ params }: Props) {
       {/* 7. Частые вопросы (LAB CREAM) — v3 LabSection wrapper */}
       {faqBlocks.length > 0 && (
         <LabSection variant="cream" className="px-6 py-32" id="faq">
-          <NotebookHeader section="07" label="FAQ" page={7} total={9} />
           <div className="max-w-[var(--max-lj-narrow)] mx-auto">
-            <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-              07.0 / Вопросы
-            </p>
             <h2 className="font-lj-display font-[700] text-[clamp(2rem,4vw,3rem)] leading-[1.05] tracking-[-0.035em] mb-12 max-w-[20ch]">
               Частые <em className="italic text-[var(--color-lj-brand)] font-[700]">вопросы</em>
             </h2>
@@ -465,7 +433,6 @@ export default async function HomePage({ params }: Props) {
       {/* 8. Other CMS blocks (LAB CREAM) — v3 LabSection wrapper */}
       {otherBlocks.length > 0 && (
         <LabSection variant="cream" className="px-6 py-24">
-          <NotebookHeader section="08" label="Дополнительно" page={8} total={9} />
           <div className="max-w-[var(--max-lj-narrow)] mx-auto">
             <BlockRenderer blocks={otherBlocks} />
           </div>

@@ -45,14 +45,12 @@ const IMAGE_BY_SLUG: Record<string, string> = {
 
 interface Props {
   category: ProductCategory
-  index: number
   productCount: number
 }
 
 // v3.5 Bright: плитка категории — яркий градиентный контейнер с крупным
 // скруглением и белой типографикой (см. V3_5_BRIGHT_ADDENDUM §4).
-export function CategoryTileLJ({ category, index, productCount }: Props) {
-  const pad = (n: number) => String(n).padStart(2, '0')
+export function CategoryTileLJ({ category, productCount }: Props) {
   const variant = MOLECULE_BY_SLUG[category.slug] ?? 'benzene'
   const image = IMAGE_BY_SLUG[category.slug]
   // «0 товаров» — сломанное состояние (public API пока не отдаёт счётчик);
@@ -64,11 +62,8 @@ export function CategoryTileLJ({ category, index, productCount }: Props) {
   return (
     <Link
       href={`/categories/${category.slug}`}
-      className="callout-host group/cat lj-lift relative block aspect-[5/4] overflow-hidden rounded-[var(--radius-lj-bright)] bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-lj-bright)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--color-lj-brand-deep)]"
+      className="group/cat lj-lift relative block aspect-[5/4] overflow-hidden rounded-[var(--radius-lj-bright)] bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-lj-bright)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--color-lj-brand-deep)]"
     >
-      <span className="absolute top-5 left-6 z-[3] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright-mute)]">
-        arr. C-{pad(index + 1)}
-      </span>
       {image ? (
         <>
           <Image

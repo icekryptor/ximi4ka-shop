@@ -5,7 +5,6 @@ import { ApiError, getCategory, listProductsByCategory } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ProductCard } from '@/components/ProductCard'
 import { LabSection } from '@/components/ui/LabSection'
-import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { PaginationLJ } from '@/components/ui/PaginationLJ'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
@@ -194,11 +193,7 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
 
       {/* C. Категория (LAB CREAM) — v3 LJ hero */}
       <LabSection variant="cream" className="px-6 pt-12 pb-16">
-        <NotebookHeader section="C" label={name} page={1} total={3} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-            C.0 / Категория
-          </p>
           <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,6vw,5rem)] leading-[0.92] tracking-[-0.045em] mb-6">
             {nameWords.length > 0 ? (
               nameWords.map((w, i) => (

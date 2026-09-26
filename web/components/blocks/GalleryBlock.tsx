@@ -15,16 +15,14 @@ export function GalleryBlock({ block }: Props) {
       : n === 4
         ? 'md:grid-cols-2 lg:grid-cols-4'
         : 'md:grid-cols-2 lg:grid-cols-3'
-  const pad = (i: number) => String(i + 1).padStart(2, '0')
   return (
     <div
       data-block="gallery"
       className={`grid grid-cols-1 ${cols} gap-5 max-w-[var(--max-lj-content)] mx-auto`}
     >
-      {block.images.map((img, i) => (
+      {block.images.map((img) => (
         <MediaFrame
           key={img.url}
-          cornerMark={`arr. ${pad(i)}`}
           caption={(img as { caption?: string | null }).caption ?? undefined}
           aspectRatio="1/1"
         >

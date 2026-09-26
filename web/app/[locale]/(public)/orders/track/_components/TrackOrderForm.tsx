@@ -24,10 +24,6 @@ export function TrackOrderForm() {
   return (
     <section className="bg-[var(--color-lj-cream)] px-6 py-16 min-h-[70vh]">
       <div className="max-w-[var(--max-lj-narrow)] mx-auto">
-        <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-6 opacity-70">
-          ЗАКАЗ · ПОИСК
-        </p>
-
         <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4rem)] leading-[0.95] tracking-[-0.045em] mb-6 text-[var(--color-lj-ink)]">
           Отследить заказ
         </h1>

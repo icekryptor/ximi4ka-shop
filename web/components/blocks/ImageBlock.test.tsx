@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render } from '@testing-library/react'
 import { ImageBlock } from './ImageBlock'
 
 afterEach(() => {
@@ -7,13 +7,11 @@ afterEach(() => {
 })
 
 describe('<ImageBlock> v3', () => {
-  it('renders inside a MediaFrame with corner mark', () => {
+  it('renders inside a MediaFrame', () => {
     const { container } = render(
       <ImageBlock block={{ type: 'image', url: '/test.jpg', alt: 'Test alt' }} />,
     )
     expect(container.querySelector('[data-frame]')).not.toBeNull()
-    // Corner mark renders some "arr." text (mono lab-journal annotation).
-    expect(screen.getByText(/arr\./i)).toBeInTheDocument()
   })
 
   it('renders caption inside [data-caption] when provided', () => {

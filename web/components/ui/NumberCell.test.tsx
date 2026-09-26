@@ -41,4 +41,10 @@ describe('<NumberCell>', () => {
     const { container } = render(<NumberCell index="01" topLabel="x" big="0" />)
     expect(container.querySelector('.lj-num-cell-bottom')).toBeNull()
   })
+
+  it('renders just the index when topLabel is omitted', () => {
+    render(<NumberCell index="1" big="ВЫБРАТЬ" />)
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.getByText('ВЫБРАТЬ')).toBeInTheDocument()
+  })
 })

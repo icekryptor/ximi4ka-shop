@@ -14,8 +14,6 @@ export interface HeroSlide {
   alt: string
   /** ссылка на карточку товара */
   href: string
-  /** моно-подпись слева сверху (fig. NNN — …) */
-  label: string
 }
 
 /**

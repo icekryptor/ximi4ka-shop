@@ -3,7 +3,6 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { ProductCard } from '@/components/ProductCard'
 import { LabSection } from '@/components/ui/LabSection'
-import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { CatalogPromoBanner } from '@/components/catalog/CatalogPromoBanner'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
@@ -82,11 +81,7 @@ export default async function CatalogPage({ params }: Props) {
 
       {/* Витрина каталога (LAB CREAM) */}
       <LabSection variant="cream" className="px-6 pt-12 pb-24">
-        <NotebookHeader section="K" label="Каталог" page={1} total={1} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-            K.0 / Все товары
-          </p>
           <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,6vw,5.5rem)] leading-[0.92] tracking-[-0.045em] mb-8">
             <em className="italic text-[var(--color-lj-brand)] font-[900]">Каталог</em> целиком
           </h1>

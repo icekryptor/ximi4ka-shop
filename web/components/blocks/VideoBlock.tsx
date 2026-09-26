@@ -25,9 +25,9 @@ export function videoEmbedUrl(provider: VideoProvider, videoId: string): string 
 
 /**
  * Renders a CMS video block via the v3 lab-journal MediaFrame primitive
- * (cream-shade backdrop, ink rule border, mono "arr. vid" corner mark,
- * optional caption beneath). Uses 16/9 aspect ratio, vs 4/5 for ImageBlock,
- * because video sources are landscape by default.
+ * (cream-shade backdrop, ink rule border, optional caption beneath). Uses
+ * 16/9 aspect ratio, vs 4/5 for ImageBlock, because video sources are
+ * landscape by default.
  *
  * The shared VideoBlock type carries provider + videoId; we pipe `block.title`
  * into both the iframe accessible title and the MediaFrame caption, falling
@@ -39,7 +39,6 @@ export function VideoBlock({ block }: Props) {
   return (
     <div data-block="video">
       <MediaFrame
-        cornerMark="arr. vid"
         caption={title}
         aspectRatio="16/9"
         className="max-w-[var(--max-lj-narrow)] mx-auto"

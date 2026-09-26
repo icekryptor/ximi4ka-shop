@@ -62,14 +62,6 @@ export function Footer() {
       />
 
       <div className="max-w-[var(--max-lj-content)] mx-auto relative z-[2]">
-        <div className="flex items-center justify-between font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] mb-12 pb-4 border-b border-[var(--color-lj-rule)]">
-          <span className="inline-flex items-center gap-3">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-lj-brand)]" />
-            СТР. ZZ / END · ЛАБОРАТОРНЫЙ ЖУРНАЛ
-          </span>
-          <span className="opacity-70">Ред. 2026.04 · v3</span>
-        </div>
-
         <ColophonRow label="ОТ" items={ROW_OT} className="mb-8" />
         <ColophonRow label="СВЯЗЬ" items={ROW_SVYAZ} className="mb-8" />
         <ColophonRow label="СТРАНИЦЫ" items={ROW_STRANITSY} className="mb-16" />

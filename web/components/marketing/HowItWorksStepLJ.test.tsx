@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { HowItWorksStepLJ } from './HowItWorksStepLJ'
 
 describe('<HowItWorksStepLJ>', () => {
-  it('renders index, big verb, title, body, and decimal', () => {
+  it('renders index as a single digit, big verb, title, and body', () => {
     render(
       <HowItWorksStepLJ
         index={1}
@@ -12,11 +12,18 @@ describe('<HowItWorksStepLJ>', () => {
         body="Подберите эксперимент по возрасту."
       />,
     )
-    expect(screen.getByText('01')).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
+    expect(screen.queryByText('01')).not.toBeInTheDocument()
     expect(screen.getByText('ВЫБРАТЬ')).toBeInTheDocument()
     expect(screen.getByText('Выберите набор')).toBeInTheDocument()
     expect(screen.getByText(/Подберите эксперимент/)).toBeInTheDocument()
-    expect(screen.getByText('1.0')).toBeInTheDocument()
+  })
+
+  it('does not render the decorative "шаг" / "N.0" / "процесс" labels', () => {
+    render(<HowItWorksStepLJ index={1} verb="ВЫБРАТЬ" title="T" body="B" />)
+    expect(screen.queryByText('шаг')).not.toBeInTheDocument()
+    expect(screen.queryByText('1.0')).not.toBeInTheDocument()
+    expect(screen.queryByText('процесс')).not.toBeInTheDocument()
   })
 
   it('renders inside a NumberCell', () => {

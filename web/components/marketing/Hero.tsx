@@ -2,11 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { LabSection } from '@/components/ui/LabSection'
 import { GridOverlay } from '@/components/ui/GridOverlay'
-import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { MoleculeMotifLJ } from '@/components/decor/MoleculeMotif.lj'
-import { HeroFigtag } from './HeroFigtag'
-import { HeroScale } from './HeroScale'
-import { HeroAnnotation } from './HeroAnnotation'
 import { HeroDetailMolecule } from './HeroDetailMolecule'
 import { HeroSlider } from './HeroSlider'
 import type { HeroSlide } from '@/lib/heroSlides'
@@ -26,7 +22,6 @@ interface VisualProps {
   imageUrl: string
   alt: string
   href: string
-  label?: string
 }
 
 interface Props {
@@ -83,14 +78,6 @@ export function Hero({
       className="min-h-screen px-6 pt-24 pb-20 flex flex-col justify-center"
     >
       <GridOverlay />
-      <NotebookHeader
-        section="001"
-        label="Лабораторный журнал"
-        page={1}
-        total={3}
-        edition="Ред. 2026.04 / v3"
-      />
-      <HeroFigtag figNumber="001-A" arr="C₆H₆" />
       <div className="lj-drift absolute inset-0 pointer-events-none" aria-hidden="true">
         <HeroDetailMolecule variant="water" />
       </div>
@@ -120,9 +107,6 @@ export function Hero({
             aria-label={visual.alt}
             className="hidden lg:block absolute z-[3] right-[4vw] top-1/2 -translate-y-1/2 w-[clamp(300px,24vw,420px)] aspect-[4/5] rounded-[var(--radius-lj-bright)] bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-lj-bright)] overflow-hidden lj-lift"
           >
-            <span className="absolute top-5 left-6 z-[2] font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-on-bright-mute)]">
-              {visual.label ?? 'fig. 001 — флагман'}
-            </span>
             <Image
               src={visual.imageUrl}
               alt={visual.alt}
@@ -191,9 +175,6 @@ export function Hero({
           )}
         </div>
       </div>
-
-      <HeroScale caption="scale 1 : 1 · 200 mm" />
-      <HeroAnnotation primary="рабочая область" secondary="1080 × 1920 mm" />
 
       {/* Ticker */}
       <div className="absolute bottom-0 left-0 right-0 border-t border-[var(--color-lj-rule)] bg-[var(--color-lj-cream)] overflow-hidden h-14 flex items-center z-[4]">

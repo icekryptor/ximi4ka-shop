@@ -5,7 +5,7 @@ import { MediaFrame } from './MediaFrame'
 describe('<MediaFrame>', () => {
   it('renders children inside cream-shade backdrop with ink border', () => {
     const { container } = render(
-      <MediaFrame cornerMark="arr. 01">
+      <MediaFrame>
         <div>x</div>
       </MediaFrame>,
     )
@@ -14,18 +14,19 @@ describe('<MediaFrame>', () => {
     expect(frame.className).toContain('border-[var(--color-lj-rule)]')
   })
 
-  it('renders the corner mark', () => {
-    render(
-      <MediaFrame cornerMark="arr. P-02">
+  it('does not render a corner-mark label', () => {
+    const { container } = render(
+      <MediaFrame>
         <div>x</div>
       </MediaFrame>,
     )
-    expect(screen.getByText('arr. P-02')).toBeInTheDocument()
+    const frame = container.querySelector('[data-frame]') as HTMLElement
+    expect(frame.querySelector('span')).toBeNull()
   })
 
   it('renders caption underneath when provided', () => {
     render(
-      <MediaFrame cornerMark="x" caption="Подпись">
+      <MediaFrame caption="Подпись">
         <div>x</div>
       </MediaFrame>,
     )
@@ -34,7 +35,7 @@ describe('<MediaFrame>', () => {
 
   it('omits caption block when not provided', () => {
     const { container } = render(
-      <MediaFrame cornerMark="x">
+      <MediaFrame>
         <div>x</div>
       </MediaFrame>,
     )
@@ -43,7 +44,7 @@ describe('<MediaFrame>', () => {
 
   it('respects aspect ratio prop', () => {
     const { container } = render(
-      <MediaFrame cornerMark="x" aspectRatio="16/9">
+      <MediaFrame aspectRatio="16/9">
         <div>x</div>
       </MediaFrame>,
     )

@@ -1,7 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import type { Product, ProductImage } from '@ximi4ka-shop/shared'
-import { Callout } from '@/components/ui/Callout'
 import { Chip } from '@/components/ui/Chip'
 import { StatBar } from '@/components/ui/StatBar'
 import { SpecimenCard } from './ui/SpecimenCard'
@@ -22,18 +21,16 @@ interface Props {
   stats: Stats
   statMaxes: Stats // per-stat-type max across all visible cards in a row
   chips?: string[]
-  callout?: { text: string; position: 'right' | 'left'; topPercent?: number }
   // Decoupled from product.images so the homepage hybrid (Task 11.5) can pair
   // a synthetic Product literal with DB-resolved images. Callers that have a
   // real DB Product can simply pass `images={product.images}`.
   images: ProductImage[]
   hoverFormula?: string
-  cornerMark?: string
   // v3.5: увеличенная карточка (первая в категорийной сетке) — широкая
   // фото-плита вместо портретной.
   featured?: boolean
   // Плотность карточки. 'kit' (по умолчанию) — крупная фото-форвард карточка
-  // набора с описанием/статами/callout. 'compact' — плотная карточка реактива
+  // набора с описанием/статами. 'compact' — плотная карточка реактива
   // /оборудования (мелкое фото, степпер + «В корзину»), делегируется в
   // CompactProductCard. Дефолт сохраняет существующее поведение — вызовы на
   // главной по типам не ломаются.
@@ -49,10 +46,8 @@ export function ProductCard({
   stats,
   statMaxes,
   chips = [],
-  callout,
   images,
   hoverFormula,
-  cornerMark,
   featured = false,
   density = 'kit',
 }: Props) {
@@ -93,7 +88,7 @@ export function ProductCard({
   const pct = (value: number, max: number) => (max > 0 ? Math.round((value / max) * 100) : 0)
 
   return (
-    <article className="callout-host group/pcard lj-lift relative cursor-pointer bg-transparent">
+    <article className="group/pcard lj-lift relative cursor-pointer bg-transparent">
       <div className="flex justify-between items-center mb-3 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em]">
         <span className="text-[var(--color-lj-ink)] opacity-60">{skuLabel}</span>
         {badge && (
@@ -112,11 +107,6 @@ export function ProductCard({
           <div
             className={`relative ${featured ? 'aspect-[16/10]' : 'aspect-[4/5]'} bg-white rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color,box-shadow] duration-500 group-hover/pcard:border-[var(--color-lj-brand)] group-hover/pcard:shadow-[var(--shadow-lj-bright)]`}
           >
-            {cornerMark && (
-              <span className="absolute top-3.5 left-3.5 z-10 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] opacity-55">
-                {cornerMark}
-              </span>
-            )}
             <Image
               src={images[0].url}
               alt={images[0].alt}
@@ -200,10 +190,6 @@ export function ProductCard({
           </Link>
         </div>
       </div>
-
-      {callout && (
-        <Callout text={callout.text} position={callout.position} topPercent={callout.topPercent} />
-      )}
     </article>
   )
 }

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 
 interface Props {
   index: string
-  topLabel: string
+  topLabel?: string
   big: string
   bigVariant?: 'default' | 'decimal'
   bottomLeft?: string
@@ -25,7 +25,7 @@ export function NumberCell({
       <span className="absolute top-0 left-0 right-0 h-px bg-[var(--color-lj-brand)] origin-left scale-x-0 transition-transform duration-[0.6s] [.lj-num-cell:hover_&]:scale-x-100" />
       <div className="flex justify-between items-center font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)]">
         <span>{index}</span>
-        <span>{topLabel}</span>
+        {topLabel && <span>{topLabel}</span>}
       </div>
       <div
         className={`lj-num-cell-big font-lj-display font-[900] leading-none ${tracking} text-[clamp(2.5rem,4.8vw,4.25rem)] text-[var(--color-lj-bone)]`}

@@ -197,30 +197,11 @@ describe('ProductCard images behavior', () => {
     expect(container.querySelector('[data-density="compact"]')).toBeNull()
   })
 
-  it('suppresses cornerMark when images is empty', () => {
-    render(
-      <ProductCard
-        product={baseProduct}
-        stats={stats}
-        statMaxes={statMaxes}
-        images={[]}
-        cornerMark="ARR. 01"
-      />,
-    )
-    expect(screen.queryByText('ARR. 01')).not.toBeInTheDocument()
-  })
-
-  it('renders cornerMark when images present', () => {
+  it('does not render a corner-mark label on the image', () => {
     const images = [{ id: 'i1', productId: 'p1', url: '/a.png', alt: 'a', sortOrder: 0 }]
-    render(
-      <ProductCard
-        product={baseProduct}
-        stats={stats}
-        statMaxes={statMaxes}
-        images={images}
-        cornerMark="ARR. 01"
-      />,
+    const { container } = render(
+      <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={images} />,
     )
-    expect(screen.getByText('ARR. 01')).toBeInTheDocument()
+    expect(container.querySelector('a[href^="/product/"] span')).toBeNull()
   })
 })

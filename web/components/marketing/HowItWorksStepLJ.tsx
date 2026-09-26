@@ -8,15 +8,8 @@ interface Props {
 }
 
 export function HowItWorksStepLJ({ index, verb, title, body }: Props) {
-  const pad = (n: number) => String(n).padStart(2, '0')
   return (
-    <NumberCell
-      index={pad(index)}
-      topLabel="шаг"
-      big={verb}
-      bottomLeft={`${index}.0`}
-      bottomRight="процесс"
-    >
+    <NumberCell index={String(index)} big={verb}>
       <div className="flex flex-col gap-2">
         <h3 className="font-lj-display font-[700] text-[1.125rem] leading-[1.15] tracking-[-0.02em] text-[var(--color-lj-bone)]">
           {title}

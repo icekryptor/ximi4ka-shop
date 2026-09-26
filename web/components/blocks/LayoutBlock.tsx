@@ -18,9 +18,8 @@ interface Props {
  *   overlay     — text overlaid on top of the full-bleed image
  *
  * v3 lab-journal styling:
- * - Image rendered through MediaFrame (cream-shade backdrop, ink-rule border,
- *   "arr. layout" mono corner mark) so it harmonises with ImageBlock /
- *   GalleryBlock / VideoBlock.
+ * - Image rendered through MediaFrame (cream-shade backdrop, ink-rule border)
+ *   so it harmonises with ImageBlock / GalleryBlock / VideoBlock.
  * - Text pane uses the same `lj-prose` rhythm as ParagraphBlock so authored
  *   HTML inherits italic-brand <strong>, mono <code>, etc.
  * - Overlay variant keeps the dark scrim + inverted prose so light text on
@@ -65,7 +64,7 @@ export function LayoutBlock({ block }: Props) {
   const layoutClass = isHorizontal ? 'md:grid-cols-2 items-center' : 'grid-cols-1'
 
   const media = (
-    <MediaFrame cornerMark="arr. layout" aspectRatio={isHorizontal ? '4/5' : '16/9'}>
+    <MediaFrame aspectRatio={isHorizontal ? '4/5' : '16/9'}>
       <Image
         src={block.image.url}
         alt={block.image.alt}

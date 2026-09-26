@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation'
 import { listCategories } from '@/lib/api'
 import type { ProductCategory } from '@ximi4ka-shop/shared'
 import { LabSection } from '@/components/ui/LabSection'
-import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
@@ -68,11 +67,7 @@ export default async function CategoriesListPage({ params }: Props) {
 
       {/* X. Каталог (LAB CREAM) — v3 LJ hero + drawer-card grid */}
       <LabSection variant="cream" className="px-6 pt-32 pb-24">
-        <NotebookHeader section="X" label="Каталог" page={1} total={1} />
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] mb-5 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-            X.0 / Все категории
-          </p>
           <h1 className="font-lj-display font-[900] text-[clamp(3rem,7vw,6rem)] leading-[0.92] tracking-[-0.045em] mb-8">
             Категории
           </h1>
@@ -81,11 +76,10 @@ export default async function CategoriesListPage({ params }: Props) {
           </p>
           {categories.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {categories.map((cat, i) => (
+              {categories.map((cat) => (
                 <CategoryTileLJ
                   key={cat.id}
                   category={cat}
-                  index={i}
                   // TODO(productCount): public /api/public/categories does not
                   // currently return productCount. Show 0 until the API is
                   // plumbed through (Task 8.A.4 finding).

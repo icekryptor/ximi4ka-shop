@@ -1,6 +1,5 @@
 import { LabSection } from '@/components/ui/LabSection'
 import { GridOverlay } from '@/components/ui/GridOverlay'
-import { NotebookHeader } from '@/components/ui/NotebookHeader'
 import { NumberCell } from '@/components/ui/NumberCell'
 import { MoleculeMotifLJ } from '@/components/decor/MoleculeMotif.lj'
 import { Timeline } from '@/components/dataviz/Timeline'
@@ -13,16 +12,14 @@ interface StatementPart {
   emphasis?: boolean
 }
 interface Props {
-  eyebrow: string
   statementParts: StatementPart[]
   body: string
 }
 
-export function Manifesto({ eyebrow, statementParts, body }: Props) {
+export function Manifesto({ statementParts, body }: Props) {
   return (
     <LabSection variant="ink" id="manifesto" className="px-6 py-32">
       <GridOverlay surface="ink" />
-      <NotebookHeader section="02" label="Манифест" page={2} total={3} />
 
       {/* Background ghost molecule */}
       <MoleculeMotifLJ
@@ -32,10 +29,6 @@ export function Manifesto({ eyebrow, statementParts, body }: Props) {
       />
 
       <div className="relative z-[2] max-w-[var(--max-lj-narrow)] mx-auto">
-        <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-bone-mute)] mb-12 inline-flex items-center gap-3 before:content-[''] before:w-2 before:h-2 before:bg-[var(--color-lj-brand)] before:rounded-full">
-          {eyebrow}
-        </p>
-
         <h2 className="font-lj-display font-[700] text-[length:var(--text-lj-display)] leading-[1.0] tracking-[-0.04em] mb-16 max-w-[18ch]">
           {statementParts.map((p, i) =>
             p.emphasis ? (

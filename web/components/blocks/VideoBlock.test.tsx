@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render } from '@testing-library/react'
 import { VideoBlock, videoEmbedUrl } from './VideoBlock'
 
 afterEach(() => {
@@ -53,11 +53,6 @@ describe('<VideoBlock> v3', () => {
     )
     const frame = container.querySelector('[data-frame]') as HTMLElement
     expect(frame.style.aspectRatio).toBe('16 / 9')
-  })
-
-  it('renders mono corner mark "arr. vid"', () => {
-    render(<VideoBlock block={{ type: 'video', provider: 'youtube', videoId: 'abc' }} />)
-    expect(screen.getByText(/arr\. vid/i)).toBeInTheDocument()
   })
 
   it('renders [data-caption] when title is provided and sets iframe title', () => {
