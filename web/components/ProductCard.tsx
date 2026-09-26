@@ -15,9 +15,6 @@ interface Stats {
 interface Props {
   product: Product
   emphasisWord?: string
-  elementSymbol?: string
-  badge?: string
-  badgeVariant?: 'brand' | 'ink' | 'outline'
   stats: Stats
   statMaxes: Stats // per-stat-type max across all visible cards in a row
   chips?: string[]
@@ -40,9 +37,6 @@ interface Props {
 export function ProductCard({
   product,
   emphasisWord,
-  elementSymbol,
-  badge,
-  badgeVariant = 'brand',
   stats,
   statMaxes,
   chips = [],
@@ -57,15 +51,6 @@ export function ProductCard({
     return <CompactProductCard product={product} images={images} />
   }
 
-  const sku = product.sku || product.slug
-  const skuLabel = elementSymbol ? `№ ${sku} / ${elementSymbol}` : `№ ${sku}`
-  // v3.5: бейдж «brand» — яркий градиентный пилл (см. V3_5_BRIGHT_ADDENDUM §4).
-  const badgeClass =
-    badgeVariant === 'brand'
-      ? 'bg-[image:var(--gradient-lj-bright)] border-transparent text-[var(--color-lj-on-bright)] shadow-[0_4px_12px_-2px_rgba(131,110,254,0.45)]'
-      : badgeVariant === 'ink'
-        ? 'bg-[var(--color-lj-ink)] border-[var(--color-lj-ink)] text-[var(--color-lj-bone)]'
-        : 'bg-transparent border-[var(--color-lj-ink)] text-[var(--color-lj-ink)]'
   // Категорийные карточки пока не имеют реальных стат (TODO Task 4.4) —
   // нулевые бары выглядят сломанными, скрываем блок целиком.
   const hasStats = stats.reagents > 0 || stats.instruments > 0 || stats.reactions > 0
@@ -76,7 +61,7 @@ export function ProductCard({
     return (
       <>
         {product.name.slice(0, idx)}
-        <em className="italic text-[var(--color-lj-brand)] font-[700]">{emphasisWord}</em>
+        <em className="italic text-[var(--color-lj-brand)]">{emphasisWord}</em>
         {product.name.slice(idx + emphasisWord.length)}
       </>
     )
@@ -87,25 +72,17 @@ export function ProductCard({
   // Guard against divide-by-zero when caller passes 0 maxes.
   const pct = (value: number, max: number) => (max > 0 ? Math.round((value / max) * 100) : 0)
 
+  // Раскладка по макету Figma «Карточки», Density=Kit: квадратное фото,
+  // название, под ним цена с «Заказать набор →», затем описание, статы, чипсы.
+  // Вертикальные отступы и кегль названия — Desktop с md, ниже — Mobile.
   return (
     <article className="group/pcard lj-lift relative cursor-pointer bg-transparent">
-      <div className="flex justify-between items-center mb-3 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em]">
-        <span className="text-[var(--color-lj-ink)] opacity-60">{skuLabel}</span>
-        {badge && (
-          <span
-            className={`px-2.5 py-1 border rounded-full text-[0.625rem] tracking-[0.1em] ${badgeClass}`}
-          >
-            {badge}
-          </span>
-        )}
-      </div>
-
       {images.length === 0 ? (
         <SpecimenCard sku={product.sku ?? product.slug} size="card" className="border-0" />
       ) : (
         <Link href={`/product/${product.slug}`} className="block">
           <div
-            className={`relative ${featured ? 'aspect-[16/10]' : 'aspect-[4/5]'} bg-white rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color,box-shadow] duration-500 group-hover/pcard:border-[var(--color-lj-brand)] group-hover/pcard:shadow-[var(--shadow-lj-bright)]`}
+            className={`relative ${featured ? 'aspect-[16/10]' : 'aspect-square'} bg-white rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color,box-shadow] duration-500 group-hover/pcard:border-[var(--color-lj-brand)] group-hover/pcard:shadow-[var(--shadow-lj-bright)]`}
           >
             <Image
               src={images[0].url}
@@ -134,20 +111,32 @@ export function ProductCard({
         </Link>
       )}
 
-      <div className="pt-5">
-        <h3
-          className={`font-lj-display font-[700] ${featured ? 'text-[clamp(1.75rem,2.6vw,2.5rem)]' : 'text-[clamp(1.5rem,2.1vw,2rem)]'} leading-[0.95] tracking-[-0.035em] mb-3.5`}
-        >
-          <Link href={`/product/${product.slug}`}>{renderName()}</Link>
-        </h3>
+      <div className="pt-5 flex flex-col gap-5">
+        <div className="flex flex-col gap-5 md:gap-2.5">
+          <h3 className="font-lj-mazzard font-light text-[1.875rem] leading-[1.2] tracking-[-0.035em] md:text-[2.25rem] md:leading-[1.1] md:tracking-[-0.03em]">
+            <Link href={`/product/${product.slug}`}>{renderName()}</Link>
+          </h3>
+          <div className="flex flex-wrap justify-between items-center gap-4 border-t border-[var(--color-lj-rule)] pt-5">
+            <span className="flex items-baseline gap-1 whitespace-nowrap">
+              <span className="font-lj-mazzard font-light text-4xl leading-none">
+                {formattedPrice}
+              </span>
+              <span className="font-lj-mono text-base opacity-70">₽</span>
+            </span>
+            <Link href={`/product/${product.slug}`} className="lj-btn lj-btn-primary px-3 py-2.5">
+              Заказать набор →
+            </Link>
+          </div>
+        </div>
+
         {product.shortDescription && (
-          <p className="text-[0.9375rem] leading-[1.45] text-[var(--color-lj-ink)] opacity-72 mb-5 max-w-[32ch]">
+          <p className="text-[0.9375rem] leading-[1.45] text-[var(--color-lj-ink)] opacity-72">
             {product.shortDescription}
           </p>
         )}
 
         {hasStats && (
-          <ul className="list-none p-0 m-0 mb-5 flex flex-col gap-2 border-t border-[var(--color-lj-rule)] pt-4">
+          <ul className="list-none p-0 m-0 flex flex-col gap-2 border-t border-[var(--color-lj-rule)] pt-4 md:pt-5">
             <StatBar
               index="01"
               label="реактивов"
@@ -170,25 +159,12 @@ export function ProductCard({
         )}
 
         {chips.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-6">
+          <div className="flex flex-wrap gap-1.5 pb-1">
             {chips.map((c, i) => (
               <Chip key={i}>{c}</Chip>
             ))}
           </div>
         )}
-
-        <div className="flex justify-between items-center border-t border-[var(--color-lj-rule)] pt-5 gap-4 flex-wrap">
-          <span className="font-lj-display font-[900] text-4xl tracking-[-0.04em] leading-none">
-            {formattedPrice}
-            <span className="font-lj-mono font-normal text-base ml-1 opacity-70">₽</span>
-          </span>
-          <Link
-            href={`/product/${product.slug}`}
-            className="inline-flex items-center gap-2 px-4 py-3 border border-[var(--color-lj-ink)] rounded-full font-lj-mono text-[0.6875rem] uppercase tracking-[0.08em] bg-transparent text-[var(--color-lj-ink)] transition-all duration-400 group-hover/pcard:bg-[var(--color-lj-ink)] group-hover/pcard:text-[var(--color-lj-bone)]"
-          >
-            Заказать набор →
-          </Link>
-        </div>
       </div>
     </article>
   )

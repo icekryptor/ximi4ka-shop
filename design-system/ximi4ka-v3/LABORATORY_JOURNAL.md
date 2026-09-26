@@ -190,12 +190,11 @@ Auto-switches text colors based on variant. Body becomes `bone`, rules become `r
 <NumberCell
   index="01"
   topLabel="год"
-  big="2023"                       // string OR { countTo: 20000, suffix: '+' }
-  bigVariant="default"|"decimal"   // decimal tightens letter-spacing
-  bottomLeft="основано"            // brand-purple atomic-mass label
+  big="2023" // string OR { countTo: 20000, suffix: '+' }
+  bottomLeft="основано" // brand-purple atomic-mass label
   bottomRight="3 года"
 >
-  <Timeline points={['23','24','25','26']} active={0} />
+  <Timeline points={['23', '24', '25', '26']} active={0} />
 </NumberCell>
 ```
 
@@ -214,30 +213,25 @@ Auto-switches text colors based on variant. Body becomes `bone`, rules become `r
 
 ### 4.4 `<ProductCard>`
 
-Major rebuild from v2. Anatomy top-to-bottom:
+Major rebuild from v2. Anatomy top-to-bottom (с 26.09.2026 — по листу Figma «Карточки»,
+файл nogum1exHXcND7QKIbx7NN; строка «№ SKU / элемент + бейдж» и угловая метка убраны):
 
 ```
-┌─ pcard__head ─────────────────────────┐
-│ № X-30 / Cu               [Хит]       │  mono SKU + element / pill badge
-├───────────────────────────────────────┤
-│ ┌─ pcard__image ─────────┐            │
-│ │ arr. 01                │            │  mono corner mark
-│ │   [SVG illustration]   │            │
-│ │                        │            │
-│ │ [formula popup]        │            │  hidden, slides up on hover
-│ └────────────────────────┘            │
-├───────────────────────────────────────┤
-│ Химичка 3.0   ← italic brand-purple   │  display, en-em, brand on first word
-│ Флагман: настоящая лаборатория …      │  body description, max-width 32ch
-├─ pcard__stats ────────────────────────┤
-│ 01 / реактивов     ████████   18      │  mono label / dashed bar / display value
-│ 02 / инструментов  █████      12      │
-│ 03 / реакций       ██████████ 161     │
-├─ pcard__tags ─────────────────────────┤
-│ [безопасно] [ярко] [от 10 лет]        │  Chip pills
-├─ pcard__meta ─────────────────────────┤
-│ 3 399 ₽            [Заказать набор →] │  display price / outlined CTA
-└───────────────────────────────────────┘
+┌─ pcard__image ─────────────────────────┐
+│   [фото 1:1]                           │
+│   [formula popup]                      │  hidden, slides up on hover
+└────────────────────────────────────────┘
+  Химичка 3.0   ← italic brand-purple      Mazzard H Light 36 (30 на мобильном)
+├─ pcard__meta ──────────────────────────┤
+│ 3 399 ₽               [Заказать набор →]│  Mazzard Light 36 + ₽ / градиентная кнопка r5
+  Флагман: настоящая лаборатория …         body description, во всю ширину
+├─ pcard__stats ─────────────────────────┤
+│ 01 / реактивов     ████████   18       │  label / dashed bar / Unbounded value
+│ 02 / инструментов  █████      12       │
+│ 03 / реакций       ██████████ 161      │
+├─ pcard__tags ──────────────────────────┤
+│ [безопасно] [ярко] [от 10 лет]         │  Chip pills, рамка 0.5px
+└────────────────────────────────────────┘
 ```
 
 **Asymmetric stagger rules:**
@@ -254,7 +248,7 @@ Major rebuild from v2. Anatomy top-to-bottom:
 - Callout SVG path stroke-dashoffset → 0 (draws itself)
 - Callout text fades in
 - All chips invert (background ink, text bone)
-- CTA inverts (background ink, text bone)
+- CTA — градиент темнеет при наведении на саму кнопку
 
 ### 4.5 `<StatBar>`
 

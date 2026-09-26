@@ -12,10 +12,10 @@ interface Props {
 }
 
 /**
- * Степпер количества «− N +» в лаб-журнальном стиле: моно-цифры, острые
- * границы, пилюльные кнопки. Контролируемый — состояние держит родитель
- * (компактная карточка каталога), логику «добавить N штук» выполняет
- * AddToCartButton через проп quantity.
+ * Степпер количества «− N +» по макету (Figma «Атомы / QuantityStepper»):
+ * пилюля высотой 40 с тонкой рамкой, кнопки без рамок внутри. S — компактная
+ * карточка каталога, M — крупнее. Контролируемый — состояние держит родитель,
+ * логику «добавить N штук» выполняет AddToCartButton через проп quantity.
  */
 export function QuantityStepper({
   value,
@@ -28,13 +28,18 @@ export function QuantityStepper({
   const dec = () => onChange(Math.max(min, value - 1))
   const inc = () => onChange(Math.min(max, value + 1))
 
-  const btn = size === 'sm' ? 'w-7 h-7 text-sm' : 'w-9 h-9 text-base'
-  const cell = size === 'sm' ? 'min-w-7 text-[0.8125rem]' : 'min-w-9 text-[0.9375rem]'
+  const box = size === 'sm' ? 'w-20' : 'px-0.5'
+  const btn = size === 'sm' ? 'size-7 text-sm' : 'size-9 text-base'
+  const cell = size === 'sm' ? 'text-[0.8125rem]' : 'text-[0.9375rem]'
 
-  const btnClass = `${btn} inline-flex items-center justify-center border border-[var(--color-lj-ink)] rounded-full font-lj-mono leading-none transition-[background,color] duration-200 hover:bg-[var(--color-lj-ink)] hover:text-[var(--color-lj-bone)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-lj-brand-deep)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[var(--color-lj-ink)]`
+  const btnClass = `${btn} inline-flex items-center justify-center rounded-full font-lj-mono leading-none text-[var(--color-lj-ink)] transition-colors duration-200 hover:bg-[var(--color-lj-rule-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-lj-brand-deep)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent`
 
   return (
-    <div className="inline-flex items-center gap-2" role="group" aria-label={ariaLabel}>
+    <div
+      className={`${box} h-10 inline-flex shrink-0 items-center justify-center rounded-full border-[0.5px] border-[var(--color-lj-ink)]`}
+      role="group"
+      aria-label={ariaLabel}
+    >
       <button
         type="button"
         onClick={dec}
@@ -46,7 +51,7 @@ export function QuantityStepper({
       </button>
       <span
         aria-live="polite"
-        className={`${cell} inline-flex justify-center font-lj-mono tabular-nums text-[var(--color-lj-ink)]`}
+        className={`${cell} w-5 text-center leading-[1.5] font-lj-mono tabular-nums text-[var(--color-lj-ink)]`}
       >
         {value}
       </span>

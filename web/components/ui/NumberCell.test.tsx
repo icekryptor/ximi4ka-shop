@@ -29,12 +29,29 @@ describe('<NumberCell>', () => {
     expect(screen.getByTestId('viz-slot')).toBeInTheDocument()
   })
 
-  it('applies decimal letter-spacing variant', () => {
-    const { container } = render(
-      <NumberCell index="03" topLabel="рейтинг" big="4,9" bigVariant="decimal" />,
+  it('sets the big value in Mazzard ExtraLight 40 (Figma lj-display/stat)', () => {
+    render(<NumberCell index="03" topLabel="рейтинг" big="4,9" />)
+    const big = screen.getByText('4,9')
+    expect(big).toHaveClass('font-lj-mazzard', 'font-extralight', 'text-[2.5rem]')
+  })
+
+  it('sets the meta labels in Mazzard Bold 14, as typed (no uppercase)', () => {
+    render(<NumberCell index="01" topLabel="год" big="2023" bottomLeft="основано" />)
+    const top = screen.getByText('год').parentElement!
+    expect(top).toHaveClass('font-lj-mazzard', 'font-bold', 'text-sm')
+    expect(top).not.toHaveClass('uppercase')
+    expect(screen.getByText('основано').parentElement).not.toHaveClass('uppercase')
+  })
+
+  it('keeps the big value and the graphic together, 40px apart', () => {
+    render(
+      <NumberCell index="01" topLabel="год" big="2023">
+        <div data-testid="viz-slot" />
+      </NumberCell>,
     )
-    const big = container.querySelector('.lj-num-cell-big')
-    expect(big?.className).toContain('tracking-[-0.06em]')
+    const group = screen.getByText('2023').parentElement!
+    expect(group).toHaveClass('gap-10')
+    expect(group).toContainElement(screen.getByTestId('viz-slot'))
   })
 
   it('omits bottom row when both bottom labels missing', () => {

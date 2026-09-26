@@ -16,7 +16,7 @@ export function Scientific({ mantissa, base, exponent, units }: Props) {
       <sup className="font-lj-display text-base text-[var(--color-lj-brand)] -translate-y-2">
         {exponent}
       </sup>
-      <span className="font-lj-mono font-normal text-[0.7rem] text-[var(--color-lj-bone-mute)] uppercase tracking-[0.08em] ml-2">
+      <span className="font-lj-mazzard font-bold text-sm tracking-normal text-[var(--color-lj-bone-mute)] ml-2">
         = {units}
       </span>
     </div>

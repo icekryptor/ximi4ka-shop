@@ -6,6 +6,8 @@ interface Props {
    * каждое увеличение ремоунтит overlay по key и перезапускает CSS-анимацию.
    */
   burstKey: number
+  /** Форма кольца-вспышки под форму кнопки; по умолчанию — пилюля. */
+  ringClassName?: string
 }
 
 /**
@@ -17,7 +19,7 @@ interface Props {
  * Родительский элемент обязан быть position: relative — overlay растянут
  * absolute inset-0 поверх кнопки и не ловит клики.
  */
-export function AddToCartBurst({ burstKey }: Props) {
+export function AddToCartBurst({ burstKey, ringClassName = 'rounded-full' }: Props) {
   if (burstKey === 0) return null
   return (
     <span
@@ -26,7 +28,7 @@ export function AddToCartBurst({ burstKey }: Props) {
       data-testid="add-to-cart-burst"
       className="pointer-events-none absolute inset-0"
     >
-      <span className="lj-add-flash absolute inset-0 rounded-full" />
+      <span className={`lj-add-flash absolute inset-0 ${ringClassName}`} />
       <span className="lj-bubble left-[16%]" />
       <span className="lj-bubble left-[38%]" style={{ animationDelay: '90ms' }} />
       <span className="lj-bubble left-[60%]" style={{ animationDelay: '150ms' }} />

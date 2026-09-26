@@ -27,7 +27,7 @@ export function StatBar({ index, label, value, fillPercent }: Props) {
     return () => obs.disconnect()
   }, [])
   return (
-    <li className="grid grid-cols-[minmax(7.5rem,auto)_1fr_2.5rem] items-center gap-3 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em]">
+    <li className="grid grid-cols-[minmax(7.5rem,auto)_1fr_2.5rem] items-center gap-3 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.03em]">
       <span className="text-[var(--color-lj-ink)] opacity-70 whitespace-nowrap">
         {index} / {label}
       </span>
