@@ -34,8 +34,8 @@ export function densityForSlug(slug: string): 'kit' | 'compact' {
   return COMPACT_SLUGS.has(slug) ? 'compact' : 'kit'
 }
 
-// Группы с переключателем «крупные / компактные карточки» в строке заголовка.
-// В макете «Каталог — 1440» он есть только у реактивов — самой длинной группы.
+// Группы с переключателем «плиткой / списком» в строке заголовка. В макете
+// он есть только у реактивов — самой длинной группы (Figma 56:10373).
 const VIEW_TOGGLE_SLUGS = new Set(['reagents'])
 
 export function hasViewToggle(slug: string): boolean {

@@ -44,26 +44,28 @@ describe('CatalogGroupSection', () => {
     expect(screen.getByTestId('catalog-grid').className).toContain('xl:grid-cols-6')
   })
 
-  it('has no view toggle unless asked for', () => {
+  it('has no view toggle without a list view', () => {
     renderSection()
     expect(screen.queryByRole('group', { name: 'Вид карточек' })).not.toBeInTheDocument()
   })
 
-  it('toggles between large and compact cards, starting from the given layout', () => {
-    renderSection({ toggleable: true })
-    const large = screen.getByRole('button', { name: 'Крупные карточки' })
-    const compact = screen.getByRole('button', { name: 'Компактные карточки' })
-    expect(compact).toHaveAttribute('aria-pressed', 'true')
-    expect(large).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByTestId('catalog-grid').className).toContain('xl:grid-cols-6')
+  it('switches between the grid and the list, starting from the list (Figma 56:10373)', () => {
+    renderSection({ list: <div>строка 1</div> })
+    const grid = screen.getByRole('button', { name: 'Плиткой' })
+    const list = screen.getByRole('button', { name: 'Списком' })
+    expect(list).toHaveAttribute('aria-pressed', 'true')
+    expect(grid).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByTestId('catalog-list')).toHaveTextContent('строка 1')
+    expect(screen.queryByTestId('catalog-grid')).toBeNull()
 
-    fireEvent.click(large)
-    expect(large).toHaveAttribute('aria-pressed', 'true')
-    expect(compact).toHaveAttribute('aria-pressed', 'false')
-    expect(screen.getByTestId('catalog-grid').className).toContain('xl:grid-cols-4')
+    fireEvent.click(grid)
+    expect(grid).toHaveAttribute('aria-pressed', 'true')
+    expect(list).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByTestId('catalog-grid').className).toContain('xl:grid-cols-6')
     expect(screen.getByText('карточка 2')).toBeInTheDocument()
+    expect(screen.queryByTestId('catalog-list')).toBeNull()
 
-    fireEvent.click(compact)
-    expect(screen.getByTestId('catalog-grid').className).toContain('xl:grid-cols-6')
+    fireEvent.click(list)
+    expect(screen.getByTestId('catalog-list')).toBeInTheDocument()
   })
 })
