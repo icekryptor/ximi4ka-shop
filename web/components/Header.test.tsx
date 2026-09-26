@@ -39,6 +39,19 @@ describe('Header v3', () => {
     expect(svg).not.toBeNull()
   })
 
+  it('lets the wordmark shrink below md so the mobile row fits 360–390px', () => {
+    // Логотип 1.75rem → ~199px шириной. Вместе с лупой, корзиной и «МЕНЮ»
+    // ряд не помещался в 390 − 2×24px и давал горизонтальный скролл.
+    // Сжиматься может только логотип и только ниже md: десктоп не трогаем.
+    render(<Header />)
+    const logoLink = screen.getByRole('link', { name: /химичка/i })
+    const svg = logoLink.querySelector('svg[role="img"]') as SVGElement
+    expect(logoLink.className).toContain('max-md:min-w-0')
+    expect(svg.getAttribute('class')).toContain('max-md:max-w-full')
+    expect(logoLink.className).not.toMatch(/(^|\s)min-w-0(\s|$)/)
+    expect(svg.getAttribute('class')).not.toMatch(/(^|\s)max-w-full(\s|$)/)
+  })
+
   it('renders all 5 primary nav links with correct hrefs', () => {
     render(<Header />)
     const mainNav = screen.getByRole('navigation', { name: 'Основная навигация' })
