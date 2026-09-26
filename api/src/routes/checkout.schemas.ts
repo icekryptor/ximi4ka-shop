@@ -3,24 +3,37 @@ import { normalizeTelegramHandle } from '../lib/telegramHandle.js'
 
 const comment = z.string().trim().max(1000).optional()
 
-// Доставка приходит из виджета СДЭК. Для ПВЗ обязательны код пункта и код
-// города — без них не создать заказ в СДЭК. Курьеру хватает адреса, который
-// виджет геокодировал; код города и индекс уточняют расчёт, если есть.
+// Доставка приходит из полей чекаута. Для ПВЗ обязательны код пункта и код
+// города — без них не создать заказ в СДЭК. Курьеру хватает адреса; код
+// города и индекс уточняют расчёт, если есть.
+const PvzDeliverySchema = z.object({
+  method: z.literal('cdek_pvz'),
+  cityCode: z.number().int().positive(),
+  deliveryPointCode: z.string().trim().min(1).max(32),
+  address: z.string().trim().min(1).max(1000),
+  comment,
+})
+
+const CourierDeliverySchema = z.object({
+  method: z.literal('cdek_courier'),
+  cityCode: z.number().int().positive().optional(),
+  postalCode: z.string().trim().max(16).optional(),
+  address: z.string().trim().min(1).max(1000),
+  comment,
+})
+
 export const DeliverySchema = z.discriminatedUnion('method', [
-  z.object({
-    method: z.literal('cdek_pvz'),
-    cityCode: z.number().int().positive(),
-    deliveryPointCode: z.string().trim().min(1).max(32),
-    address: z.string().trim().min(1).max(1000),
-    comment,
+  PvzDeliverySchema,
+  CourierDeliverySchema,
+])
+
+// Для расчёта цены ПВЗ код пункта не нужен (QuoteDestination в shared):
+// чекаут показывает цену сразу после выбора города.
+export const QuoteDestinationSchema = z.discriminatedUnion('method', [
+  PvzDeliverySchema.extend({
+    deliveryPointCode: PvzDeliverySchema.shape.deliveryPointCode.optional(),
   }),
-  z.object({
-    method: z.literal('cdek_courier'),
-    cityCode: z.number().int().positive().optional(),
-    postalCode: z.string().trim().max(16).optional(),
-    address: z.string().trim().min(1).max(1000),
-    comment,
-  }),
+  CourierDeliverySchema,
 ])
 
 // Client prices are never trusted — the schema deliberately has no price

@@ -3,12 +3,14 @@ import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { getCdekClient } from '../lib/cdek/index.js'
+import { isKnownDeliveryPoint } from '../lib/cdek/locations.js'
 import { enqueueOrderEvent } from '../lib/notifications/outbox.js'
 import { getPaymentProvider } from '../lib/payments/index.js'
 import { loadCart } from '../lib/shipping/cart.js'
 import { packCart } from '../lib/shipping/pack.js'
 import { deliveryConfigFromEnv, quoteDelivery } from '../lib/shipping/quote.js'
 import { nextOrderNumber } from '../lib/orderNumber.js'
+import { badRequest } from './errors.js'
 import { CheckoutSchema } from './checkout.schemas.js'
 
 export const checkoutRouter: Router = Router()
@@ -48,6 +50,20 @@ checkoutRouter.post('/', async (req, res, next) => {
       if (existing) {
         res.status(200).json(checkoutResponse(existing))
         return
+      }
+    }
+
+    // Пункт сверяем со списком города из того же кеша, что видел покупатель
+    // (спека §4.3). СДЭК не ответил — заказ принимаем: оформление важнее, а
+    // закрытый пункт всплывёт ошибкой при создании заказа в СДЭК.
+    if (parsed.delivery.method === 'cdek_pvz') {
+      const known = await isKnownDeliveryPoint(
+        getCdekClient(),
+        parsed.delivery.cityCode,
+        parsed.delivery.deliveryPointCode,
+      )
+      if (known === false) {
+        throw badRequest('delivery_point_unknown', 'Пункт выдачи не найден — выберите другой')
       }
     }
 

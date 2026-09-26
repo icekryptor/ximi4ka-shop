@@ -1,4 +1,9 @@
-import type { DeliveryDestination, DeliveryQuote, ShippingPackage } from '@ximi4ka-shop/shared'
+import type {
+  DeliveryDestination,
+  DeliveryQuote,
+  QuoteDestination,
+  ShippingPackage,
+} from '@ximi4ka-shop/shared'
 import { SHIPPING_RULES } from './rates.js'
 
 // Отгрузка всегда одна: магазин относит посылку в ПВЗ СДЭК в Москве.
@@ -35,7 +40,7 @@ export function tariffFor(method: DeliveryDestination['method'], config: Deliver
   return method === 'cdek_pvz' ? config.tariffPvz : config.tariffCourier
 }
 
-function toLocation(destination: DeliveryDestination): Record<string, unknown> {
+function toLocation(destination: QuoteDestination): Record<string, unknown> {
   if (destination.method === 'cdek_pvz') return { code: destination.cityCode }
   const loc: Record<string, unknown> = {}
   if (destination.cityCode) loc.code = destination.cityCode
@@ -49,7 +54,7 @@ function toLocation(destination: DeliveryDestination): Record<string, unknown> {
 // курьер — от 5000 ₽ (SHIPPING_RULES). Ниже порога — цена СДЭК. Если СДЭК не
 // ответил, заказ не теряем: берём прежнюю фиксированную ставку.
 export async function quoteDelivery(
-  input: { destination: DeliveryDestination; subtotalRub: number; packages: ShippingPackage[] },
+  input: { destination: QuoteDestination; subtotalRub: number; packages: ShippingPackage[] },
   { cdek, config }: QuoteDeps,
 ): Promise<DeliveryQuote> {
   const { destination, subtotalRub, packages } = input

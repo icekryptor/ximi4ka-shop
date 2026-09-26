@@ -23,8 +23,12 @@ export type { CdekShipmentDto, CdekShipmentState } from './types/cdek.js'
 export type { Product, ProductImage, StockStatus } from './types/product.js'
 
 export type {
+  CdekCity,
+  CdekCityPoints,
+  CdekPoint,
   DeliveryDestination,
   DeliveryQuote,
+  QuoteDestination,
   ShippingBox,
   ShippingPackage,
 } from './types/shipping.js'

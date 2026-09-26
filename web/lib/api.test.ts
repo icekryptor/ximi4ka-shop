@@ -14,6 +14,8 @@ import {
   submitCheckout,
   getOrderStatus,
   searchCatalog,
+  suggestCdekCities,
+  getCdekPoints,
 } from './api'
 
 function jsonResponse(status: number, body: unknown, ok = status >= 200 && status < 300) {
@@ -680,5 +682,55 @@ describe('cdekWidgetServicePath', () => {
   it('ведёт на прокси виджета с целой суммой корзины', async () => {
     const { cdekWidgetServicePath } = await import('./api')
     expect(cdekWidgetServicePath(2999.6)).toMatch(/\/api\/public\/cdek\/widget\?subtotal=3000$/)
+  })
+})
+
+describe('СДЭК: подсказки городов и пункты', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('кодирует запрос, не берёт из кеша и передаёт сигнал отмены', async () => {
+    const cities = [{ code: 44, name: 'Москва', fullName: 'Москва, Россия' }]
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: cities }))
+    vi.stubGlobal('fetch', fetchMock)
+    const controller = new AbortController()
+
+    expect(await suggestCdekCities('Моск', { signal: controller.signal })).toEqual(cities)
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe(`http://localhost:3001/api/public/cdek/cities?q=${encodeURIComponent('Моск')}`)
+    expect(init.cache).toBe('no-store')
+    expect(init.signal).toBe(controller.signal)
+  })
+
+  it('502 — ApiError с кодом cdek_unavailable', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse(502, {
+          error: { code: 'cdek_unavailable', message: 'СДЭК временно недоступен' },
+        }),
+      ),
+    )
+    await expect(suggestCdekCities('Моск')).rejects.toMatchObject({
+      status: 502,
+      code: 'cdek_unavailable',
+    })
+  })
+
+  it('getCdekPoints: код города в query, без кеша, с отменой', async () => {
+    const payload = { city: { code: 44, name: 'Москва', location: [37.6, 55.7] }, points: [] }
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: payload }))
+    vi.stubGlobal('fetch', fetchMock)
+    const controller = new AbortController()
+
+    expect(await getCdekPoints(44, { signal: controller.signal })).toEqual(payload)
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(url).toBe('http://localhost:3001/api/public/cdek/points?cityCode=44')
+    expect(init.cache).toBe('no-store')
+    expect(init.signal).toBe(controller.signal)
   })
 })

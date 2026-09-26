@@ -95,4 +95,34 @@ describe('POST /api/public/shipping/quote', () => {
     const res = await request(app).post('/api/public/shipping/quote').send({ items: [] })
     expect(res.status).toBe(400)
   })
+
+  it('ПВЗ без кода пункта считается по городу — цену видно до выбора пункта', async () => {
+    const post = vi.fn().mockResolvedValue({ total_sum: 390, period_min: 3, period_max: 5 })
+    setCdekClientForTests({ post, get: vi.fn(), raw: vi.fn() })
+    const p = await seedProduct({ priceRub: 500 })
+    const res = await request(app)
+      .post('/api/public/shipping/quote')
+      .send({
+        items: [{ productId: p.id, quantity: 1 }],
+        destination: { method: 'cdek_pvz', cityCode: 44, address: 'Москва' },
+      })
+    expect(res.status).toBe(200)
+    expect(res.body.data.quote).toMatchObject({ method: 'cdek_pvz', customerPriceRub: 390 })
+    expect(post.mock.calls[0][1].to_location).toEqual({ code: 44 })
+  })
+
+  it('курьер до ввода улицы считается по коду города', async () => {
+    const post = vi.fn().mockResolvedValue({ total_sum: 600, period_min: 2, period_max: 2 })
+    setCdekClientForTests({ post, get: vi.fn(), raw: vi.fn() })
+    const p = await seedProduct({ priceRub: 500 })
+    const res = await request(app)
+      .post('/api/public/shipping/quote')
+      .send({
+        items: [{ productId: p.id, quantity: 1 }],
+        destination: { method: 'cdek_courier', cityCode: 44, address: 'Москва' },
+      })
+    expect(res.status).toBe(200)
+    expect(res.body.data.quote).toMatchObject({ method: 'cdek_courier', customerPriceRub: 600 })
+    expect(post.mock.calls[0][1].to_location).toEqual({ code: 44, address: 'Москва' })
+  })
 })
