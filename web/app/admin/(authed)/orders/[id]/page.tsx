@@ -5,6 +5,7 @@ import type { OrderDto } from '@ximi4ka-shop/shared'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import { OrderStatusActions } from './OrderStatusActions'
 import { OrderNotifications } from './OrderNotifications'
+import { CdekShipmentPanel } from './CdekShipmentPanel'
 import {
   DELIVERY_METHOD_LABELS,
   HISTORY_ACTOR_LABELS,
@@ -211,6 +212,17 @@ export default async function AdminOrderDetailPage({
                 </div>
               )}
             </dl>
+            {(order.deliveryMethod === 'cdek_pvz' || order.deliveryMethod === 'cdek_courier') && (
+              <div className="mt-3 pt-3 border-t border-brand-border">
+                <CdekShipmentPanel
+                  orderId={order.id}
+                  orderStatus={order.status}
+                  shipment={order.cdekShipment ?? null}
+                  enabled={order.cdekOrdersEnabled ?? false}
+                  workerProblem={order.cdekWorkerProblem ?? null}
+                />
+              </div>
+            )}
           </section>
 
           {/* Оплата */}

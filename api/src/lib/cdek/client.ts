@@ -11,8 +11,8 @@ export const PUBLIC_TEST_CREDENTIALS = {
   clientSecret: 'RmAmgvSgSl1yirlz9QupbzOJVqhCxcP5',
 }
 
-const TEST_BASE_URL = 'https://api.edu.cdek.ru/v2'
-const PROD_BASE_URL = 'https://api.cdek.ru/v2'
+export const TEST_BASE_URL = 'https://api.edu.cdek.ru/v2'
+export const PROD_BASE_URL = 'https://api.cdek.ru/v2'
 const TOKEN_REFRESH_MARGIN_MS = 60_000
 
 export class CdekError extends Error {
@@ -168,16 +168,19 @@ export class CdekClient {
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
     })
+    type CdekErrorItem = { code?: string; message?: string }
     const data = (await res.json().catch(() => null)) as
-      | (T & { errors?: { code?: string; message?: string }[] })
+      | (T & { errors?: CdekErrorItem[]; requests?: { errors?: CdekErrorItem[] }[] })
       | null
     if (!res.ok) {
-      const first = data?.errors?.[0]
+      // Калькулятор и ПВЗ кладут ошибки в корень, заказы — в requests[].errors.
+      const errors = data?.errors ?? data?.requests?.flatMap((r) => r.errors ?? []) ?? []
+      const first = errors[0]
       throw new CdekError(
         res.status,
         first?.code ?? 'http_error',
         first?.message ?? `СДЭК ответил ${res.status}`,
-        data?.errors,
+        errors,
       )
     }
     return data as T
