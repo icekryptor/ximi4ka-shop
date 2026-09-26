@@ -79,14 +79,18 @@ export function Header({ headerPromoText = null }: HeaderProps) {
 
       {/* Шапка — плавающая пилюля в 10px от верхнего края. Сам <header>
           прозрачный и не ловит клики (отступ вокруг пилюли кликается насквозь),
-          его высота вместе с отступом уходит в --lj-header-height. */}
+          его высота вместе с отступом уходит в --lj-header-height. С lg пилюля
+          шириной по содержимому и по центру — не растягивается на весь экран;
+          уже — занимает всю ширину, чтобы корзина и «МЕНЮ» были у края.
+          Навигация встаёт в ряд с lg, поле поиска — с xl: раньше логотип,
+          пункты меню, поле и корзина в одну пилюлю не помещаются. */}
       <header
         ref={headerRef}
         className="pointer-events-none sticky top-0 z-[50] w-full px-2.5 pt-2.5"
       >
         <div
           data-testid="header-pill"
-          className="pointer-events-auto max-w-[var(--max-lj-content)] mx-auto flex items-center justify-between gap-4 rounded-full border border-[var(--color-lj-rule-soft)] bg-[var(--color-lj-cream)]/90 backdrop-blur shadow-[0_6px_24px_rgba(10,10,10,0.06)] py-2.5 pl-4 pr-3 md:pl-6 md:pr-2.5"
+          className="pointer-events-auto mx-auto flex w-full items-center justify-between gap-4 lg:w-fit lg:max-w-full lg:justify-start lg:gap-8 rounded-full border border-[var(--color-lj-rule-soft)] bg-[var(--color-lj-cream)]/90 backdrop-blur shadow-[0_6px_24px_rgba(10,10,10,0.06)] py-2.5 pl-4 pr-3 md:pl-6 md:pr-2.5"
         >
           {/* На мобильном логотип (~199px при 1.75rem) — единственное, что
               может сжиматься: лупа, корзина и «МЕНЮ» вместе с ним не помещались
@@ -100,9 +104,16 @@ export function Header({ headerPromoText = null }: HeaderProps) {
             <HeaderLogo size={1.75} className="max-md:max-w-full" />
           </Link>
 
+          {/* Поиск по каталогу с живым превью — сразу за логотипом, как в
+              макете. С xl поле встроено в ряд и сжимается первым, если пилюле
+              не хватает ширины; уже — раскрывается по иконке-лупе (см. ниже). */}
+          <div className="hidden xl:block w-[22rem] min-w-[9rem] shrink">
+            <HeaderSearch />
+          </div>
+
           <nav
             aria-label="Основная навигация"
-            className="hidden md:flex items-center gap-6 lg:gap-8"
+            className="hidden lg:flex shrink-0 items-center gap-8"
           >
             {NAV.map((item) => {
               const active = isActive(pathname, item)
@@ -129,21 +140,14 @@ export function Header({ headerPromoText = null }: HeaderProps) {
             })}
           </nav>
 
-          {/* Поиск по каталогу с живым превью — между навигацией и корзиной.
-              На десктопе поле встроено в ряд; на мобильном раскрывается по
-              иконке-лупе (см. ниже). */}
-          <div className="hidden md:block flex-1 max-w-[22rem] mx-2">
-            <HeaderSearch />
-          </div>
-
-          <div className="flex items-center gap-3 sm:gap-4">
-            {/* Мобильная иконка-лупа: раскрывает поле поиска отдельным рядом. */}
+          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+            {/* Иконка-лупа (до xl): раскрывает поле поиска отдельной плашкой. */}
             <button
               type="button"
               onClick={() => setMobileSearchOpen((v) => !v)}
               aria-label={mobileSearchOpen ? 'Скрыть поиск' : 'Открыть поиск'}
               aria-expanded={mobileSearchOpen}
-              className="md:hidden text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand)] transition-colors"
+              className="xl:hidden text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand)] transition-colors"
             >
               <svg
                 width="20"
@@ -167,19 +171,19 @@ export function Header({ headerPromoText = null }: HeaderProps) {
               type="button"
               onClick={() => setMobileOpen(true)}
               aria-label="Открыть меню"
-              className="md:hidden font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]"
+              className="lg:hidden font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]"
             >
               МЕНЮ
             </button>
           </div>
         </div>
 
-        {/* Мобильный поиск — отдельная плашка под пилюлей: второй ряд внутри
+        {/* Поиск до xl — отдельная плашка под пилюлей: второй ряд внутри
             rounded-full сломал бы форму. */}
         {mobileSearchOpen ? (
           <div
             data-testid="header-mobile-search"
-            className="pointer-events-auto md:hidden mt-2 rounded-3xl border border-[var(--color-lj-rule-soft)] bg-[var(--color-lj-cream)] shadow-[0_6px_24px_rgba(10,10,10,0.06)] px-4 py-3"
+            className="pointer-events-auto xl:hidden mt-2 lg:mx-auto lg:w-[24rem] rounded-3xl border border-[var(--color-lj-rule-soft)] bg-[var(--color-lj-cream)] shadow-[0_6px_24px_rgba(10,10,10,0.06)] px-4 py-3"
           >
             <div className="[&>div]:max-w-none">
               <HeaderSearch />

@@ -34,6 +34,14 @@ export function densityForSlug(slug: string): 'kit' | 'compact' {
   return COMPACT_SLUGS.has(slug) ? 'compact' : 'kit'
 }
 
+// Группы с переключателем «крупные / компактные карточки» в строке заголовка.
+// В макете «Каталог — 1440» он есть только у реактивов — самой длинной группы.
+const VIEW_TOGGLE_SLUGS = new Set(['reagents'])
+
+export function hasViewToggle(slug: string): boolean {
+  return VIEW_TOGGLE_SLUGS.has(slug)
+}
+
 /**
  * Собирает данные каталога: все товары, сгруппированные по категориям, и
  * счётчики. Все сетевые сбои деградируют до пустого каталога — витрина
