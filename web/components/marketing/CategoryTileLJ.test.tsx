@@ -18,10 +18,10 @@ describe('<CategoryTileLJ>', () => {
     expect(screen.queryByText(/arr\./i)).not.toBeInTheDocument()
   })
 
-  it('renders Unbounded display name', () => {
+  it('sets the name in Mazzard: Medium 24 on mobile, Light on desktop (Figma CategoryTile)', () => {
     render(<CategoryTileLJ category={cat} productCount={42} />)
     const name = screen.getByText('Реактивы')
-    expect(name.className).toContain('font-lj-display')
+    expect(name).toHaveClass('font-lj-mazzard', 'font-medium', 'text-2xl', 'md:font-light')
   })
 
   it('renders mono product count with correct Russian pluralization', () => {

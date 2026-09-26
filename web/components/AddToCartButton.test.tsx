@@ -27,6 +27,33 @@ describe('AddToCartButton', () => {
     expect(btn).not.toBeDisabled()
   })
 
+  it('compact: Figma outline button, named after the product, with a hidden cart icon', () => {
+    const { container } = render(<AddToCartButton product={inStock} compact />)
+    const btn = within(container).getByRole('button', { name: 'В корзину: Test Kit' })
+    expect(btn).toHaveClass('lj-btn', 'lj-btn-outline')
+    expect(btn).toHaveTextContent('В корзину')
+    const icon = btn.querySelector('[data-icon="cart"]')
+    expect(icon).toHaveAttribute('aria-hidden', 'true')
+    // Иконка — маска поверх фона: в режиме высокой контрастности фон
+    // подменяется, поэтому цвет задан системный и подмена отключена.
+    expect(icon).toHaveClass('forced-color-adjust-none', 'forced-colors:bg-[ButtonText]')
+  })
+
+  it('compact: keeps the «Товар добавлен» status for screen readers only', () => {
+    const { container } = render(<AddToCartButton product={inStock} compact />)
+    expect(within(container).getByRole('status')).toHaveClass('sr-only')
+  })
+
+  it('compact: shows «Добавлено ✓» on the button after a click (feedback without animation)', () => {
+    const { container } = render(<AddToCartButton product={inStock} compact />)
+    const btn = within(container).getByRole('button')
+    act(() => {
+      fireEvent.click(btn)
+    })
+    expect(btn).toHaveTextContent('Добавлено ✓')
+    expect(btn.querySelector('[data-icon="cart"]')).toBeNull()
+  })
+
   it('renders "Нет в наличии" and is disabled for out_of_stock product', () => {
     const { container } = render(
       <AddToCartButton product={{ ...inStock, stockStatus: 'out_of_stock' }} />,

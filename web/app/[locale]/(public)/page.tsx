@@ -25,11 +25,11 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } f
 export const revalidate = 60
 
 // v3 Lab Journal — hardcoded catalog of 3 flagship sets. Marketing decoration
-// (stats, hover formulas, chips, badges) lives here; each `slug` resolves to
+// (stats, hover formulas, chips) lives here; each `slug` resolves to
 // a real DB product at request time so the cards render real product photos.
 // The drift unit test (page.test.tsx) catches any slug here that doesn't
-// exist in the DB. `export` is required for that test; `as const` preserves
-// literal types so `badgeVariant` stays narrow without redundant casts.
+// exist in the DB. `export` is required for that test; `as const` keeps the
+// entries readonly literals.
 // NOTE: `name`, `shortDescription`, and `priceRub` here are FALLBACK-ONLY
 // values used by the synthetic Product literal when a slug doesn't resolve
 // in the DB (drift / outage). In normal operation the DB-resolved product's
@@ -43,9 +43,6 @@ export const SITE_CATALOG = [
     shortDescription:
       'Флагман: настоящая лаборатория у вас дома. От реакций меди до выращивания кристаллов.',
     priceRub: 3399,
-    badge: 'Хит',
-    badgeVariant: 'brand' as const,
-    elementSymbol: 'Cu',
     emphasisWord: 'Химичка',
     hoverFormula: 'Cu + 2 AgNO₃ → Cu(NO₃)₂ + 2 Ag↓',
     chips: ['безопасно', 'ярко', 'от 10 лет'],
@@ -59,9 +56,6 @@ export const SITE_CATALOG = [
     shortDescription:
       'Те же реакции, компактнее. Базовая посуда, идеален как первый набор или подарок.',
     priceRub: 1799,
-    badge: 'Старт',
-    badgeVariant: 'outline' as const,
-    elementSymbol: 'NaCl',
     emphasisWord: 'Мини-',
     hoverFormula: 'Pocket lab · 18 реактивов',
     chips: ['подарок', 'от 8 лет'],
@@ -74,9 +68,6 @@ export const SITE_CATALOG = [
     name: 'Электрохимичка',
     shortDescription: 'Электролиз, гальваника, батарея. Полный комплект для опытов с током.',
     priceRub: 3299,
-    badge: 'Pro',
-    badgeVariant: 'ink' as const,
-    elementSymbol: 'e⁻',
     emphasisWord: 'Электро',
     hoverFormula: '2 H₂O → 2 H₂↑ + O₂↑',
     chips: ['ток', 'гальваника', 'от 12 лет'],
@@ -306,9 +297,6 @@ export default async function HomePage({ params }: Props) {
                   <ProductCard
                     product={product}
                     emphasisWord={entry.emphasisWord}
-                    elementSymbol={entry.elementSymbol}
-                    badge={entry.badge}
-                    badgeVariant={entry.badgeVariant}
                     hoverFormula={entry.hoverFormula}
                     chips={[...entry.chips]}
                     stats={entry.stats}

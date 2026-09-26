@@ -18,6 +18,71 @@
   unicode-range: U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F;
 }
 
+/* Mazzard H — шрифт карточек по макету Figma (лист «Карточки»): названия,
+   цены, кнопки, цифры и метки. Файлы — подмножество TTF из того же семейства
+   (латиница, кириллица, пунктуация, №, стрелки, минус); ₽ и индексы вроде ₂
+   в Mazzard нет — они берутся из следующего шрифта стека. Figma пишет вес
+   ExtraLight как 275, в CSS это 200. */
+@font-face {
+  font-family: 'Mazzard H';
+  src: url('/fonts/MazzardH-ExtraLight.woff2') format('woff2');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F, U+2100-214F, U+2190-21FF, U+2212;
+}
+
+@font-face {
+  font-family: 'Mazzard H';
+  src: url('/fonts/MazzardH-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F, U+2100-214F, U+2190-21FF, U+2212;
+}
+
+@font-face {
+  font-family: 'Mazzard H';
+  src: url('/fonts/MazzardH-LightItalic.woff2') format('woff2');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+  unicode-range:
+    U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F, U+2100-214F, U+2190-21FF, U+2212;
+}
+
+@font-face {
+  font-family: 'Mazzard H';
+  src: url('/fonts/MazzardH-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F, U+2100-214F, U+2190-21FF, U+2212;
+}
+
+@font-face {
+  font-family: 'Mazzard H';
+  src: url('/fonts/MazzardH-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F, U+2100-214F, U+2190-21FF, U+2212;
+}
+
+@font-face {
+  font-family: 'Mazzard H';
+  src: url('/fonts/MazzardH-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F, U+2100-214F, U+2190-21FF, U+2212;
+}
+
 /* Metric-matched Arial stand-ins shown until the fonts from app/fonts.ts load
    (display: swap). Numbers are the ones next/font/google generated, so the
    pre-swap layout does not jump more than before the switch to local files. */
@@ -182,6 +247,10 @@
   --font-lj-display: var(--font-lj-display), 'Unbounded', system-ui, sans-serif;
   --font-lj-body: var(--font-lj-body), 'Inter', system-ui, sans-serif;
   --font-lj-mono: var(--font-plex), 'IBM Plex Sans', system-ui, sans-serif;
+  /* Mazzard H (@font-face в начале файла) — названия, цены, кнопки и метки
+     карточек по макету Figma. Unbounded (--font-lj-display) остаётся за
+     крупными заголовками страниц и цифрами статов. */
+  --font-lj-mazzard: 'Mazzard H', var(--font-plex), 'IBM Plex Sans', system-ui, sans-serif;
 
   /* Type scale (additive — old --text-* stay until Stage 5) */
   --text-lj-mega: clamp(2.75rem, 9vw, 9.5rem);
@@ -442,6 +511,52 @@ body {
 .lj-cta-bright:focus-visible {
   outline: 2px solid var(--color-lj-brand-deep);
   outline-offset: 3px;
+}
+
+/* === Кнопки карточек по макету (Figma «Атомы / Button») ===
+   Прямоугольник со скруглением 5px, Mazzard H Medium 13/19.5, трекинг 4%,
+   без тени. Размер задаёт место вызова: XS — px-3 py-2.5, S — px-4 py-3.
+   В слое components, чтобы утилиты на месте вызова перекрывали базу. */
+@layer components {
+  .lj-btn {
+    @apply font-lj-mazzard;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    border-radius: 5px;
+    font-weight: 500;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    transition:
+      background-color 0.3s var(--ease-out-quart),
+      color 0.3s var(--ease-out-quart);
+  }
+  .lj-btn:focus-visible {
+    outline: 2px solid var(--color-lj-brand-deep);
+    outline-offset: 3px;
+  }
+  .lj-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .lj-btn-primary {
+    background-image: var(--gradient-lj-bright);
+    color: var(--color-lj-on-bright);
+  }
+  .lj-btn-primary:hover {
+    background-image: var(--gradient-lj-bright-deep);
+  }
+  .lj-btn-outline {
+    border: 1px solid var(--color-lj-brand-deep);
+    background-color: transparent;
+    color: var(--color-lj-brand-deep);
+  }
+  .lj-btn-outline:hover:not(:disabled) {
+    background-color: rgba(103, 3, 255, 0.06);
+  }
 }
 
 /* === v3.5 Bright — hover-lift карточек === */

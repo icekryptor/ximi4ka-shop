@@ -71,7 +71,6 @@ export function Manifesto({ statementParts, body }: Props) {
             index="03"
             topLabel="рейтинг"
             big="4,9"
-            bigVariant="decimal"
             bottomLeft="из 5"
             bottomRight="WB & Ozon"
           >

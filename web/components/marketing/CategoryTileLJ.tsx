@@ -86,10 +86,10 @@ export function CategoryTileLJ({ category, productCount }: Props) {
         />
       )}
       <div className="absolute bottom-5 left-6 right-6 z-[2] flex flex-col gap-2">
-        <h3 className="font-lj-display font-[700] text-[clamp(1.5rem,2.2vw,2rem)] leading-[0.95] tracking-[-0.035em] text-[var(--color-lj-on-bright)]">
+        <h3 className="font-lj-mazzard font-medium text-2xl leading-none text-[var(--color-lj-on-bright)] md:font-light md:text-[clamp(1.5rem,2.2vw,2rem)] md:leading-[0.95]">
           {category.name}
         </h3>
-        <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-on-bright-mute)]">
+        <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.03em] text-[var(--color-lj-on-bright-mute)]">
           {countLabel}
         </span>
       </div>

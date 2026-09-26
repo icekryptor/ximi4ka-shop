@@ -32,21 +32,64 @@ const baseProduct = {
 } as unknown as Product
 
 describe('<ProductCard> v3', () => {
-  it('renders SKU prefix and badge', () => {
+  it('has no SKU / badge row above the photo (Figma «Карточки», Density=Kit)', () => {
+    const images = [{ id: 'i1', productId: '1', url: '/a.png', alt: 'a', sortOrder: 0 }]
     render(
       <ProductCard
         product={baseProduct}
         emphasisWord="Химичка"
-        elementSymbol="Cu"
-        badge="Хит"
         stats={{ reagents: 18, instruments: 12, reactions: 161 }}
         statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
         chips={['безопасно', 'ярко', 'от 10 лет']}
+        images={images}
+      />,
+    )
+    expect(screen.queryByText(/№\s*X-30/)).not.toBeInTheDocument()
+  })
+
+  it('puts the price and «Заказать набор →» right under the title, before the description', () => {
+    render(
+      <ProductCard
+        product={baseProduct}
+        stats={{ reagents: 18, instruments: 12, reactions: 161 }}
+        statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
         images={[]}
       />,
     )
-    expect(screen.getByText(/№\s*X-30\s*\/\s*Cu/)).toBeInTheDocument()
-    expect(screen.getByText('Хит')).toBeInTheDocument()
+    const title = screen.getByRole('heading', { name: 'Химичка 3.0' })
+    const cta = screen.getByRole('link', { name: 'Заказать набор →' })
+    const description = screen.getByText(baseProduct.shortDescription!)
+    const follows = (a: Node, b: Node) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(follows(title, cta)).toBe(true)
+    expect(follows(cta, description)).toBe(true)
+  })
+
+  it('renders «Заказать набор →» as the gradient Primary/XS button', () => {
+    render(
+      <ProductCard
+        product={baseProduct}
+        stats={{ reagents: 18, instruments: 12, reactions: 161 }}
+        statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
+        images={[]}
+      />,
+    )
+    const cta = screen.getByRole('link', { name: 'Заказать набор →' })
+    expect(cta).toHaveClass('lj-btn', 'lj-btn-primary')
+    expect(cta).toHaveAttribute('href', '/product/himichka-3')
+  })
+
+  it('sets the title and price in Mazzard', () => {
+    render(
+      <ProductCard
+        product={baseProduct}
+        stats={{ reagents: 18, instruments: 12, reactions: 161 }}
+        statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
+        images={[]}
+      />,
+    )
+    expect(screen.getByRole('heading', { name: 'Химичка 3.0' })).toHaveClass('font-lj-mazzard')
+    expect(screen.getByText(/3.{0,3}399/)).toHaveClass('font-lj-mazzard')
   })
 
   it('renders 3 StatBars', () => {
@@ -71,21 +114,6 @@ describe('<ProductCard> v3', () => {
       />,
     )
     expect(container.querySelectorAll('[data-statbar]').length).toBe(0)
-  })
-
-  it('renders brand badge as a bright gradient pill (v3.5)', () => {
-    render(
-      <ProductCard
-        product={baseProduct}
-        badge="Хит"
-        badgeVariant="brand"
-        stats={{ reagents: 18, instruments: 12, reactions: 161 }}
-        statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
-        images={[]}
-      />,
-    )
-    const badge = screen.getByText('Хит')
-    expect(badge.className).toContain('bg-[image:var(--gradient-lj-bright)]')
   })
 
   it('renders chips lowercase', () => {
@@ -195,6 +223,14 @@ describe('ProductCard images behavior', () => {
       <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={[]} />,
     )
     expect(container.querySelector('[data-density="compact"]')).toBeNull()
+  })
+
+  it('shows the photo square (1:1), as in the Figma card', () => {
+    const images = [{ id: 'i1', productId: 'p1', url: '/a.png', alt: 'a', sortOrder: 0 }]
+    const { container } = render(
+      <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={images} />,
+    )
+    expect(container.querySelector('a[href^="/product/"] > div')).toHaveClass('aspect-square')
   })
 
   it('does not render a corner-mark label on the image', () => {

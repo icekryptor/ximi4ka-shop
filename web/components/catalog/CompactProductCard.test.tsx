@@ -66,6 +66,26 @@ describe('CompactProductCard', () => {
     expect(within(container).getByText('Нет в наличии')).toBeInTheDocument()
   })
 
+  it('shows the SKU line only in the mobile layout (Figma: Viewport=Mobile)', () => {
+    const { container } = render(<CompactProductCard product={base} images={images} />)
+    expect(within(container).getByText('№ R-11')).toHaveClass('md:hidden')
+  })
+
+  it('is a size container and keeps the stepper and the cart button in one group', () => {
+    const { container } = render(<CompactProductCard product={base} images={images} />)
+    // Сам переход «текст → иконка» делает container query (@min-[12.5rem]),
+    // jsdom его не считает — здесь проверяем только разметку под него.
+    expect(container.querySelector('[data-density="compact"]')).toHaveClass('@container')
+    const btn = within(container).getByRole('button', { name: /^В корзину/ })
+    const stepper = within(container).getByRole('group', { name: /Количество/ })
+    expect(btn).toHaveClass('lj-btn', 'lj-btn-outline')
+    const group = stepper.parentElement!
+    expect(group).toContainElement(btn)
+    // Группа без цены: в широкой карточке переносится целиком, иконка
+    // не остаётся одна на второй строке.
+    expect(group).not.toContainElement(within(container).getByText('290'))
+  })
+
   it('renders a SpecimenCard placeholder when no images are provided', () => {
     const { container } = render(<CompactProductCard product={base} images={[]} />)
     expect(within(container).getByText('ОБРАЗЕЦ № R-11')).toBeInTheDocument()
