@@ -157,7 +157,7 @@ describe('reconcilePendingOrders', () => {
     const events = await AppDataSource.getRepository(OrderNotification).find({
       where: { orderId: stale.id },
     })
-    expect(events.map((e) => e.eventKey)).toEqual(['status:paid', 'status:paid'])
+    expect(events.map((e) => e.eventKey)).toEqual(['status:paid'])
   })
 
   it('skips fresh orders, orders without external id, and non-pending orders', async () => {

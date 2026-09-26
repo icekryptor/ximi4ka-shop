@@ -3,12 +3,14 @@ import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { getCdekClient } from '../lib/cdek/index.js'
+import { isKnownDeliveryPoint } from '../lib/cdek/locations.js'
 import { enqueueOrderEvent } from '../lib/notifications/outbox.js'
 import { getPaymentProvider } from '../lib/payments/index.js'
 import { loadCart } from '../lib/shipping/cart.js'
 import { packCart } from '../lib/shipping/pack.js'
 import { deliveryConfigFromEnv, quoteDelivery } from '../lib/shipping/quote.js'
 import { nextOrderNumber } from '../lib/orderNumber.js'
+import { badRequest } from './errors.js'
 import { CheckoutSchema } from './checkout.schemas.js'
 
 export const checkoutRouter: Router = Router()
@@ -51,13 +53,29 @@ checkoutRouter.post('/', async (req, res, next) => {
       }
     }
 
+    // Пункт сверяем со списком города из того же кеша, что видел покупатель
+    // (спека §4.3). СДЭК не ответил — заказ принимаем: оформление важнее, а
+    // закрытый пункт всплывёт ошибкой при создании заказа в СДЭК.
+    if (parsed.delivery.method === 'cdek_pvz') {
+      const known = await isKnownDeliveryPoint(
+        getCdekClient(),
+        parsed.delivery.cityCode,
+        parsed.delivery.deliveryPointCode,
+      )
+      if (known === false) {
+        throw badRequest('delivery_point_unknown', 'Пункт выдачи не найден — выберите другой')
+      }
+    }
+
     const { lines, subtotalRub, packLines } = await loadCart(parsed.items)
     const { delivery } = parsed
+
+    const packages = packCart(packLines)
 
     // Цену доставки считает только сервер: сумма, которую показал виджет, —
     // подсказка для интерфейса, клиенту не доверяем.
     const quote = await quoteDelivery(
-      { destination: delivery, subtotalRub, packages: packCart(packLines) },
+      { destination: delivery, subtotalRub, packages },
       { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
     )
     const shippingRub = quote.customerPriceRub
@@ -90,6 +108,7 @@ checkoutRouter.post('/', async (req, res, next) => {
                 periodMax: quote.periodMax,
                 source: quote.source,
               },
+              packages,
             },
             deliveryMethod: delivery.method,
             subtotalRub,

@@ -1,9 +1,11 @@
 import type {
   BlogPost,
+  CdekCity,
+  CdekCityPoints,
   CheckoutRequest,
   CheckoutResponse,
-  DeliveryDestination,
   DeliveryQuote,
+  QuoteDestination,
   ShippingPackage,
   Page,
   Product,
@@ -191,6 +193,32 @@ export async function searchCatalog(
   return body.data
 }
 
+// Подсказки городов СДЭК для чекаута (GET /api/public/cdek/cities). signal
+// отменяет устаревший запрос, пока покупатель печатает.
+export async function suggestCdekCities(
+  q: string,
+  opts: { signal?: AbortSignal } = {},
+): Promise<CdekCity[]> {
+  const body = await request<DataEnvelope<CdekCity[]>>(
+    `/api/public/cdek/cities?q=${encodeURIComponent(q)}`,
+    { cache: 'no-store', signal: opts.signal },
+  )
+  return body.data
+}
+
+// Пункты выдачи города и его центр для карты (GET /api/public/cdek/points).
+// signal отменяет запрос, если покупатель успел сменить город.
+export async function getCdekPoints(
+  cityCode: number,
+  opts: { signal?: AbortSignal } = {},
+): Promise<CdekCityPoints> {
+  const body = await request<DataEnvelope<CdekCityPoints>>(
+    `/api/public/cdek/points?cityCode=${cityCode}`,
+    { cache: 'no-store', signal: opts.signal },
+  )
+  return body.data
+}
+
 // ---------- Checkout & orders (public) ----------
 
 /**
@@ -222,7 +250,7 @@ export interface ShippingQuoteResponse {
 // цена для покупателя по правилам сервера, та же, что попадёт в заказ.
 export async function quoteShipping(payload: {
   items: Array<{ productId: string; quantity: number }>
-  destination?: DeliveryDestination
+  destination?: QuoteDestination
 }): Promise<ShippingQuoteResponse> {
   const body = await request<DataEnvelope<ShippingQuoteResponse>>(`/api/public/shipping/quote`, {
     method: 'POST',

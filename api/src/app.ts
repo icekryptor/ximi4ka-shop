@@ -23,6 +23,7 @@ import { publicOrdersRouter } from './routes/public/orders.js'
 import { adminOrdersRouter } from './routes/admin/orders.js'
 import { publicShippingRouter } from './routes/public/shipping.js'
 import { cdekWidgetRouter } from './routes/public/cdek-widget.js'
+import { cdekLocationsRouter } from './routes/public/cdek-locations.js'
 import { errorHandler } from './routes/errors.js'
 import { UPLOADS_DIR } from './lib/storage/index.js'
 
@@ -69,6 +70,7 @@ export function createApp(): Express {
   app.use('/api/public/redirects', publicRedirectsRouter)
   app.use('/api/public/shipping', publicShippingRouter)
   app.use('/api/public/cdek/widget', cdekWidgetRouter)
+  app.use('/api/public/cdek', cdekLocationsRouter)
   app.use('/api/admin/redirects', adminRedirectsRouter)
   app.use('/api/admin/revisions', adminRevisionsRouter)
   app.use('/api/public/settings', publicSettingsRouter)
