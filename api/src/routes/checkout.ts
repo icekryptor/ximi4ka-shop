@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import type { CheckoutResponse } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
@@ -24,11 +25,13 @@ function isUniqueViolation(err: unknown): boolean {
   )
 }
 
-function checkoutResponse(order: Order): {
-  data: { orderNumber: string; paymentUrl: string | null }
-} {
+function checkoutResponse(order: Order): { data: CheckoutResponse } {
   return {
-    data: { orderNumber: order.orderNumber, paymentUrl: order.paymentUrl ?? null },
+    data: {
+      orderNumber: order.orderNumber,
+      paymentUrl: order.paymentUrl ?? null,
+      publicToken: order.publicToken,
+    },
   }
 }
 

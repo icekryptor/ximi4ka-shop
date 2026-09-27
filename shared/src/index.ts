@@ -9,6 +9,7 @@ export type {
   DeliveryMethod,
   CheckoutRequest,
   CheckoutResponse,
+  PublicOrderShipment,
   PublicOrderStatus,
 } from './types/order.js'
 

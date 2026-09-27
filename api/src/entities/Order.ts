@@ -25,6 +25,16 @@ export class Order {
   @Column({ type: 'varchar', length: 64, name: 'order_number' })
   orderNumber!: string
 
+  // Секрет для ссылки на страницу заказа (трек СДЭК). Генерирует база —
+  // см. миграцию AddOrderPublicToken; в админку и уведомления не уходит.
+  @Column({
+    type: 'varchar',
+    length: 64,
+    name: 'public_token',
+    default: () => "replace(gen_random_uuid()::text, '-', '')",
+  })
+  publicToken!: string
+
   @Column({ type: 'varchar', length: 32, default: 'pending' })
   status!: OrderStatus
 

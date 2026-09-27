@@ -269,9 +269,14 @@ export function cdekWidgetServicePath(subtotalRub: number): string {
   return `${PUBLIC_API_BASE}/api/public/cdek/widget?subtotal=${Math.max(0, Math.round(subtotalRub))}`
 }
 
-export async function getOrderStatus(orderNumber: string): Promise<PublicOrderStatus> {
+// token — секрет заказа из ссылки (?t=): с ним ответ содержит трек СДЭК.
+export async function getOrderStatus(
+  orderNumber: string,
+  token?: string | null,
+): Promise<PublicOrderStatus> {
+  const qs = token ? `?t=${encodeURIComponent(token)}` : ''
   const body = await request<DataEnvelope<PublicOrderStatus>>(
-    `/api/public/orders/${encodeURIComponent(orderNumber)}/status`,
+    `/api/public/orders/${encodeURIComponent(orderNumber)}/status${qs}`,
     // The status page polls this endpoint while a payment is in flight —
     // never serve a cached snapshot.
     { cache: 'no-store' },

@@ -5,6 +5,9 @@ import type { OrderStatus, PaymentProvider } from '@ximi4ka-shop/shared'
 // reconcile job will still settle the order server-side after that).
 export const ORDER_POLL_INTERVAL_MS = 5000
 export const ORDER_POLL_MAX_ATTEMPTS = 60
+// Трек СДЭК присваивает не сразу: регистрация заказа занимает от минуты до
+// нескольких — ждём до 15 минут, дальше номер увидят при следующем заходе.
+export const TRACK_POLL_MAX_ATTEMPTS = 180
 
 /**
  * Human status for the meta row. `pending` reads differently per provider:

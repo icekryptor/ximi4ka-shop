@@ -3,8 +3,23 @@ import { cleanup, render, screen } from '@testing-library/react'
 import OrderStatusPage, { generateMetadata } from './page'
 
 vi.mock('./_components/OrderStatusView', () => ({
-  OrderStatusView: ({ orderNumber, celebrate }: { orderNumber: string; celebrate: boolean }) => (
-    <div data-testid="order-status-view" data-celebrate={String(celebrate)}>
+  OrderStatusView: ({
+    orderNumber,
+    celebrate,
+    token,
+    paymentFailed,
+  }: {
+    orderNumber: string
+    celebrate: boolean
+    token?: string | null
+    paymentFailed?: boolean
+  }) => (
+    <div
+      data-testid="order-status-view"
+      data-celebrate={String(celebrate)}
+      data-token={token ?? ''}
+      data-payment-failed={String(Boolean(paymentFailed))}
+    >
       {orderNumber}
     </div>
   ),
@@ -56,5 +71,17 @@ describe('/order/[number] page', () => {
       }),
     )
     expect(screen.getByTestId('order-status-view')).toHaveAttribute('data-celebrate', 'false')
+  })
+
+  it('passes the order secret and the failed-payment flag through', async () => {
+    render(
+      await OrderStatusPage({
+        params: Promise.resolve({ locale: 'ru', number: 'XM-2026-00042' }),
+        searchParams: Promise.resolve({ t: 'abc', payment: 'failed' }),
+      }),
+    )
+    const view = screen.getByTestId('order-status-view')
+    expect(view).toHaveAttribute('data-token', 'abc')
+    expect(view).toHaveAttribute('data-payment-failed', 'true')
   })
 })

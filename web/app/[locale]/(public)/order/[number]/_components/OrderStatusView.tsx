@@ -8,6 +8,7 @@ import { formatRub } from '@/lib/stockLabel'
 import {
   ORDER_POLL_INTERVAL_MS,
   ORDER_POLL_MAX_ATTEMPTS,
+  TRACK_POLL_MAX_ATTEMPTS,
   orderStatusLabel,
   orderTimelineSteps,
   type OrderTimelineStep,
@@ -17,6 +18,10 @@ interface Props {
   orderNumber: string
   /** true при переходе с чекаута (?new=1) — праздничный хедер «Заказ принят!» */
   celebrate: boolean
+  /** Секрет заказа (?t=) — с ним страница показывает трек СДЭК. */
+  token?: string | null
+  /** Возврат из банка по FailURL (?payment=failed). */
+  paymentFailed?: boolean
 }
 
 function formatDate(iso: string): string {
@@ -73,14 +78,14 @@ function MetaRow({
   )
 }
 
-export function OrderStatusView({ orderNumber, celebrate }: Props) {
+export function OrderStatusView({ orderNumber, celebrate, token, paymentFailed }: Props) {
   const [order, setOrder] = useState<PublicOrderStatus | null>(null)
   const [error, setError] = useState<'not_found' | 'network' | null>(null)
 
   // Первичная загрузка статуса.
   useEffect(() => {
     let cancelled = false
-    getOrderStatus(orderNumber)
+    getOrderStatus(orderNumber, token)
       .then((data) => {
         if (cancelled) return
         setOrder(data)
@@ -93,29 +98,35 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
     return () => {
       cancelled = true
     }
-  }, [orderNumber])
+  }, [orderNumber, token])
 
-  // Поллинг, пока tbank-платёж в полёте: каждые 5 секунд, максимум 5 минут.
-  // Как только статус становится терминальным, shouldPoll → false и cleanup
-  // снимает интервал.
-  const shouldPoll = order?.status === 'pending' && order.paymentProvider === 'tbank'
+  // Поллинг каждые 5 секунд: пока tbank-платёж в полёте (максимум 5 минут)
+  // и пока СДЭК регистрирует оплаченный заказ и не выдал трек (до 15 минут).
+  // Как только ждать нечего, pollMode → null и cleanup снимает интервал.
+  const pollMode =
+    order?.status === 'pending' && order.paymentProvider === 'tbank'
+      ? 'payment'
+      : order?.shipment?.state === 'pending'
+        ? 'track'
+        : null
   useEffect(() => {
-    if (!shouldPoll) return
+    if (!pollMode) return
+    const maxAttempts = pollMode === 'payment' ? ORDER_POLL_MAX_ATTEMPTS : TRACK_POLL_MAX_ATTEMPTS
     let attempts = 0
     const id = setInterval(() => {
       attempts += 1
-      if (attempts > ORDER_POLL_MAX_ATTEMPTS) {
+      if (attempts > maxAttempts) {
         clearInterval(id)
         return
       }
-      getOrderStatus(orderNumber)
+      getOrderStatus(orderNumber, token)
         .then(setOrder)
         .catch(() => {
           // Транзиентная ошибка поллинга — молча ждём следующего тика.
         })
     }, ORDER_POLL_INTERVAL_MS)
     return () => clearInterval(id)
-  }, [shouldPoll, orderNumber])
+  }, [pollMode, orderNumber, token])
 
   if (error === 'not_found') {
     return (
@@ -125,7 +136,8 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
             Заказ не найден
           </h1>
           <p className="text-lg text-[var(--color-lj-ink)] opacity-70 m-0 max-w-[48ch]">
-            Проверьте номер — он выглядит как XM-2026-00042 и указан в письме и SMS о заказе.
+            Проверьте номер — он выглядит как XM-2026-00042 и показан на странице после оформления
+            заказа.
           </p>
           <Link
             href="/orders/track"
@@ -160,8 +172,8 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
                   посылку в СДЭК
                 </li>
                 <li>
-                  <span className="text-[var(--color-lj-brand)]">03</span> — пришлём трек-номер для
-                  отслеживания
+                  <span className="text-[var(--color-lj-brand)]">03</span> — трек-номер СДЭК
+                  появится на этой странице, сохраните её
                 </li>
               </ol>
             </div>
@@ -245,9 +257,48 @@ export function OrderStatusView({ orderNumber, celebrate }: Props) {
                     {formatDate(order.paidAt)}
                   </MetaRow>
                 )}
+                {order.shipment?.state === 'created' && order.shipment.trackingNumber && (
+                  <MetaRow label="Трек СДЭК" testId="order-track-number">
+                    {order.shipment.trackingNumber}
+                  </MetaRow>
+                )}
               </div>
 
-              <div aria-live="polite">
+              {order.shipment?.state === 'created' && order.shipment.trackingUrl && (
+                <a
+                  href={order.shipment.trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-3 mb-8 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright"
+                >
+                  Отследить на cdek.ru →
+                </a>
+              )}
+
+              <div aria-live="polite" className="flex flex-col gap-3">
+                {paymentFailed && order.status === 'pending' && (
+                  <p
+                    data-testid="order-payment-failed"
+                    className="text-base text-[var(--color-stock-danger)] m-0 max-w-[52ch]"
+                  >
+                    Оплата не прошла. Заказ сохранён — напишите нам, и мы пришлём новую ссылку на
+                    оплату.
+                  </p>
+                )}
+                {order.shipment?.state === 'pending' && (
+                  <p
+                    data-testid="order-track-pending"
+                    className="text-base text-[var(--color-lj-bone)] opacity-80 m-0 max-w-[52ch]"
+                  >
+                    Передаём заказ в СДЭК — трек-номер появится здесь через пару минут, страница
+                    обновится сама.
+                  </p>
+                )}
+                {order.shipment?.state === 'failed' && (
+                  <p className="text-base text-[var(--color-lj-bone)] opacity-80 m-0 max-w-[52ch]">
+                    Трек-номер сообщит менеджер, как только посылка будет передана в СДЭК.
+                  </p>
+                )}
                 {order.status === 'pending' && order.paymentProvider === 'manual' && (
                   <p className="text-base text-[var(--color-lj-bone)] opacity-80 m-0 max-w-[52ch]">
                     Менеджер свяжется с вами в ближайшее время, чтобы подтвердить заказ и

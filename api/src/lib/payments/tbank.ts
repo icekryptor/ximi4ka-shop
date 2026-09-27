@@ -36,6 +36,12 @@ export interface TBankConfig {
   notificationUrl?: string
   successUrl?: string
   failUrl?: string
+  /**
+   * Адрес витрины (WEB_ORIGIN). Если задан, покупатель после оплаты
+   * возвращается на страницу своего заказа с секретом — там статус и трек
+   * СДЭК; successUrl/failUrl тогда не используются.
+   */
+  returnOrigin?: string
 }
 
 interface TBankInitResponse {
@@ -71,6 +77,7 @@ export class TBankProvider implements PaymentProvider {
       notificationUrl: cfg.notificationUrl ?? process.env.TBANK_NOTIFICATION_URL,
       successUrl: cfg.successUrl ?? process.env.TBANK_SUCCESS_URL,
       failUrl: cfg.failUrl ?? process.env.TBANK_FAIL_URL,
+      returnOrigin: (cfg.returnOrigin ?? process.env.WEB_ORIGIN ?? '').replace(/\/+$/, ''),
     }
   }
 
@@ -115,8 +122,15 @@ export class TBankProvider implements PaymentProvider {
         },
       }
       if (this.cfg.notificationUrl) params.NotificationURL = this.cfg.notificationUrl
-      if (this.cfg.successUrl) params.SuccessURL = this.cfg.successUrl
-      if (this.cfg.failUrl) params.FailURL = this.cfg.failUrl
+      if (this.cfg.returnOrigin) {
+        const page = `${this.cfg.returnOrigin}/order/${encodeURIComponent(order.orderNumber)}`
+        const t = encodeURIComponent(order.publicToken)
+        params.SuccessURL = `${page}?new=1&t=${t}`
+        params.FailURL = `${page}?t=${t}&payment=failed`
+      } else {
+        if (this.cfg.successUrl) params.SuccessURL = this.cfg.successUrl
+        if (this.cfg.failUrl) params.FailURL = this.cfg.failUrl
+      }
 
       const body = await this.post<TBankInitResponse>('Init', params)
       if (!body.Success || body.PaymentId == null || !body.PaymentURL) {

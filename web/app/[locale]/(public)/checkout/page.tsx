@@ -119,7 +119,9 @@ export default function CheckoutPage() {
       if (result.paymentUrl) {
         redirectTo(result.paymentUrl)
       } else {
-        router.push(`/order/${result.orderNumber}?new=1`)
+        router.push(
+          `/order/${result.orderNumber}?new=1&t=${encodeURIComponent(result.publicToken)}`,
+        )
       }
     } catch (err) {
       if (err instanceof ApiError) {

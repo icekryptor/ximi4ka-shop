@@ -180,9 +180,12 @@ function submit() {
 }
 
 function okCheckoutResponse(orderNumber = 'XM-2026-00042', paymentUrl: string | null = null) {
-  return new Response(JSON.stringify({ data: { orderNumber, paymentUrl } }), {
-    status: 201,
-  })
+  return new Response(
+    JSON.stringify({ data: { orderNumber, paymentUrl, publicToken: 'tok123' } }),
+    {
+      status: 201,
+    },
+  )
 }
 
 describe('/checkout page', () => {
@@ -271,7 +274,7 @@ describe('/checkout page', () => {
       },
     })
     await vi.waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/order/XM-2026-00042?new=1')
+      expect(mockPush).toHaveBeenCalledWith('/order/XM-2026-00042?new=1&t=tok123')
     })
     expect(loadCart()).toEqual([])
   })

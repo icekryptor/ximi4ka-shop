@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } 
 import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
+import { CdekShipment } from '../entities/CdekShipment.js'
 import { OrderNotification } from '../entities/OrderNotification.js'
 import { createApp } from '../app.js'
 import { generateToken } from '../lib/payments/token.js'
@@ -203,7 +204,9 @@ describe('GET /api/public/orders/:number/status', () => {
   })
 
   beforeEach(async () => {
-    await AppDataSource.query('TRUNCATE orders, order_items RESTART IDENTITY CASCADE')
+    await AppDataSource.query(
+      'TRUNCATE orders, order_items, cdek_shipments RESTART IDENTITY CASCADE',
+    )
   })
 
   it('returns the status payload without any PII', async () => {
@@ -229,6 +232,52 @@ describe('GET /api/public/orders/:number/status', () => {
       'status',
       'totalRub',
     ])
+  })
+
+  it('adds the CDEK tracking only with the order secret token', async () => {
+    const order = await seedOrder({ status: 'paid', paidAt: new Date() })
+    await AppDataSource.getRepository(CdekShipment).save({
+      orderId: order.id,
+      state: 'created',
+      cdekNumber: '1234567890',
+    })
+    const url = `/api/public/orders/${order.orderNumber}/status`
+
+    const anon = await request(app).get(url)
+    expect(anon.body.data).not.toHaveProperty('shipment')
+    const wrong = await request(app).get(`${url}?t=${'x'.repeat(order.publicToken.length)}`)
+    expect(wrong.body.data).not.toHaveProperty('shipment')
+
+    const res = await request(app).get(`${url}?t=${order.publicToken}`)
+    expect(res.status).toBe(200)
+    expect(res.body.data.shipment).toEqual({
+      state: 'created',
+      trackingNumber: '1234567890',
+      trackingUrl: 'https://www.cdek.ru/ru/tracking?order_id=1234567890',
+    })
+  })
+
+  it('reports a queued or registering shipment as pending, and null without one', async () => {
+    const order = await seedOrder({ status: 'paid', paidAt: new Date() })
+    const url = `/api/public/orders/${order.orderNumber}/status?t=${order.publicToken}`
+    expect((await request(app).get(url)).body.data.shipment).toBeNull()
+
+    await AppDataSource.getRepository(CdekShipment).save({
+      orderId: order.id,
+      state: 'registering',
+    })
+    expect((await request(app).get(url)).body.data.shipment).toEqual({
+      state: 'pending',
+      trackingNumber: null,
+      trackingUrl: null,
+    })
+  })
+
+  it('gives every order its own unguessable public token', async () => {
+    const a = await seedOrder()
+    const b = await seedOrder()
+    expect(a.publicToken).toMatch(/^[0-9a-f]{32}$/)
+    expect(a.publicToken).not.toBe(b.publicToken)
   })
 
   it('returns 404 for an unknown order number', async () => {
