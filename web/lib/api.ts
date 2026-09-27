@@ -239,7 +239,10 @@ export async function submitCheckout(
 }
 
 export interface ShippingQuoteResponse {
+  /** Товары по обычным ценам. */
   subtotalRub: number
+  /** Оптовая скидка; порог бесплатной доставки — от subtotalRub − discountRub. */
+  discountRub: number
   packages: ShippingPackage[]
   quote: DeliveryQuote | null
   tariffs: { pvz: number; courier: number }

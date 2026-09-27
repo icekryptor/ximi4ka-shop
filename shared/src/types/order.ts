@@ -67,7 +67,10 @@ export interface OrderDto {
   customerTelegram: string | null
   deliveryAddress: DeliveryAddress
   deliveryMethod: string
+  /** Товары по обычным ценам. */
   subtotalRub: number
+  /** Оптовая скидка на наборы; totalRub = subtotalRub − discountRub + shippingRub. */
+  discountRub: number
   shippingRub: number
   totalRub: number
   paymentProvider: PaymentProvider

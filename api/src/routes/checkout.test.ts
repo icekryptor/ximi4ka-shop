@@ -86,6 +86,38 @@ describe('POST /api/checkout', () => {
     clearCdekLocationCache()
   })
 
+  it('applies the wholesale kit discount: Химичка 3.0 + Электрохимичка counted together', async () => {
+    const big = await seedProduct({ slug: 'himichka-30', priceRub: 3099 })
+    const electro = await seedProduct({ slug: 'elektrohimichka', priceRub: 3099, sku: 'EL-1' })
+    const mini = await seedProduct({ slug: 'mini-himichka', priceRub: 1699, sku: 'MINI-1' })
+
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(
+        checkoutBody([
+          { productId: big.id, quantity: 3 },
+          { productId: electro.id, quantity: 2 },
+          { productId: mini.id, quantity: 4 },
+        ]),
+      )
+
+    expect(res.status).toBe(201)
+    const order = await AppDataSource.getRepository(Order).findOneOrFail({
+      where: { orderNumber: res.body.data.orderNumber },
+      relations: { items: true },
+    })
+    // 5 больших наборов → −299 ₽ с каждого; 4 мини — ниже порога.
+    expect(order.subtotalRub).toBe(5 * 3099 + 4 * 1699)
+    expect(order.discountRub).toBe(5 * 299)
+    expect(order.shippingRub).toBe(0)
+    expect(order.totalRub).toBe(order.subtotalRub - order.discountRub)
+    const byProduct = new Map(order.items.map((i) => [i.productId, i]))
+    expect(byProduct.get(big.id)!.unitPriceRub).toBe(2800)
+    expect(byProduct.get(big.id)!.productSnapshot.priceRub).toBe(3099)
+    expect(byProduct.get(electro.id)!.unitPriceRub).toBe(2800)
+    expect(byProduct.get(mini.id)!.unitPriceRub).toBe(1699)
+  })
+
   it('creates a pending order with DB-recomputed prices and snapshots', async () => {
     const p1 = await seedProduct({ priceRub: 1000 })
     const p2 = await seedProduct({ priceRub: 450, sku: null, name: 'Реактивы' })

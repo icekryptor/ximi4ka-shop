@@ -91,6 +91,7 @@ export function CompactProductRow({ product, images }: Props) {
               slug: product.slug,
               name: product.name,
               priceRub: product.priceRub,
+              compareAtPriceRub: product.compareAtPriceRub,
               stockStatus: product.stockStatus,
               images,
             }}

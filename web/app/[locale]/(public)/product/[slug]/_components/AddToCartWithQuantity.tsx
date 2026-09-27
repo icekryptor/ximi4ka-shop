@@ -7,7 +7,8 @@ import { AddToCartBurst } from '@/components/AddToCartBurst'
 import { QuantityStepperLJ } from '@/components/product/QuantityStepperLJ'
 
 interface Props {
-  product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'>
+  product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'> &
+    Partial<Pick<Product, 'compareAtPriceRub'>>
 }
 
 /**
@@ -35,6 +36,7 @@ export function AddToCartWithQuantity({ product }: Props) {
         slug: product.slug,
         name: product.name,
         priceRub: product.priceRub,
+        compareAtPriceRub: product.compareAtPriceRub ?? undefined,
         image: product.images[0]?.url,
       },
       quantity,

@@ -156,6 +156,18 @@ describe('Header v3', () => {
     expect(screen.getByRole('button', { name: /корзина.*3/i })).toBeInTheDocument()
   })
 
+  it('shows the order total on the button once the cart is not empty', () => {
+    render(<Header />)
+    expect(screen.queryByTestId('header-cart-total')).toBeNull()
+    act(() => {
+      saveCart(seed)
+    })
+    const total = screen.getByTestId('header-cart-total')
+    const sum = seed.reduce((s, i) => s + i.priceRub * i.quantity, 0)
+    expect(total.textContent?.replace(/\s/g, '')).toBe(`${sum}₽`)
+    expect(screen.getByRole('button', { name: new RegExp(`на сумму`, 'i') })).toBeInTheDocument()
+  })
+
   it('badge updates reactively and pulses when an item is added', () => {
     render(<Header />)
     const before = screen.getByTestId('header-cart-count')

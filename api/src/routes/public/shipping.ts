@@ -24,19 +24,19 @@ publicShippingRouter.post(
   async (req, res, next) => {
     try {
       const { items, destination } = QuoteSchema.parse(req.body)
-      const { subtotalRub, packLines } = await loadCart(items)
+      const { subtotalRub, discountRub, packLines } = await loadCart(items)
       const packages = packCart(packLines)
       const config = deliveryConfigFromEnv()
       const quote = destination
         ? await quoteDelivery(
-            { destination, subtotalRub, packages },
+            { destination, subtotalRub: subtotalRub - discountRub, packages },
             { cdek: getCdekClient(), config },
           )
         : null
       // Коды тарифов отдаём виджету отсюда же, чтобы карта и чекаут считали
       // по одним тарифам.
       const tariffs = { pvz: config.tariffPvz, courier: config.tariffCourier }
-      res.json({ data: { subtotalRub, packages, quote, tariffs } })
+      res.json({ data: { subtotalRub, discountRub, packages, quote, tariffs } })
     } catch (err) {
       next(err)
     }

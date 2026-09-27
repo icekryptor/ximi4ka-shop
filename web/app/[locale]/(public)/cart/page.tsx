@@ -6,17 +6,15 @@ import { useCart } from '@/lib/cart'
 import { QuantityStepperLJ } from '@/components/product/QuantityStepperLJ'
 import { formatRub } from '@/lib/stockLabel'
 import { pluralizeRu } from '@/lib/i18n'
-
-const SHIPPING_RUB = 400
+import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 
 export default function CartPage() {
-  const { items, setQty, remove, subtotal } = useCart()
+  const { items, setQty, remove, totals, itemCount } = useCart()
   const [hydrated, setHydrated] = useState(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setHydrated(true), [])
 
   const itemTypeCount = items.length
-  const totalRub = subtotal + (itemTypeCount > 0 ? SHIPPING_RUB : 0)
 
   return (
     <section className="bg-[var(--color-lj-cream)] px-6 py-16 min-h-[80vh]">
@@ -89,17 +87,15 @@ export default function CartPage() {
             </ul>
 
             <div className="flex flex-col gap-3 mb-8 max-w-md ml-auto">
-              <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
-                <span>Подытог</span>
-                <span>{formatRub(subtotal)}</span>
-              </div>
+              <CartSummaryRows totals={totals} itemCount={itemCount} />
+              {/* Цена доставки зависит от города и пункта — её считает чекаут. */}
               <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                 <span>Доставка</span>
-                <span>{formatRub(SHIPPING_RUB)}</span>
+                <span>при оформлении</span>
               </div>
               <div className="flex justify-between border-t border-[var(--color-lj-rule)] pt-4 font-lj-display font-[900] text-2xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
                 <span>Итого</span>
-                <span>{formatRub(totalRub)}</span>
+                <span data-testid="cart-total">{formatRub(totals.totalRub)}</span>
               </div>
             </div>
 

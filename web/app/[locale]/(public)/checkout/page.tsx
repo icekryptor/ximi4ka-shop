@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CheckoutRequest } from '@ximi4ka-shop/shared'
 import { useCart } from '@/lib/cart'
+import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 import { ApiError, quoteShipping, submitCheckout, type ShippingQuoteResponse } from '@/lib/api'
 import { formatRub } from '@/lib/stockLabel'
 import { CdekDelivery } from '@/components/checkout/CdekDelivery'
@@ -32,7 +33,7 @@ const INITIAL_FIELDS: CheckoutFormFields = {
 
 export default function CheckoutPage() {
   const router = useRouter()
-  const { items, subtotal, clear } = useCart()
+  const { items, totals, itemCount, clear } = useCart()
   const [hydrated, setHydrated] = useState(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setHydrated(true), [])
@@ -69,7 +70,7 @@ export default function CheckoutPage() {
 
   const quote = delivery.quote
   const shippingRub = quote?.customerPriceRub ?? 0
-  const totalRub = subtotal + shippingRub
+  const totalRub = totals.totalRub + shippingRub
 
   function setField<K extends keyof CheckoutFormFields>(key: K, value: CheckoutFormFields[K]) {
     setFields((prev) => ({ ...prev, [key]: value }))
@@ -278,10 +279,7 @@ export default function CheckoutPage() {
               </ul>
 
               <div className="flex flex-col gap-2">
-                <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
-                  <span>Подытог</span>
-                  <span data-testid="summary-subtotal">{formatRub(subtotal)}</span>
-                </div>
+                <CartSummaryRows totals={totals} itemCount={itemCount} />
                 <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                   <span>Доставка</span>
                   <span data-testid="summary-shipping">

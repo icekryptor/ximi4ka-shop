@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { openCartDrawer, useCart } from '@/lib/cart'
+import { formatRub } from '@/lib/stockLabel'
 
 /**
  * Заметная кнопка корзины в шапке. Клик МГНОВЕННО открывает CartDrawer
@@ -12,9 +13,13 @@ import { openCartDrawer, useCart } from '@/lib/cart'
  * слово «Корзина», колба и бейдж остаются). Бейдж-счётчик обновляется
  * реактивно из useCart и коротко «подпрыгивает» при добавлении товара
  * (animate-lj-badge-pop в globals.css, гаснет при prefers-reduced-motion).
+ *
+ * В непустой корзине вместо слова «Корзина» — сумма к оплате за товары
+ * (со скидками, без доставки), видна и на телефоне.
  */
 export function CartButton() {
-  const { itemCount } = useCart()
+  const { itemCount, totals } = useCart()
+  const total = itemCount > 0 ? formatRub(totals.totalRub) : null
   // key-счётчик вместо boolean: ремоунт бейджа перезапускает CSS-анимацию
   // даже когда товары добавляют несколько раз подряд.
   const [pulseKey, setPulseKey] = useState(0)
@@ -32,7 +37,9 @@ export function CartButton() {
     <button
       type="button"
       onClick={openCartDrawer}
-      aria-label={`Корзина: товаров ${itemCount}`}
+      aria-label={
+        total ? `Корзина: товаров ${itemCount} на сумму ${total}` : `Корзина: товаров ${itemCount}`
+      }
       data-testid="header-cart-button"
       className="relative inline-flex items-center gap-2.5 rounded-full px-4 py-2.5 sm:px-5 font-lj-mono text-[length:var(--text-lj-mono-sm)] font-medium uppercase tracking-[0.08em] text-white bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-glow-brand)] transition-transform duration-200 hover:scale-[1.04] active:scale-[0.97] cursor-pointer"
     >
@@ -51,7 +58,16 @@ export function CartButton() {
         <path d="M10 3v6.2L5.2 17.7A2 2 0 0 0 7 20.6h10a2 2 0 0 0 1.8-2.9L14 9.2V3" />
         <path d="M7.6 14.6h8.8" />
       </svg>
-      <span className="hidden sm:inline">Корзина</span>
+      {total ? (
+        <span
+          data-testid="header-cart-total"
+          className="whitespace-nowrap normal-case tracking-[0.02em] tabular-nums"
+        >
+          {total}
+        </span>
+      ) : (
+        <span className="hidden sm:inline">Корзина</span>
+      )}
       <span
         key={pulseKey}
         data-testid="header-cart-count"

@@ -67,19 +67,20 @@ checkoutRouter.post('/', async (req, res, next) => {
       }
     }
 
-    const { lines, subtotalRub, packLines } = await loadCart(parsed.items)
+    const { lines, subtotalRub, discountRub, packLines } = await loadCart(parsed.items)
     const { delivery } = parsed
 
     const packages = packCart(packLines)
 
     // Цену доставки считает только сервер: сумма, которую показал виджет, —
     // подсказка для интерфейса, клиенту не доверяем.
+    // Порог бесплатной доставки — по сумме, которую платят за товары.
     const quote = await quoteDelivery(
-      { destination: delivery, subtotalRub, packages },
+      { destination: delivery, subtotalRub: subtotalRub - discountRub, packages },
       { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
     )
     const shippingRub = quote.customerPriceRub
-    const totalRub = subtotalRub + shippingRub
+    const totalRub = subtotalRub - discountRub + shippingRub
 
     const provider = getPaymentProvider()
 
@@ -112,6 +113,7 @@ checkoutRouter.post('/', async (req, res, next) => {
             },
             deliveryMethod: delivery.method,
             subtotalRub,
+            discountRub,
             shippingRub,
             totalRub,
             paymentProvider: provider.name,
@@ -121,13 +123,15 @@ checkoutRouter.post('/', async (req, res, next) => {
         )
         const itemRepo = em.getRepository(OrderItem)
         await itemRepo.save(
-          lines.map(({ product: p, quantity }) =>
+          lines.map(({ product: p, quantity, unitPriceRub }) =>
             itemRepo.create({
               orderId: created.id,
               productId: p.id,
               productSnapshot: { name: p.name, sku: p.sku, priceRub: p.priceRub },
               quantity,
-              unitPriceRub: p.priceRub,
+              // Со скидкой: по ней СДЭК объявляет ценность, её видят бот и таблица.
+              // Обычная цена остаётся в productSnapshot.priceRub.
+              unitPriceRub,
             }),
           ),
         )

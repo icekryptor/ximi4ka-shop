@@ -4,6 +4,7 @@ import {
   type CartItem,
   addToCart,
   calculateSubtotal,
+  cartTotals,
   clearCart,
   loadCart,
   removeFromCart,
@@ -270,5 +271,48 @@ describe('useCart hook', () => {
       saveCart([{ ...itemA, quantity: 2 }])
     })
     expect(result.current.items).toEqual([{ ...itemA, quantity: 2 }])
+  })
+})
+
+describe('cartTotals', () => {
+  const kit = (slug: string, quantity: number, extra: Partial<CartItem> = {}): CartItem => ({
+    productId: slug,
+    slug,
+    name: slug,
+    priceRub: 3099,
+    quantity,
+    ...extra,
+  })
+
+  it('without discounts: goods = subtotal = total, discount 0', () => {
+    const t = cartTotals([kit('probirka', 2, { priceRub: 19 })])
+    expect(t).toEqual({
+      goodsRub: 38,
+      subtotalRub: 38,
+      discountRub: 0,
+      wholesaleRub: 0,
+      totalRub: 38,
+    })
+  })
+
+  it('counts compare-at savings into the discount (цена «до» из карточки)', () => {
+    const t = cartTotals([kit('himichka-30', 1, { compareAtPriceRub: 3500 })])
+    expect(t.goodsRub).toBe(3500)
+    expect(t.subtotalRub).toBe(3099)
+    expect(t.discountRub).toBe(401)
+    expect(t.totalRub).toBe(3099)
+  })
+
+  it('applies the wholesale tier across Химичка 3.0 + Электрохимичка', () => {
+    const t = cartTotals([kit('himichka-30', 3), kit('elektrohimichka', 2)])
+    expect(t.wholesaleRub).toBe(5 * 299)
+    expect(t.discountRub).toBe(5 * 299)
+    expect(t.totalRub).toBe(5 * 3099 - 5 * 299)
+  })
+
+  it('adds both discounts and keeps goods − discount = total', () => {
+    const t = cartTotals([kit('himichka-30', 10, { compareAtPriceRub: 3500 })])
+    expect(t.discountRub).toBe(10 * 401 + 10 * 399)
+    expect(t.goodsRub - t.discountRub).toBe(t.totalRub)
   })
 })

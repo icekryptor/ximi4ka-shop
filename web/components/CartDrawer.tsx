@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { OPEN_CART_EVENT, useCart } from '@/lib/cart'
+import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 import { SHIPPING_RULES } from '@/lib/checkout'
 import { formatRub } from '@/lib/stockLabel'
 
@@ -12,7 +13,9 @@ import { formatRub } from '@/lib/stockLabel'
 const FREE_SHIPPING_FROM_RUB = SHIPPING_RULES.cdek_pvz.freeFromRub
 
 export function CartDrawer() {
-  const { items, subtotal, remove, setQty } = useCart()
+  const { items, totals, itemCount, remove, setQty } = useCart()
+  // Порог бесплатной доставки — по сумме к оплате за товары, как на сервере.
+  const subtotal = totals.totalRub
   const [open, setOpen] = useState(false)
   const router = useRouter()
 
@@ -195,9 +198,10 @@ export function CartDrawer() {
               </div>
             </div>
 
+            <CartSummaryRows totals={totals} itemCount={itemCount} />
             <div className="flex items-baseline justify-between font-lj-display font-[900] text-xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
               <span>Итого</span>
-              <span>{formatRub(subtotal)}</span>
+              <span data-testid="drawer-total">{formatRub(totals.totalRub)}</span>
             </div>
             <Link
               href="/checkout"
