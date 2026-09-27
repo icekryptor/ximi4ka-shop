@@ -75,16 +75,21 @@ describe('buildMetadata', () => {
       title: 'Hello',
       description: 'Desc',
       url: 'https://new.ximi4ka.ru/foo',
-      siteName: 'Ximi4ka',
+      siteName: 'Химичка',
       locale: 'ru_RU',
     })
     expect((meta.openGraph as { type?: string } | undefined)?.type).toBe('website')
     expect(meta.openGraph?.images).toEqual([{ url: 'https://cdn.example.com/og.jpg' }])
   })
 
-  it('falls back to default OG image when none provided', () => {
+  it('omits the OG image when none provided (no og-default.png on the site)', () => {
     const meta = buildMetadata({ title: 'T', pathname: '/' })
-    expect(meta.openGraph?.images).toEqual([{ url: 'https://new.ximi4ka.ru/og-default.png' }])
+    expect(meta.openGraph?.images).toBeUndefined()
+  })
+
+  it('makes a root-relative OG image absolute', () => {
+    const meta = buildMetadata({ title: 'T', pathname: '/', ogImage: '/uploads/kit.jpg' })
+    expect(meta.openGraph?.images).toEqual([{ url: 'https://new.ximi4ka.ru/uploads/kit.jpg' }])
   })
 
   it('maps type: product to a valid OG type (website)', () => {

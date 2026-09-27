@@ -51,20 +51,21 @@ describe('JSON-LD helpers', () => {
     const out = organizationJsonLd()
     expect(out['@context']).toBe('https://schema.org')
     expect(out['@type']).toBe('Organization')
-    expect(out.name).toBe('Ximi4ka')
+    expect(out.name).toBe('Химичка')
+    expect(out.alternateName).toBe('Ximi4ka')
     expect(out.url).toBe('https://new.ximi4ka.ru')
-    expect(out.logo).toBe('https://new.ximi4ka.ru/logo.png')
+    // Файл логотипа должен существовать в web/public.
+    expect(out.logo).toBe('https://new.ximi4ka.ru/logo-himichka.svg')
+    expect(out.sameAs).toContain('https://t.me/ximi4kapublic')
   })
 
-  it('websiteJsonLd includes SearchAction with the required query-input string', () => {
+  it('websiteJsonLd has no SearchAction (there is no /search page)', () => {
     const out = websiteJsonLd()
     expect(out['@context']).toBe('https://schema.org')
     expect(out['@type']).toBe('WebSite')
-    expect(out.potentialAction).toMatchObject({
-      '@type': 'SearchAction',
-      target: 'https://new.ximi4ka.ru/search?q={search_term_string}',
-      'query-input': 'required name=search_term_string',
-    })
+    expect(out.name).toBe('Химичка')
+    expect(out).not.toHaveProperty('potentialAction')
+    expect(out.publisher).toEqual({ '@id': 'https://new.ximi4ka.ru/#organization' })
   })
 
   describe('breadcrumbJsonLd', () => {
@@ -122,6 +123,16 @@ describe('JSON-LD helpers', () => {
       expect(out.sku).toBe('SKU-1')
       expect(out.image).toEqual(['https://cdn.example.com/a.jpg'])
       expect(out.offers.url).toBe('https://new.ximi4ka.ru/product/kit')
+      expect(out.brand).toEqual({ '@type': 'Brand', name: 'Химичка' })
+      expect(out.offers.itemCondition).toBe('https://schema.org/NewCondition')
+    })
+    it('turns root-relative upload paths into absolute image URLs', () => {
+      const p = makeProduct()
+      const out = productJsonLd({
+        ...p,
+        images: [{ ...p.images[0], url: '/uploads/kit.jpg' }],
+      })
+      expect(out.image).toEqual(['https://new.ximi4ka.ru/uploads/kit.jpg'])
     })
   })
 
@@ -174,8 +185,33 @@ describe('JSON-LD helpers', () => {
         headline: 'О нас',
         datePublished: '2026-01-01T00:00:00.000Z',
         dateModified: '2026-01-02T00:00:00.000Z',
-        author: { '@type': 'Organization', name: 'Ximi4ka' },
-        publisher: { '@type': 'Organization', name: 'Ximi4ka' },
+        author: { '@type': 'Organization', name: 'Химичка' },
+        publisher: {
+          '@type': 'Organization',
+          name: 'Химичка',
+          logo: { '@type': 'ImageObject', url: 'https://new.ximi4ka.ru/logo-himichka.svg' },
+        },
+      })
+    })
+
+    it('emits BlogPosting with description, absolute image and mainEntityOfPage', () => {
+      const out = articleJsonLd(
+        {
+          title: 'Опыты для детей',
+          createdAt: '2026-05-01T00:00:00.000Z',
+          updatedAt: '2026-05-02T00:00:00.000Z',
+          description: 'Десять простых опытов',
+          image: '/uploads/cover.jpg',
+          url: '/blog/opyty',
+        },
+        'BlogPosting',
+      )
+      expect(out['@type']).toBe('BlogPosting')
+      expect(out.description).toBe('Десять простых опытов')
+      expect(out.image).toEqual(['https://new.ximi4ka.ru/uploads/cover.jpg'])
+      expect(out.mainEntityOfPage).toEqual({
+        '@type': 'WebPage',
+        '@id': 'https://new.ximi4ka.ru/blog/opyty',
       })
     })
 

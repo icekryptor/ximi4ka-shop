@@ -107,7 +107,14 @@ export function buildMetadata(input: SeoInput): Metadata {
 
   const base = siteUrl()
   const canonical = canonicalOverride ?? `${base}${input.pathname}`
-  const image = ogImage ?? `${base}/og-default.png`
+  // Картинки из медиатеки — корневые пути (/uploads/…): соцсети и поисковики
+  // читают только абсолютные. Своей OG-картинки «по умолчанию» у сайта нет
+  // (og-default.png отсутствовал и отдавал 404) — без картинки тег не выводим.
+  const image = ogImage
+    ? /^https?:\/\//i.test(ogImage)
+      ? ogImage
+      : `${base}${ogImage.startsWith('/') ? '' : '/'}${ogImage}`
+    : null
 
   // Next's OG type union doesn't include 'product'; we fall back to 'website'
   // so builds don't fail. The JSON-LD Product type is what search engines read
@@ -150,16 +157,16 @@ export function buildMetadata(input: SeoInput): Metadata {
       title,
       description,
       url: canonical,
-      siteName: 'Ximi4ka',
-      images: [{ url: image }],
+      siteName: 'Химичка',
+      ...(image ? { images: [{ url: image }] } : {}),
       locale: OG_LOCALE_BY_CODE[locale],
       type: ogType,
     },
     twitter: {
-      card: 'summary_large_image',
+      card: image ? 'summary_large_image' : 'summary',
       title,
       description,
-      images: [image],
+      ...(image ? { images: [image] } : {}),
     },
   }
 }

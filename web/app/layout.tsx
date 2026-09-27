@@ -3,8 +3,11 @@ import './globals.css'
 import { fontVariables } from './fonts'
 import { getPublicSettings, type PublicSettings } from '@/lib/api'
 import { MetrikaScript, Ga4Script } from '@/lib/analytics'
+import { siteUrl } from '@/lib/metadata'
 
 export const metadata: Metadata = {
+  // Относительные og/twitter-картинки разрешаются от адреса сайта.
+  metadataBase: new URL(siteUrl()),
   title: 'Ximi4ka — наборы для химических экспериментов',
   description: 'Химические наборы для детей и подростков. Научные эксперименты дома.',
 }

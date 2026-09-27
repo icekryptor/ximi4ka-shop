@@ -99,7 +99,9 @@ export default async function CmsPage({ params }: Props) {
 
   return (
     <>
-      <JsonLd data={articleJsonLd(page)} />
+      <JsonLd
+        data={articleJsonLd({ ...page, description: metaDescription, url: `/${page.slug}` })}
+      />
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Главная', url: '/' },

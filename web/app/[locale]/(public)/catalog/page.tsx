@@ -9,7 +9,7 @@ import { CompactProductRow } from '@/components/catalog/CompactProductRow'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
-import { breadcrumbJsonLd } from '@/lib/jsonLd'
+import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonLd'
 import { fetchCatalog, densityForSlug, hasViewToggle } from '@/lib/catalogApi'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
 
@@ -66,6 +66,8 @@ export default async function CatalogPage({ params }: Props) {
           { name: 'Каталог', url: '/catalog' },
         ])}
       />
+      {/* Все товары каталога списком — в порядке групп на странице. */}
+      {groups.length > 0 && <JsonLd data={itemListJsonLd(groups.flatMap((g) => g.products))} />}
 
       {/* Хлебные крошки */}
       <nav

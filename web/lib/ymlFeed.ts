@@ -129,7 +129,11 @@ export function generateYmlXml(input: YmlGeneratorInput): string {
     // for products with large galleries.
     const pictureLines = (product.images ?? [])
       .slice(0, 10)
-      .map((img) => `      <picture>${escapeXml(img.url)}</picture>`)
+      // Маркет принимает только абсолютные адреса картинок.
+      .map((img) => {
+        const url = /^https?:\/\//i.test(img.url) ? img.url : `${siteUrl}${img.url}`
+        return `      <picture>${escapeXml(url)}</picture>`
+      })
       .join('\n')
 
     const offerLines = [

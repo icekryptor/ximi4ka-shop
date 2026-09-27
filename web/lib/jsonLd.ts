@@ -1,12 +1,28 @@
 import type { Product } from '@ximi4ka-shop/shared'
 import { siteUrl } from './metadata'
 
+// Бренд в разметке — «Химичка» (рекомендации SEO-аудита). Юрлицо и ИНН
+// не указываем, пока владелец не подтвердит, какое из ИП выводить.
+const BRAND_NAME = 'Химичка'
+const BRAND_ALT_NAME = 'Ximi4ka'
+const LOGO_PATH = '/logo-himichka.svg'
+const SAME_AS = ['https://t.me/ximi4kapublic']
+
+/** Корневой путь (/uploads/…) → абсолютный URL сайта; абсолютные не трогаем. */
+export function absoluteUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url
+  return `${siteUrl()}${url.startsWith('/') ? '' : '/'}${url}`
+}
+
 export interface OrganizationLd {
   '@context': 'https://schema.org'
   '@type': 'Organization'
+  '@id': string
   name: string
+  alternateName: string
   url: string
   logo: string
+  sameAs: string[]
 }
 
 export function organizationJsonLd(): OrganizationLd {
@@ -14,9 +30,12 @@ export function organizationJsonLd(): OrganizationLd {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'Ximi4ka',
+    '@id': `${base}/#organization`,
+    name: BRAND_NAME,
+    alternateName: BRAND_ALT_NAME,
     url: base,
-    logo: `${base}/logo.png`,
+    logo: `${base}${LOGO_PATH}`,
+    sameAs: SAME_AS,
   }
 }
 
@@ -25,25 +44,19 @@ export interface WebSiteLd {
   '@type': 'WebSite'
   name: string
   url: string
-  potentialAction: {
-    '@type': 'SearchAction'
-    target: string
-    'query-input': string
-  }
+  publisher: { '@id': string }
 }
 
+// Без SearchAction: страницы /search нет, поиск живёт только в шапке, а
+// SearchAction на несуществующий адрес — ошибка разметки.
 export function websiteJsonLd(): WebSiteLd {
   const base = siteUrl()
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'Ximi4ka',
+    name: BRAND_NAME,
     url: base,
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: `${base}/search?q={search_term_string}`,
-      'query-input': 'required name=search_term_string',
-    },
+    publisher: { '@id': `${base}/#organization` },
   }
 }
 
@@ -97,18 +110,22 @@ export interface ProductLd {
   description?: string
   sku?: string
   image?: string[]
+  brand: { '@type': 'Brand'; name: string }
   offers: {
     '@type': 'Offer'
     url: string
     priceCurrency: 'RUB'
     price: number
     availability: string
+    itemCondition: 'https://schema.org/NewCondition'
+    seller: { '@id': string }
   }
 }
 
 export function productJsonLd(product: Product): ProductLd {
-  const url = `${siteUrl()}/product/${product.slug}`
-  const images = product.images?.map((img) => img.url)
+  const base = siteUrl()
+  const url = `${base}/product/${product.slug}`
+  const images = product.images?.map((img) => absoluteUrl(img.url))
   return {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -116,12 +133,16 @@ export function productJsonLd(product: Product): ProductLd {
     description: product.shortDescription ?? undefined,
     sku: product.sku ?? undefined,
     image: images && images.length > 0 ? images : undefined,
+    brand: { '@type': 'Brand', name: BRAND_NAME },
+    // Цена и наличие — только из базы; рейтинга нет, пока нет отзывов.
     offers: {
       '@type': 'Offer',
       url,
       priceCurrency: 'RUB',
       price: product.priceRub,
       availability: availabilityUrl(product.stockStatus),
+      itemCondition: 'https://schema.org/NewCondition',
+      seller: { '@id': `${base}/#organization` },
     },
   }
 }
@@ -153,12 +174,19 @@ export function itemListJsonLd(products: Product[]): ItemListLd {
 
 export interface ArticleLd {
   '@context': 'https://schema.org'
-  '@type': 'Article'
+  '@type': 'Article' | 'BlogPosting'
   headline: string
+  description?: string
+  image?: string[]
   datePublished: string
   dateModified: string
-  author: { '@type': 'Organization'; name: string }
-  publisher: { '@type': 'Organization'; name: string }
+  mainEntityOfPage?: { '@type': 'WebPage'; '@id': string }
+  author: { '@type': 'Organization'; name: string; url: string }
+  publisher: {
+    '@type': 'Organization'
+    name: string
+    logo: { '@type': 'ImageObject'; url: string }
+  }
 }
 
 // Structural input so both CMS Pages and BlogPosts fit. Blog posts carry an
@@ -169,16 +197,31 @@ export interface ArticleLdInput {
   createdAt: string
   updatedAt: string
   publishedAt?: string | null
+  description?: string | null
+  image?: string | null
+  /** Путь или абсолютный URL страницы — для mainEntityOfPage. */
+  url?: string
 }
 
-export function articleJsonLd(page: ArticleLdInput): ArticleLd {
+export function articleJsonLd(
+  page: ArticleLdInput,
+  type: 'Article' | 'BlogPosting' = 'Article',
+): ArticleLd {
+  const base = siteUrl()
   return {
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    '@type': type,
     headline: page.title,
+    description: page.description?.trim() || undefined,
+    image: page.image ? [absoluteUrl(page.image)] : undefined,
     datePublished: page.publishedAt ?? page.createdAt,
     dateModified: page.updatedAt,
-    author: { '@type': 'Organization', name: 'Ximi4ka' },
-    publisher: { '@type': 'Organization', name: 'Ximi4ka' },
+    mainEntityOfPage: page.url ? { '@type': 'WebPage', '@id': absoluteUrl(page.url) } : undefined,
+    author: { '@type': 'Organization', name: BRAND_NAME, url: base },
+    publisher: {
+      '@type': 'Organization',
+      name: BRAND_NAME,
+      logo: { '@type': 'ImageObject', url: `${base}${LOGO_PATH}` },
+    },
   }
 }

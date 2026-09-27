@@ -123,7 +123,7 @@ describe('BlogPostPage', () => {
       expect(screen.getByText('Пламя окрашивают ионы меди.')).toBeInTheDocument()
     })
 
-    it('emits Article JSON-LD with publishedAt and BreadcrumbList with Блог', async () => {
+    it('emits BlogPosting JSON-LD with publishedAt and BreadcrumbList with Блог', async () => {
       vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost())
 
       const { container } = render(await BlogPostPage(props))
@@ -131,7 +131,7 @@ describe('BlogPostPage', () => {
         (s) => JSON.parse(s.textContent ?? '{}'),
       )
 
-      const article = data.find((d) => d['@type'] === 'Article')
+      const article = data.find((d) => d['@type'] === 'BlogPosting')
       expect(article).toMatchObject({
         headline: 'Почему пламя синее',
         datePublished: '2026-06-01T00:00:00.000Z',

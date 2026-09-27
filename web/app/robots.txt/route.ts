@@ -1,4 +1,5 @@
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
+import { siteUrl } from '@/lib/metadata'
 
 // Serve admin-edited robots.txt at the site root. Crawlers fetch /robots.txt
 // directly (no /api prefix, no JSON envelope), so we proxy the plain-text
@@ -13,7 +14,8 @@ export const dynamic = 'force-dynamic'
 // Safe fallback used if the API is unreachable. Keeps crawlers happy (returns
 // 200 with a permissive default) rather than serving a 5xx that some bots
 // interpret as "all disallowed".
-const FALLBACK = 'User-agent: *\nAllow: /\n'
+// Sitemap — абсолютным адресом, как требует протокол.
+const FALLBACK = `User-agent: *\nAllow: /\nSitemap: ${siteUrl()}/sitemap.xml\n`
 
 export async function GET(): Promise<Response> {
   try {
