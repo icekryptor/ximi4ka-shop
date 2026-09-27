@@ -73,7 +73,7 @@ describe('/order/[number] page', () => {
     expect(screen.getByTestId('order-status-view')).toHaveAttribute('data-celebrate', 'false')
   })
 
-  it('passes the order secret and the failed-payment flag through', async () => {
+  it('passes the failed-payment flag and never reads the secret from the query', async () => {
     render(
       await OrderStatusPage({
         params: Promise.resolve({ locale: 'ru', number: 'XM-2026-00042' }),
@@ -81,7 +81,7 @@ describe('/order/[number] page', () => {
       }),
     )
     const view = screen.getByTestId('order-status-view')
-    expect(view).toHaveAttribute('data-token', 'abc')
+    expect(view).toHaveAttribute('data-token', '')
     expect(view).toHaveAttribute('data-payment-failed', 'true')
   })
 })

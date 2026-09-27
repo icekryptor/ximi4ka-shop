@@ -9,9 +9,13 @@ import { rateLimit } from '../middleware/rateLimit.js'
 
 export const publicOrdersRouter: Router = Router()
 
+// Сравниваем байты, а не символы: многобайтная строка той же длины в
+// символах иначе уронила бы timingSafeEqual (разная длина буферов) → 500.
 function tokenMatches(given: unknown, expected: string): boolean {
-  if (typeof given !== 'string' || given.length !== expected.length) return false
-  return timingSafeEqual(Buffer.from(given), Buffer.from(expected))
+  if (typeof given !== 'string') return false
+  const a = Buffer.from(given)
+  const b = Buffer.from(expected)
+  return a.length === b.length && timingSafeEqual(a, b)
 }
 
 export function cdekTrackingUrl(cdekNumber: string): string {
@@ -40,10 +44,12 @@ async function shipmentFor(orderId: string): Promise<PublicOrderShipment | null>
 // chats, so knowing one must not expose the customer's name/phone/address.
 // Трек СДЭК (по нему видны город и пункт выдачи) — только с секретом заказа
 // `?t=`, который получает оформивший заказ: номера идут подряд и
-// перебираются. Лимит запросов — против перебора номеров.
+// перебираются. Лимит — против перебора номеров; с запасом, потому что у
+// мобильных операторов много покупателей за одним IP, а открытая страница
+// заказа опрашивает статус 12 раз в минуту.
 publicOrdersRouter.get(
   '/:number/status',
-  rateLimit({ limit: 60, windowMs: 60_000 }),
+  rateLimit({ limit: 300, windowMs: 60_000 }),
   async (req, res, next) => {
     try {
       const repo = AppDataSource.getRepository(Order)

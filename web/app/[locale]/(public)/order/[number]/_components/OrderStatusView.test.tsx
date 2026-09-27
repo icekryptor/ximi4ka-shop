@@ -272,4 +272,14 @@ describe('<OrderStatusView>', () => {
     await screen.findByText('Заказ не найден')
     expect(screen.queryByText(/письме|SMS/)).toBeNull()
   })
+
+  it('reads the order secret from the URL fragment', async () => {
+    window.history.replaceState(null, '', '/order/XM-2026-00042?new=1#t=frag123')
+    const fetchMock = fetchReturning(statusPayload())
+    vi.stubGlobal('fetch', fetchMock)
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
+    await screen.findByTestId('order-status-label')
+    expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toContain('status?t=frag123')
+    window.history.replaceState(null, '', '/')
+  })
 })

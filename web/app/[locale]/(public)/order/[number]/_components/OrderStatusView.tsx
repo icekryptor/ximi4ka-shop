@@ -18,7 +18,11 @@ interface Props {
   orderNumber: string
   /** true при переходе с чекаута (?new=1) — праздничный хедер «Заказ принят!» */
   celebrate: boolean
-  /** Секрет заказа (?t=) — с ним страница показывает трек СДЭК. */
+  /**
+   * Секрет заказа — с ним страница показывает трек СДЭК. По умолчанию
+   * берётся из фрагмента адреса (#t=…): фрагмент не уходит ни серверу, ни
+   * в Метрику/GA4.
+   */
   token?: string | null
   /** Возврат из банка по FailURL (?payment=failed). */
   paymentFailed?: boolean
@@ -78,7 +82,19 @@ function MetaRow({
   )
 }
 
-export function OrderStatusView({ orderNumber, celebrate, token, paymentFailed }: Props) {
+function tokenFromHash(): string | null {
+  if (typeof window === 'undefined') return null
+  return new URLSearchParams(window.location.hash.slice(1)).get('t') || null
+}
+
+export function OrderStatusView({
+  orderNumber,
+  celebrate,
+  token: tokenProp,
+  paymentFailed,
+}: Props) {
+  // Секрет не влияет на разметку первого рендера — расхождения гидратации нет.
+  const [token] = useState(() => tokenProp ?? tokenFromHash())
   const [order, setOrder] = useState<PublicOrderStatus | null>(null)
   const [error, setError] = useState<'not_found' | 'network' | null>(null)
 

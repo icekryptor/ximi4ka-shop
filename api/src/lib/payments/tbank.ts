@@ -125,8 +125,10 @@ export class TBankProvider implements PaymentProvider {
       if (this.cfg.returnOrigin) {
         const page = `${this.cfg.returnOrigin}/order/${encodeURIComponent(order.orderNumber)}`
         const t = encodeURIComponent(order.publicToken)
-        params.SuccessURL = `${page}?new=1&t=${t}`
-        params.FailURL = `${page}?t=${t}&payment=failed`
+        // Секрет — во фрагменте (#t=): браузер не шлёт его ни серверу, ни
+        // счётчикам Метрики/GA4, которые записывают адрес страницы.
+        params.SuccessURL = `${page}?new=1#t=${t}`
+        params.FailURL = `${page}?payment=failed#t=${t}`
       } else {
         if (this.cfg.successUrl) params.SuccessURL = this.cfg.successUrl
         if (this.cfg.failUrl) params.FailURL = this.cfg.failUrl

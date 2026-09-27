@@ -100,6 +100,20 @@ export default async function AdminOrderDetailPage({
                     {formatRub(order.subtotalRub)}
                   </td>
                 </tr>
+                {/* Цены позиций выше — уже со скидкой; «Товары» — по обычным. */}
+                {order.discountRub > 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-2 text-right text-brand-text-secondary">
+                      Оптовая скидка
+                    </td>
+                    <td
+                      data-testid="order-discount"
+                      className="px-4 py-2 text-right tabular-nums text-brand-accent"
+                    >
+                      −{formatRub(order.discountRub)}
+                    </td>
+                  </tr>
+                )}
                 <tr>
                   <td colSpan={4} className="px-4 py-2 text-right text-brand-text-secondary">
                     Доставка

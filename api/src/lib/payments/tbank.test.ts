@@ -95,8 +95,8 @@ describe('TBankProvider.createPayment', () => {
     await provider.createPayment(makeOrder({ publicToken: 'a1b2c3' }))
     const [, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit]
     const sent = JSON.parse(init.body as string) as Record<string, unknown>
-    expect(sent.SuccessURL).toBe('https://new.ximi4ka.ru/order/XM-2026-00001?new=1&t=a1b2c3')
-    expect(sent.FailURL).toBe('https://new.ximi4ka.ru/order/XM-2026-00001?t=a1b2c3&payment=failed')
+    expect(sent.SuccessURL).toBe('https://new.ximi4ka.ru/order/XM-2026-00001?new=1#t=a1b2c3')
+    expect(sent.FailURL).toBe('https://new.ximi4ka.ru/order/XM-2026-00001?payment=failed#t=a1b2c3')
     // Адреса — строки верхнего уровня, они входят в подпись.
     expect(verifyToken(sent, CFG.password, sent.Token as string)).toBe(true)
   })

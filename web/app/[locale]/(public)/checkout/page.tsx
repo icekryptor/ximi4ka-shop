@@ -119,8 +119,10 @@ export default function CheckoutPage() {
       if (result.paymentUrl) {
         redirectTo(result.paymentUrl)
       } else {
+        // Секрет заказа — во фрагменте (#t=): по нему страница покажет трек
+        // СДЭК, а счётчики аналитики фрагмент не записывают.
         router.push(
-          `/order/${result.orderNumber}?new=1&t=${encodeURIComponent(result.publicToken)}`,
+          `/order/${result.orderNumber}?new=1#t=${encodeURIComponent(result.publicToken)}`,
         )
       }
     } catch (err) {

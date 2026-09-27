@@ -81,6 +81,8 @@ describe('Admin orders', () => {
     expect(res.status).toBe(200)
     expect(res.body.data).toHaveLength(2)
     expect(res.body.pagination).toMatchObject({ limit: 2, offset: 0, total: 3 })
+    // Секрет ссылки покупателя админке не отдаём.
+    expect(res.body.data[0]).not.toHaveProperty('publicToken')
   })
 
   it('filters by status', async () => {
@@ -112,6 +114,8 @@ describe('Admin orders', () => {
     expect(res.body.data.orderNumber).toBe(order.orderNumber)
     expect(res.body.data.items).toHaveLength(1)
     expect(res.body.data.items[0].productSnapshot.name).toBe('Набор «Кристаллы»')
+    expect(res.body.data).not.toHaveProperty('publicToken')
+    expect(res.body.data.discountRub).toBe(0)
   })
 
   it('404s for unknown and malformed ids', async () => {

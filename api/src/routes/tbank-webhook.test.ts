@@ -257,6 +257,15 @@ describe('GET /api/public/orders/:number/status', () => {
     })
   })
 
+  it('rejects a multi-byte token of the same character length without a 500', async () => {
+    const order = await seedOrder({ status: 'paid', paidAt: new Date() })
+    const res = await request(app).get(
+      `/api/public/orders/${order.orderNumber}/status?t=${encodeURIComponent('é'.repeat(order.publicToken.length))}`,
+    )
+    expect(res.status).toBe(200)
+    expect(res.body.data).not.toHaveProperty('shipment')
+  })
+
   it('reports a queued or registering shipment as pending, and null without one', async () => {
     const order = await seedOrder({ status: 'paid', paidAt: new Date() })
     const url = `/api/public/orders/${order.orderNumber}/status?t=${order.publicToken}`

@@ -274,7 +274,7 @@ describe('/checkout page', () => {
       },
     })
     await vi.waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/order/XM-2026-00042?new=1&t=tok123')
+      expect(mockPush).toHaveBeenCalledWith('/order/XM-2026-00042?new=1#t=tok123')
     })
     expect(loadCart()).toEqual([])
   })
