@@ -99,8 +99,6 @@ export default async function CmsPage({ params }: Props) {
 
   return (
     <>
-      {/* AMP discovery link — see product page for rationale. */}
-      <link rel="amphtml" href={`${siteUrl()}/amp/article/${slug}`} />
       <JsonLd data={articleJsonLd(page)} />
       <JsonLd
         data={breadcrumbJsonLd([
@@ -141,6 +139,12 @@ export default async function CmsPage({ params }: Props) {
         lead="В каталоге собраны наборы для разных возрастов и научных направлений."
         cta={{ label: 'Открыть каталог', href: '/categories' }}
       />
+
+      {/* AMP discovery link — последним ребёнком, а не первым: React 19
+          переносит <link> в <head>, и старый обработчик прокрутки Next 16
+          (findDOMNode первого узла сегмента) иначе не прокручивает страницу
+          вверх при переходе. Подробности — на странице товара. */}
+      <link rel="amphtml" href={`${siteUrl()}/amp/article/${slug}`} />
     </>
   )
 }

@@ -205,15 +205,11 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <>
-      {/* AMP discovery: search engines expect <link rel="amphtml"> on the
-          canonical page. Next's Metadata API can emit the meta-tag form but
-          not this link directly, so we render it inline alongside JSON-LD. */}
-      <link rel="amphtml" href={`${siteUrl()}/amp/product/${slug}`} />
       <JsonLd data={productJsonLd(product)} />
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Главная', url: '/' },
-          { name: 'Каталог', url: '/categories' },
+          { name: 'Каталог', url: '/catalog' },
           { name, url: pathForLocale(locale, product.slug) },
         ])}
       />
@@ -229,7 +225,7 @@ export default async function ProductPage({ params }: Props) {
           Главная
         </Link>
         <span aria-hidden="true">/</span>
-        <Link href="/categories" className="hover:text-[var(--color-lj-brand)]">
+        <Link href="/catalog" className="hover:text-[var(--color-lj-brand)]">
           Каталог
         </Link>
         <span aria-hidden="true">/</span>
@@ -317,6 +313,15 @@ export default async function ProductPage({ params }: Props) {
       {/* MOBILE BUY BAR — sticky bottom on mobile, IO-driven via the
           `data-add-to-cart-row` sentinel inside AddToCartWithQuantity. */}
       <MobileBuyBarMount product={product} />
+
+      {/* AMP discovery: поисковики ищут <link rel="amphtml"> на канонической
+          странице. Намеренно ПОСЛЕДНИЙ ребёнок фрагмента: React 19 переносит
+          <link> в <head>, а старый обработчик прокрутки Next 16
+          (InnerScrollAndFocusHandlerOld, findDOMNode) берёт первый DOM-узел
+          сегмента. Когда первым был этот <link>, обработчик перебирал узлы
+          <head> с нулевыми размерами и сдавался — переход из прокрученного
+          каталога открывал товар с середины страницы. */}
+      <link rel="amphtml" href={`${siteUrl()}/amp/product/${slug}`} />
     </>
   )
 }
