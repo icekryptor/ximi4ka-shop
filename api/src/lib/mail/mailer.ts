@@ -28,7 +28,7 @@ export class MemoryMailer implements Mailer {
     this.sent.push(msg)
     if (process.env.NODE_ENV !== 'test') {
       // Только вне прода: сюда не попадаем, если SMTP настроен или NODE_ENV=production.
-      console.log(`mail (dev): ${msg.to} — ${msg.subject}\n${msg.text}`)
+      console.log(`mail (dev): ${maskEmail(msg.to)} — ${msg.subject}\n${msg.text}`)
     }
   }
 
@@ -62,8 +62,8 @@ export function setMailerForTests(m: Mailer | null): void {
   override = m
 }
 
-// Читает env на каждый вызов (как getPaymentProvider): тест или перезапуск
-// с другим env не требуют пересборки модуля. Транспорт кешируется по конфигу.
+// Читает env на каждый вызов: тест или перезапуск с другим env не требуют
+// пересборки модуля. Транспорт кешируется по конфигу.
 export function getMailer(env: NodeJS.ProcessEnv = process.env): Mailer | null {
   if (override) return override
   const host = env.SMTP_HOST?.trim()
