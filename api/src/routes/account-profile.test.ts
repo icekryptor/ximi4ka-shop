@@ -9,6 +9,7 @@ import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { Product } from '../entities/Product.js'
 import { MemoryMailer, setMailerForTests } from '../lib/mail/mailer.js'
+import { listCustomerOrders } from '../lib/account/orders.js'
 import { customerHeaders, loginAsCustomer, resetAccountTables, seedOrder } from './testUtils.js'
 
 describe('профиль и заказы', () => {
@@ -164,5 +165,39 @@ describe('профиль и заказы', () => {
     const auth = await loginAsCustomer(app, 'buyer@test.local', new MemoryMailer())
     const res = await request(app).get('/api/account/orders?cursor=junk').set(customerHeaders(auth))
     expect(res.status).toBe(400)
+  })
+
+  it('курсор не теряет заказы, у которых created_at совпадает до миллисекунды', async () => {
+    await loginAsCustomer(app)
+    const c = await me()
+    // Три заказа в одной миллисекунде (10:00:00.123), но с разными микросекундами
+    // и достаточно близкими id-хвостами, чтобы пара (created_at мс, id) не была
+    // монотонной по настоящему created_at — именно это раньше роняло заказы.
+    const o1 = await seedOrder({ customerId: c.id })
+    const o2 = await seedOrder({ customerId: c.id })
+    const o3 = await seedOrder({ customerId: c.id })
+    await AppDataSource.query(`UPDATE orders SET created_at = $1 WHERE id = $2`, [
+      '2026-09-01 10:00:00.123100',
+      o1.id,
+    ])
+    await AppDataSource.query(`UPDATE orders SET created_at = $1 WHERE id = $2`, [
+      '2026-09-01 10:00:00.123200',
+      o2.id,
+    ])
+    await AppDataSource.query(`UPDATE orders SET created_at = $1 WHERE id = $2`, [
+      '2026-09-01 10:00:00.123300',
+      o3.id,
+    ])
+
+    const seen: string[] = []
+    let cursor: string | null = null
+    for (let i = 0; i < 3; i++) {
+      const page = await listCustomerOrders(c.id, cursor, 1)
+      expect(page.orders).toHaveLength(1)
+      seen.push(page.orders[0].orderNumber)
+      cursor = page.nextCursor
+    }
+    expect(cursor).toBeNull()
+    expect(new Set(seen)).toEqual(new Set([o1.orderNumber, o2.orderNumber, o3.orderNumber]))
   })
 })

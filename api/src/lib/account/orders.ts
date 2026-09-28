@@ -84,15 +84,24 @@ export async function listCustomerOrders(
   cursor: string | null,
   limit = 20,
 ): Promise<AccountOrdersPage> {
+  // created_at хранится с точностью до микросекунд, а курсор строится из
+  // toISOString() (миллисекунды) — сравниваем и сортируем по одному и тому
+  // же усечённому до мс значению, иначе строка, делящая миллисекунду с
+  // курсорной, но с большими микросекундами и меньшим id, теряется: она
+  // "меньше" курсора по (created_at, id), но ORDER BY по полному created_at
+  // ставит её раньше него.
   const qb = AppDataSource.getRepository(Order)
     .createQueryBuilder('o')
     .where('o.customer_id = :customerId', { customerId })
-    .orderBy('o.created_at', 'DESC')
+    .orderBy("date_trunc('milliseconds', o.created_at)", 'DESC')
     .addOrderBy('o.id', 'DESC')
     .limit(limit + 1)
   if (cursor) {
     const c = parseCursor(cursor)
-    qb.andWhere('(o.created_at, o.id) < (:at, :id)', { at: c.at, id: c.id })
+    qb.andWhere("(date_trunc('milliseconds', o.created_at), o.id) < (:at, :id)", {
+      at: c.at,
+      id: c.id,
+    })
   }
   const rows = await qb.getMany()
   const page = rows.slice(0, limit)
