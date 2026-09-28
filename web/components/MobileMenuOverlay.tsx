@@ -101,9 +101,17 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
           </ul>
 
           <Link
+            href="/account"
+            onClick={onClose}
+            className="block mt-12 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em]"
+          >
+            ЛИЧНЫЙ КАБИНЕТ →
+          </Link>
+
+          <Link
             href="/cart"
             onClick={onClose}
-            className={`block mt-12 mb-6 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] ${cartCount > 0 ? 'text-[var(--color-lj-brand)]' : ''}`}
+            className={`block mt-6 mb-6 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] ${cartCount > 0 ? 'text-[var(--color-lj-brand)]' : ''}`}
           >
             {cartCount > 0 ? `КОРЗИНА · ${cartCount} →` : 'КОРЗИНА (0) →'}
           </Link>

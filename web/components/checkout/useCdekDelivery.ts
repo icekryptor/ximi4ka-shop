@@ -8,6 +8,7 @@ import type {
   DeliveryDestination,
   DeliveryMethod,
   DeliveryQuote,
+  LastDelivery,
 } from '@ximi4ka-shop/shared'
 import { getCdekPoints, quoteShipping } from '@/lib/api'
 import {
@@ -68,6 +69,8 @@ export interface CdekDeliveryModel {
   retryPoints: () => void
   retryQuotes: () => void
   rejectPoint: (message: string) => void
+  // Доставка из прошлого заказа вошедшего покупателя (спека кабинета §6).
+  applyLastDelivery: (last: LastDelivery) => void
 }
 
 // Сохранённый город (спека §5.1): только код и название, без персональных
@@ -151,6 +154,7 @@ export function useCdekDelivery(
   const [pointsResult, setPointsResult] = useState<PointsResult | null>(null)
   const [quotesResult, setQuotesResult] = useState<QuotesResult | null>(null)
   const [courierQuote, setCourierQuote] = useState<CourierQuoteResult | null>(null)
+  const [pendingPointCode, setPendingPointCode] = useState<string | null>(null)
 
   const cityCode = city?.code ?? null
   const cityName = city?.name ?? ''
@@ -255,6 +259,16 @@ export function useCdekDelivery(
   const cityLocation = pointsResult?.data?.city.location ?? null
   const pointsSeen = pointsResult?.data != null
 
+  // Пункт из прошлого заказа выбираем, когда загрузится список города; если
+  // пункт закрылся — покупатель просто выберет другой.
+  useEffect(() => {
+    if (!pendingPointCode || pointsStatus !== 'ready') return
+    const found = points.find((p) => p.code === pendingPointCode)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (found && !point) setPointState(found)
+    setPendingPointCode(null)
+  }, [pendingPointCode, pointsStatus, points, point])
+
   const quotesKey =
     cityCode === null || cartKey === '' ? null : quotesKeyOf(cityCode, cartKey, quotesAttempt)
   const quotesHit =
@@ -334,6 +348,22 @@ export function useCdekDelivery(
     setPointsAttempt((n) => n + 1)
   }
 
+  function applyLastDelivery(last: LastDelivery) {
+    if (!last.cityCode) return
+    // Город из localStorage приоритетнее: покупатель мог выбрать новый.
+    if (!city && last.cityName) {
+      setCity({ code: last.cityCode, name: last.cityName, fullName: last.cityName })
+    } else if (city && city.code !== last.cityCode) {
+      return
+    }
+    setMethod(last.method)
+    if (last.method === 'cdek_pvz' && last.deliveryPointCode)
+      setPendingPointCode(last.deliveryPointCode)
+    if (last.method === 'cdek_courier' && last.courierStreet && courier.street.trim() === '') {
+      setCourier({ street: last.courierStreet, apartment: '', postalCode: last.postalCode ?? '' })
+    }
+  }
+
   return {
     city,
     method,
@@ -357,5 +387,6 @@ export function useCdekDelivery(
     retryPoints: () => setPointsAttempt((n) => n + 1),
     retryQuotes: () => setQuotesAttempt((n) => n + 1),
     rejectPoint,
+    applyLastDelivery,
   }
 }

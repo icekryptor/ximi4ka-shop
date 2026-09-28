@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CheckoutRequest } from '@ximi4ka-shop/shared'
+import { getMeOrNull } from '@/lib/accountApi'
 import { useCart } from '@/lib/cart'
 import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 import { ApiError, quoteShipping, submitCheckout, type ShippingQuoteResponse } from '@/lib/api'
@@ -45,6 +46,33 @@ export default function CheckoutPage() {
 
   // Город, способ, пункт или адрес курьера и цены — в блоке доставки (спека §5).
   const delivery = useCdekDelivery(items)
+
+  // Вошедшему покупателю — контакты и доставка из профиля; гостю — подсказка
+  // войти. undefined — ещё не знаем (подсказку не мигаем).
+  const [signedIn, setSignedIn] = useState<boolean | undefined>(undefined)
+  const applyLastDelivery = delivery.applyLastDelivery
+  useEffect(() => {
+    if (!hydrated) return
+    let cancelled = false
+    getMeOrNull().then((me) => {
+      if (cancelled) return
+      setSignedIn(me !== null)
+      if (!me) return
+      setFields((prev) => ({
+        ...prev,
+        name: prev.name || me.name || '',
+        phone: prev.phone || (me.phone ? formatPhoneInput(me.phone) : ''),
+        email: prev.email || me.email || '',
+        telegram: prev.telegram || (me.telegramUsername ? `@${me.telegramUsername}` : ''),
+      }))
+      if (me.lastDelivery) applyLastDelivery(me.lastDelivery)
+    })
+    return () => {
+      cancelled = true
+    }
+    // Один раз после гидратации; applyLastDelivery меняется каждый рендер.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated])
 
   // Места отправления и тарифы — для карты СДЭК: по ним она считает цены на
   // пунктах. Не загрузились — карты нет, а список и курьер работают (§5.2).
@@ -173,6 +201,15 @@ export default function CheckoutPage() {
           >
             {/* ---- Левая колонка: данные покупателя и доставка ---- */}
             <div className="flex flex-col gap-8">
+              {signedIn === false && (
+                <p className="text-sm opacity-70">
+                  <Link href="/account/login?next=/checkout" className="underline">
+                    Войдите
+                  </Link>
+                  , чтобы заказ сохранился в личном кабинете.
+                </p>
+              )}
+
               <div className="flex flex-col gap-2">
                 <label htmlFor="checkout-name" className={LABEL_CLASS}>
                   Имя *

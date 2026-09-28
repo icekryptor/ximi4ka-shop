@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useCart } from '@/lib/cart'
 import { Ticker } from '@/components/ui'
+import { AccountLink } from './AccountLink'
 import { CartButton } from './CartButton'
 import { HeaderLogo } from './HeaderLogo'
 import { MobileMenuOverlay } from './MobileMenuOverlay'
@@ -162,6 +163,8 @@ export function Header({ headerPromoText = null }: HeaderProps) {
                 <line x1="10.5" y1="10.5" x2="14" y2="14" strokeLinecap="round" />
               </svg>
             </button>
+
+            <AccountLink />
 
             {/* Кнопка корзины видна ВСЕГДА (и на мобильном) и открывает
                 CartDrawer мгновенно — навигация на /cart только из drawer. */}

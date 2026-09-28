@@ -17,6 +17,11 @@ vi.mock('@/lib/checkout', async (importActual) => {
   return { ...actual, redirectTo: (url: string) => mockRedirectTo(url) }
 })
 
+const accountMock = vi.hoisted(() => ({
+  me: null as import('@ximi4ka-shop/shared').CustomerProfile | null,
+}))
+vi.mock('@/lib/accountApi', () => ({ getMeOrNull: async () => accountMock.me }))
+
 // Город и пункты — как в песочнице СДЭК 25.09.2026 (урезаны).
 const MOSCOW: CdekCity = { code: 44, name: 'Москва', fullName: 'Москва, Россия' }
 const MSK65: CdekPoint = {
@@ -124,6 +129,7 @@ beforeEach(() => {
   mockSuggest.mockClear()
   mockGetPoints.mockClear()
   mapMock.available = true
+  accountMock.me = null
 })
 
 afterEach(() => {
@@ -524,5 +530,79 @@ describe('/checkout page', () => {
     // Cart is preserved so the user can adjust it.
     expect(loadCart()).toHaveLength(1)
     expect(mockPush).not.toHaveBeenCalled()
+  })
+})
+
+describe('чекаут для вошедшего покупателя', () => {
+  const profile = {
+    id: '1',
+    email: 'ivan@example.com',
+    telegramUsername: 'ivan_tg',
+    hasTelegram: true,
+    name: 'Иван',
+    phone: '+79001234567',
+    lastDelivery: null,
+  }
+
+  it('подставляет контакты из профиля и не показывает подсказку входа', async () => {
+    accountMock.me = profile
+    seedCart(seed)
+    render(<CheckoutPage />)
+    expect(await screen.findByDisplayValue('Иван')).toBeInTheDocument()
+    expect(screen.getByLabelText(/телефон/i)).toHaveValue('+7 (900) 123-45-67')
+    expect(screen.getByLabelText(/email/i)).toHaveValue('ivan@example.com')
+    expect(screen.getByLabelText(/^telegram/i)).toHaveValue('@ivan_tg')
+    expect(screen.queryByText(/чтобы заказ сохранился/)).toBeNull()
+  })
+
+  it('гостю — подсказка войти со ссылкой назад на чекаут', async () => {
+    seedCart(seed)
+    render(<CheckoutPage />)
+    const link = await screen.findByRole('link', { name: 'Войдите' })
+    expect(link).toHaveAttribute('href', '/account/login?next=/checkout')
+  })
+
+  it('пункт выдачи из прошлого заказа выбирается, когда загрузится список города', async () => {
+    accountMock.me = {
+      ...profile,
+      lastDelivery: {
+        method: 'cdek_pvz',
+        cityCode: 44,
+        cityName: 'Москва',
+        deliveryPointCode: 'MSK65',
+        postalCode: null,
+        courierStreet: null,
+      },
+    }
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await vi.waitFor(() => expect(mockGetPoints).toHaveBeenCalledWith(44))
+    await vi.waitFor(() =>
+      expect(screen.getByRole('combobox', { name: /пункт получения/i })).toHaveValue(
+        'MSK65 · ул. Динамовская, 1А, 110а',
+      ),
+    )
+  })
+
+  it('город из localStorage другой — доставку из прошлого заказа не трогаем', async () => {
+    window.localStorage.setItem(
+      'ximi4ka-checkout-city',
+      JSON.stringify({ code: 137, name: 'Санкт-Петербург', fullName: 'Санкт-Петербург, Россия' }),
+    )
+    accountMock.me = {
+      ...profile,
+      lastDelivery: {
+        method: 'cdek_courier',
+        cityCode: 44,
+        cityName: 'Москва',
+        deliveryPointCode: null,
+        postalCode: '101000',
+        courierStreet: 'ул. Ленина, 1',
+      },
+    }
+    seedCart(seed)
+    render(<CheckoutPage />)
+    expect(await screen.findByDisplayValue('Иван')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('ул. Ленина, 1')).toBeNull()
   })
 })
