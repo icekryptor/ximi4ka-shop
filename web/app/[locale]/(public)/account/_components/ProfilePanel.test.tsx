@@ -1,4 +1,4 @@
-import { afterEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { CustomerProfile } from '@ximi4ka-shop/shared'
 import { ProfilePanel } from './ProfilePanel'
@@ -13,6 +13,7 @@ const api = vi.hoisted(() => ({
   unlinkEmail: vi.fn(),
   unlinkTelegram: vi.fn(),
   pollTelegramLogin: vi.fn(),
+  getAuthConfig: vi.fn(),
 }))
 vi.mock('@/lib/accountApi', () => api)
 const redirect = vi.hoisted(() => vi.fn())
@@ -20,6 +21,11 @@ vi.mock('@/lib/checkout', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/checkout')>()),
   redirectTo: redirect,
 }))
+
+beforeEach(() => {
+  // По умолчанию бот настроен — большинство тестов не про этот сценарий.
+  api.getAuthConfig.mockResolvedValue({ email: true, telegram: true, telegramBot: 'bot' })
+})
 
 afterEach(() => {
   cleanup()
@@ -55,6 +61,22 @@ describe('ProfilePanel', () => {
     render(<ProfilePanel />)
     expect(await screen.findByRole('button', { name: 'Привязать Telegram' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Отвязать email' })).toBeNull()
+  })
+
+  it('бот не настроен — вместо «Привязать Telegram» сообщение о недоступности', async () => {
+    api.getMe.mockResolvedValue(profile)
+    api.getAuthConfig.mockResolvedValue({ email: true, telegram: false, telegramBot: null })
+    render(<ProfilePanel />)
+    expect(await screen.findByText('Привязка Telegram пока недоступна')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Привязать Telegram' })).toBeNull()
+  })
+
+  it('конфиг входа не загрузился — Telegram считается недоступным', async () => {
+    api.getMe.mockResolvedValue(profile)
+    api.getAuthConfig.mockRejectedValue(new Error('network'))
+    render(<ProfilePanel />)
+    expect(await screen.findByText('Привязка Telegram пока недоступна')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Привязать Telegram' })).toBeNull()
   })
 
   it('с Telegram и email — можно отвязать Telegram', async () => {

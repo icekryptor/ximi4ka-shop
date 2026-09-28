@@ -14,9 +14,9 @@ describe('Button', () => {
     expect(link).toHaveAttribute('href', '/categories')
   })
 
-  it('applies primary gradient classes by default', () => {
+  it('applies the storefront CTA look (lj-cta-bright) by default', () => {
     render(<Button>x</Button>)
-    expect(screen.getByRole('button')).toHaveClass('bg-[var(--gradient-brand)]')
+    expect(screen.getByRole('button')).toHaveClass('lj-cta-bright')
   })
 
   it('applies secondary border when variant=secondary', () => {

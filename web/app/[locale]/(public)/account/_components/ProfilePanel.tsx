@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { CustomerProfile } from '@ximi4ka-shop/shared'
 import {
+  getAuthConfig,
   getMe,
   logout,
   startLinkEmail,
@@ -27,6 +28,9 @@ export function ProfilePanel() {
   const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [editEmail, setEditEmail] = useState(false)
+  // Пока бот не настроен (или конфиг не загрузился), «Привязать Telegram»
+  // бить в 503 не должна — прячем кнопку вместо этого.
+  const [telegramAvailable, setTelegramAvailable] = useState(false)
 
   const refresh = useCallback(async () => {
     const p = await getMe()
@@ -45,6 +49,13 @@ export function ProfilePanel() {
       refresh().catch(() => {
         if (!cancelled) setError('Не удалось загрузить данные. Обновите страницу.')
       })
+      getAuthConfig()
+        .then((config) => {
+          if (!cancelled) setTelegramAvailable(config.telegram)
+        })
+        .catch(() => {
+          if (!cancelled) setTelegramAvailable(false)
+        })
     })
     return () => {
       cancelled = true
@@ -167,12 +178,14 @@ export function ProfilePanel() {
               </Button>
             )}
           </>
-        ) : (
+        ) : telegramAvailable ? (
           <TelegramConnect
             label="Привязать Telegram"
             start={startLinkTelegram}
             onDone={() => void refresh()}
           />
+        ) : (
+          <p className="text-sm opacity-60">Привязка Telegram пока недоступна</p>
         )}
       </section>
 
