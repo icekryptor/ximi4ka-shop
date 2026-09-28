@@ -51,6 +51,10 @@ export class Order {
   @Column({ type: 'varchar', length: 33, name: 'customer_telegram', nullable: true })
   customerTelegram!: string | null
 
+  // Покупатель из личного кабинета; null — гостевой заказ (спека кабинета §3).
+  @Column({ type: 'uuid', name: 'customer_id', nullable: true })
+  customerId!: string | null
+
   // id карточки заказа в рабочем чате: на неё бот отвечает сменами статуса.
   // bigint pg отдаёт строкой — приводим к числу, id сообщений Telegram
   // укладываются в Number.MAX_SAFE_INTEGER.
