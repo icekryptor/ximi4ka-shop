@@ -126,6 +126,29 @@ describe('вход через Telegram', () => {
     expect((await agent.get('/api/account/auth/telegram/status')).body.data.status).toBe('pending')
   })
 
+  it('гонка «Старт»/«Подтвердить»: telegramId переписан между проверкой и записью — не подтверждает', async () => {
+    const { agent, nonce } = await startLogin()
+    await hook(startMsg(nonce, 1001))
+    const data = lastButtonData()
+    // Имитируем интерливинг: между чтением заявки в обработчике callback_query
+    // и его UPDATE параллельный «Старт» другого пользователя успел
+    // переписать telegramId. Проверяем, что UPDATE с условием telegramId
+    // видит расхождение и не подтверждает вход.
+    // repo.update({}, …) бросает «Empty criteria(s)» в typeorm@0.3.28 — через
+    // query builder (в тесте всегда одна строка).
+    await AppDataSource.getRepository(TelegramLoginRequest)
+      .createQueryBuilder()
+      .update(TelegramLoginRequest)
+      .set({ telegramId: 2002 })
+      .execute()
+    await hook(confirm(data.slice('login:'.length), 1001))
+    expect(calls.some((c) => c.method === 'answerCallbackQuery')).toBe(true)
+    const answer = calls.filter((c) => c.method === 'answerCallbackQuery').pop()!
+    expect(String(answer.body.text)).toMatch(/устарела/)
+    expect(calls.some((c) => c.method === 'editMessageText')).toBe(false)
+    expect((await agent.get('/api/account/auth/telegram/status')).body.data.status).toBe('pending')
+  })
+
   it('два опроса подтверждённого запроса — сессию получает только один', async () => {
     const { agent, nonce } = await startLogin()
     await hook(startMsg(nonce))

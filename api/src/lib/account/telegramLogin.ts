@@ -28,6 +28,7 @@ export interface TelegramUpdate {
 }
 
 const SITE = 'ximi4ka.ru'
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 export async function createTelegramLoginRequest(
   linkCustomerId: string | null,
@@ -93,8 +94,21 @@ export async function handleTelegramUpdate(
       )
       return
     }
-    // Запоминаем, кто нажал «Старт»: подтвердить сможет только он.
-    await repo.update({ id: req.id }, { telegramId: msg.from.id })
+    // Запоминаем, кто нажал «Старт»: подтвердить сможет только он. Условие
+    // status: 'pending' в UPDATE закрывает гонку с параллельным «Подтвердить»
+    // (TOCTOU: без него интерливинг двух апдейтов мог привести к тому, что
+    // подтверждённая заявка получит telegramId нажавшего «Старт» позже).
+    const started = await repo.update(
+      { id: req.id, status: 'pending' },
+      { telegramId: msg.from.id },
+    )
+    if (started.affected !== 1) {
+      await safe(
+        'ссылка устарела (гонка со «Старт»)',
+        bot.sendMessage(msg.chat.id, `Ссылка устарела — начните вход на сайте ${SITE} заново.`),
+      )
+      return
+    }
     const linking = req.linkCustomerId !== null
     await safe(
       'запрос подтверждения',
@@ -112,7 +126,7 @@ export async function handleTelegramUpdate(
   const cb = update.callback_query
   if (cb?.data?.startsWith('login:')) {
     const id = cb.data.slice('login:'.length)
-    const req = /^[0-9a-f-]{36}$/.test(id) ? await repo.findOneBy({ id }) : null
+    const req = UUID_RE.test(id) ? await repo.findOneBy({ id }) : null
     if (!isLive(req) || req.telegramId !== cb.from.id) {
       await safe(
         'ответ на кнопку',
@@ -120,14 +134,25 @@ export async function handleTelegramUpdate(
       )
       return
     }
-    await repo.update(
-      { id: req.id, status: 'pending' },
+    // telegramId: cb.from.id в UPDATE — то же условие, что мы уже проверили
+    // выше, но атомарно: если между проверкой и записью «Старт» переписал
+    // telegramId (тот же TOCTOU, что и в ветке /start), affected будет 0, и
+    // мы не подтверждаем чужой запрос.
+    const confirmed = await repo.update(
+      { id: req.id, status: 'pending', telegramId: cb.from.id },
       {
         status: 'confirmed',
         telegramUsername: cb.from.username ?? null,
         telegramFirstName: cb.from.first_name ?? null,
       },
     )
+    if (confirmed.affected !== 1) {
+      await safe(
+        'ответ на кнопку (гонка со «Старт»)',
+        bot.answerCallbackQuery(cb.id, 'Ссылка устарела — начните заново на сайте'),
+      )
+      return
+    }
     await safe('ответ на кнопку', bot.answerCallbackQuery(cb.id, 'Готово'))
     if (cb.message) {
       await safe(
