@@ -3,6 +3,7 @@ import type { CheckoutResponse } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
+import { Customer } from '../entities/Customer.js'
 import { getCdekClient } from '../lib/cdek/index.js'
 import { isKnownDeliveryPoint } from '../lib/cdek/locations.js'
 import { enqueueOrderEvent } from '../lib/notifications/outbox.js'
@@ -11,6 +12,8 @@ import { loadCart } from '../lib/shipping/cart.js'
 import { packCart } from '../lib/shipping/pack.js'
 import { deliveryConfigFromEnv, quoteDelivery } from '../lib/shipping/quote.js'
 import { nextOrderNumber } from '../lib/orderNumber.js'
+import { findCustomerSession } from '../lib/account/session.js'
+import { normalizeEmail } from '../lib/account/emailCodes.js'
 import { badRequest } from './errors.js'
 import { CheckoutSchema } from './checkout.schemas.js'
 
@@ -85,6 +88,19 @@ checkoutRouter.post('/', async (req, res, next) => {
     const shippingRub = quote.customerPriceRub
     const totalRub = subtotalRub - discountRub + shippingRub
 
+    // Личный кабинет (спека кабинета §6): заказ идёт в аккаунт вошедшего
+    // покупателя или владельца подтверждённого email из заказа. Аккаунтов
+    // чекаут не создаёт. CSRF не нужен — SameSite=lax не отправит cookie
+    // сессии в кросс-сайтовом POST.
+    const session = await findCustomerSession(req)
+    let customerId = session?.customer.id ?? null
+    if (!customerId && parsed.customer.email) {
+      const owner = await AppDataSource.getRepository(Customer).findOneBy({
+        email: normalizeEmail(parsed.customer.email),
+      })
+      customerId = owner?.id ?? null
+    }
+
     const provider = getPaymentProvider()
 
     let order: Order
@@ -95,6 +111,7 @@ checkoutRouter.post('/', async (req, res, next) => {
           em.getRepository(Order).create({
             orderNumber,
             status: 'pending',
+            customerId,
             customerName: parsed.customer.name,
             customerPhone: parsed.customer.phone,
             customerEmail: parsed.customer.email ?? '',
@@ -139,6 +156,14 @@ checkoutRouter.post('/', async (req, res, next) => {
           ),
         )
         await enqueueOrderEvent(em, created.id, 'created')
+        if (session) {
+          const c = session.customer
+          const fill: Partial<Customer> = {}
+          if (!c.name) fill.name = parsed.customer.name
+          if (!c.phone) fill.phone = parsed.customer.phone
+          if (Object.keys(fill).length > 0)
+            await em.getRepository(Customer).update({ id: c.id }, fill)
+        }
         return created
       })
     } catch (err) {

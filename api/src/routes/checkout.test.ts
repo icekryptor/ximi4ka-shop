@@ -6,9 +6,12 @@ import { Product } from '../entities/Product.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { OrderNotification } from '../entities/OrderNotification.js'
+import { Customer } from '../entities/Customer.js'
 import { createApp } from '../app.js'
 import { setCdekClientForTests } from '../lib/cdek/index.js'
 import { clearCdekLocationCache } from '../lib/cdek/locations.js'
+import { setMailerForTests } from '../lib/mail/mailer.js'
+import { loginAsCustomer, resetAccountTables } from './testUtils.js'
 
 async function seedProduct(overrides: Partial<Product> = {}): Promise<Product> {
   const repo = AppDataSource.getRepository(Product)
@@ -510,5 +513,88 @@ describe('POST /api/checkout', () => {
     const res = await request(app).post('/api/checkout').send(body)
     expect(res.status).toBe(201)
     expect(get).not.toHaveBeenCalled()
+  })
+})
+
+describe('checkout и личный кабинет', () => {
+  beforeAll(async () => {
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize()
+  })
+  afterAll(async () => {
+    if (AppDataSource.isInitialized) await AppDataSource.destroy()
+  })
+  beforeEach(async () => {
+    await resetAccountTables()
+    await AppDataSource.query('TRUNCATE products RESTART IDENTITY CASCADE')
+    stubCityPoints(['MSK123'])
+  })
+  afterEach(() => {
+    setMailerForTests(null)
+    setCdekClientForTests(null)
+    clearCdekLocationCache()
+  })
+
+  it('с сессией — заказ привязан, пустые имя и телефон профиля заполнены', async () => {
+    const app = createApp()
+    const auth = await loginAsCustomer(app, 'buyer@test.local')
+    const product = await seedProduct()
+    const res = await request(app)
+      .post('/api/checkout')
+      .set('Cookie', auth.cookie)
+      .send(checkoutBody([{ productId: product.id, quantity: 1 }]))
+    expect(res.status).toBe(201)
+    const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+      orderNumber: res.body.data.orderNumber,
+    })
+    const c = await AppDataSource.getRepository(Customer).findOneByOrFail({
+      email: 'buyer@test.local',
+    })
+    expect(order.customerId).toBe(c.id)
+    expect(c.name).toBe('Иван Иванов')
+    expect(c.phone).toBe('+79001234567')
+  })
+
+  it('без сессии, но email совпадает с подтверждённым аккаунтом — привязан', async () => {
+    const app = createApp()
+    const c = await AppDataSource.getRepository(Customer).save({ email: 'ivan@example.com' })
+    const product = await seedProduct()
+    const body = checkoutBody([{ productId: product.id, quantity: 1 }])
+    body.customer.email = 'IVAN@example.com'
+    const res = await request(app).post('/api/checkout').send(body)
+    const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+      orderNumber: res.body.data.orderNumber,
+    })
+    expect(order.customerId).toBe(c.id)
+  })
+
+  it('без сессии и с незнакомым email — гостевой заказ, аккаунт не создаётся', async () => {
+    const app = createApp()
+    const product = await seedProduct()
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: product.id, quantity: 1 }]))
+    const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+      orderNumber: res.body.data.orderNumber,
+    })
+    expect(order.customerId).toBeNull()
+    expect(await AppDataSource.getRepository(Customer).count()).toBe(0)
+  })
+
+  it('с сессией профиль с уже заполненным именем не перетирается', async () => {
+    const app = createApp()
+    const auth = await loginAsCustomer(app, 'buyer@test.local')
+    await AppDataSource.getRepository(Customer).update(
+      { email: 'buyer@test.local' },
+      { name: 'Пётр' },
+    )
+    const product = await seedProduct()
+    await request(app)
+      .post('/api/checkout')
+      .set('Cookie', auth.cookie)
+      .send(checkoutBody([{ productId: product.id, quantity: 1 }]))
+    const c = await AppDataSource.getRepository(Customer).findOneByOrFail({
+      email: 'buyer@test.local',
+    })
+    expect(c.name).toBe('Пётр')
   })
 })
