@@ -57,7 +57,7 @@ export function createAccountLinkRouter(): Router {
     async (req, res, next) => {
       try {
         const bot = getLoginBot()
-        if (!bot)
+        if (!bot || !bot.webhookSecret)
           throw new ApiError(503, 'telegram_login_unavailable', 'Вход через Telegram недоступен')
         const { nonce, pollSecret } = await createTelegramLoginRequest(req.customer!.id)
         setTelegramPollCookie(res, pollSecret)

@@ -38,6 +38,11 @@ describe('вход по email', () => {
     expect((await start(' Ivan@Example.com ')).status).toBe(204)
     const code = mailer.lastCodeFor(EMAIL)!
     expect(code).toMatch(/^\d{6}$/)
+    // Тема письма не должна содержать код (final-fix-brief item 3) — он есть
+    // только в теле, откуда его и читает lastCodeFor.
+    const sent = mailer.sent.at(-1)!
+    expect(sent.subject).toBe('Код для входа на ximi4ka.ru')
+    expect(sent.subject).not.toContain(code)
     const res = await verify(code, 'IVAN@example.com')
     expect(res.status).toBe(200)
     customerAuthFrom(res.headers['set-cookie'])

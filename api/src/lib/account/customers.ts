@@ -8,7 +8,7 @@ export interface TelegramIdentity {
 }
 
 // Тот же покупатель по telegram_id — обновляем username и время входа.
-// Гонка (двойной опрос) — как в findOrCreateByEmail: проигравший читает снова.
+// Гонка (двойной опрос) — как в findOrCreateByEmail: проигравший перечитывает.
 export async function findOrCreateByTelegram(
   em: EntityManager,
   tg: TelegramIdentity,
@@ -20,34 +20,32 @@ export async function findOrCreateByTelegram(
     existing.lastLoginAt = new Date()
     return repo.save(existing)
   }
-  try {
-    return await repo.save(
-      repo.create({
-        telegramId: tg.id,
-        telegramUsername: tg.username,
-        name: tg.firstName,
-        lastLoginAt: new Date(),
-      }),
-    )
-  } catch (err) {
-    const again = await repo.findOneBy({ telegramId: tg.id })
-    if (again) return again
-    throw err
-  }
+  // Гонка двух входов одним telegram_id: INSERT … ON CONFLICT DO NOTHING
+  // (orIgnore) вместо insert+catch — неудачный insert без ON CONFLICT
+  // переводит транзакцию в aborted (25P02), и повторный SELECT внутри той же
+  // транзакции падает следом, а не находит победителя.
+  await repo
+    .createQueryBuilder()
+    .insert()
+    .into(Customer)
+    .values({
+      telegramId: tg.id,
+      telegramUsername: tg.username,
+      name: tg.firstName,
+      lastLoginAt: new Date(),
+    })
+    .orIgnore()
+    .execute()
+  return repo.findOneByOrFail({ telegramId: tg.id })
 }
 
 export async function findOrCreateByEmail(em: EntityManager, email: string): Promise<Customer> {
   const repo = em.getRepository(Customer)
   const existing = await repo.findOneBy({ email })
   if (existing) return existing
-  // Гонка двух входов на один адрес: проигравший получит 23505 — тогда читаем снова.
-  try {
-    return await repo.save(repo.create({ email }))
-  } catch (err) {
-    const again = await repo.findOneBy({ email })
-    if (again) return again
-    throw err
-  }
+  // Гонка двух входов на один адрес — см. комментарий в findOrCreateByTelegram.
+  await repo.createQueryBuilder().insert().into(Customer).values({ email }).orIgnore().execute()
+  return repo.findOneByOrFail({ email })
 }
 
 // Прошлые гостевые заказы с тем же подтверждённым email (спека §4.4). Чужие

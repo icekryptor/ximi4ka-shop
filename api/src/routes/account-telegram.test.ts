@@ -194,6 +194,22 @@ describe('вход через Telegram', () => {
     expect(res.status).toBe(503)
   })
 
+  it('бот настроен без секрета вебхука — start тоже 503', async () => {
+    setLoginBotForTests(new TelegramLoginBot({ token: 'T', username: 'ximi4ka_bot' }))
+    const res = await request(app).post('/api/account/auth/telegram/start')
+    expect(res.status).toBe(503)
+    expect(res.body.error.code).toBe('telegram_login_unavailable')
+  })
+
+  it('вебхук ограничен по частоте: 600 в минуту, 601-й — 429', async () => {
+    for (let i = 0; i < 600; i++) {
+      const res = await hook(startMsg('nope'))
+      expect(res.status).toBe(200)
+    }
+    const res = await hook(startMsg('nope'))
+    expect(res.status).toBe(429)
+  })
+
   it('сбой Telegram при ответе — webhook всё равно 200', async () => {
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const broken = new TelegramLoginBot({

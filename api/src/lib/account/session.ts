@@ -27,6 +27,16 @@ export async function startCustomerSession(
   const raw = newToken()
   const csrf = newToken()
   const repo = AppDataSource.getRepository(CustomerSession)
+  // Браузер, где уже был вход (своей или чужой сессией — например, общий
+  // компьютер), не должен держать активными сразу две сессии в одной cookie:
+  // предыдущая, чья токен-cookie сейчас пришла с запросом, отзывается.
+  const prevRaw = req.cookies?.[CUSTOMER_SESSION_COOKIE]
+  if (typeof prevRaw === 'string' && prevRaw) {
+    await repo.update(
+      { tokenHash: hashSessionToken(prevRaw), revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    )
+  }
   await repo.save(
     repo.create({
       tokenHash: hashSessionToken(raw),

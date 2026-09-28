@@ -260,4 +260,14 @@ describe('привязка способов входа', () => {
     const res = await request(app).post('/api/account/link/email/start').send({ email: 'a@b.ru' })
     expect(res.status).toBe(401)
   })
+
+  it('привязка Telegram: бот без секрета вебхука — 503', async () => {
+    setLoginBotForTests(new TelegramLoginBot({ token: 'T', username: 'ximi4ka_bot' }))
+    const auth = await loginAsCustomer(app, 'me@b.ru', mailer)
+    const res = await request(app)
+      .post('/api/account/link/telegram/start')
+      .set(customerHeaders(auth))
+    expect(res.status).toBe(503)
+    expect(res.body.error.code).toBe('telegram_login_unavailable')
+  })
 })

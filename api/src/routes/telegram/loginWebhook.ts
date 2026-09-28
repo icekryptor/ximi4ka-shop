@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { Router } from 'express'
 import { getLoginBot } from '../../lib/telegram/loginBot.js'
 import { handleTelegramUpdate, type TelegramUpdate } from '../../lib/account/telegramLogin.js'
+import { rateLimit } from '../middleware/rateLimit.js'
 
 function secretMatches(given: unknown, expected: string): boolean {
   if (typeof given !== 'string') return false
@@ -14,7 +15,7 @@ function secretMatches(given: unknown, expected: string): boolean {
 // по заголовку X-Telegram-Bot-Api-Secret-Token (задаётся в setWebhook).
 export function createTelegramWebhookRouter(): Router {
   const router = Router()
-  router.post('/login-webhook', async (req, res) => {
+  router.post('/login-webhook', rateLimit({ limit: 600, windowMs: 60_000 }), async (req, res) => {
     const bot = getLoginBot()
     if (!bot || !bot.webhookSecret) {
       res.status(404).end()

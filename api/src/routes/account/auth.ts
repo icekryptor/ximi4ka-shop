@@ -53,7 +53,9 @@ export async function sendLoginCode(email: string, res?: Response): Promise<void
   try {
     await mailer.send({
       to: email,
-      subject: `Код для входа: ${issued.code}`,
+      // Код — не в теме (глобальные ограничения §код в логах): тема письма
+      // может осесть в истории уведомлений почтового клиента без шифрования.
+      subject: 'Код для входа на ximi4ka.ru',
       text: `Код для входа на ximi4ka.ru: ${issued.code}\n\nОн действует 10 минут. Если вы не запрашивали код, просто удалите это письмо.`,
       html: `<p>Код для входа на ximi4ka.ru:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${issued.code}</p><p>Он действует 10 минут. Если вы не запрашивали код, просто удалите это письмо.</p>`,
     })
@@ -81,10 +83,15 @@ export function createAccountAuthRouter(): Router {
 
   router.get('/config', (_req, res) => {
     const bot = getLoginBot()
+    // Бот без секрета вебхука не сможет принять update от Telegram (webhook
+    // отвечает 404 без него, см. loginWebhook.ts) — раньше конфиг показывал
+    // его как рабочий способ входа, и покупатель зависал на «ждём
+    // подтверждения» без единого сообщения об ошибке.
+    const usable = bot !== null && bot.webhookSecret !== null
     const data: AuthConfig = {
       email: getMailer() !== null,
-      telegram: bot !== null,
-      telegramBot: bot?.username ?? null,
+      telegram: usable,
+      telegramBot: usable ? bot.username : null,
     }
     res.json({ data })
   })
@@ -148,7 +155,7 @@ export function createAccountAuthRouter(): Router {
     async (_req, res, next) => {
       try {
         const bot = getLoginBot()
-        if (!bot)
+        if (!bot || !bot.webhookSecret)
           throw new ApiError(503, 'telegram_login_unavailable', 'Вход через Telegram недоступен')
         const { nonce, pollSecret } = await createTelegramLoginRequest(null)
         setTelegramPollCookie(res, pollSecret)
@@ -159,7 +166,9 @@ export function createAccountAuthRouter(): Router {
     },
   )
 
-  // 300 запросов за 10 минут: опрос раз в 2 с — это 300 за весь срок запроса.
+  // 600 запросов за 10 минут: опрос раз в 2 с — это 300 за весь срок запроса
+  // (глобальные ограничения) на одну вкладку; 600 — с запасом на две вкладки
+  // одного пользователя (та же IP-корзина лимитера).
   router.get(
     '/telegram/status',
     rateLimit({ limit: 600, windowMs: 10 * 60 * 1000 }),
