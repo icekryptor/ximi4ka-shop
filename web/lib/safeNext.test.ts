@@ -12,6 +12,9 @@ describe('safeNext', () => {
     ['', '/account'],
     [undefined, '/account'],
     [['/a', '/b'], '/account'],
+    ['/\t/evil.ru', '/account'],
+    ['/\n/evil.ru', '/account'],
+    ['/\r/evil.ru', '/account'],
   ])('%s → %s', (raw, expected) => {
     expect(safeNext(raw)).toBe(expected)
   })

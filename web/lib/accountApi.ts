@@ -19,8 +19,12 @@ function readCsrf(): string {
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? 'GET').toUpperCase()
-  const headers: Record<string, string> = { 'content-type': 'application/json' }
-  if (method !== 'GET') {
+  const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(method)
+  const headers: Record<string, string> = {
+    'content-type': 'application/json',
+    ...((init.headers as Record<string, string> | undefined) ?? {}),
+  }
+  if (isMutation) {
     const csrf = readCsrf()
     if (csrf) headers['X-CSRF-Token'] = csrf
   }
