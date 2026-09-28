@@ -3,6 +3,7 @@ import type { AuthConfig } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { CustomerSession } from '../../entities/CustomerSession.js'
 import { getMailer } from '../../lib/mail/mailer.js'
+import { getLoginBot } from '../../lib/telegram/loginBot.js'
 import { clearCustomerSessionCookies, startCustomerSession } from '../../lib/account/session.js'
 import { requireCustomerAuth, requireCustomerCsrf } from '../middleware/requireCustomerAuth.js'
 import { ApiError, badRequest } from '../errors.js'
@@ -47,20 +48,13 @@ export async function sendLoginCode(email: string): Promise<void> {
   }
 }
 
-// Бот появится в Task 5; до тех пор Telegram выключен.
-function getLoginBotConfig(env: NodeJS.ProcessEnv = process.env): { username: string } | null {
-  const token = env.TELEGRAM_LOGIN_BOT_TOKEN
-  const username = env.TELEGRAM_LOGIN_BOT_USERNAME
-  return token && username ? { username } : null
-}
-
 // Фабрика, а не модульный роутер: у каждого createApp() свои счётчики
 // rateLimit — тесты создают приложение заново и не упираются в лимиты.
 export function createAccountAuthRouter(): Router {
   const router = Router()
 
   router.get('/config', (_req, res) => {
-    const bot = getLoginBotConfig()
+    const bot = getLoginBot()
     const data: AuthConfig = {
       email: getMailer() !== null,
       telegram: bot !== null,
