@@ -29,8 +29,12 @@ interface ButtonAsLink extends BaseProps {
 type Props = ButtonAsButton | ButtonAsLink
 
 const variantClass: Record<ButtonVariant, string> = {
-  primary:
-    'bg-[var(--gradient-brand)] text-[var(--color-text-on-brand)] shadow-[var(--shadow-glow-brand)] hover:opacity-95',
+  // bg-[var(--gradient-brand)] Tailwind компилирует в background-color, а
+  // --gradient-brand — градиент: невалидное значение, браузер его
+  // отбрасывает, кнопка становится прозрачной (белый текст на белом фоне).
+  // lj-cta-bright — тот же вид CTA витрины, что у кнопки оформления заказа
+  // (checkout/page.tsx), background-image задаётся прямо в CSS-классе.
+  primary: 'lj-cta-bright font-lj-mono uppercase tracking-[0.08em]',
   secondary:
     'border border-[var(--color-border-strong)] bg-transparent text-[var(--color-brand-text)] hover:border-[var(--color-brand)] hover:text-[var(--color-brand)]',
   ghost: 'bg-transparent text-[var(--color-brand-text)] hover:bg-[var(--color-surface-soft)]',

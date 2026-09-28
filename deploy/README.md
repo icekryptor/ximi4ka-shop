@@ -272,6 +272,70 @@ docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
   -c "UPDATE order_notifications SET failed_at = NULL, attempts = 0, last_error = NULL, next_attempt_at = now() WHERE failed_at IS NOT NULL AND last_error IS DISTINCT FROM 'пропущено при включении';"
 ```
 
+## Личный кабинет: почта и бот входа
+
+Вход в `/account` — по коду с почты или через Telegram (`docs/superpowers/plans/2026-09-28-customer-account.md`).
+
+**1. Почта.** Ящик `noreply@ximi4ka.ru` у провайдера домена уже заведён — нужны
+только SMTP-хост/порт провайдера и пароль приложения (не пароль от почты) для
+`SMTP_PASS`, плюс SPF и DKIM в DNS (записи даёт тот же провайдер). Заполнить
+`SMTP_*` и `MAIL_FROM` в `deploy/app.env`. Без `SMTP_HOST` в проде вход по
+почте выключен (`GET /api/account/auth/config` отдаёт `email: false`), но
+сайт всё равно предлагает вход через Telegram. Проверка: войти по своей
+почте, письмо должно прийти не в «Спам».
+
+**2. Бот.** Для входа в кабинет нужен отдельный, новый бот — не служебный
+`@ximsite_bot`, который шлёт уведомления о заказах. В @BotFather —
+`/newbot`, имя «Химичка», username вида `ximi4ka_bot`. Там же `/setuserpic`
+(логотип), `/setdescription` («Вход в личный кабинет ximi4ka.ru») и
+`/setabouttext`. Токен — в `TELEGRAM_LOGIN_BOT_TOKEN`, username без `@` — в
+`TELEGRAM_LOGIN_BOT_USERNAME`. Секрет вебхука — `openssl rand -hex 32` — в
+`TELEGRAM_LOGIN_WEBHOOK_SECRET`. Если секрет не задать, вебхук отвечает 404
+и вход у покупателя зависает на «ждём подтверждения» — заполнить нужно все
+три переменные сразу.
+
+**3. Webhook.** После деплоя:
+
+```bash
+docker compose exec ximishop-api node api/dist/scripts/telegram-set-webhook.js
+```
+
+Адрес берётся из `WEB_ORIGIN`, должен быть https. Проверка:
+`curl -s https://api.telegram.org/bot<TOKEN>/getWebhookInfo` показывает URL
+и `pending_update_count: 0`. `getUpdates` для этого бота не вызывать: при
+активном webhook Telegram вернёт ошибку.
+
+**4. Миграция.** Накатывается автоматически при деплое — `deploy.sh` гоняет
+`node api/dist/scripts/migrate.js` шагом «→ миграции» после переключения
+контейнеров; отдельно запускать не нужно, только проверить этот шаг в логе
+деплоя. Ручной запуск (например, если деплой прервался раньше этого шага):
+
+```bash
+docker compose exec ximishop-api node api/dist/scripts/migrate.js
+```
+
+Накатывает `AddCustomerAccounts1790700000000` и
+`AddOrderPlacedSignedIn1790710000000`. Владение таблицами `public` (включая
+`orders`) на проде переведено на `ximishop_user` 25.09.2026 — актуально,
+только если базу восстанавливали из дампа заново под `supabase_admin` и
+владелец не переносился (`prod-db-table-ownership` в памяти проекта): тогда
+`ALTER TABLE orders OWNER TO ximishop_user;` от `supabase_admin`, как и для
+остальных объектов `public`.
+
+Таблицы `customer_email_codes`, `telegram_login_requests` и просроченные
+строки `customer_sessions` пока не чистятся автоматически — это разовые
+строки на 10 минут/60 дней жизни, но задачи на очистку ещё нет.
+
+**5. Привязка Telegram.** Привязка телеграм-аккаунта к покупателю никогда не
+сливает два разных аккаунта (защита от фишинга): если этот Telegram уже
+привязан к другому аккаунту, объединить их так нельзя — покупателю нужно
+войти через Telegram и уже там привязать почту кодом (привязка почты кодом
+сливает аккаунты).
+
+**6. Страница политики конфиденциальности.** На сайте её пока нет — вход и
+чекаут показывают только текст согласия. Для 152-ФЗ нужно завести страницу в
+CMS и проставить на неё ссылку в этих местах.
+
 ## Хвосты
 
 - Апекс `ximi4ka.ru` остаётся на Tilda; noindex снимать только при его переключении.

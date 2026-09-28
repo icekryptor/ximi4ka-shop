@@ -43,6 +43,16 @@ export type { BlogPost } from './types/blogPost.js'
 export type { SearchResult, SearchProductResult, SearchPostResult } from './types/search.js'
 
 export type {
+  AuthConfig,
+  CustomerProfile,
+  LastDelivery,
+  AccountOrderSummary,
+  AccountOrdersPage,
+  TelegramLoginStart,
+  TelegramLoginPoll,
+} from './types/account.js'
+
+export type {
   Block,
   BlockType,
   ParagraphBlock,

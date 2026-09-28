@@ -8,6 +8,7 @@ import type {
   DeliveryDestination,
   DeliveryMethod,
   DeliveryQuote,
+  LastDelivery,
 } from '@ximi4ka-shop/shared'
 import { getCdekPoints, quoteShipping } from '@/lib/api'
 import {
@@ -68,6 +69,8 @@ export interface CdekDeliveryModel {
   retryPoints: () => void
   retryQuotes: () => void
   rejectPoint: (message: string) => void
+  // Доставка из прошлого заказа вошедшего покупателя (спека кабинета §6).
+  applyLastDelivery: (last: LastDelivery) => void
 }
 
 // Сохранённый город (спека §5.1): только код и название, без персональных
@@ -141,9 +144,9 @@ export function useCdekDelivery(
   items: { productId: string; quantity: number }[],
 ): CdekDeliveryModel {
   const [city, setCityState] = useState<CdekCity | null>(loadSavedCity)
-  const [method, setMethod] = useState<DeliveryMethod>('cdek_pvz')
+  const [method, setMethodState] = useState<DeliveryMethod>('cdek_pvz')
   const [point, setPointState] = useState<CdekPoint | null>(null)
-  const [courier, setCourier] = useState<CourierAddress>(EMPTY_COURIER_ADDRESS)
+  const [courier, setCourierState] = useState<CourierAddress>(EMPTY_COURIER_ADDRESS)
   const [mapNotice, setMapNotice] = useState<string | null>(null)
   const [pointError, setPointError] = useState<string | null>(null)
   const [pointsAttempt, setPointsAttempt] = useState(0)
@@ -151,6 +154,11 @@ export function useCdekDelivery(
   const [pointsResult, setPointsResult] = useState<PointsResult | null>(null)
   const [quotesResult, setQuotesResult] = useState<QuotesResult | null>(null)
   const [courierQuote, setCourierQuote] = useState<CourierQuoteResult | null>(null)
+  const [pendingPointCode, setPendingPointCode] = useState<string | null>(null)
+  // Покупатель уже что-то выбрал руками — applyLastDelivery(...) (доставка из
+  // прошлого заказа, приходит асинхронно после входа) больше не имеет права
+  // ничего менять, иначе она перетрёт выбор, сделанный, пока профиль грузился.
+  const userTouchedRef = useRef(false)
 
   const cityCode = city?.code ?? null
   const cityName = city?.name ?? ''
@@ -168,10 +176,13 @@ export function useCdekDelivery(
       ? `${JSON.stringify(courierFull)}#${cartKey}#${quotesAttempt}`
       : null
 
-  // Свежие корзина и адрес для отложенных запросов.
-  const latestRef = useRef({ items, courierFull })
+  // Свежие корзина, адрес, город и адрес курьера — для отложенных запросов и
+  // для applyLastDelivery, которая не должна читать их из своего замыкания
+  // (оно «застывает» на состоянии того рендера, где эффект чекаута один раз
+  // подписался на неё).
+  const latestRef = useRef({ items, courierFull, city, courier })
   useEffect(() => {
-    latestRef.current = { items, courierFull }
+    latestRef.current = { items, courierFull, city, courier }
   })
 
   useEffect(() => {
@@ -255,6 +266,16 @@ export function useCdekDelivery(
   const cityLocation = pointsResult?.data?.city.location ?? null
   const pointsSeen = pointsResult?.data != null
 
+  // Пункт из прошлого заказа выбираем, когда загрузится список города; если
+  // пункт закрылся — покупатель просто выберет другой.
+  useEffect(() => {
+    if (!pendingPointCode || pointsStatus !== 'ready') return
+    const found = points.find((p) => p.code === pendingPointCode)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (found && !point) setPointState(found)
+    setPendingPointCode(null)
+  }, [pendingPointCode, pointsStatus, points, point])
+
   const quotesKey =
     cityCode === null || cartKey === '' ? null : quotesKeyOf(cityCode, cartKey, quotesAttempt)
   const quotesHit =
@@ -288,7 +309,11 @@ export function useCdekDelivery(
         : null
       : courierFull
 
-  function setCity(next: CdekCity | null) {
+  // Город/пункт меняются одинаково, вызывает ли их покупатель или
+  // applyLastDelivery — разница только в том, что второе не должно считаться
+  // «рукой покупателя» (см. userTouchedRef ниже), поэтому логика вынесена в
+  // applyCityState и applyLastDelivery дёргает её напрямую.
+  function applyCityState(next: CdekCity | null) {
     setCityState(next)
     // Смена города сбрасывает пункт; адрес курьера не трогает (§5.1).
     setPointState(null)
@@ -297,15 +322,32 @@ export function useCdekDelivery(
     saveCity(next)
   }
 
+  function setCity(next: CdekCity | null) {
+    userTouchedRef.current = true
+    applyCityState(next)
+  }
+
+  function setMethod(next: DeliveryMethod) {
+    userTouchedRef.current = true
+    setMethodState(next)
+  }
+
   function setPoint(next: CdekPoint) {
+    userTouchedRef.current = true
     setPointState(next)
     setPointError(null)
     setMapNotice(null)
   }
 
+  function setCourier(next: CourierAddress) {
+    userTouchedRef.current = true
+    setCourierState(next)
+  }
+
   // Карта → список (§5.2): пункт с карты ставится, только если он есть в
   // списке города, иначе заказ ушёл бы с пунктом, которого сервер не знает.
   function chooseOnMap(office: WidgetOffice) {
+    userTouchedRef.current = true
     if (!city) {
       setMapNotice('Сначала выберите город — пункт появится в списке')
       return
@@ -334,6 +376,38 @@ export function useCdekDelivery(
     setPointsAttempt((n) => n + 1)
   }
 
+  function applyLastDelivery(last: LastDelivery) {
+    // Покупатель уже сам что-то выбрал (пока профиль грузился) — его выбор
+    // важнее прошлого заказа, и applyLastDelivery ничего не трогает.
+    if (userTouchedRef.current) return
+    if (!last.cityCode) return
+    // Читаем город/курьера из ref, а не из замыкания: applyLastDelivery
+    // вызывается один раз из эффекта чекаута, и обычное city/courier тут —
+    // застывшее значение того рендера, на котором эффект подписался.
+    const current = latestRef.current
+    if (!current.city && !last.cityName) return
+    // Город из localStorage приоритетнее: покупатель мог выбрать новый.
+    if (!current.city && last.cityName) {
+      applyCityState({ code: last.cityCode, name: last.cityName, fullName: last.cityName })
+    } else if (current.city && current.city.code !== last.cityCode) {
+      return
+    }
+    setMethodState(last.method)
+    if (last.method === 'cdek_pvz' && last.deliveryPointCode)
+      setPendingPointCode(last.deliveryPointCode)
+    if (
+      last.method === 'cdek_courier' &&
+      last.courierStreet &&
+      current.courier.street.trim() === ''
+    ) {
+      setCourierState({
+        street: last.courierStreet,
+        apartment: '',
+        postalCode: last.postalCode ?? '',
+      })
+    }
+  }
+
   return {
     city,
     method,
@@ -357,5 +431,6 @@ export function useCdekDelivery(
     retryPoints: () => setPointsAttempt((n) => n + 1),
     retryQuotes: () => setQuotesAttempt((n) => n + 1),
     rejectPoint,
+    applyLastDelivery,
   }
 }

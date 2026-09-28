@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import type { CdekCity, CdekCityPoints, CdekPoint, QuoteDestination } from '@ximi4ka-shop/shared'
+import type {
+  CdekCity,
+  CdekCityPoints,
+  CdekPoint,
+  CustomerProfile,
+  QuoteDestination,
+} from '@ximi4ka-shop/shared'
 import CheckoutPage from './page'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
 
@@ -16,6 +22,17 @@ vi.mock('@/lib/checkout', async (importActual) => {
   const actual = await importActual<typeof import('@/lib/checkout')>()
   return { ...actual, redirectTo: (url: string) => mockRedirectTo(url) }
 })
+
+const accountMock = vi.hoisted(() => ({
+  me: null as import('@ximi4ka-shop/shared').CustomerProfile | null,
+  // Тест гонки подменяет это отложенным промисом, чтобы решить самому,
+  // когда профиль «приходит с сервера» — уже после того, как покупатель
+  // успел сам что-то выбрать в блоке доставки.
+  impl: null as (() => Promise<import('@ximi4ka-shop/shared').CustomerProfile | null>) | null,
+}))
+vi.mock('@/lib/accountApi', () => ({
+  getMeOrNull: () => (accountMock.impl ? accountMock.impl() : Promise.resolve(accountMock.me)),
+}))
 
 // Город и пункты — как в песочнице СДЭК 25.09.2026 (урезаны).
 const MOSCOW: CdekCity = { code: 44, name: 'Москва', fullName: 'Москва, Россия' }
@@ -124,6 +141,8 @@ beforeEach(() => {
   mockSuggest.mockClear()
   mockGetPoints.mockClear()
   mapMock.available = true
+  accountMock.me = null
+  accountMock.impl = null
 })
 
 afterEach(() => {
@@ -186,6 +205,17 @@ function okCheckoutResponse(orderNumber = 'XM-2026-00042', paymentUrl: string | 
       status: 201,
     },
   )
+}
+
+// Промис, который тест решает вручную — чтобы проверить гонку между ответом
+// профиля покупателя и выбором, который он успел сделать в блоке доставки,
+// пока этот ответ ещё не пришёл.
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
 }
 
 describe('/checkout page', () => {
@@ -524,5 +554,113 @@ describe('/checkout page', () => {
     // Cart is preserved so the user can adjust it.
     expect(loadCart()).toHaveLength(1)
     expect(mockPush).not.toHaveBeenCalled()
+  })
+})
+
+describe('чекаут для вошедшего покупателя', () => {
+  const profile = {
+    id: '1',
+    email: 'ivan@example.com',
+    telegramUsername: 'ivan_tg',
+    hasTelegram: true,
+    name: 'Иван',
+    phone: '+79001234567',
+    lastDelivery: null,
+  }
+
+  it('подставляет контакты из профиля и не показывает подсказку входа', async () => {
+    accountMock.me = profile
+    seedCart(seed)
+    render(<CheckoutPage />)
+    expect(await screen.findByDisplayValue('Иван')).toBeInTheDocument()
+    expect(screen.getByLabelText(/телефон/i)).toHaveValue('+7 (900) 123-45-67')
+    expect(screen.getByLabelText(/email/i)).toHaveValue('ivan@example.com')
+    expect(screen.getByLabelText(/^telegram/i)).toHaveValue('@ivan_tg')
+    expect(screen.queryByText(/чтобы заказ сохранился/)).toBeNull()
+  })
+
+  it('гостю — подсказка войти со ссылкой назад на чекаут', async () => {
+    seedCart(seed)
+    render(<CheckoutPage />)
+    const link = await screen.findByRole('link', { name: 'Войдите' })
+    expect(link).toHaveAttribute('href', '/account/login?next=/checkout')
+  })
+
+  it('пункт выдачи из прошлого заказа выбирается, когда загрузится список города', async () => {
+    accountMock.me = {
+      ...profile,
+      lastDelivery: {
+        method: 'cdek_pvz',
+        cityCode: 44,
+        cityName: 'Москва',
+        deliveryPointCode: 'MSK65',
+        postalCode: null,
+        courierStreet: null,
+      },
+    }
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await vi.waitFor(() => expect(mockGetPoints).toHaveBeenCalledWith(44))
+    await vi.waitFor(() =>
+      expect(screen.getByRole('combobox', { name: /пункт получения/i })).toHaveValue(
+        'MSK65 · ул. Динамовская, 1А, 110а',
+      ),
+    )
+  })
+
+  it('город из localStorage другой — доставку из прошлого заказа не трогаем', async () => {
+    window.localStorage.setItem(
+      'ximi4ka-checkout-city',
+      JSON.stringify({ code: 137, name: 'Санкт-Петербург', fullName: 'Санкт-Петербург, Россия' }),
+    )
+    accountMock.me = {
+      ...profile,
+      lastDelivery: {
+        method: 'cdek_courier',
+        cityCode: 44,
+        cityName: 'Москва',
+        deliveryPointCode: null,
+        postalCode: '101000',
+        courierStreet: 'ул. Ленина, 1',
+      },
+    }
+    seedCart(seed)
+    render(<CheckoutPage />)
+    expect(await screen.findByDisplayValue('Иван')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue('ул. Ленина, 1')).toBeNull()
+  })
+
+  it('выбор покупателя до ответа профиля не перебивается доставкой из прошлого заказа', async () => {
+    const deferred = createDeferred<CustomerProfile | null>()
+    accountMock.impl = () => deferred.promise
+    seedCart(seed)
+    render(<CheckoutPage />)
+
+    // Покупатель уже выбрал город и способ, пока профиль ещё грузится.
+    await chooseCity()
+    fireEvent.click(screen.getByRole('radio', { name: /курьер/i }))
+    fireEvent.change(screen.getByLabelText(/улица, дом/i), {
+      target: { value: 'ул. Своя, 5' },
+    })
+
+    // Профиль приходит с доставкой из другого заказа — другой город и способ.
+    deferred.resolve({
+      ...profile,
+      lastDelivery: {
+        method: 'cdek_pvz',
+        cityCode: 999,
+        cityName: 'Другой город',
+        deliveryPointCode: 'ZZZ',
+        postalCode: null,
+        courierStreet: null,
+      },
+    })
+    // Контакты подставляются в любом случае — по этому и ждём, что профиль
+    // долетел и его эффект отработал.
+    await screen.findByDisplayValue('Иван')
+
+    expect(screen.getByRole('combobox', { name: /город/i })).toHaveValue('Москва')
+    expect(screen.getByRole('radio', { name: /курьер/i })).toBeChecked()
+    expect(screen.getByLabelText(/улица, дом/i)).toHaveValue('ул. Своя, 5')
   })
 })

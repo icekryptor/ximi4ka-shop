@@ -263,4 +263,9 @@ describe('Header v3', () => {
     const { container } = render(<Header />)
     expect(container.querySelector('.bg-\\[var\\(--color-lj-brand\\)\\]')).not.toBeNull()
   })
+
+  it('иконка личного кабинета ведёт на /account', () => {
+    render(<Header />)
+    expect(screen.getByRole('link', { name: 'Личный кабинет' })).toHaveAttribute('href', '/account')
+  })
 })

@@ -17,6 +17,8 @@ import { adminRevisionsRouter } from './routes/admin/revisions.js'
 import { adminSettingsRouter } from './routes/admin/settings.js'
 import { publicSettingsRouter } from './routes/public/settings.js'
 import { authRouter } from './routes/auth/index.js'
+import { createAccountRouter } from './routes/account/index.js'
+import { createTelegramWebhookRouter } from './routes/telegram/loginWebhook.js'
 import { checkoutRouter } from './routes/checkout.js'
 import { tbankWebhookRouter } from './routes/webhooks/tbank.js'
 import { publicOrdersRouter } from './routes/public/orders.js'
@@ -53,6 +55,8 @@ export function createApp(): Express {
   })
 
   app.use('/api/auth', authRouter)
+  app.use('/api/account', createAccountRouter())
+  app.use('/api/telegram', createTelegramWebhookRouter())
   app.use('/api/checkout', checkoutRouter)
   app.use('/api/webhooks/tbank', tbankWebhookRouter)
   app.use('/api/public/orders', publicOrdersRouter)

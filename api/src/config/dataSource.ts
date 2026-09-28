@@ -14,6 +14,10 @@ import { OrderNotification } from '../entities/OrderNotification.js'
 import { CdekShipment } from '../entities/CdekShipment.js'
 import { AdminUser } from '../entities/AdminUser.js'
 import { AdminSession } from '../entities/AdminSession.js'
+import { Customer } from '../entities/Customer.js'
+import { CustomerSession } from '../entities/CustomerSession.js'
+import { CustomerEmailCode } from '../entities/CustomerEmailCode.js'
+import { TelegramLoginRequest } from '../entities/TelegramLoginRequest.js'
 import { EntityRevision } from '../entities/EntityRevision.js'
 import { Redirect } from '../entities/Redirect.js'
 import { Media } from '../entities/Media.js'
@@ -92,6 +96,10 @@ export const AppDataSource = new DataSource({
     CdekShipment,
     AdminUser,
     AdminSession,
+    Customer,
+    CustomerSession,
+    CustomerEmailCode,
+    TelegramLoginRequest,
     EntityRevision,
     Redirect,
     Media,
