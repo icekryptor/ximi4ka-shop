@@ -1,5 +1,6 @@
 import type { Order } from '../../entities/Order.js'
 import { generateToken, verifyToken } from './token.js'
+import { tbankFetch } from './tbankTransport.js'
 import type { CreatePaymentResult, PaymentEvent, PaymentProvider, PaymentStatus } from './types.js'
 
 // Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring.
@@ -7,6 +8,19 @@ import type { CreatePaymentResult, PaymentEvent, PaymentProvider, PaymentStatus 
 // NotificationURL webhooks; request signature — see token.ts.
 
 export const TBANK_DEFAULT_API_URL = 'https://securepay.tinkoff.ru/v2/'
+
+// fetch заворачивает сетевые/TLS-ошибки в TypeError('fetch failed') с
+// исходной причиной в `cause` (например код SELF_SIGNED_CERT_IN_CHAIN) —
+// сам err.message её не показывает, логируем отдельным аргументом, когда
+// она есть (иначе строка лога заканчивалась бы литералом "undefined").
+function logTbankError(message: string, err: unknown): void {
+  const cause = (err as { cause?: unknown })?.cause
+  if (cause !== undefined) {
+    console.error(message, err, cause)
+  } else {
+    console.error(message, err)
+  }
+}
 
 // Provider payment statuses → our order-status domain.
 //   AUTHORIZED — money reserved on the card (one-stage payments confirm
@@ -29,6 +43,8 @@ export function mapTbankStatus(status: string): PaymentStatus {
   }
 }
 
+export type Fetch = (input: string | URL, init?: RequestInit) => Promise<Response>
+
 export interface TBankConfig {
   terminalKey: string
   password: string
@@ -42,6 +58,11 @@ export interface TBankConfig {
    * СДЭК; successUrl/failUrl тогда не используются.
    */
   returnOrigin?: string
+  /**
+   * По умолчанию — tbankFetch (доверяет корню Минцифры только для запросов
+   * к Т-Банку). Параметр — точка расширения для тестов.
+   */
+  fetch?: Fetch
 }
 
 interface TBankInitResponse {
@@ -78,6 +99,9 @@ export class TBankProvider implements PaymentProvider {
       successUrl: cfg.successUrl ?? process.env.TBANK_SUCCESS_URL,
       failUrl: cfg.failUrl ?? process.env.TBANK_FAIL_URL,
       returnOrigin: (cfg.returnOrigin ?? process.env.WEB_ORIGIN ?? '').replace(/\/+$/, ''),
+      // По умолчанию — tbankFetch: доверяет корню Минцифры только для
+      // запросов к Т-Банку, а не глобально (см. tbankTransport.ts).
+      fetch: cfg.fetch ?? tbankFetch,
     }
   }
 
@@ -91,7 +115,8 @@ export class TBankProvider implements PaymentProvider {
       ...params,
     }
     body.Token = generateToken(body, this.cfg.password)
-    const res = await fetch(new URL(method, this.cfg.apiUrl), {
+    const doFetch = this.cfg.fetch ?? tbankFetch
+    const res = await doFetch(new URL(method, this.cfg.apiUrl), {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -143,7 +168,7 @@ export class TBankProvider implements PaymentProvider {
       }
       return { externalId: String(body.PaymentId), paymentUrl: body.PaymentURL }
     } catch (err) {
-      console.error(`tbank: Init request failed for ${order.orderNumber}`, err)
+      logTbankError(`tbank: Init request failed for ${order.orderNumber}`, err)
       return null
     }
   }
@@ -184,7 +209,7 @@ export class TBankProvider implements PaymentProvider {
       if (!body.Success || typeof body.Status !== 'string') return 'unknown'
       return mapTbankStatus(body.Status)
     } catch (err) {
-      console.error(`tbank: GetState failed for payment ${externalId}`, err)
+      logTbankError(`tbank: GetState failed for payment ${externalId}`, err)
       return 'unknown'
     }
   }

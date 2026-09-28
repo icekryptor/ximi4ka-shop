@@ -1,9 +1,24 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import type { Order } from '../../entities/Order.js'
 import { generateToken, verifyToken } from './token.js'
-import { TBankProvider, mapTbankStatus } from './tbank.js'
+import { TBankProvider, mapTbankStatus, type Fetch } from './tbank.js'
 import { ManualProvider } from './manual.js'
 import { getPaymentProvider, resolvePaymentProviderName } from './index.js'
+
+// Провайдер по умолчанию берёт fetch из tbankTransport.js (tbankFetch) —
+// подменяем модуль, чтобы «дефолтный» путь тоже не бил в сеть, если тест его
+// не переопределит явным cfg.fetch (см. describe ниже про дефолтный транспорт).
+// vi.mock поднимается вверх файла автоматически — переменную для фабрики
+// приходится объявлять через vi.hoisted, иначе она ещё не инициализирована
+// в момент подъёма (см. документацию vitest).
+const tbankFetchMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ Success: true, PaymentId: 1, PaymentURL: 'https://pay/1' }),
+  })),
+)
+vi.mock('./tbankTransport.js', () => ({ tbankFetch: tbankFetchMock }))
 
 const CFG = {
   terminalKey: 'TestTerminal',
@@ -22,19 +37,21 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
   } as Order
 }
 
-function mockFetchOnce(body: unknown, ok = true, status = 200) {
-  const fn = vi.fn(async () => ({
+// Мок fetch, инжектируемый через TBankConfig.fetch — НИКОГДА не бьёт в
+// реальную сеть (провайдер больше не трогает глобальный/undici fetch
+// напрямую, когда конфиг задаёт свой).
+function mockFetchOnce(body: unknown, ok = true, status = 200): ReturnType<typeof vi.fn> & Fetch {
+  return vi.fn(async () => ({
     ok,
     status,
     json: async () => body,
-  }))
-  vi.stubGlobal('fetch', fn)
-  return fn
+  })) as unknown as ReturnType<typeof vi.fn> & Fetch
 }
 
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.unstubAllEnvs()
+  tbankFetchMock.mockClear()
 })
 
 describe('mapTbankStatus', () => {
@@ -64,7 +81,7 @@ describe('TBankProvider.createPayment', () => {
       PaymentURL: 'https://securepay.example.test/pay/1',
       Status: 'NEW',
     })
-    const provider = new TBankProvider(CFG)
+    const provider = new TBankProvider({ ...CFG, fetch: fetchMock })
     const result = await provider.createPayment(makeOrder())
 
     expect(result).toEqual({
@@ -91,6 +108,7 @@ describe('TBankProvider.createPayment', () => {
       ...CFG,
       returnOrigin: 'https://new.ximi4ka.ru/',
       successUrl: 'https://new.ximi4ka.ru/success',
+      fetch: fetchMock,
     })
     await provider.createPayment(makeOrder({ publicToken: 'a1b2c3' }))
     const [, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit]
@@ -108,6 +126,7 @@ describe('TBankProvider.createPayment', () => {
       returnOrigin: '',
       successUrl: 'https://shop.test/success',
       failUrl: 'https://shop.test/fail',
+      fetch: fetchMock,
     })
     await provider.createPayment(makeOrder({ publicToken: 'a1b2c3' }))
     const sent = JSON.parse(
@@ -118,27 +137,57 @@ describe('TBankProvider.createPayment', () => {
   })
 
   it('returns null when Init responds Success=false', async () => {
-    mockFetchOnce({ Success: false, ErrorCode: '9999', Message: 'nope' })
-    const provider = new TBankProvider(CFG)
+    const fetchMock = mockFetchOnce({ Success: false, ErrorCode: '9999', Message: 'nope' })
+    const provider = new TBankProvider({ ...CFG, fetch: fetchMock })
     expect(await provider.createPayment(makeOrder())).toBeNull()
   })
 
   it('returns null on network failure', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => {
-        throw new Error('ECONNREFUSED')
-      }),
-    )
-    const provider = new TBankProvider(CFG)
+    const fetchMock = vi.fn(async () => {
+      throw new Error('ECONNREFUSED')
+    }) as unknown as Fetch
+    const provider = new TBankProvider({ ...CFG, fetch: fetchMock })
     expect(await provider.createPayment(makeOrder())).toBeNull()
   })
 
   it('returns null without calling fetch when credentials are missing', async () => {
     const fetchMock = mockFetchOnce({})
-    const provider = new TBankProvider({ ...CFG, terminalKey: '', password: '' })
+    const provider = new TBankProvider({ ...CFG, terminalKey: '', password: '', fetch: fetchMock })
     expect(await provider.createPayment(makeOrder())).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('logs the underlying TLS/network cause on Init failure (e.g. SELF_SIGNED_CERT_IN_CHAIN)', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const cause = Object.assign(new Error('self-signed certificate in certificate chain'), {
+      code: 'SELF_SIGNED_CERT_IN_CHAIN',
+    })
+    const err = new TypeError('fetch failed', { cause })
+    const fetchMock = vi.fn(async () => {
+      throw err
+    }) as unknown as Fetch
+    const provider = new TBankProvider({ ...CFG, fetch: fetchMock })
+
+    expect(await provider.createPayment(makeOrder())).toBeNull()
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('Init request failed'), err, cause)
+    spy.mockRestore()
+  })
+})
+
+describe('TBankProvider default transport', () => {
+  it('uses tbankFetch from tbankTransport.js when no fetch is injected', async () => {
+    const provider = new TBankProvider(CFG)
+    const result = await provider.createPayment(makeOrder())
+    expect(result).toEqual({ externalId: '1', paymentUrl: 'https://pay/1' })
+    expect(tbankFetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('prefers the injected fetch over tbankFetch when both are available', async () => {
+    const fetchMock = mockFetchOnce({ Success: true, PaymentId: 2, PaymentURL: 'https://pay/2' })
+    const provider = new TBankProvider({ ...CFG, fetch: fetchMock })
+    await provider.createPayment(makeOrder())
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(tbankFetchMock).not.toHaveBeenCalled()
   })
 })
 
@@ -215,7 +264,7 @@ describe('TBankProvider.verifyAndParseWebhook', () => {
 describe('TBankProvider.getStatus', () => {
   it('POSTs GetState and maps the returned status', async () => {
     const fetchMock = mockFetchOnce({ Success: true, Status: 'CONFIRMED', PaymentId: '700001' })
-    const provider = new TBankProvider(CFG)
+    const provider = new TBankProvider({ ...CFG, fetch: fetchMock })
     expect(await provider.getStatus('700001')).toBe('paid')
     const [url, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit]
     expect(String(url)).toBe('https://securepay.example.test/v2/GetState')
@@ -225,22 +274,34 @@ describe('TBankProvider.getStatus', () => {
   })
 
   it('maps failures and intermediates', async () => {
-    mockFetchOnce({ Success: true, Status: 'CANCELED' })
-    expect(await new TBankProvider(CFG).getStatus('1')).toBe('failed')
-    mockFetchOnce({ Success: true, Status: 'FORM_SHOWED' })
-    expect(await new TBankProvider(CFG).getStatus('1')).toBe('pending')
+    const fetchMock1 = mockFetchOnce({ Success: true, Status: 'CANCELED' })
+    expect(await new TBankProvider({ ...CFG, fetch: fetchMock1 }).getStatus('1')).toBe('failed')
+    const fetchMock2 = mockFetchOnce({ Success: true, Status: 'FORM_SHOWED' })
+    expect(await new TBankProvider({ ...CFG, fetch: fetchMock2 }).getStatus('1')).toBe('pending')
   })
 
   it('returns unknown on API error or network failure', async () => {
-    mockFetchOnce({ Success: false, ErrorCode: '404' })
-    expect(await new TBankProvider(CFG).getStatus('1')).toBe('unknown')
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => {
-        throw new Error('boom')
-      }),
-    )
-    expect(await new TBankProvider(CFG).getStatus('1')).toBe('unknown')
+    const fetchMock1 = mockFetchOnce({ Success: false, ErrorCode: '404' })
+    expect(await new TBankProvider({ ...CFG, fetch: fetchMock1 }).getStatus('1')).toBe('unknown')
+
+    const fetchMock2 = vi.fn(async () => {
+      throw new Error('boom')
+    }) as unknown as Fetch
+    expect(await new TBankProvider({ ...CFG, fetch: fetchMock2 }).getStatus('1')).toBe('unknown')
+  })
+
+  it('logs the underlying cause on GetState failure', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const cause = Object.assign(new Error('self-signed certificate in certificate chain'), {
+      code: 'SELF_SIGNED_CERT_IN_CHAIN',
+    })
+    const err = new TypeError('fetch failed', { cause })
+    const fetchMock = vi.fn(async () => {
+      throw err
+    }) as unknown as Fetch
+    expect(await new TBankProvider({ ...CFG, fetch: fetchMock }).getStatus('1')).toBe('unknown')
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('GetState failed'), err, cause)
+    spy.mockRestore()
   })
 })
 

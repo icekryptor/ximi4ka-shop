@@ -38,6 +38,8 @@ test-results/
 
 # Certs / keys (Next.js local HTTPS, misc)
 *.pem
+# Исключение: публичные корневые сертификаты УЦ (не ключи) для T-Bank.
+!api/certs/*.pem
 *.key
 
 # Uploaded files (runtime artifact; directory kept via .gitkeep)
