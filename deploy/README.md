@@ -305,17 +305,26 @@ docker compose exec ximishop-api node api/dist/scripts/telegram-set-webhook.js
 и `pending_update_count: 0`. `getUpdates` для этого бота не вызывать: при
 активном webhook Telegram вернёт ошибку.
 
-**4. Миграция.**
+**4. Миграция.** Накатывается автоматически при деплое — `deploy.sh` гоняет
+`node api/dist/scripts/migrate.js` шагом «→ миграции» после переключения
+контейнеров; отдельно запускать не нужно, только проверить этот шаг в логе
+деплоя. Ручной запуск (например, если деплой прервался раньше этого шага):
 
 ```bash
 docker compose exec ximishop-api node api/dist/scripts/migrate.js
 ```
 
-Накатывает `AddCustomerAccounts1790700000000`. Если `ALTER TABLE orders`
-упадёт на правах доступа — таблица, как и в разделе «База в контейнере
-supabase-db» выше, может принадлежать `supabase_admin`, а не
-`ximishop_user`: переназначить владельца `orders` на пользователя приложения
-(`ALTER TABLE orders OWNER TO ximishop_user;` от `supabase_admin`).
+Накатывает `AddCustomerAccounts1790700000000` и
+`AddOrderPlacedSignedIn1790710000000`. Владение таблицами `public` (включая
+`orders`) на проде переведено на `ximishop_user` 25.09.2026 — актуально,
+только если базу восстанавливали из дампа заново под `supabase_admin` и
+владелец не переносился (`prod-db-table-ownership` в памяти проекта): тогда
+`ALTER TABLE orders OWNER TO ximishop_user;` от `supabase_admin`, как и для
+остальных объектов `public`.
+
+Таблицы `customer_email_codes`, `telegram_login_requests` и просроченные
+строки `customer_sessions` пока не чистятся автоматически — это разовые
+строки на 10 минут/60 дней жизни, но задачи на очистку ещё нет.
 
 **5. Привязка Telegram.** Привязка телеграм-аккаунта к покупателю никогда не
 сливает два разных аккаунта (защита от фишинга): если этот Telegram уже
