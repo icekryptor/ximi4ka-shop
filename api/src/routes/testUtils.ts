@@ -90,3 +90,22 @@ export async function resetAccountTables(): Promise<void> {
     'TRUNCATE customer_sessions, customer_email_codes, telegram_login_requests, order_items, orders, customers RESTART IDENTITY CASCADE',
   )
 }
+
+export interface CustomerAuth {
+  cookie: string
+  csrfToken: string
+}
+
+// Разбирает Set-Cookie ответа входа в «Cookie: …» для следующих запросов.
+export function customerAuthFrom(setCookie: string[] | string | undefined): CustomerAuth {
+  const list = ([] as string[]).concat(setCookie ?? [])
+  const pick = (name: string) => list.find((c) => c.startsWith(`${name}=`))?.split(';')[0]
+  const session = pick('ximi4ka_customer_session')
+  const csrf = pick('ximi4ka_customer_csrf')
+  if (!session || !csrf) throw new Error('customerAuthFrom: нет cookie сессии покупателя')
+  return { cookie: `${session}; ${csrf}`, csrfToken: csrf.split('=')[1] }
+}
+
+export function customerHeaders(auth: CustomerAuth): Record<string, string> {
+  return { Cookie: auth.cookie, 'X-CSRF-Token': auth.csrfToken }
+}
