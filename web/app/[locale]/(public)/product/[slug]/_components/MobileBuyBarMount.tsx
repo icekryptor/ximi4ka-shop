@@ -6,7 +6,8 @@ import { MobileBuyBarLJ } from '@/components/product/MobileBuyBarLJ'
 import { useCart } from '@/lib/cart'
 
 interface Props {
-  product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'>
+  product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'> &
+    Partial<Pick<Product, 'compareAtPriceRub'>>
 }
 
 /**
@@ -63,6 +64,7 @@ export function MobileBuyBarMount({ product }: Props) {
         slug: product.slug,
         name: product.name,
         priceRub: product.priceRub,
+        compareAtPriceRub: product.compareAtPriceRub ?? undefined,
         image: product.images[0]?.url,
       },
       1,

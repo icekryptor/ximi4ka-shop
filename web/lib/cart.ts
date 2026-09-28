@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react'
+import { wholesaleUnitDiscounts } from './wholesale'
 
 export interface CartItem {
   productId: string
@@ -14,6 +15,11 @@ export interface CartItem {
    * normalizeCartItem принимает оба формата.
    */
   image?: string
+  /**
+   * Цена «до» (compareAtPriceRub товара) на момент добавления — только
+   * если она выше priceRub. Нужна, чтобы показать скидку в подытоге.
+   */
+  compareAtPriceRub?: number
 }
 
 const STORAGE_KEY = 'ximi4ka-shop-cart'
@@ -63,6 +69,9 @@ function normalizeCartItem(value: unknown): CartItem | null {
   if (typeof v.image === 'string' && v.image !== '') {
     item.image = v.image
   }
+  if (typeof v.compareAtPriceRub === 'number' && v.compareAtPriceRub > v.priceRub) {
+    item.compareAtPriceRub = v.compareAtPriceRub
+  }
   return item
 }
 
@@ -95,13 +104,25 @@ export function addToCart(
   item: Omit<CartItem, 'quantity'>,
   qty = 1,
 ): CartItem[] {
+  const fresh = withCompareAt(item)
   const existing = items.find((i) => i.productId === item.productId)
   if (existing) {
+    // Повторное добавление обновляет снимок цены — в корзине актуальная.
     return items.map((i) =>
-      i.productId === item.productId ? { ...i, quantity: i.quantity + qty } : i,
+      i.productId === item.productId ? { ...fresh, quantity: i.quantity + qty } : i,
     )
   }
-  return [...items, { ...item, quantity: qty }]
+  return [...items, { ...fresh, quantity: qty }]
+}
+
+// Цена «до» имеет смысл, только если она выше текущей.
+function withCompareAt<T extends { priceRub: number; compareAtPriceRub?: number | null }>(
+  item: T,
+): Omit<T, 'compareAtPriceRub'> & { compareAtPriceRub?: number } {
+  const { compareAtPriceRub, ...rest } = item
+  return compareAtPriceRub != null && compareAtPriceRub > item.priceRub
+    ? { ...rest, compareAtPriceRub }
+    : rest
 }
 
 export function removeFromCart(items: CartItem[], productId: string): CartItem[] {
@@ -119,6 +140,33 @@ export function clearCart(): CartItem[] {
 
 export function calculateSubtotal(items: CartItem[]): number {
   return items.reduce((sum, i) => sum + i.priceRub * i.quantity, 0)
+}
+
+export interface CartTotals {
+  /** Товары по ценам «до» (где их нет — по текущим). */
+  goodsRub: number
+  /** Товары по текущим ценам — так считает сервер (subtotal заказа). */
+  subtotalRub: number
+  /** Оптовая скидка на наборы (web/lib/wholesale.ts, зеркало сервера). */
+  wholesaleRub: number
+  /** Вся скидка для покупателя: разница с ценой «до» + оптовая. */
+  discountRub: number
+  /** К оплате за товары: goodsRub − discountRub = subtotalRub − wholesaleRub. */
+  totalRub: number
+}
+
+export function cartTotals(items: CartItem[]): CartTotals {
+  const unitOff = wholesaleUnitDiscounts(items)
+  let goodsRub = 0
+  let subtotalRub = 0
+  let wholesaleRub = 0
+  for (const i of items) {
+    goodsRub += (i.compareAtPriceRub ?? i.priceRub) * i.quantity
+    subtotalRub += i.priceRub * i.quantity
+    wholesaleRub += (unitOff.get(i.slug) ?? 0) * i.quantity
+  }
+  const totalRub = subtotalRub - wholesaleRub
+  return { goodsRub, subtotalRub, wholesaleRub, discountRub: goodsRub - totalRub, totalRub }
 }
 
 // Кэш снапшота ключуется сырой строкой из localStorage: дорогая работа
@@ -177,8 +225,8 @@ export function useCart() {
     saveCart(clearCart())
   }, [])
 
-  const subtotal = useMemo(() => calculateSubtotal(items), [items])
+  const totals = useMemo(() => cartTotals(items), [items])
   const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items])
 
-  return { items, add, remove, setQty, clear, subtotal, itemCount }
+  return { items, add, remove, setQty, clear, subtotal: totals.subtotalRub, totals, itemCount }
 }

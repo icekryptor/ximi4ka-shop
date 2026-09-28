@@ -191,4 +191,95 @@ describe('<OrderStatusView>', () => {
     })
     expect(fetchMock).toHaveBeenCalledTimes(61)
   })
+
+  it('sends the order secret with the status request', async () => {
+    const fetchMock = fetchReturning(statusPayload())
+    vi.stubGlobal('fetch', fetchMock)
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} token="sec ret" />)
+    await screen.findByTestId('order-status-label')
+    expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toContain(
+      '/api/public/orders/XM-2026-00042/status?t=sec%20ret',
+    )
+  })
+
+  it('shows the CDEK track number with a tracking link once it is assigned', async () => {
+    vi.stubGlobal(
+      'fetch',
+      fetchReturning(
+        statusPayload({
+          status: 'paid',
+          paidAt: '2026-07-02T08:30:00.000Z',
+          shipment: {
+            state: 'created',
+            trackingNumber: '1234567890',
+            trackingUrl: 'https://www.cdek.ru/ru/tracking?order_id=1234567890',
+          },
+        }),
+      ),
+    )
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate token="t" />)
+    expect(await screen.findByTestId('order-track-number')).toHaveTextContent('1234567890')
+    const link = screen.getByRole('link', { name: /Отследить на cdek\.ru/ })
+    expect(link).toHaveAttribute('href', 'https://www.cdek.ru/ru/tracking?order_id=1234567890')
+    expect(link).toHaveAttribute('target', '_blank')
+  })
+
+  it('keeps polling a paid order until CDEK assigns the track number', async () => {
+    vi.useFakeTimers()
+    const paid = { status: 'paid' as const, paidAt: '2026-07-02T08:30:00.000Z' }
+    const fetchMock = fetchReturning(
+      statusPayload({
+        ...paid,
+        shipment: { state: 'pending', trackingNumber: null, trackingUrl: null },
+      }),
+      statusPayload({
+        ...paid,
+        shipment: {
+          state: 'created',
+          trackingNumber: '1234567890',
+          trackingUrl: 'https://www.cdek.ru/ru/tracking?order_id=1234567890',
+        },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} token="t" />)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(screen.getByTestId('order-track-pending')).toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(screen.getByTestId('order-track-number')).toHaveTextContent('1234567890')
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20000)
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('tells the buyer the payment did not go through after a failed return from the bank', async () => {
+    vi.stubGlobal('fetch', fetchReturning(statusPayload({ paymentProvider: 'tbank' })))
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} paymentFailed />)
+    expect(await screen.findByTestId('order-payment-failed')).toHaveTextContent(/оплата не прошла/i)
+  })
+
+  it('does not promise emails or SMS in the not-found copy', async () => {
+    vi.stubGlobal('fetch', fetchReturning({ notFound: true }))
+    render(<OrderStatusView orderNumber="XM-2026-00404" celebrate={false} />)
+    await screen.findByText('Заказ не найден')
+    expect(screen.queryByText(/письме|SMS/)).toBeNull()
+  })
+
+  it('reads the order secret from the URL fragment', async () => {
+    window.history.replaceState(null, '', '/order/XM-2026-00042?new=1#t=frag123')
+    const fetchMock = fetchReturning(statusPayload())
+    vi.stubGlobal('fetch', fetchMock)
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
+    await screen.findByTestId('order-status-label')
+    expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toContain('status?t=frag123')
+    window.history.replaceState(null, '', '/')
+  })
 })

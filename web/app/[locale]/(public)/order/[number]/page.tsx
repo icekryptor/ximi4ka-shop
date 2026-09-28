@@ -28,5 +28,12 @@ export async function generateMetadata({ params }: Pick<Props, 'params'>): Promi
 export default async function OrderStatusPage({ params, searchParams }: Props) {
   const { number } = await params
   const sp = await searchParams
-  return <OrderStatusView orderNumber={decodeNumber(number)} celebrate={sp.new === '1'} />
+  // Секрет заказа (#t=…) читает сам OrderStatusView: фрагмент до сервера не доходит.
+  return (
+    <OrderStatusView
+      orderNumber={decodeNumber(number)}
+      celebrate={sp.new === '1'}
+      paymentFailed={sp.payment === 'failed'}
+    />
+  )
 }

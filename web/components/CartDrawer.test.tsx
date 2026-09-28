@@ -149,7 +149,24 @@ describe('CartDrawer', () => {
     })
     const dialog = screen.getByRole('dialog', { name: 'Корзина' })
     // 2*1000 + 1*2500 = 4500
-    expect(within(dialog).getByText(/4[\s ]?500 ₽/)).toBeInTheDocument()
+    expect(within(dialog).getByTestId('drawer-total')).toHaveTextContent(/4[\s ]?500 ₽/)
+    expect(within(dialog).queryByTestId('summary-discount')).toBeNull()
+  })
+
+  it('shows the wholesale discount and the discounted total', () => {
+    act(() => {
+      saveCart([
+        { productId: 'k1', slug: 'himichka-30', name: 'Химичка 3.0', priceRub: 3099, quantity: 5 },
+      ])
+    })
+    render(<CartDrawer />)
+    act(() => {
+      openDrawer()
+    })
+    const dialog = screen.getByRole('dialog', { name: 'Корзина' })
+    // 5 × 3099 = 15 495, оптовая −299 × 5 = −1 495
+    expect(within(dialog).getByTestId('summary-discount')).toHaveTextContent(/−1[\s ]?495 ₽/)
+    expect(within(dialog).getByTestId('drawer-total')).toHaveTextContent(/14[\s ]?000 ₽/)
   })
 
   it('Escape closes the drawer', () => {

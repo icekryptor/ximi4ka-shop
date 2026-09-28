@@ -18,6 +18,7 @@ async function seedOrder(overrides: Partial<Order> = {}): Promise<Order> {
       deliveryAddress: { address: 'Москва', comment: null },
       deliveryMethod: 'cdek_pvz',
       subtotalRub: 100,
+      discountRub: 0,
       shippingRub: 0,
       totalRub: 100,
       paymentProvider: 'manual',

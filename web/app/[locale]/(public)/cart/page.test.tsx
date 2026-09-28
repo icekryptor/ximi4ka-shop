@@ -59,12 +59,11 @@ describe('/cart page v3 calm', () => {
       saveCart(seed)
     })
     render(<CartPage />)
-    // subtotal = 2*1000 + 1*2500 = 4500
-    // shipping = 400 (hardcoded)
-    // total = 4900
-    expect(screen.getByText(/подытог/i)).toBeInTheDocument()
+    // Товары = 2*1000 + 1*2500 = 4500; доставку считает чекаут — в итог не входит.
+    expect(screen.getByTestId('summary-goods')).toHaveTextContent(/4[\s ]?500 ₽/)
     expect(screen.getByText(/доставка/i)).toBeInTheDocument()
-    expect(screen.getByText(/итого/i)).toBeInTheDocument()
+    expect(screen.getByText(/при оформлении/i)).toBeInTheDocument()
+    expect(screen.getByTestId('cart-total')).toHaveTextContent(/4[\s ]?500 ₽/)
   })
 
   it('checkout CTA points to /checkout', () => {

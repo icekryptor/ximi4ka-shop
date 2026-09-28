@@ -2,16 +2,22 @@ import { In, IsNull } from 'typeorm'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Product } from '../../entities/Product.js'
 import { ApiError } from '../../routes/errors.js'
+import { wholesaleUnitDiscounts } from '../pricing/wholesale.js'
 import type { PackLine } from './pack.js'
 
 export interface CartLine {
   product: Product
   quantity: number
+  /** Цена за штуку с оптовой скидкой; без скидки равна product.priceRub. */
+  unitPriceRub: number
 }
 
 export interface LoadedCart {
   lines: CartLine[]
+  /** Сумма товаров по обычным ценам. */
   subtotalRub: number
+  /** Оптовая скидка на наборы; к оплате за товары — subtotalRub − discountRub. */
+  discountRub: number
   packLines: PackLine[]
 }
 
@@ -51,11 +57,25 @@ export async function loadCart(
     })
   }
 
-  const lines = productIds.map((id) => ({
-    product: productById.get(id)!,
-    quantity: qtyByProduct.get(id)!,
-  }))
+  const unitOff = wholesaleUnitDiscounts(
+    productIds.map((id) => {
+      const p = productById.get(id)!
+      return { slug: p.slug, quantity: qtyByProduct.get(id)!, priceRub: p.priceRub }
+    }),
+  )
+  const lines = productIds.map((id) => {
+    const product = productById.get(id)!
+    return {
+      product,
+      quantity: qtyByProduct.get(id)!,
+      unitPriceRub: product.priceRub - (unitOff.get(product.slug) ?? 0),
+    }
+  })
   const subtotalRub = lines.reduce((sum, l) => sum + l.product.priceRub * l.quantity, 0)
+  const discountRub = lines.reduce(
+    (sum, l) => sum + (l.product.priceRub - l.unitPriceRub) * l.quantity,
+    0,
+  )
   const packLines: PackLine[] = lines.map(({ product, quantity }) => ({
     productId: product.id,
     quantity,
@@ -64,5 +84,5 @@ export async function loadCart(
     looseUnits: product.looseUnits ?? 1,
     minBox: product.minBox,
   }))
-  return { lines, subtotalRub, packLines }
+  return { lines, subtotalRub, discountRub, packLines }
 }

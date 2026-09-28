@@ -98,7 +98,17 @@ export default async function BlogPostPage({ params }: Props) {
 
   return (
     <>
-      <JsonLd data={articleJsonLd(post)} />
+      <JsonLd
+        data={articleJsonLd(
+          {
+            ...post,
+            description: post.excerpt ?? post.metaDescription,
+            image: post.coverImageUrl ?? post.ogImage,
+            url: `/blog/${post.slug}`,
+          },
+          'BlogPosting',
+        )}
+      />
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Главная', url: '/' },

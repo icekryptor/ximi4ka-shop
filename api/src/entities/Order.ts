@@ -25,6 +25,16 @@ export class Order {
   @Column({ type: 'varchar', length: 64, name: 'order_number' })
   orderNumber!: string
 
+  // Секрет для ссылки на страницу заказа (трек СДЭК). Генерирует база —
+  // см. миграцию AddOrderPublicToken; в админку и уведомления не уходит.
+  @Column({
+    type: 'varchar',
+    length: 64,
+    name: 'public_token',
+    default: () => "replace(gen_random_uuid()::text, '-', '')",
+  })
+  publicToken!: string
+
   @Column({ type: 'varchar', length: 32, default: 'pending' })
   status!: OrderStatus
 
@@ -63,6 +73,10 @@ export class Order {
 
   @Column({ type: 'integer', name: 'subtotal_rub' })
   subtotalRub!: number
+
+  // Оптовая скидка на наборы; total = subtotal − discount + shipping.
+  @Column({ type: 'integer', name: 'discount_rub', default: 0 })
+  discountRub!: number
 
   @Column({ type: 'integer', name: 'shipping_rub', default: 0 })
   shippingRub!: number

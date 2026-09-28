@@ -24,6 +24,7 @@ const order: NotifiableOrder = {
     deliveryPointCode: 'NSK1',
   },
   subtotalRub: 587,
+  discountRub: 0,
   shippingRub: 504,
   totalRub: 1091,
   items: [
@@ -102,6 +103,19 @@ describe('telegramCard', () => {
         'Комментарий: после 18:00',
         'Статус: создан',
       ].join('\n'),
+    )
+  })
+
+  it('оптовая скидка — отдельной частью итоговой строки', () => {
+    const card = telegramCard({
+      ...order,
+      subtotalRub: 15495,
+      discountRub: 1495,
+      shippingRub: 0,
+      totalRub: 14000,
+    })
+    expect(card).toContain(
+      'Товары 15 495 ₽ · оптовая скидка −1 495 ₽ · доставка бесплатно · итого 14 000 ₽',
     )
   })
 

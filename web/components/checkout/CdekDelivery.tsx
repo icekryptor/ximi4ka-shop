@@ -119,7 +119,7 @@ export function CdekDelivery({ delivery: d, shipping, errors }: Props) {
       {showMap && shipping && (
         <PvzMap
           goods={widgetGoods(shipping.packages)}
-          servicePath={cdekWidgetServicePath(shipping.subtotalRub)}
+          servicePath={cdekWidgetServicePath(shipping.subtotalRub - shipping.discountRub)}
           tariffPvz={shipping.tariffs.pvz}
           cityLocation={d.cityLocation}
           selectedPoint={d.point}

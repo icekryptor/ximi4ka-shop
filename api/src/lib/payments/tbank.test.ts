@@ -85,6 +85,38 @@ describe('TBankProvider.createPayment', () => {
     expect(verifyToken(sent, CFG.password, sent.Token as string)).toBe(true)
   })
 
+  it('returns the buyer to their own order page, secret included, when the site origin is known', async () => {
+    const fetchMock = mockFetchOnce({ Success: true, PaymentId: 1, PaymentURL: 'https://pay/1' })
+    const provider = new TBankProvider({
+      ...CFG,
+      returnOrigin: 'https://new.ximi4ka.ru/',
+      successUrl: 'https://new.ximi4ka.ru/success',
+    })
+    await provider.createPayment(makeOrder({ publicToken: 'a1b2c3' }))
+    const [, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit]
+    const sent = JSON.parse(init.body as string) as Record<string, unknown>
+    expect(sent.SuccessURL).toBe('https://new.ximi4ka.ru/order/XM-2026-00001?new=1#t=a1b2c3')
+    expect(sent.FailURL).toBe('https://new.ximi4ka.ru/order/XM-2026-00001?payment=failed#t=a1b2c3')
+    // Адреса — строки верхнего уровня, они входят в подпись.
+    expect(verifyToken(sent, CFG.password, sent.Token as string)).toBe(true)
+  })
+
+  it('falls back to the static success/fail URLs without a site origin', async () => {
+    const fetchMock = mockFetchOnce({ Success: true, PaymentId: 1, PaymentURL: 'https://pay/1' })
+    const provider = new TBankProvider({
+      ...CFG,
+      returnOrigin: '',
+      successUrl: 'https://shop.test/success',
+      failUrl: 'https://shop.test/fail',
+    })
+    await provider.createPayment(makeOrder({ publicToken: 'a1b2c3' }))
+    const sent = JSON.parse(
+      (fetchMock.mock.calls[0] as unknown as [URL, RequestInit])[1].body as string,
+    )
+    expect(sent.SuccessURL).toBe('https://shop.test/success')
+    expect(sent.FailURL).toBe('https://shop.test/fail')
+  })
+
   it('returns null when Init responds Success=false', async () => {
     mockFetchOnce({ Success: false, ErrorCode: '9999', Message: 'nope' })
     const provider = new TBankProvider(CFG)

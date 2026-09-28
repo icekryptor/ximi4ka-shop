@@ -67,7 +67,10 @@ export interface OrderDto {
   customerTelegram: string | null
   deliveryAddress: DeliveryAddress
   deliveryMethod: string
+  /** Товары по обычным ценам. */
   subtotalRub: number
+  /** Оптовая скидка на наборы; totalRub = subtotalRub − discountRub + shippingRub. */
+  discountRub: number
   shippingRub: number
   totalRub: number
   paymentProvider: PaymentProvider
@@ -99,6 +102,15 @@ export interface CheckoutRequest {
 export interface CheckoutResponse {
   orderNumber: string
   paymentUrl: string | null
+  /** Секрет заказа для ссылки на его страницу: `/order/<номер>?t=<токен>`. */
+  publicToken: string
+}
+
+/** Трек СДЭК на странице заказа; pending — заказ ещё регистрируется в СДЭК. */
+export interface PublicOrderShipment {
+  state: 'pending' | 'created' | 'failed'
+  trackingNumber: string | null
+  trackingUrl: string | null
 }
 
 // Public status endpoint payload — deliberately PII-free. `paymentProvider`
@@ -111,4 +123,9 @@ export interface PublicOrderStatus {
   paymentProvider: PaymentProvider
   createdAt: string
   paidAt: string | null
+  /**
+   * Только при верном секрете заказа (?t=). null — заказ не уходит в СДЭК
+   * (флаг выключен, не оплачен или доставка не СДЭК).
+   */
+  shipment?: PublicOrderShipment | null
 }

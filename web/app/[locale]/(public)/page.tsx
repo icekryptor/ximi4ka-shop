@@ -13,7 +13,7 @@ import { ProductCard } from '@/components/ProductCard'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
-import { itemListJsonLd, organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
+import { itemListJsonLd } from '@/lib/jsonLd'
 import { LabSection } from '@/components/ui/LabSection'
 import { Ticker } from '@/components/ui'
 import { Hero, PreFooterCta, Manifesto, DEFAULT_TESTIMONIALS } from '@/components/marketing'
@@ -206,8 +206,6 @@ export default async function HomePage({ params }: Props) {
 
   return (
     <>
-      <JsonLd data={organizationJsonLd()} />
-      <JsonLd data={websiteJsonLd()} />
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
 
       {/* Маркиз-тикер фактов — чёрный и над hero, как в макете (17:234):

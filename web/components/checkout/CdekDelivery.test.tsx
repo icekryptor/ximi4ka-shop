@@ -88,6 +88,7 @@ function pointsOf(city: CdekCity, points: CdekPoint[], location: [number, number
 
 const SHIPPING: ShippingQuoteResponse = {
   subtotalRub: 2000,
+  discountRub: 0,
   packages: [
     {
       box: 'small',

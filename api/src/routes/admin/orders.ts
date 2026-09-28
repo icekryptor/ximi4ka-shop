@@ -52,6 +52,12 @@ async function cdekShipment(orderId: string): Promise<CdekShipmentDto | null> {
 }
 
 // List — newest first, optional status filter.
+// Секрет ссылки покупателя (publicToken) админке не нужен — не отдаём.
+function withoutSecret<T extends Order>(order: T): Omit<T, 'publicToken'> {
+  const { publicToken: _secret, ...rest } = order
+  return rest
+}
+
 adminOrdersRouter.get('/', async (req, res, next) => {
   try {
     const { limit, offset, status } = OrdersListQuerySchema.parse(req.query)
@@ -62,7 +68,7 @@ adminOrdersRouter.get('/', async (req, res, next) => {
       skip: offset,
       take: limit,
     })
-    res.json({ data: items, pagination: { limit, offset, total } })
+    res.json({ data: items.map(withoutSecret), pagination: { limit, offset, total } })
   } catch (err) {
     next(err)
   }
@@ -83,7 +89,7 @@ adminOrdersRouter.get('/:id', async (req, res, next) => {
     const ordersEnabled = cdekOrdersEnabled()
     res.json({
       data: {
-        ...order,
+        ...withoutSecret(order),
         notifications: await orderNotifications(order.id),
         cdekShipment: await cdekShipment(order.id),
         cdekOrdersEnabled: ordersEnabled,
@@ -144,7 +150,7 @@ adminOrdersRouter.patch('/:id/status', async (req, res, next) => {
       },
     ]
     const saved = await saveOrderWithStatusEvent(order, from)
-    res.json({ data: saved })
+    res.json({ data: withoutSecret(saved) })
   } catch (err) {
     next(err)
   }

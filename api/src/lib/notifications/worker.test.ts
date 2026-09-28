@@ -36,6 +36,7 @@ async function seedOrder(overrides: Partial<Order> = {}): Promise<Order> {
       },
       deliveryMethod: 'cdek_pvz',
       subtotalRub: 238,
+      discountRub: 0,
       shippingRub: 0,
       totalRub: 238,
       paymentProvider: 'manual',

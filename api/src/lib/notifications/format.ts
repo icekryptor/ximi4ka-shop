@@ -14,6 +14,7 @@ export interface NotifiableOrder {
   deliveryMethod: string
   deliveryAddress: DeliveryAddress
   subtotalRub: number
+  discountRub: number
   shippingRub: number
   totalRub: number
   items: {
@@ -137,7 +138,8 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
     order.customerTelegram ?? '',
     deliveryCell(order),
     order.items.map(itemLine).join('\n'),
-    order.subtotalRub,
+    // «Товары» — со скидкой: колонки таблицы не менялись, Товары + Доставка = Итого.
+    order.subtotalRub - order.discountRub,
     order.shippingRub,
     order.totalRub,
     STATUS_LABELS[order.status],
@@ -163,7 +165,9 @@ export function telegramCard(order: NotifiableOrder): string {
     escapeHtml(contacts.join(' · ')),
     escapeHtml(where),
   ]
-  const tail = [`Товары ${rub(order.subtotalRub)} · ${shipping} · итого ${rub(order.totalRub)}`]
+  const goods = [`Товары ${rub(order.subtotalRub)}`]
+  if (order.discountRub > 0) goods.push(`оптовая скидка −${rub(order.discountRub)}`)
+  const tail = [`${goods.join(' · ')} · ${shipping} · итого ${rub(order.totalRub)}`]
   if (comment) tail.push(`Комментарий: ${escapeHtml(comment)}`)
   tail.push(`Статус: ${STATUS_LABELS[order.status]}`)
 
