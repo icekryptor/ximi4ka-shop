@@ -56,11 +56,10 @@ describe('TelegramConnect', () => {
       />,
     )
     fireEvent.click(screen.getByRole('button', { name: 'Войти через Telegram' }))
-    expect(
-      await screen.findByText(
-        'Этот Telegram уже привязан к другому аккаунту — войдите через Telegram и привяжите почту там.',
-      ),
-    ).toBeInTheDocument()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent(
+      'Этот Telegram уже привязан к другому аккаунту — войдите через Telegram и привяжите почту там.',
+    )
     expect(screen.getByRole('button', { name: 'Начать заново' })).toBeInTheDocument()
   })
 })

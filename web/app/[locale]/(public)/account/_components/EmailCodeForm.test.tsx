@@ -30,7 +30,8 @@ describe('EmailCodeForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Получить код' }))
     fireEvent.change(await screen.findByLabelText('Код из письма'), { target: { value: '000000' } })
     fireEvent.click(screen.getByRole('button', { name: 'Войти' }))
-    expect(await screen.findByText('Неверный код. Осталось попыток: 2')).toBeInTheDocument()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Неверный код. Осталось попыток: 2')
   })
 
   it('повторная отправка доступна через 60 секунд, «Изменить email» возвращает к шагу 1', async () => {

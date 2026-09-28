@@ -84,15 +84,23 @@ export function TelegramConnect({ label, start, onDone, pollIntervalMs = 2000 }:
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      {state === 'expired' && <p className={ERROR_CLASS}>Время на подтверждение вышло.</p>}
+    <div className="flex flex-col gap-2" aria-live="polite">
+      {state === 'expired' && (
+        <p role="alert" className={ERROR_CLASS}>
+          Время на подтверждение вышло.
+        </p>
+      )}
       {state === 'conflict' && (
-        <p className={ERROR_CLASS}>
+        <p role="alert" className={ERROR_CLASS}>
           Этот Telegram уже привязан к другому аккаунту — войдите через Telegram и привяжите почту
           там.
         </p>
       )}
-      {error && <p className={ERROR_CLASS}>{error}</p>}
+      {error && (
+        <p role="alert" className={ERROR_CLASS}>
+          {error}
+        </p>
+      )}
       <Button type="button" variant="secondary" onClick={() => void begin()}>
         {state === 'expired' || state === 'conflict' ? 'Начать заново' : label}
       </Button>

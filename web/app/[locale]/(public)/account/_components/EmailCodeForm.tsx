@@ -89,7 +89,11 @@ export function EmailCodeForm({ start, verify, onDone, submitLabel = 'Войти
           onChange={(e) => setEmail(e.target.value)}
           className={FIELD_CLASS}
         />
-        {error && <p className={ERROR_CLASS}>{error}</p>}
+        {error && (
+          <p role="alert" className={ERROR_CLASS}>
+            {error}
+          </p>
+        )}
         <Button type="submit" loading={busy} disabled={busy || email.trim() === ''}>
           Получить код
         </Button>
@@ -115,7 +119,11 @@ export function EmailCodeForm({ start, verify, onDone, submitLabel = 'Войти
         className={`${FIELD_CLASS} font-lj-mono tracking-[0.5em] text-center text-2xl`}
         autoFocus
       />
-      {error && <p className={ERROR_CLASS}>{error}</p>}
+      {error && (
+        <p role="alert" className={ERROR_CLASS}>
+          {error}
+        </p>
+      )}
       <Button type="submit" loading={busy} disabled={busy || code.length !== 6}>
         {submitLabel}
       </Button>
@@ -134,6 +142,7 @@ export function EmailCodeForm({ start, verify, onDone, submitLabel = 'Войти
           onClick={() => {
             setStep('email')
             setError(null)
+            setResendIn(0)
           }}
         >
           Изменить email
