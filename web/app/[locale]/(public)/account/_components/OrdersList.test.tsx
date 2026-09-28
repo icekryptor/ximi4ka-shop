@@ -48,6 +48,19 @@ describe('OrdersList', () => {
     expect(screen.getByText(/Трек СДЭК: 123/)).toBeInTheDocument()
   })
 
+  it('с фото товара — имя и количество всё равно видны', async () => {
+    getOrders.mockResolvedValue({
+      orders: [
+        order(1, {
+          items: [{ name: 'Набор юного химика', quantity: 2, imageUrl: 'https://cdn/x.jpg' }],
+        }),
+      ],
+      nextCursor: null,
+    })
+    render(<OrdersList />)
+    expect(await screen.findByText('Набор юного химика × 2')).toBeInTheDocument()
+  })
+
   it('«Показать ещё» догружает по курсору', async () => {
     getOrders
       .mockResolvedValueOnce({ orders: [order(1)], nextCursor: 'c1' })

@@ -81,27 +81,25 @@ export function OrdersList() {
                 <span>{DATE.format(new Date(o.createdAt))}</span>
                 <span className="font-[700]">{formatRub(o.totalRub)}</span>
               </div>
-              <div className="mt-3 flex items-center gap-3">
-                {o.items.map((i, idx) =>
-                  i.imageUrl ? (
-                    <div
-                      key={idx}
-                      className="w-12 h-12 shrink-0 rounded-xl border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream-shade)] overflow-hidden"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element -- 48px-миниатюра в списке заказов, как в CartDrawer: next/image здесь только добавил бы обёртку и лоадер */}
-                      <img
-                        src={i.imageUrl}
-                        alt=""
-                        loading="lazy"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <span key={idx} className="text-sm opacity-70">
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                {o.items.map((i, idx) => (
+                  <div key={`${i.name}-${idx}`} className="flex items-center gap-2">
+                    {i.imageUrl && (
+                      <div className="w-12 h-12 shrink-0 rounded-xl border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream-shade)] overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- 48px-миниатюра в списке заказов, как в CartDrawer: next/image здесь только добавил бы обёртку и лоадер */}
+                        <img
+                          src={i.imageUrl}
+                          alt=""
+                          loading="lazy"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <span className="text-sm opacity-70">
                       {i.name} × {i.quantity}
                     </span>
-                  ),
-                )}
+                  </div>
+                ))}
                 {o.itemCount > o.items.reduce((n, i) => n + i.quantity, 0) && (
                   <span className="text-sm opacity-60">и ещё…</span>
                 )}
