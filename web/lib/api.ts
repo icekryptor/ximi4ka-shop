@@ -232,6 +232,7 @@ export async function submitCheckout(
 ): Promise<CheckoutResponse> {
   const body = await request<DataEnvelope<CheckoutResponse>>(`/api/checkout`, {
     method: 'POST',
+    credentials: 'include',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify(payload),
   })
