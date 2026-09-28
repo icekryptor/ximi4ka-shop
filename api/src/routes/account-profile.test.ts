@@ -50,9 +50,10 @@ describe('профиль и заказы', () => {
     const auth = await loginAsCustomer(app)
     const c = await me()
     // Первый — ПВЗ (по умолчанию в seedOrder), второй, более новый, — курьер.
-    await seedOrder({ customerId: c.id })
+    await seedOrder({ customerId: c.id, placedSignedIn: true })
     await seedOrder({
       customerId: c.id,
+      placedSignedIn: true,
       deliveryMethod: 'cdek_courier',
       deliveryAddress: {
         address: 'Казань, ул. Баумана, 5, кв. 12',
@@ -70,6 +71,45 @@ describe('профиль и заказы', () => {
       postalCode: '420111',
       courierStreet: 'ул. Баумана, 5, кв. 12',
     })
+  })
+
+  it('lastDelivery не берёт заказ, привязанный только по email (не вживую)', async () => {
+    const auth = await loginAsCustomer(app)
+    const c = await me()
+    // customerId проставлен (как claimOrdersByEmail сделала бы), но
+    // placedSignedIn остаётся false — заказ не был оформлен вживую этим
+    // покупателем, значит адрес мог быть чужим (спека кабинета §4.4).
+    await seedOrder({ customerId: c.id, placedSignedIn: false })
+    const res = await request(app).get('/api/account/me').set(customerHeaders(auth))
+    expect(res.body.data.lastDelivery).toBeNull()
+  })
+
+  it('lastDelivery игнорирует отменённый вживую-заказ и берёт следующий по свежести', async () => {
+    const auth = await loginAsCustomer(app)
+    const c = await me()
+    await seedOrder({
+      customerId: c.id,
+      placedSignedIn: true,
+      status: 'paid',
+      deliveryMethod: 'cdek_courier',
+      deliveryAddress: {
+        address: 'Казань, ул. Баумана, 5, кв. 12',
+        comment: null,
+        cityCode: 424,
+        postalCode: '420111',
+      },
+    })
+    const cancelled = await seedOrder({
+      customerId: c.id,
+      placedSignedIn: true,
+      status: 'cancelled',
+    })
+    await AppDataSource.query(
+      `UPDATE orders SET created_at = now() + interval '1 minute' WHERE id = $1`,
+      [cancelled.id],
+    )
+    const res = await request(app).get('/api/account/me').set(customerHeaders(auth))
+    expect(res.body.data.lastDelivery).toMatchObject({ method: 'cdek_courier', cityName: 'Казань' })
   })
 
   it('PATCH /me меняет имя и телефон, требует CSRF, валидирует', async () => {

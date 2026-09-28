@@ -55,6 +55,14 @@ export class Order {
   @Column({ type: 'uuid', name: 'customer_id', nullable: true })
   customerId!: string | null
 
+  // true — заказ оформлен вживую вошедшим покупателем (checkout.ts). false —
+  // customer_id проставлен позже подтяжкой по email (claimOrdersByEmail) или
+  // угадан гостем по чужому подтверждённому email. Только такие заказы годятся
+  // для lastDeliveryFor — иначе гость, подставивший email жертвы, подсунет ей
+  // свой адрес доставки при следующем оформлении (миграция AddOrderPlacedSignedIn).
+  @Column({ type: 'boolean', name: 'placed_signed_in', default: false })
+  placedSignedIn!: boolean
+
   // id карточки заказа в рабочем чате: на неё бот отвечает сменами статуса.
   // bigint pg отдаёт строкой — приводим к числу, id сообщений Telegram
   // укладываются в Number.MAX_SAFE_INTEGER.

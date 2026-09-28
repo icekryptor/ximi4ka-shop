@@ -550,11 +550,16 @@ describe('checkout и личный кабинет', () => {
       email: 'buyer@test.local',
     })
     expect(order.customerId).toBe(c.id)
+    expect(order.placedSignedIn).toBe(true)
     expect(c.name).toBe('Иван Иванов')
     expect(c.phone).toBe('+79001234567')
   })
 
-  it('без сессии, но email совпадает с подтверждённым аккаунтом — привязан', async () => {
+  // Ruling (final-fix-brief item 1): гость может привязать неоплаченный заказ
+  // к чужому подтверждённому email, просто угадав его — такой заказ не
+  // должен считаться "оформленным вживую" владельцем аккаунта, иначе
+  // lastDeliveryFor подставит жертве адрес атакующего при следующем чекауте.
+  it('без сессии, но email совпадает с подтверждённым аккаунтом — привязан, но не placedSignedIn', async () => {
     const app = createApp()
     const c = await AppDataSource.getRepository(Customer).save({ email: 'ivan@example.com' })
     const product = await seedProduct()
@@ -565,6 +570,7 @@ describe('checkout и личный кабинет', () => {
       orderNumber: res.body.data.orderNumber,
     })
     expect(order.customerId).toBe(c.id)
+    expect(order.placedSignedIn).toBe(false)
   })
 
   it('без сессии и с незнакомым email — гостевой заказ, аккаунт не создаётся', async () => {

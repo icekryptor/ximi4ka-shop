@@ -31,11 +31,18 @@ export function toProfile(c: Customer, last: LastDelivery | null): CustomerProfi
 }
 
 // Адрес заказа — «<город>, <остальное>» (web/lib/shipping.ts).
+// Только заказы, оформленные вживую вошедшим покупателем (placed_signed_in),
+// и не отменённые/неудавшиеся — иначе гость, угадавший чужой подтверждённый
+// email, подсунул бы жертве свой адрес автозаполнением чекаута (миграция
+// AddOrderPlacedSignedIn).
 export async function lastDeliveryFor(customerId: string): Promise<LastDelivery | null> {
-  const o = await AppDataSource.getRepository(Order).findOne({
-    where: { customerId },
-    order: { createdAt: 'DESC' },
-  })
+  const o = await AppDataSource.getRepository(Order)
+    .createQueryBuilder('o')
+    .where('o.customer_id = :customerId', { customerId })
+    .andWhere('o.placed_signed_in = true')
+    .andWhere('o.status NOT IN (:...excluded)', { excluded: ['cancelled', 'failed'] })
+    .orderBy('o.created_at', 'DESC')
+    .getOne()
   if (!o) return null
   const a = o.deliveryAddress
   const comma = a.address.indexOf(',')

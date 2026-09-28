@@ -94,6 +94,10 @@ checkoutRouter.post('/', async (req, res, next) => {
     // сессии в кросс-сайтовом POST.
     const session = await findCustomerSession(req)
     let customerId = session?.customer.id ?? null
+    // placedSignedIn — только для живой сессии: заказ, привязанный ниже по
+    // введённому email, мог достаться чужому аккаунту, если гость просто
+    // угадал чужой подтверждённый адрес (без входа это не доказывает владение).
+    const placedSignedIn = customerId !== null
     if (!customerId && parsed.customer.email) {
       const owner = await AppDataSource.getRepository(Customer).findOneBy({
         email: normalizeEmail(parsed.customer.email),
@@ -112,6 +116,7 @@ checkoutRouter.post('/', async (req, res, next) => {
             orderNumber,
             status: 'pending',
             customerId,
+            placedSignedIn,
             customerName: parsed.customer.name,
             customerPhone: parsed.customer.phone,
             customerEmail: parsed.customer.email ?? '',
