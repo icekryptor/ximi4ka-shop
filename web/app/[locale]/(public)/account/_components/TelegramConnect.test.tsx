@@ -25,6 +25,9 @@ describe('TelegramConnect', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'Войти через Telegram' }))
     expect(await screen.findByText(/Ждём подтверждения в Telegram/)).toBeInTheDocument()
+    // window.open мог быть заблокирован — рядом всегда есть запасная ссылка
+    // (final-fix-brief item 6: короче «ещё раз», раз это не всегда повтор).
+    expect(screen.getByRole('link', { name: 'Открыть бота' })).toBeInTheDocument()
     expect(open).toHaveBeenCalledWith('https://t.me/ximi4ka_bot?start=abc', '_blank', 'noopener')
     await vi.waitFor(() => expect(onDone).toHaveBeenCalled())
   })

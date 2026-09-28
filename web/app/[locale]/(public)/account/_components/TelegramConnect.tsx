@@ -76,7 +76,7 @@ export function TelegramConnect({ label, start, onDone, pollIntervalMs = 2000 }:
             rel="noopener noreferrer"
             className="underline text-[var(--color-lj-brand)]"
           >
-            Открыть бота ещё раз
+            Открыть бота
           </a>
         )}
       </div>

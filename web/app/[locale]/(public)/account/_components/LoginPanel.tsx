@@ -4,6 +4,7 @@ import type { AuthConfig } from '@ximi4ka-shop/shared'
 import { startEmailLogin, startTelegramLogin, verifyEmailLogin } from '@/lib/accountApi'
 import { redirectTo } from '@/lib/checkout'
 import { EmailCodeForm } from './EmailCodeForm'
+import { SupportButton } from './SupportButton'
 import { TelegramConnect } from './TelegramConnect'
 
 // Полная перезагрузка, а не router.push: серверный layout кабинета должен
@@ -16,6 +17,19 @@ import { TelegramConnect } from './TelegramConnect'
 // админке: ссылку на неё требует 152-ФЗ.
 export function LoginPanel({ next, config }: { next: string; config: AuthConfig }) {
   const done = () => redirectTo(next)
+
+  if (!config.email && !config.telegram) {
+    return (
+      <div className="flex flex-col gap-4">
+        <p className="opacity-70">
+          Вход в личный кабинет временно недоступен. Если нужна помощь с заказом — напишите в
+          поддержку.
+        </p>
+        <SupportButton />
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-10">
       <section className="flex flex-col gap-4">

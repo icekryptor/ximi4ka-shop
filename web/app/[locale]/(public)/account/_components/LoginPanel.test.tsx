@@ -24,11 +24,21 @@ describe('LoginPanel', () => {
     expect(screen.getByText(/условиями обработки персональных данных/)).toBeInTheDocument()
   })
 
-  it('бот выключен — кнопки Telegram нет; почта выключена — пояснение', () => {
+  it('бот выключен, почта включена — кнопки Telegram нет, форма почты есть', () => {
+    render(
+      <LoginPanel next="/account" config={{ email: true, telegram: false, telegramBot: null }} />,
+    )
+    expect(screen.queryByRole('button', { name: 'Войти через Telegram' })).toBeNull()
+    expect(screen.getByLabelText('Email')).toBeInTheDocument()
+  })
+
+  it('оба способа выключены — сообщение о недоступности и кнопка поддержки, форм нет', () => {
     render(
       <LoginPanel next="/account" config={{ email: false, telegram: false, telegramBot: null }} />,
     )
+    expect(screen.getByText(/Вход в личный кабинет временно недоступен/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /поддержку/ })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Email')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Войти через Telegram' })).toBeNull()
-    expect(screen.getByText('Вход по почте временно недоступен')).toBeInTheDocument()
   })
 })
