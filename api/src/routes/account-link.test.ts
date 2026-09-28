@@ -144,6 +144,32 @@ describe('привязка способов входа', () => {
     expect(dead.status).toBe(401)
   })
 
+  it('слияние по email: telegramId и telegramUsername переносятся только парой', async () => {
+    const repo = AppDataSource.getRepository(Customer)
+    await loginAsCustomer(app, 'other@b.ru', mailer)
+    const other = await repo.findOneByOrFail({ email: 'other@b.ru' })
+    await repo.update({ id: other.id }, { telegramId: 55, telegramUsername: 'other_tg' })
+
+    const auth = await loginAsCustomer(app, 'me@b.ru', mailer)
+    const me = await repo.findOneByOrFail({ email: 'me@b.ru' })
+    await repo.update({ id: me.id }, { telegramId: 77, telegramUsername: null })
+
+    // На other@b.ru код выдавался меньше минуты назад — выпускаем код напрямую.
+    const issued = await issueEmailCode('other@b.ru', new Date(Date.now() + 61_000))
+    if (!issued.ok) throw new Error('код не выпустился')
+    await request(app)
+      .post('/api/account/link/email/verify')
+      .set(customerHeaders(auth))
+      .send({ email: 'other@b.ru', code: issued.code })
+      .expect(200)
+
+    const merged = await repo.findOneByOrFail({ id: me.id })
+    // У keep уже был свой telegramId — пара drop'а не переносится, username
+    // чужого telegramId (55) не подменяет собой username для 77.
+    expect(merged.telegramId).toBe(77)
+    expect(merged.telegramUsername).toBeNull()
+  })
+
   it('привязка Telegram: опрос из той же сессии — ok, telegram_id у текущего', async () => {
     const auth = await loginAsCustomer(app, 'me@b.ru', mailer)
     const poll = await confirmTelegramLink(auth)
@@ -156,27 +182,66 @@ describe('привязка способов входа', () => {
     expect(me.telegramUsername).toBe('me_tg')
   })
 
-  it('Telegram уже у другого аккаунта — слияние', async () => {
+  it('Telegram уже у другого аккаунта — конфликт, слияния нет', async () => {
     const tgOnly = await AppDataSource.getRepository(Customer).save({ telegramId: 9, name: 'Иван' })
     const auth = await loginAsCustomer(app, 'me@b.ru', mailer)
     const poll = await confirmTelegramLink(auth)
-    await request(app)
+    const status = await request(app)
       .get('/api/account/auth/telegram/status')
       .set('Cookie', `${auth.cookie}; ${poll}`)
-      .expect(200)
+    expect(status.status).toBe(200)
+    expect(status.body.data.status).toBe('conflict')
     const repo = AppDataSource.getRepository(Customer)
-    expect(await repo.findOneBy({ id: tgOnly.id })).toBeNull()
+    expect(await repo.findOneByOrFail({ id: tgOnly.id })).toMatchObject({
+      telegramId: 9,
+      name: 'Иван',
+    })
     const me = await repo.findOneByOrFail({ email: 'me@b.ru' })
-    expect(me).toMatchObject({ telegramId: 9, name: 'Иван' })
+    expect(me.telegramId).toBeNull()
   })
 
-  it('опрос привязки без сессии (или из чужой) не привязывает', async () => {
+  it('запрос на привязку называет аккаунт и предупреждает про чужую ссылку', async () => {
+    const auth = await loginAsCustomer(app, 'me@b.ru', mailer)
+    const start = await request(app)
+      .post('/api/account/link/telegram/start')
+      .set(customerHeaders(auth))
+    expect(start.status).toBe(200)
+    const nonce = new URL(start.body.data.deepLink).searchParams.get('start')!
+    await hook({
+      message: {
+        message_id: 1,
+        chat: { id: 9, type: 'private' },
+        from: { id: 9, username: 'me_tg' },
+        text: `/start ${nonce}`,
+      },
+    })
+    const text = sent.at(-1)!.text as string
+    expect(text).toContain('m***@b.ru')
+    expect(text).toContain('проигнорируйте')
+  })
+
+  it('опрос привязки без сессии не привязывает', async () => {
     const auth = await loginAsCustomer(app, 'me@b.ru', mailer)
     const poll = await confirmTelegramLink(auth)
     const status = await request(app).get('/api/account/auth/telegram/status').set('Cookie', poll)
     expect(status.body.data.status).toBe('expired')
     const me = await AppDataSource.getRepository(Customer).findOneByOrFail({ email: 'me@b.ru' })
     expect(me.telegramId).toBeNull()
+  })
+
+  it('опрос привязки из чужой сессии не привязывает', async () => {
+    const auth = await loginAsCustomer(app, 'me@b.ru', mailer)
+    const otherAuth = await loginAsCustomer(app, 'other@b.ru', mailer)
+    const poll = await confirmTelegramLink(auth)
+    const status = await request(app)
+      .get('/api/account/auth/telegram/status')
+      .set('Cookie', `${otherAuth.cookie}; ${poll}`)
+    expect(status.body.data.status).toBe('expired')
+    const repo = AppDataSource.getRepository(Customer)
+    const me = await repo.findOneByOrFail({ email: 'me@b.ru' })
+    const other = await repo.findOneByOrFail({ email: 'other@b.ru' })
+    expect(me.telegramId).toBeNull()
+    expect(other.telegramId).toBeNull()
   })
 
   it('отвязать единственный способ входа нельзя — 409; второй можно', async () => {

@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { AppDataSource } from '../../config/dataSource.js'
 import { TelegramLoginRequest } from '../../entities/TelegramLoginRequest.js'
+import { Customer } from '../../entities/Customer.js'
 import type { TelegramLoginBot } from '../telegram/loginBot.js'
 import { hashSessionToken } from '../../routes/middleware/requireAdminAuth.js'
+import { maskEmail } from '../mail/mailer.js'
 import { SUPPORT_TELEGRAM_URL, TG_LOGIN_TTL_MS } from '../../routes/account/constants.js'
 import { newToken } from './session.js'
 
@@ -65,6 +67,16 @@ async function safe(what: string, p: Promise<void>): Promise<void> {
   }
 }
 
+// Кому уходит привязка — называем аккаунт в запросе на подтверждение,
+// иначе получивший чужую ссылку на привязку не поймёт, что привязывает
+// Telegram не себе, а тому, кто прислал ссылку.
+async function linkTargetLabel(customerId: string): Promise<string> {
+  const customer = await AppDataSource.getRepository(Customer).findOneBy({ id: customerId })
+  if (customer?.email) return maskEmail(customer.email)
+  if (customer?.name) return customer.name
+  return 'без имени'
+}
+
 export async function handleTelegramUpdate(
   bot: TelegramLoginBot,
   update: TelegramUpdate,
@@ -110,15 +122,14 @@ export async function handleTelegramUpdate(
       return
     }
     const linking = req.linkCustomerId !== null
+    const prompt = linking
+      ? `Привязать этот Telegram к аккаунту ${await linkTargetLabel(req.linkCustomerId!)} на ${SITE}? Если вы не начинали привязку — просто проигнорируйте это сообщение.`
+      : `Войти на сайт ${SITE}? Если вы не начинали вход, просто проигнорируйте это сообщение.`
     await safe(
       'запрос подтверждения',
-      bot.sendMessage(
-        msg.chat.id,
-        linking
-          ? `Привязать этот Telegram к вашему аккаунту на ${SITE}?`
-          : `Войти на сайт ${SITE}? Если вы не начинали вход, просто проигнорируйте это сообщение.`,
-        [[{ text: linking ? 'Привязать' : 'Подтвердить вход', callback_data: `login:${req.id}` }]],
-      ),
+      bot.sendMessage(msg.chat.id, prompt, [
+        [{ text: linking ? 'Привязать' : 'Подтвердить вход', callback_data: `login:${req.id}` }],
+      ]),
     )
     return
   }

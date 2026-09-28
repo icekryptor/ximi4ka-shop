@@ -185,14 +185,14 @@ export function createAccountAuthRouter(): Router {
             res.json({ data: { status: 'expired' } })
             return
           }
-          await AppDataSource.transaction((em) =>
+          const attached = await AppDataSource.transaction((em) =>
             attachTelegram(em, found.customer.id, {
               id: r.telegramId!,
               username: r.telegramUsername,
               firstName: r.telegramFirstName,
             }),
           )
-          res.json({ data: { status: 'ok' } })
+          res.json({ data: { status: attached.ok ? 'ok' : 'conflict' } })
           return
         }
         const customer = await AppDataSource.transaction((em) =>

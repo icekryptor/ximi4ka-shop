@@ -79,8 +79,12 @@ export async function mergeCustomers(
   // Сначала удаляем, потом заполняем keep — иначе уникальные email/telegram_id столкнутся.
   await repo.delete({ id: dropId })
   keep.email ??= drop.email
-  keep.telegramId ??= drop.telegramId
-  keep.telegramUsername ??= drop.telegramUsername
+  // telegramId и telegramUsername — пара: username чужого telegram_id не
+  // подходит текущему, поэтому переносим их только вместе.
+  if (keep.telegramId == null) {
+    keep.telegramId = drop.telegramId
+    keep.telegramUsername = drop.telegramUsername
+  }
   keep.name ??= drop.name
   keep.phone ??= drop.phone
   await repo.save(keep)
@@ -98,13 +102,20 @@ export async function attachEmail(
   await claimOrdersByEmail(em, customerId, email)
 }
 
+export type AttachTelegramResult = { ok: true } | { ok: false; reason: 'conflict' }
+
+// Привязка Telegram, в отличие от attachEmail, НИКОГДА не сливает аккаунты:
+// иначе злоумышленник, вошедший как A и приславший жертве свою ссылку на
+// привязку, получил бы аккаунт жертвы себе, как только та нажмёт
+// «Привязать». Если telegram_id уже занят другим — просто конфликт.
 export async function attachTelegram(
   em: EntityManager,
   customerId: string,
   tg: TelegramIdentity,
-): Promise<void> {
+): Promise<AttachTelegramResult> {
   const repo = em.getRepository(Customer)
   const owner = await repo.findOneBy({ telegramId: tg.id })
-  if (owner && owner.id !== customerId) await mergeCustomers(em, customerId, owner.id)
+  if (owner && owner.id !== customerId) return { ok: false, reason: 'conflict' }
   await repo.update({ id: customerId }, { telegramId: tg.id, telegramUsername: tg.username })
+  return { ok: true }
 }

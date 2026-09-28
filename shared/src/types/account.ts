@@ -54,5 +54,6 @@ export interface TelegramLoginStart {
 }
 
 export interface TelegramLoginPoll {
-  status: 'pending' | 'ok' | 'expired'
+  // conflict: Telegram уже привязан к другому аккаунту.
+  status: 'pending' | 'ok' | 'expired' | 'conflict'
 }
