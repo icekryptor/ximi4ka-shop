@@ -4,6 +4,7 @@ import type { Express } from 'express'
 import { AppDataSource } from '../config/dataSource.js'
 import { AdminUser } from '../entities/AdminUser.js'
 import { Order } from '../entities/Order.js'
+import { MemoryMailer, setMailerForTests } from '../lib/mail/mailer.js'
 
 export const TEST_ADMIN_EMAIL = 'admin@test.local'
 export const TEST_ADMIN_PASSWORD = 'test-password'
@@ -108,4 +109,19 @@ export function customerAuthFrom(setCookie: string[] | string | undefined): Cust
 
 export function customerHeaders(auth: CustomerAuth): Record<string, string> {
   return { Cookie: auth.cookie, 'X-CSRF-Token': auth.csrfToken }
+}
+
+// Настоящий вход по коду: почта в памяти, код из письма.
+export async function loginAsCustomer(
+  app: Express,
+  email = 'buyer@test.local',
+  mailer = new MemoryMailer(),
+): Promise<CustomerAuth> {
+  setMailerForTests(mailer)
+  const start = await request(app).post('/api/account/auth/email/start').send({ email })
+  if (start.status !== 204) throw new Error(`loginAsCustomer: start ${start.status}`)
+  const code = mailer.lastCodeFor(email)
+  const res = await request(app).post('/api/account/auth/email/verify').send({ email, code })
+  if (res.status !== 200) throw new Error(`loginAsCustomer: verify ${res.status}`)
+  return customerAuthFrom(res.headers['set-cookie'])
 }

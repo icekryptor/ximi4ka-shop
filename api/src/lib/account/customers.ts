@@ -1,0 +1,30 @@
+import type { EntityManager } from 'typeorm'
+import { Customer } from '../../entities/Customer.js'
+
+export async function findOrCreateByEmail(em: EntityManager, email: string): Promise<Customer> {
+  const repo = em.getRepository(Customer)
+  const existing = await repo.findOneBy({ email })
+  if (existing) return existing
+  // Гонка двух входов на один адрес: проигравший получит 23505 — тогда читаем снова.
+  try {
+    return await repo.save(repo.create({ email }))
+  } catch (err) {
+    const again = await repo.findOneBy({ email })
+    if (again) return again
+    throw err
+  }
+}
+
+// Прошлые гостевые заказы с тем же подтверждённым email (спека §4.4). Чужие
+// (уже привязанные) не перехватываем, пустой email ('') ни с чем не совпадает.
+export async function claimOrdersByEmail(
+  em: EntityManager,
+  customerId: string,
+  email: string,
+): Promise<void> {
+  await em.query(
+    `UPDATE orders SET customer_id = $1
+     WHERE customer_id IS NULL AND customer_email <> '' AND lower(customer_email) = $2`,
+    [customerId, email],
+  )
+}
