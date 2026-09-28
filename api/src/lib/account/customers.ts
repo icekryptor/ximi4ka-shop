@@ -63,3 +63,48 @@ export async function claimOrdersByEmail(
     [customerId, email],
   )
 }
+
+// Слияние аккаунтов (спека §4.5): пользователь только что доказал владение
+// обоими. Вызывать внутри транзакции. Сессии удаляемого уходят каскадом.
+export async function mergeCustomers(
+  em: EntityManager,
+  keepId: string,
+  dropId: string,
+): Promise<void> {
+  if (keepId === dropId) return
+  const repo = em.getRepository(Customer)
+  const keep = await repo.findOneByOrFail({ id: keepId })
+  const drop = await repo.findOneByOrFail({ id: dropId })
+  await em.query('UPDATE orders SET customer_id = $1 WHERE customer_id = $2', [keepId, dropId])
+  // Сначала удаляем, потом заполняем keep — иначе уникальные email/telegram_id столкнутся.
+  await repo.delete({ id: dropId })
+  keep.email ??= drop.email
+  keep.telegramId ??= drop.telegramId
+  keep.telegramUsername ??= drop.telegramUsername
+  keep.name ??= drop.name
+  keep.phone ??= drop.phone
+  await repo.save(keep)
+}
+
+export async function attachEmail(
+  em: EntityManager,
+  customerId: string,
+  email: string,
+): Promise<void> {
+  const repo = em.getRepository(Customer)
+  const owner = await repo.findOneBy({ email })
+  if (owner && owner.id !== customerId) await mergeCustomers(em, customerId, owner.id)
+  await repo.update({ id: customerId }, { email })
+  await claimOrdersByEmail(em, customerId, email)
+}
+
+export async function attachTelegram(
+  em: EntityManager,
+  customerId: string,
+  tg: TelegramIdentity,
+): Promise<void> {
+  const repo = em.getRepository(Customer)
+  const owner = await repo.findOneBy({ telegramId: tg.id })
+  if (owner && owner.id !== customerId) await mergeCustomers(em, customerId, owner.id)
+  await repo.update({ id: customerId }, { telegramId: tg.id, telegramUsername: tg.username })
+}

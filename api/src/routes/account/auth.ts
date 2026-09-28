@@ -16,6 +16,7 @@ import { rateLimit } from '../middleware/rateLimit.js'
 import { EmailStartSchema, EmailVerifySchema } from './schemas.js'
 import { discardEmailCode, issueEmailCode, verifyEmailCode } from '../../lib/account/emailCodes.js'
 import {
+  attachTelegram,
   claimOrdersByEmail,
   findOrCreateByEmail,
   findOrCreateByTelegram,
@@ -26,17 +27,20 @@ import {
   consumeConfirmedRequest,
   createTelegramLoginRequest,
 } from '../../lib/account/telegramLogin.js'
+import { findCustomerSession } from '../../lib/account/session.js'
 import { TG_LOGIN_TTL_MS, TG_POLL_COOKIE } from './constants.js'
 
 // Выпуск кода и письмо. Бросает ApiError: 503 — почта не настроена, 429 —
-// лимит, 502 — SMTP не принял письмо (код удалён, повтор сразу возможен).
-export async function sendLoginCode(email: string): Promise<void> {
+// лимит (со Retry-After на res, если он передан), 502 — SMTP не принял
+// письмо (код удалён, повтор сразу возможен).
+export async function sendLoginCode(email: string, res?: Response): Promise<void> {
   const mailer = getMailer()
   if (!mailer) {
     throw new ApiError(503, 'email_login_unavailable', 'Вход по почте временно недоступен')
   }
   const issued = await issueEmailCode(email)
   if (!issued.ok) {
+    res?.setHeader('Retry-After', String(issued.retryAfterSec))
     throw new ApiError(
       429,
       issued.reason === 'too_soon' ? 'code_too_soon' : 'code_hourly_limit',
@@ -104,15 +108,7 @@ export function createAccountAuthRouter(): Router {
     async (req, res, next) => {
       try {
         const { email } = EmailStartSchema.parse(req.body)
-        try {
-          await sendLoginCode(email)
-        } catch (err) {
-          if (err instanceof ApiError && err.status === 429) {
-            const sec = (err.details as { retryAfterSec: number }).retryAfterSec
-            res.setHeader('Retry-After', String(sec))
-          }
-          throw err
-        }
+        await sendLoginCode(email, res)
         res.status(204).end()
       } catch (err) {
         next(err)
@@ -182,8 +178,21 @@ export function createAccountAuthRouter(): Router {
         res.clearCookie(TG_POLL_COOKIE, { ...cookieBase(), httpOnly: true })
         const r = result.request
         if (r.linkCustomerId) {
-          // Привязка к аккаунту — Task 7. До неё такой запрос не логинит.
-          res.json({ data: { status: 'expired' } })
+          // Привязываем, только если опрашивает та же сессия, что начинала
+          // привязку: cookie опроса без сессии (или с чужой) ничего не даёт.
+          const found = await findCustomerSession(req)
+          if (!found || found.customer.id !== r.linkCustomerId) {
+            res.json({ data: { status: 'expired' } })
+            return
+          }
+          await AppDataSource.transaction((em) =>
+            attachTelegram(em, found.customer.id, {
+              id: r.telegramId!,
+              username: r.telegramUsername,
+              firstName: r.telegramFirstName,
+            }),
+          )
+          res.json({ data: { status: 'ok' } })
           return
         }
         const customer = await AppDataSource.transaction((em) =>
