@@ -1,6 +1,41 @@
 import type { EntityManager } from 'typeorm'
 import { Customer } from '../../entities/Customer.js'
 
+export interface TelegramIdentity {
+  id: number
+  username: string | null
+  firstName: string | null
+}
+
+// Тот же покупатель по telegram_id — обновляем username и время входа.
+// Гонка (двойной опрос) — как в findOrCreateByEmail: проигравший читает снова.
+export async function findOrCreateByTelegram(
+  em: EntityManager,
+  tg: TelegramIdentity,
+): Promise<Customer> {
+  const repo = em.getRepository(Customer)
+  const existing = await repo.findOneBy({ telegramId: tg.id })
+  if (existing) {
+    existing.telegramUsername = tg.username
+    existing.lastLoginAt = new Date()
+    return repo.save(existing)
+  }
+  try {
+    return await repo.save(
+      repo.create({
+        telegramId: tg.id,
+        telegramUsername: tg.username,
+        name: tg.firstName,
+        lastLoginAt: new Date(),
+      }),
+    )
+  } catch (err) {
+    const again = await repo.findOneBy({ telegramId: tg.id })
+    if (again) return again
+    throw err
+  }
+}
+
 export async function findOrCreateByEmail(em: EntityManager, email: string): Promise<Customer> {
   const repo = em.getRepository(Customer)
   const existing = await repo.findOneBy({ email })

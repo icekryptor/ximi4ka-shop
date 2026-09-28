@@ -1,0 +1,166 @@
+import { randomUUID } from 'node:crypto'
+import { AppDataSource } from '../../config/dataSource.js'
+import { TelegramLoginRequest } from '../../entities/TelegramLoginRequest.js'
+import type { TelegramLoginBot } from '../telegram/loginBot.js'
+import { hashSessionToken } from '../../routes/middleware/requireAdminAuth.js'
+import { SUPPORT_TELEGRAM_URL, TG_LOGIN_TTL_MS } from '../../routes/account/constants.js'
+import { newToken } from './session.js'
+
+// Минимум полей update, которые мы читаем.
+export interface TelegramUser {
+  id: number
+  username?: string
+  first_name?: string
+}
+export interface TelegramUpdate {
+  message?: {
+    message_id: number
+    chat: { id: number; type: string }
+    from?: TelegramUser
+    text?: string
+  }
+  callback_query?: {
+    id: string
+    from: TelegramUser
+    message?: { message_id: number; chat: { id: number } }
+    data?: string
+  }
+}
+
+const SITE = 'ximi4ka.ru'
+
+export async function createTelegramLoginRequest(
+  linkCustomerId: string | null,
+): Promise<{ nonce: string; pollSecret: string }> {
+  const nonce = newToken() // 43 символа base64url — в лимит 64 параметра start
+  const pollSecret = newToken()
+  const now = new Date()
+  await AppDataSource.getRepository(TelegramLoginRequest).insert({
+    id: randomUUID(),
+    nonceHash: hashSessionToken(nonce),
+    pollSecretHash: hashSessionToken(pollSecret),
+    status: 'pending',
+    telegramId: null,
+    telegramUsername: null,
+    telegramFirstName: null,
+    linkCustomerId,
+    expiresAt: new Date(now.getTime() + TG_LOGIN_TTL_MS),
+    createdAt: now,
+  })
+  return { nonce, pollSecret }
+}
+
+function isLive(r: TelegramLoginRequest | null): r is TelegramLoginRequest {
+  return !!r && r.status === 'pending' && r.expiresAt.getTime() > Date.now()
+}
+
+// Ошибки Telegram не пробрасываем: webhook отвечает 200 всегда, иначе
+// Telegram будет повторять тот же update.
+async function safe(what: string, p: Promise<void>): Promise<void> {
+  try {
+    await p
+  } catch (err) {
+    console.error(`telegram login: ${what} — ${(err as Error).message}`)
+  }
+}
+
+export async function handleTelegramUpdate(
+  bot: TelegramLoginBot,
+  update: TelegramUpdate,
+): Promise<void> {
+  const repo = AppDataSource.getRepository(TelegramLoginRequest)
+
+  const msg = update.message
+  if (msg?.from && msg.chat.type === 'private') {
+    const start = msg.text?.match(/^\/start(?:\s+(\S+))?\s*$/)
+    const nonce = start?.[1]
+    if (!nonce) {
+      await safe(
+        'подсказка',
+        bot.sendMessage(
+          msg.chat.id,
+          `Это бот для входа на ${SITE}. Чтобы войти, нажмите «Войти через Telegram» на сайте. Вопросы — в поддержку.`,
+          [[{ text: 'Написать в поддержку', url: SUPPORT_TELEGRAM_URL }]],
+        ),
+      )
+      return
+    }
+    const req = await repo.findOneBy({ nonceHash: hashSessionToken(nonce) })
+    if (!isLive(req)) {
+      await safe(
+        'ссылка устарела',
+        bot.sendMessage(msg.chat.id, `Ссылка устарела — начните вход на сайте ${SITE} заново.`),
+      )
+      return
+    }
+    // Запоминаем, кто нажал «Старт»: подтвердить сможет только он.
+    await repo.update({ id: req.id }, { telegramId: msg.from.id })
+    const linking = req.linkCustomerId !== null
+    await safe(
+      'запрос подтверждения',
+      bot.sendMessage(
+        msg.chat.id,
+        linking
+          ? `Привязать этот Telegram к вашему аккаунту на ${SITE}?`
+          : `Войти на сайт ${SITE}? Если вы не начинали вход, просто проигнорируйте это сообщение.`,
+        [[{ text: linking ? 'Привязать' : 'Подтвердить вход', callback_data: `login:${req.id}` }]],
+      ),
+    )
+    return
+  }
+
+  const cb = update.callback_query
+  if (cb?.data?.startsWith('login:')) {
+    const id = cb.data.slice('login:'.length)
+    const req = /^[0-9a-f-]{36}$/.test(id) ? await repo.findOneBy({ id }) : null
+    if (!isLive(req) || req.telegramId !== cb.from.id) {
+      await safe(
+        'ответ на кнопку',
+        bot.answerCallbackQuery(cb.id, 'Ссылка устарела — начните заново на сайте'),
+      )
+      return
+    }
+    await repo.update(
+      { id: req.id, status: 'pending' },
+      {
+        status: 'confirmed',
+        telegramUsername: cb.from.username ?? null,
+        telegramFirstName: cb.from.first_name ?? null,
+      },
+    )
+    await safe('ответ на кнопку', bot.answerCallbackQuery(cb.id, 'Готово'))
+    if (cb.message) {
+      await safe(
+        'правка сообщения',
+        bot.editMessageText(
+          cb.message.chat.id,
+          cb.message.message_id,
+          'Готово — вернитесь на сайт.',
+        ),
+      )
+    }
+  }
+}
+
+// Атомарно переводит confirmed → consumed: из двух параллельных опросов
+// сессию получит только один (второй увидит expired).
+export async function consumeConfirmedRequest(
+  pollSecret: string,
+): Promise<
+  { status: 'pending' | 'expired' } | { status: 'confirmed'; request: TelegramLoginRequest }
+> {
+  const repo = AppDataSource.getRepository(TelegramLoginRequest)
+  const req = await repo.findOneBy({ pollSecretHash: hashSessionToken(pollSecret) })
+  if (!req || req.expiresAt.getTime() <= Date.now() || req.status === 'consumed') {
+    return { status: 'expired' }
+  }
+  if (req.status === 'pending') return { status: 'pending' }
+  const result = await repo
+    .createQueryBuilder()
+    .update(TelegramLoginRequest)
+    .set({ status: 'consumed' })
+    .where("id = :id AND status = 'confirmed'", { id: req.id })
+    .execute()
+  if (result.affected !== 1) return { status: 'expired' }
+  return { status: 'confirmed', request: req }
+}
