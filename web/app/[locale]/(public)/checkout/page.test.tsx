@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import type { CdekCity, CdekCityPoints, CdekPoint, QuoteDestination } from '@ximi4ka-shop/shared'
+import type {
+  CdekCity,
+  CdekCityPoints,
+  CdekPoint,
+  CustomerProfile,
+  QuoteDestination,
+} from '@ximi4ka-shop/shared'
 import CheckoutPage from './page'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
 
@@ -19,8 +25,14 @@ vi.mock('@/lib/checkout', async (importActual) => {
 
 const accountMock = vi.hoisted(() => ({
   me: null as import('@ximi4ka-shop/shared').CustomerProfile | null,
+  // Тест гонки подменяет это отложенным промисом, чтобы решить самому,
+  // когда профиль «приходит с сервера» — уже после того, как покупатель
+  // успел сам что-то выбрать в блоке доставки.
+  impl: null as (() => Promise<import('@ximi4ka-shop/shared').CustomerProfile | null>) | null,
 }))
-vi.mock('@/lib/accountApi', () => ({ getMeOrNull: async () => accountMock.me }))
+vi.mock('@/lib/accountApi', () => ({
+  getMeOrNull: () => (accountMock.impl ? accountMock.impl() : Promise.resolve(accountMock.me)),
+}))
 
 // Город и пункты — как в песочнице СДЭК 25.09.2026 (урезаны).
 const MOSCOW: CdekCity = { code: 44, name: 'Москва', fullName: 'Москва, Россия' }
@@ -130,6 +142,7 @@ beforeEach(() => {
   mockGetPoints.mockClear()
   mapMock.available = true
   accountMock.me = null
+  accountMock.impl = null
 })
 
 afterEach(() => {
@@ -192,6 +205,17 @@ function okCheckoutResponse(orderNumber = 'XM-2026-00042', paymentUrl: string | 
       status: 201,
     },
   )
+}
+
+// Промис, который тест решает вручную — чтобы проверить гонку между ответом
+// профиля покупателя и выбором, который он успел сделать в блоке доставки,
+// пока этот ответ ещё не пришёл.
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
 }
 
 describe('/checkout page', () => {
@@ -604,5 +628,39 @@ describe('чекаут для вошедшего покупателя', () => {
     render(<CheckoutPage />)
     expect(await screen.findByDisplayValue('Иван')).toBeInTheDocument()
     expect(screen.queryByDisplayValue('ул. Ленина, 1')).toBeNull()
+  })
+
+  it('выбор покупателя до ответа профиля не перебивается доставкой из прошлого заказа', async () => {
+    const deferred = createDeferred<CustomerProfile | null>()
+    accountMock.impl = () => deferred.promise
+    seedCart(seed)
+    render(<CheckoutPage />)
+
+    // Покупатель уже выбрал город и способ, пока профиль ещё грузится.
+    await chooseCity()
+    fireEvent.click(screen.getByRole('radio', { name: /курьер/i }))
+    fireEvent.change(screen.getByLabelText(/улица, дом/i), {
+      target: { value: 'ул. Своя, 5' },
+    })
+
+    // Профиль приходит с доставкой из другого заказа — другой город и способ.
+    deferred.resolve({
+      ...profile,
+      lastDelivery: {
+        method: 'cdek_pvz',
+        cityCode: 999,
+        cityName: 'Другой город',
+        deliveryPointCode: 'ZZZ',
+        postalCode: null,
+        courierStreet: null,
+      },
+    })
+    // Контакты подставляются в любом случае — по этому и ждём, что профиль
+    // долетел и его эффект отработал.
+    await screen.findByDisplayValue('Иван')
+
+    expect(screen.getByRole('combobox', { name: /город/i })).toHaveValue('Москва')
+    expect(screen.getByRole('radio', { name: /курьер/i })).toBeChecked()
+    expect(screen.getByLabelText(/улица, дом/i)).toHaveValue('ул. Своя, 5')
   })
 })
