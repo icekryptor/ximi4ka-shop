@@ -10,6 +10,13 @@ import { createApp } from '../app.js'
 import { setCdekClientForTests } from '../lib/cdek/index.js'
 import { clearCdekLocationCache } from '../lib/cdek/locations.js'
 
+// TBankProvider (когда его строит getPaymentProvider()) по умолчанию ходит
+// через tbankFetch (undici + доверие корню Минцифры), а не через глобальный
+// fetch — подменяем модуль, чтобы тесты ниже управляли ответом банка, не
+// трогая реальную сеть.
+const tbankFetchMock = vi.hoisted(() => vi.fn())
+vi.mock('../lib/payments/tbankTransport.js', () => ({ tbankFetch: tbankFetchMock }))
+
 async function seedProduct(overrides: Partial<Product> = {}): Promise<Product> {
   const repo = AppDataSource.getRepository(Product)
   return repo.save(
@@ -82,6 +89,7 @@ describe('POST /api/checkout', () => {
   afterEach(() => {
     vi.unstubAllEnvs()
     vi.unstubAllGlobals()
+    tbankFetchMock.mockReset()
     setCdekClientForTests(null)
     clearCdekLocationCache()
   })
@@ -400,7 +408,7 @@ describe('POST /api/checkout', () => {
         PaymentURL: 'https://securepay.tinkoff.ru/pay/42',
       }),
     }))
-    vi.stubGlobal('fetch', fetchMock)
+    tbankFetchMock.mockImplementation(fetchMock)
 
     const p = await seedProduct({ priceRub: 2000 })
     const res = await request(app)
@@ -429,12 +437,9 @@ describe('POST /api/checkout', () => {
     vi.stubEnv('PAYMENT_PROVIDER', 'tbank')
     vi.stubEnv('TBANK_TERMINAL_KEY', 'TestTerminal')
     vi.stubEnv('TBANK_PASSWORD', 'secret')
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => {
-        throw new Error('acquiring down')
-      }),
-    )
+    tbankFetchMock.mockImplementation(async () => {
+      throw new Error('acquiring down')
+    })
 
     const p = await seedProduct()
     const res = await request(app)

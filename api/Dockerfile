@@ -18,6 +18,9 @@
 #   /app/api/uploads); uploads/imported/ is a git-tracked repo asset served at
 #   /uploads/imported/... and must ship in the image. Railway's filesystem is
 #   ephemeral — runtime-uploaded files do not survive redeploys.
+# - api/certs/ (Т-Банк: корневой сертификат Минцифры) резолвится тем же
+#   приёмом (api/dist/lib/payments → ../../../certs → /app/api/certs) и
+#   нужен только в runtime-стадии — tsc его не читает.
 
 # ---- base: workspace manifests only (shared by build + prod-deps) -----------
 FROM node:22-alpine AS base
@@ -54,6 +57,7 @@ COPY api/package.json api/
 COPY shared/package.json shared/
 COPY shared/src shared/src
 COPY --from=build /app/api/dist api/dist
+COPY api/certs api/certs
 # Git-tracked product photos (served at /uploads/imported/...). --chown so the
 # non-root user can write runtime uploads next to them.
 COPY --chown=node:node api/uploads api/uploads

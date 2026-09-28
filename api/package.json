@@ -36,6 +36,7 @@
     "sharp": "^0.34.5",
     "slugify": "^1.6.9",
     "typeorm": "^0.3.28",
+    "undici": "^7.30.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
