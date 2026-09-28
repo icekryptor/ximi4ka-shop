@@ -1,11 +1,14 @@
+import fs from 'node:fs'
 import tls from 'node:tls'
 import { X509Certificate } from 'node:crypto'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 
 // undici экспортирует `fetch` как неконфигурируемое свойство — vi.spyOn на
 // живом модуле падает с "Cannot redefine property". Подменяем экспорт через
-// vi.mock (поднимается наверх файла), Agent оставляем настоящим.
-const undiciFetchMock = vi.fn(async () => new Response('{}', { status: 200 }))
+// vi.mock (поднимается наверх файла), Agent оставляем настоящим. vi.hoisted
+// — иначе фабрика попытается использовать undiciFetchMock раньше его
+// инициализации (см. tbank.test.ts / checkout.test.ts).
+const undiciFetchMock = vi.hoisted(() => vi.fn(async () => new Response('{}', { status: 200 })))
 vi.mock('undici', async (importOriginal) => {
   const actual = await importOriginal<typeof import('undici')>()
   return { ...actual, fetch: undiciFetchMock }
@@ -30,6 +33,33 @@ describe('tbankTransport: российский корневой сертифик
       expect(list).toContain(root)
     }
     expect(list).not.toEqual(tls.rootCertificates)
+  })
+})
+
+describe('tbankTransport: ленивое чтение PEM', () => {
+  afterEach(() => {
+    vi.resetModules()
+  })
+
+  it('не читает файл сертификата при импорте модуля — только при первом обращении к CA-списку', async () => {
+    vi.resetModules()
+    const readSpy = vi.spyOn(fs, 'readFileSync')
+    try {
+      // PAYMENT_PROVIDER=manual импортирует этот модуль транзитивно через
+      // tbank.ts/payments/index.ts, но не должен трогать диск: отсутствующий
+      // PEM не может ронять запуск API, если Т-Банк не используется.
+      const mod = await import('./tbankTransport.js')
+      expect(readSpy).not.toHaveBeenCalled()
+
+      mod.getTbankCaList()
+      expect(readSpy).toHaveBeenCalledTimes(1)
+
+      // Повторный вызов — из кэша, файл не перечитывается.
+      mod.getTbankCaList()
+      expect(readSpy).toHaveBeenCalledTimes(1)
+    } finally {
+      readSpy.mockRestore()
+    }
   })
 })
 

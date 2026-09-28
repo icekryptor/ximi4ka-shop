@@ -11,9 +11,15 @@ export const TBANK_DEFAULT_API_URL = 'https://securepay.tinkoff.ru/v2/'
 
 // fetch заворачивает сетевые/TLS-ошибки в TypeError('fetch failed') с
 // исходной причиной в `cause` (например код SELF_SIGNED_CERT_IN_CHAIN) —
-// сам err.message её не показывает, залогировать нужно отдельно.
-function errorCause(err: unknown): unknown {
-  return (err as { cause?: unknown })?.cause
+// сам err.message её не показывает, логируем отдельным аргументом, когда
+// она есть (иначе строка лога заканчивалась бы литералом "undefined").
+function logTbankError(message: string, err: unknown): void {
+  const cause = (err as { cause?: unknown })?.cause
+  if (cause !== undefined) {
+    console.error(message, err, cause)
+  } else {
+    console.error(message, err)
+  }
 }
 
 // Provider payment statuses → our order-status domain.
@@ -162,7 +168,7 @@ export class TBankProvider implements PaymentProvider {
       }
       return { externalId: String(body.PaymentId), paymentUrl: body.PaymentURL }
     } catch (err) {
-      console.error(`tbank: Init request failed for ${order.orderNumber}`, err, errorCause(err))
+      logTbankError(`tbank: Init request failed for ${order.orderNumber}`, err)
       return null
     }
   }
@@ -203,7 +209,7 @@ export class TBankProvider implements PaymentProvider {
       if (!body.Success || typeof body.Status !== 'string') return 'unknown'
       return mapTbankStatus(body.Status)
     } catch (err) {
-      console.error(`tbank: GetState failed for payment ${externalId}`, err, errorCause(err))
+      logTbankError(`tbank: GetState failed for payment ${externalId}`, err)
       return 'unknown'
     }
   }

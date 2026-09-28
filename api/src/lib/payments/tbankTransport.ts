@@ -26,15 +26,25 @@ import { Agent, fetch as undiciFetch } from 'undici'
 const thisDir = path.dirname(fileURLToPath(import.meta.url))
 const CERT_PATH = path.resolve(thisDir, '../../../certs/russian_trusted_root_ca.pem')
 
-const TBANK_ROOT_CA_PEM = fs.readFileSync(CERT_PATH, 'utf8')
-
 // SHA-256 отпечаток сертификата (проверен контроллером против цепочки,
 // которую реально отдаёт securepay.tinkoff.ru).
 export const TBANK_ROOT_CA_FINGERPRINT =
   'D2:6D:2D:02:31:B7:C3:9F:92:CC:73:85:12:BA:54:10:35:19:E4:40:5D:68:B5:BD:70:3E:97:88:CA:8E:CF:31'
 
+// Файл читается лениво, при первом запросе к Т-Банку, а не при импорте
+// модуля: tbank.ts (а с ним и tbankTransport.ts) импортируется через
+// payments/index.ts и вебхук-роут при любом PAYMENT_PROVIDER, в том числе
+// 'manual' — отсутствующий PEM не должен ронять запуск всего API.
+let tbankRootCaPem: string | null = null
+function getTbankRootCaPem(): string {
+  if (tbankRootCaPem === null) {
+    tbankRootCaPem = fs.readFileSync(CERT_PATH, 'utf8')
+  }
+  return tbankRootCaPem
+}
+
 export function getTbankCaList(): string[] {
-  return [...tls.rootCertificates, TBANK_ROOT_CA_PEM]
+  return [...tls.rootCertificates, getTbankRootCaPem()]
 }
 
 type Fetch = (input: string | URL, init?: RequestInit) => Promise<Response>
