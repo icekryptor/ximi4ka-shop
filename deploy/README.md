@@ -294,7 +294,17 @@ docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
 и вход у покупателя зависает на «ждём подтверждения» — заполнить нужно все
 три переменные сразу.
 
-**3. Webhook.** После деплоя:
+**3. Как бот получает сообщения.** На нашем VPS — **polling**: IPv4 между
+сервером и Telegram закрыт в обе стороны, и вебхук Telegram доставить не
+может (`getWebhookInfo` → `last_error_message: "Connection timed out"`,
+`pending_update_count` растёт). В `deploy/app.env`:
+`TELEGRAM_LOGIN_POLLING=1`, затем `bash deploy/deploy.sh --no-pull`. В логе
+api — `telegram login bot polling started`; вебхук api снимает сам, секрет
+вебхука в этом режиме не нужен. Исходящие запросы в Telegram идут по IPv6 —
+для этого в образе api `NODE_OPTIONS` с `--dns-result-order=ipv6first` (см.
+`api/Dockerfile`).
+
+Вебхук — для сервера, до которого Telegram достучится. После деплоя:
 
 ```bash
 docker compose exec ximishop-api node api/dist/scripts/telegram-set-webhook.js

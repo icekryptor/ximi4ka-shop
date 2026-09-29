@@ -9,7 +9,7 @@ import { sendLoginCode, setTelegramPollCookie } from './auth.js'
 import { verifyEmailCode } from '../../lib/account/emailCodes.js'
 import { attachEmail } from '../../lib/account/customers.js'
 import { createTelegramLoginRequest } from '../../lib/account/telegramLogin.js'
-import { getLoginBot } from '../../lib/telegram/loginBot.js'
+import { getLoginBot, isLoginBotUsable } from '../../lib/telegram/loginBot.js'
 
 // Привязка второго способа входа, слияние аккаунтов, отвязка (спека §4.5).
 // Всё требует активной сессии — привязать можно только к себе.
@@ -57,7 +57,7 @@ export function createAccountLinkRouter(): Router {
     async (req, res, next) => {
       try {
         const bot = getLoginBot()
-        if (!bot || !bot.webhookSecret)
+        if (!isLoginBotUsable(bot))
           throw new ApiError(503, 'telegram_login_unavailable', 'Вход через Telegram недоступен')
         const { nonce, pollSecret } = await createTelegramLoginRequest(req.customer!.id)
         setTelegramPollCookie(res, pollSecret)

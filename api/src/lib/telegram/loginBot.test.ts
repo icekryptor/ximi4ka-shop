@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { TelegramLoginBot, getLoginBot, setLoginBotForTests } from './loginBot.js'
+import { TelegramLoginBot, getLoginBot, isLoginBotUsable, setLoginBotForTests } from './loginBot.js'
 
 function ok() {
   return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 })
@@ -41,6 +41,33 @@ describe('TelegramLoginBot', () => {
       allowed_updates: ['message', 'callback_query'],
       drop_pending_updates: true,
     })
+  })
+
+  it('getUpdates: offset, long polling и нужные типы update; отдаёт result', async () => {
+    const f = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true, result: [{ update_id: 7 }] }), { status: 200 }),
+      )
+    const bot = new TelegramLoginBot({ token: 'T', username: 'b', fetch: f })
+    expect(await bot.getUpdates(5)).toEqual([{ update_id: 7 }])
+    const [url, init] = f.mock.calls[0]
+    expect(url).toBe('https://api.telegram.org/botT/getUpdates')
+    expect(JSON.parse(init.body)).toEqual({
+      offset: 5,
+      timeout: 25,
+      allowed_updates: ['message', 'callback_query'],
+    })
+  })
+
+  it('getLoginBot: TELEGRAM_LOGIN_POLLING=1 — polling, годен и без секрета вебхука', () => {
+    const env = { TELEGRAM_LOGIN_BOT_TOKEN: 'T', TELEGRAM_LOGIN_BOT_USERNAME: 'b' }
+    expect(isLoginBotUsable(getLoginBot(env))).toBe(false)
+    const polling = getLoginBot({ ...env, TELEGRAM_LOGIN_POLLING: '1' })
+    expect(polling?.polling).toBe(true)
+    expect(isLoginBotUsable(polling)).toBe(true)
+    expect(isLoginBotUsable(getLoginBot({ ...env, TELEGRAM_LOGIN_WEBHOOK_SECRET: 's' }))).toBe(true)
+    expect(isLoginBotUsable(null)).toBe(false)
   })
 
   it('getLoginBot: без токена или имени — null; с ними — бот', () => {
