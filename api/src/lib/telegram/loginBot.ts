@@ -1,3 +1,5 @@
+import { describeNetworkError, isNetworkError, telegramFetch } from './transport.js'
+
 // Покупательский бот (вход в кабинет, спека 2026-09-28 §4.3). Отдельный от
 // служебного бота заказов (bot.ts): другой токен, пишет покупателям в личку.
 
@@ -6,7 +8,8 @@ type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 const REQUEST_TIMEOUT_MS = 10_000
 // Long polling: Telegram держит getUpdates до POLL_TIMEOUT_SEC, если новых
 // update нет; сетевой таймаут — с запасом сверху.
-export const POLL_TIMEOUT_SEC = 25
+// Коротко: простаивающее соединение до Telegram у нас рвётся посреди пути.
+export const POLL_TIMEOUT_SEC = 10
 const POLL_REQUEST_TIMEOUT_MS = (POLL_TIMEOUT_SEC + 10) * 1000
 
 // Минимум полей, которые нужны циклу опроса; разбор — в telegramLogin.ts.
@@ -38,20 +41,37 @@ export class TelegramLoginBot {
     this.username = opts.username.replace(/^@/, '')
     this.webhookSecret = opts.webhookSecret ?? null
     this.polling = opts.polling ?? false
-    this.fetchImpl = opts.fetch ?? ((input, init) => fetch(input, init))
+    this.fetchImpl = opts.fetch ?? telegramFetch
   }
 
   private async call<T = unknown>(
     method: string,
     payload: Record<string, unknown>,
     timeoutMs = REQUEST_TIMEOUT_MS,
+    retryOnNetworkError = true,
   ): Promise<T> {
-    const res = await this.fetchImpl(`https://api.telegram.org/bot${this.token}/${method}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(timeoutMs),
-      body: JSON.stringify(payload),
-    })
+    const send = () =>
+      this.fetchImpl(`https://api.telegram.org/bot${this.token}/${method}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(timeoutMs),
+        body: JSON.stringify(payload),
+      })
+    let res: Response
+    try {
+      res = await send()
+    } catch (err) {
+      // Один повтор при обрыве сети: ответ «подтвердите вход» важнее
+      // редкого дубля сообщения. getUpdates не повторяем — это делает цикл.
+      if (!retryOnNetworkError || !isNetworkError(err)) {
+        throw new Error(`Telegram ${method}: ${describeNetworkError(err)}`)
+      }
+      try {
+        res = await send()
+      } catch (err2) {
+        throw new Error(`Telegram ${method}: ${describeNetworkError(err2)}`)
+      }
+    }
     const data = (await res.json().catch(() => null)) as {
       ok?: boolean
       description?: string
@@ -88,6 +108,7 @@ export class TelegramLoginBot {
         allowed_updates: ['message', 'callback_query'],
       },
       POLL_REQUEST_TIMEOUT_MS,
+      false,
     )
     return Array.isArray(result) ? result : []
   }
