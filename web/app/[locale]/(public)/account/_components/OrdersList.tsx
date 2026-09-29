@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import type { AccountOrderSummary } from '@ximi4ka-shop/shared'
 import { getOrders } from '@/lib/accountApi'
@@ -8,6 +7,7 @@ import { orderStatusLabel } from '@/lib/orderStatus'
 import { formatRub } from '@/lib/stockLabel'
 import { Button } from '@/components/ui'
 import { ERROR_CLASS } from '@/components/checkout/fieldStyles'
+import { OrderDetails } from './OrderDetails'
 
 const DATE = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -16,6 +16,16 @@ export function OrdersList() {
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Раскрытые заказы; можно держать открытыми сразу несколько.
+  const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
+
+  function toggle(orderNumber: string) {
+    setOpen((prev) => {
+      const next = new Set(prev)
+      if (!next.delete(orderNumber)) next.add(orderNumber)
+      return next
+    })
+  }
 
   const load = useCallback(async (from: string | null) => {
     setLoading(true)
@@ -65,51 +75,41 @@ export function OrdersList() {
   return (
     <div className="flex flex-col gap-4">
       <ul className="flex flex-col gap-4 list-none p-0 m-0">
-        {orders.map((o) => (
-          <li key={o.orderNumber}>
-            <Link
-              href={`/order/${o.orderNumber}#t=${encodeURIComponent(o.publicToken)}`}
-              className="block rounded-[24px] border border-[var(--color-lj-rule)] bg-white/60 p-5 hover:border-[var(--color-lj-ink)] transition-colors"
+        {orders.map((o) => {
+          const isOpen = open.has(o.orderNumber)
+          const panelId = `order-details-${o.orderNumber}`
+          return (
+            <li
+              key={o.orderNumber}
+              className="rounded-[24px] border border-[var(--color-lj-rule)] bg-white/60 transition-colors hover:border-[var(--color-lj-ink)]"
             >
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="font-lj-mono">{o.orderNumber}</span>
-                <span className="rounded-full bg-[var(--color-lj-ink)] px-3 py-1 text-xs text-[var(--color-lj-cream)]">
-                  {orderStatusLabel(o.status, o.paymentProvider)}
+              <button
+                type="button"
+                aria-expanded={isOpen}
+                aria-controls={panelId}
+                onClick={() => toggle(o.orderNumber)}
+                className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-[24px] p-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-brand)]"
+              >
+                <span className="flex flex-col gap-1">
+                  <span className="font-lj-mono">{o.orderNumber}</span>
+                  <span className="text-sm opacity-70">{DATE.format(new Date(o.createdAt))}</span>
                 </span>
-              </div>
-              <div className="mt-2 flex flex-wrap justify-between gap-2 opacity-80">
-                <span>{DATE.format(new Date(o.createdAt))}</span>
-                <span className="font-[700]">{formatRub(o.totalRub)}</span>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                {o.items.map((i, idx) => (
-                  <div key={`${i.name}-${idx}`} className="flex items-center gap-2">
-                    {i.imageUrl && (
-                      <div className="w-12 h-12 shrink-0 rounded-xl border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream-shade)] overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element -- 48px-миниатюра в списке заказов, как в CartDrawer: next/image здесь только добавил бы обёртку и лоадер */}
-                        <img
-                          src={i.imageUrl}
-                          alt=""
-                          loading="lazy"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    )}
-                    <span className="text-sm opacity-70">
-                      {i.name} × {i.quantity}
-                    </span>
-                  </div>
-                ))}
-                {o.itemCount > o.items.reduce((n, i) => n + i.quantity, 0) && (
-                  <span className="text-sm opacity-60">и ещё…</span>
-                )}
-              </div>
-              {o.shipment?.trackingNumber && (
-                <p className="mt-3 text-sm">Трек СДЭК: {o.shipment.trackingNumber}</p>
+                <span className="flex items-center gap-3">
+                  <span className="rounded-full bg-[var(--color-lj-ink)] px-3 py-1 text-xs text-[var(--color-lj-cream)]">
+                    {orderStatusLabel(o.status, o.paymentProvider)}
+                  </span>
+                  <span className="font-[700]">{formatRub(o.totalRub)}</span>
+                  <span aria-hidden="true">{isOpen ? '−' : '+'}</span>
+                </span>
+              </button>
+              {isOpen && (
+                <div id={panelId}>
+                  <OrderDetails order={o} />
+                </div>
               )}
-            </Link>
-          </li>
-        ))}
+            </li>
+          )
+        })}
       </ul>
       {error && (
         <p role="alert" className={ERROR_CLASS}>

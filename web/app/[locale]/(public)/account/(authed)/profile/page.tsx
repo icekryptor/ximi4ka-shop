@@ -1,8 +1,7 @@
-import type { Metadata } from 'next'
-import { ProfilePanel } from '../../_components/ProfilePanel'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = { title: 'Личные данные — Ximi4ka', robots: { index: false } }
-
-export default function AccountProfilePage() {
-  return <ProfilePanel />
+// Личные данные переехали на главную страницу кабинета (/account) —
+// старые ссылки и закладки ведут туда.
+export default function AccountProfileRedirect() {
+  redirect('/account')
 }
