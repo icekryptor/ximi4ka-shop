@@ -88,7 +88,7 @@ export async function seedOrder(overrides: Partial<Order> = {}): Promise<Order> 
 
 export async function resetAccountTables(): Promise<void> {
   await AppDataSource.query(
-    'TRUNCATE customer_sessions, customer_email_codes, telegram_login_requests, order_items, orders, customers RESTART IDENTITY CASCADE',
+    'TRUNCATE customer_sessions, customer_email_codes, telegram_login_requests, sso_auth_codes, customer_aliases, order_items, orders, customers RESTART IDENTITY CASCADE',
   )
 }
 

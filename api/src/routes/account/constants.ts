@@ -14,3 +14,6 @@ export const EMAIL_MAX_PER_HOUR = 5
 export const TG_LOGIN_TTL_MS = 10 * 60 * 1000
 
 export const SUPPORT_TELEGRAM_URL = 'https://t.me/ximi4ka_support'
+
+// ximi4ka ID: код в адресе возврата живёт минуту — клиент меняет его сразу.
+export const SSO_CODE_TTL_MS = 60 * 1000

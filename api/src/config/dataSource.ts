@@ -18,6 +18,8 @@ import { Customer } from '../entities/Customer.js'
 import { CustomerSession } from '../entities/CustomerSession.js'
 import { CustomerEmailCode } from '../entities/CustomerEmailCode.js'
 import { TelegramLoginRequest } from '../entities/TelegramLoginRequest.js'
+import { SsoAuthCode } from '../entities/SsoAuthCode.js'
+import { CustomerAlias } from '../entities/CustomerAlias.js'
 import { EntityRevision } from '../entities/EntityRevision.js'
 import { Redirect } from '../entities/Redirect.js'
 import { Media } from '../entities/Media.js'
@@ -100,6 +102,8 @@ export const AppDataSource = new DataSource({
     CustomerSession,
     CustomerEmailCode,
     TelegramLoginRequest,
+    SsoAuthCode,
+    CustomerAlias,
     EntityRevision,
     Redirect,
     Media,

@@ -336,6 +336,25 @@ docker compose exec ximishop-api node api/dist/scripts/migrate.js
 чекаут показывают только текст согласия. Для 152-ФЗ нужно завести страницу в
 CMS и проставить на неё ссылку в этих местах.
 
+## ximi4ka ID: вход в XimiLearn аккаунтом магазина
+
+Спека — `docs/superpowers/specs/2026-09-29-ximi4ka-id-sso-design.md`. Магазин
+выдаёт вход, learn его принимает; пока секрет не задан, клиент выключен и
+`/api/account/sso/authorize` отвечает 400.
+
+1. Секрет: `openssl rand -hex 32`. Одно и то же значение — в
+   `SSO_LEARN_CLIENT_SECRET` (`deploy/app.env`) и в
+   `XIMI4KA_SSO_CLIENT_SECRET` у learn.
+2. `SSO_LEARN_REDIRECT_URIS=https://learn.ximi4ka.ru/api/auth/ximi4ka/callback` —
+   точное совпадение, без слэша в конце.
+3. Миграция `AddSsoAuthCodes1790720000000` накатывается деплоем, как и
+   остальные.
+4. Проверка: на learn нажать «Войти через ximi4ka» — магазин спросит код или
+   Telegram (или сразу вернёт, если вход в магазине уже был), и learn откроет
+   кабинет.
+
+Таблица `sso_auth_codes` (коды на минуту) тоже пока не чистится автоматически.
+
 ## Хвосты
 
 - Апекс `ximi4ka.ru` остаётся на Tilda; noindex снимать только при его переключении.
