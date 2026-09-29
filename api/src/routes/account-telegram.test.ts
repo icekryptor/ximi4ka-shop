@@ -6,6 +6,7 @@ import { createApp } from '../app.js'
 import { Customer } from '../entities/Customer.js'
 import { TelegramLoginRequest } from '../entities/TelegramLoginRequest.js'
 import { TelegramLoginBot, setLoginBotForTests } from '../lib/telegram/loginBot.js'
+import { pollOnce } from '../lib/telegram/loginPoller.js'
 import { customerAuthFrom, resetAccountTables } from './testUtils.js'
 
 const SECRET = 'hook-secret'
@@ -199,6 +200,48 @@ describe('вход через Telegram', () => {
     const res = await request(app).post('/api/account/auth/telegram/start')
     expect(res.status).toBe(503)
     expect(res.body.error.code).toBe('telegram_login_unavailable')
+  })
+
+  // Сервер, до которого Telegram не достучится (IPv4 закрыт): update бот
+  // забирает сам через getUpdates, секрет вебхука не нужен.
+  it('polling: без секрета вебхука вход работает, update приходят через getUpdates', async () => {
+    const queue: unknown[][] = []
+    const sent: Array<{ method: string; body: Record<string, unknown> }> = []
+    const bot = new TelegramLoginBot({
+      token: 'T',
+      username: 'ximi4ka_bot',
+      polling: true,
+      fetch: async (url: string, init?: RequestInit) => {
+        const method = url.split('/').pop()!
+        const body = JSON.parse(String(init?.body))
+        sent.push({ method, body })
+        const result = method === 'getUpdates' ? (queue.shift() ?? []) : true
+        return new Response(JSON.stringify({ ok: true, result }), { status: 200 })
+      },
+    })
+    setLoginBotForTests(bot)
+
+    const config = await request(app).get('/api/account/auth/config')
+    expect(config.body.data.telegram).toBe(true)
+
+    const { agent, nonce } = await startLogin()
+    queue.push([startMsg(nonce)])
+    expect(await pollOnce(bot, undefined)).toBe(2)
+    const button = sent.filter((c) => c.method === 'sendMessage').pop()!
+    const data = (
+      button.body.reply_markup as { inline_keyboard: Array<Array<{ callback_data: string }>> }
+    ).inline_keyboard[0][0].callback_data
+    queue.push([confirm(data.slice('login:'.length))])
+    expect(await pollOnce(bot, 2)).toBe(3)
+    expect(sent.find((c) => c.method === 'getUpdates' && c.body.offset === 2)).toBeTruthy()
+
+    const status = await agent.get('/api/account/auth/telegram/status')
+    expect(status.body.data.status).toBe('ok')
+    customerAuthFrom(status.headers['set-cookie'])
+
+    // Вебхук в режиме polling молчит: один update не обработается дважды.
+    const res = await request(app).post('/api/telegram/login-webhook').send(startMsg(nonce))
+    expect(res.status).toBe(404)
   })
 
   it('вебхук ограничен по частоте: 600 в минуту, 601-й — 429', async () => {

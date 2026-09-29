@@ -17,7 +17,9 @@ export function createTelegramWebhookRouter(): Router {
   const router = Router()
   router.post('/login-webhook', rateLimit({ limit: 600, windowMs: 60_000 }), async (req, res) => {
     const bot = getLoginBot()
-    if (!bot || !bot.webhookSecret) {
+    // В режиме polling update приходят через getUpdates — второй вход для
+    // них не держим, чтобы один update не обработался дважды.
+    if (!bot || !bot.webhookSecret || bot.polling) {
       res.status(404).end()
       return
     }

@@ -4,7 +4,7 @@ import type { AuthConfig } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { CustomerSession } from '../../entities/CustomerSession.js'
 import { getMailer } from '../../lib/mail/mailer.js'
-import { getLoginBot } from '../../lib/telegram/loginBot.js'
+import { getLoginBot, isLoginBotUsable } from '../../lib/telegram/loginBot.js'
 import {
   clearCustomerSessionCookies,
   cookieBase,
@@ -86,8 +86,9 @@ export function createAccountAuthRouter(): Router {
     // Бот без секрета вебхука не сможет принять update от Telegram (webhook
     // отвечает 404 без него, см. loginWebhook.ts) — раньше конфиг показывал
     // его как рабочий способ входа, и покупатель зависал на «ждём
-    // подтверждения» без единого сообщения об ошибке.
-    const usable = bot !== null && bot.webhookSecret !== null
+    // подтверждения» без единого сообщения об ошибке. В режиме polling
+    // секрет не нужен — update бот забирает сам (loginPoller.ts).
+    const usable = isLoginBotUsable(bot)
     const data: AuthConfig = {
       email: getMailer() !== null,
       telegram: usable,
@@ -155,7 +156,7 @@ export function createAccountAuthRouter(): Router {
     async (_req, res, next) => {
       try {
         const bot = getLoginBot()
-        if (!bot || !bot.webhookSecret)
+        if (!isLoginBotUsable(bot))
           throw new ApiError(503, 'telegram_login_unavailable', 'Вход через Telegram недоступен')
         const { nonce, pollSecret } = await createTelegramLoginRequest(null)
         setTelegramPollCookie(res, pollSecret)

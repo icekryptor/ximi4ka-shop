@@ -9,6 +9,10 @@ import { getLoginBot } from '../lib/telegram/loginBot.js'
 async function main() {
   const bot = getLoginBot()
   if (!bot) throw new Error('TELEGRAM_LOGIN_BOT_TOKEN / TELEGRAM_LOGIN_BOT_USERNAME не заданы')
+  if (bot.polling)
+    throw new Error(
+      'бот в режиме polling (TELEGRAM_LOGIN_POLLING=1): вебхук не нужен, api снимает его сам',
+    )
   if (!bot.webhookSecret) throw new Error('TELEGRAM_LOGIN_WEBHOOK_SECRET не задан')
   const origin = (process.argv[2] ?? process.env.WEB_ORIGIN ?? '').replace(/\/$/, '')
   if (!origin.startsWith('https://'))

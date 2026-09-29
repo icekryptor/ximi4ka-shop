@@ -46,6 +46,11 @@ RUN npm ci -w api -w shared --omit=dev
 # ---- runtime ------------------------------------------------------------------
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
+# С нашего VPS Telegram (и не только) доступен только по IPv6: IPv4 закрыт.
+# Node по умолчанию бросает IPv6-соединение, не успевшее за 250 мс, и уходит
+# в IPv4, где висит до таймаута — запросы в Telegram падали через раз.
+# IPv6 первым и 5 с на попытку. Переопределяется NODE_OPTIONS в app.env.
+ENV NODE_OPTIONS="--dns-result-order=ipv6first --network-family-autoselection-attempt-timeout=5000"
 WORKDIR /app
 
 # Root + workspace-local node_modules (npm hoists most deps to the root, but

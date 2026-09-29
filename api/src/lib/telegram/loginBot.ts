@@ -4,12 +4,26 @@
 type Fetch = (input: string, init?: RequestInit) => Promise<Response>
 
 const REQUEST_TIMEOUT_MS = 10_000
+// Long polling: Telegram держит getUpdates до POLL_TIMEOUT_SEC, если новых
+// update нет; сетевой таймаут — с запасом сверху.
+export const POLL_TIMEOUT_SEC = 25
+const POLL_REQUEST_TIMEOUT_MS = (POLL_TIMEOUT_SEC + 10) * 1000
+
+// Минимум полей, которые нужны циклу опроса; разбор — в telegramLogin.ts.
+export interface PolledUpdate {
+  update_id: number
+  [key: string]: unknown
+}
 
 export type InlineButton = { text: string; callback_data: string } | { text: string; url: string }
 
 export class TelegramLoginBot {
   readonly username: string
   readonly webhookSecret: string | null
+  // Забирать update через getUpdates, а не ждать вебхук. Для сервера, до
+  // которого Telegram не может достучаться (у нас — IPv4 до Telegram закрыт
+  // в обе стороны, а вебхуки Telegram шлёт только по IPv4).
+  readonly polling: boolean
   private readonly token: string
   private readonly fetchImpl: Fetch
 
@@ -17,48 +31,74 @@ export class TelegramLoginBot {
     token: string
     username: string
     webhookSecret?: string | null
+    polling?: boolean
     fetch?: Fetch
   }) {
     this.token = opts.token
     this.username = opts.username.replace(/^@/, '')
     this.webhookSecret = opts.webhookSecret ?? null
+    this.polling = opts.polling ?? false
     this.fetchImpl = opts.fetch ?? ((input, init) => fetch(input, init))
   }
 
-  private async call(method: string, payload: Record<string, unknown>): Promise<void> {
+  private async call<T = unknown>(
+    method: string,
+    payload: Record<string, unknown>,
+    timeoutMs = REQUEST_TIMEOUT_MS,
+  ): Promise<T> {
     const res = await this.fetchImpl(`https://api.telegram.org/bot${this.token}/${method}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
       body: JSON.stringify(payload),
     })
     const data = (await res.json().catch(() => null)) as {
       ok?: boolean
       description?: string
+      result?: T
     } | null
     if (!res.ok || !data?.ok) {
       throw new Error(`Telegram ${method} ${res.status}: ${data?.description ?? 'без описания'}`)
     }
+    return data.result as T
   }
 
-  sendMessage(chatId: number, text: string, buttons?: InlineButton[][]): Promise<void> {
-    return this.call('sendMessage', {
+  async sendMessage(chatId: number, text: string, buttons?: InlineButton[][]): Promise<void> {
+    await this.call('sendMessage', {
       chat_id: chatId,
       text,
       ...(buttons ? { reply_markup: { inline_keyboard: buttons } } : {}),
     })
   }
 
-  answerCallbackQuery(id: string, text?: string): Promise<void> {
-    return this.call('answerCallbackQuery', { callback_query_id: id, ...(text ? { text } : {}) })
+  async answerCallbackQuery(id: string, text?: string): Promise<void> {
+    await this.call('answerCallbackQuery', { callback_query_id: id, ...(text ? { text } : {}) })
   }
 
-  editMessageText(chatId: number, messageId: number, text: string): Promise<void> {
-    return this.call('editMessageText', { chat_id: chatId, message_id: messageId, text })
+  async editMessageText(chatId: number, messageId: number, text: string): Promise<void> {
+    await this.call('editMessageText', { chat_id: chatId, message_id: messageId, text })
   }
 
-  setWebhook(url: string, secret: string): Promise<void> {
-    return this.call('setWebhook', {
+  async getUpdates(offset: number | undefined): Promise<PolledUpdate[]> {
+    const result = await this.call<PolledUpdate[]>(
+      'getUpdates',
+      {
+        ...(offset !== undefined ? { offset } : {}),
+        timeout: POLL_TIMEOUT_SEC,
+        allowed_updates: ['message', 'callback_query'],
+      },
+      POLL_REQUEST_TIMEOUT_MS,
+    )
+    return Array.isArray(result) ? result : []
+  }
+
+  // Пока у бота есть вебхук, getUpdates отвечает 409 — снимаем его перед опросом.
+  async deleteWebhook(): Promise<void> {
+    await this.call('deleteWebhook', { drop_pending_updates: false })
+  }
+
+  async setWebhook(url: string, secret: string): Promise<void> {
+    await this.call('setWebhook', {
       url,
       secret_token: secret,
       allowed_updates: ['message', 'callback_query'],
@@ -82,5 +122,12 @@ export function getLoginBot(env: NodeJS.ProcessEnv = process.env): TelegramLogin
     token,
     username,
     webhookSecret: env.TELEGRAM_LOGIN_WEBHOOK_SECRET?.trim() || null,
+    polling: env.TELEGRAM_LOGIN_POLLING?.trim() === '1',
   })
+}
+
+// Бот принимает update: либо сам их забирает (polling), либо есть секрет
+// вебхука (без него вебхук отвечает 404 — см. loginWebhook.ts).
+export function isLoginBotUsable(bot: TelegramLoginBot | null): bot is TelegramLoginBot {
+  return bot !== null && (bot.polling || bot.webhookSecret !== null)
 }
