@@ -81,6 +81,18 @@ describe('ProfileCard', () => {
     expect(screen.queryByLabelText('Имя')).toBeNull()
   })
 
+  it('несохранённые правки не переживают «Готово»: при повторном открытии — данные профиля', async () => {
+    api.getMe.mockResolvedValue(profile)
+    render(<ProfileCard />)
+    await openEdit()
+    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Чужое' } })
+    fireEvent.change(screen.getByLabelText('Телефон'), { target: { value: '9111111111' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Готово' }))
+    await openEdit()
+    expect(screen.getByLabelText('Имя')).toHaveValue('Иван')
+    expect(screen.getByLabelText('Телефон')).toHaveValue('+7 (900) 123-45-67')
+  })
+
   it('сохраняет имя и телефон', async () => {
     api.getMe.mockResolvedValue(profile)
     api.updateMe.mockResolvedValue({ ...profile, name: 'Пётр' })

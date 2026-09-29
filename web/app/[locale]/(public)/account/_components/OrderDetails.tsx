@@ -33,7 +33,8 @@ function TotalRow({
 export function OrderDetails({ order }: Readonly<{ order: AccountOrderSummary }>) {
   const { shipment } = order
   const closed = order.status === 'cancelled' || order.status === 'failed'
-  const trackingUrl = shipment?.state === 'created' ? shipment.trackingUrl : null
+  // У отменённых и неудавшихся заказов о треке не говорим вовсе.
+  const trackingUrl = !closed && shipment?.state === 'created' ? shipment.trackingUrl : null
 
   return (
     <div className="flex flex-col gap-5 border-t border-[var(--color-lj-rule)] px-5 pb-5 pt-4">

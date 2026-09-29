@@ -150,7 +150,7 @@ export async function listCustomerOrders(
       discountRub: o.discountRub,
       shippingRub: o.shippingRub,
       deliveryMethod: o.deliveryMethod as DeliveryMethod,
-      deliveryAddress: o.deliveryAddress.address,
+      deliveryAddress: o.deliveryAddress.address ?? '',
       shipment: shipmentView(shipments.find((s) => s.orderId === o.id)),
     }
   })

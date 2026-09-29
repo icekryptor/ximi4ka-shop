@@ -235,6 +235,9 @@ export function ProfileCard() {
               setEditing((v) => !v)
               setEditEmail(false)
               setNotice(null)
+              // Несохранённые правки не должны пережить «Готово».
+              setName(me.name ?? '')
+              setPhone(me.phone ? formatPhoneInput(me.phone) : '')
             }}
           >
             {editing ? 'Готово' : 'Изменить'}

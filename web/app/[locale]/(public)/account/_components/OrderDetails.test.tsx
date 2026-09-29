@@ -92,6 +92,26 @@ describe('OrderDetails', () => {
     expect(screen.queryByRole('link', { name: /Отследить посылку/ })).toBeNull()
   })
 
+  it.each(['cancelled', 'failed'] as const)(
+    '%s с созданным отправлением — ссылки на трек нет',
+    (status) => {
+      render(
+        <OrderDetails
+          order={order({
+            status,
+            shipment: {
+              state: 'created',
+              trackingNumber: '123',
+              trackingUrl: 'https://cdek.ru/track?order_id=123',
+            },
+          })}
+        />,
+      )
+      expect(screen.queryByRole('link', { name: /Отследить посылку/ })).toBeNull()
+      expect(screen.queryByText(/Трек-номер появится/)).toBeNull()
+    },
+  )
+
   it('«Страница заказа» ведёт на /order/<номер>#t=<токен>', () => {
     render(<OrderDetails order={order()} />)
     expect(screen.getByRole('link', { name: 'Страница заказа' })).toHaveAttribute(
