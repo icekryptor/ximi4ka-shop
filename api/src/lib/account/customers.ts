@@ -74,6 +74,18 @@ export async function mergeCustomers(
   const keep = await repo.findOneByOrFail({ id: keepId })
   const drop = await repo.findOneByOrFail({ id: dropId })
   await em.query('UPDATE orders SET customer_id = $1 WHERE customer_id = $2', [keepId, dropId])
+  // След для клиентов ximi4ka ID (learn): они знают покупателя по id, и после
+  // слияния должны найти свою связь по прежнему id. Старые следы удаляемого
+  // тоже переезжают на keep — цепочка слияний не рвётся.
+  await em.query('UPDATE customer_aliases SET customer_id = $1 WHERE customer_id = $2', [
+    keepId,
+    dropId,
+  ])
+  await em.query(
+    `INSERT INTO customer_aliases (former_id, customer_id) VALUES ($1, $2)
+     ON CONFLICT (former_id) DO UPDATE SET customer_id = EXCLUDED.customer_id`,
+    [dropId, keepId],
+  )
   // Сначала удаляем, потом заполняем keep — иначе уникальные email/telegram_id столкнутся.
   await repo.delete({ id: dropId })
   keep.email ??= drop.email
