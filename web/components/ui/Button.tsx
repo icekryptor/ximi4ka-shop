@@ -17,6 +17,8 @@ interface BaseProps {
 interface ButtonAsButton extends BaseProps {
   href?: undefined
   onClick?: MouseEventHandler<HTMLButtonElement>
+  /** Для кнопок-переключателей (раскрыть/свернуть). */
+  'aria-expanded'?: boolean
   type?: 'button' | 'submit' | 'reset'
 }
 
@@ -99,6 +101,7 @@ export function Button(props: Props) {
       className={classes}
       disabled={disabled || loading}
       onClick={(props as ButtonAsButton).onClick}
+      aria-expanded={(props as ButtonAsButton)['aria-expanded']}
     >
       {content}
     </button>

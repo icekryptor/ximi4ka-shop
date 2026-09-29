@@ -16,8 +16,6 @@ import { ProductImage } from '../../entities/ProductImage.js'
 import { cdekTrackingUrl } from '../../routes/public/orders.js'
 import { badRequest } from '../../routes/errors.js'
 
-const PREVIEW_ITEMS = 3
-
 export function toProfile(c: Customer, last: LastDelivery | null): CustomerProfile {
   return {
     id: c.id,
@@ -142,11 +140,17 @@ export async function listCustomerOrders(
       paymentProvider: o.paymentProvider,
       totalRub: o.totalRub,
       itemCount: mine.reduce((n, i) => n + i.quantity, 0),
-      items: mine.slice(0, PREVIEW_ITEMS).map((i) => ({
+      items: mine.map((i) => ({
         name: i.productSnapshot.name,
         quantity: i.quantity,
+        unitPriceRub: i.unitPriceRub,
         imageUrl: imageOf.get(i.productId) ?? null,
       })),
+      subtotalRub: o.subtotalRub,
+      discountRub: o.discountRub,
+      shippingRub: o.shippingRub,
+      deliveryMethod: o.deliveryMethod as DeliveryMethod,
+      deliveryAddress: o.deliveryAddress.address ?? '',
       shipment: shipmentView(shipments.find((s) => s.orderId === o.id)),
     }
   })

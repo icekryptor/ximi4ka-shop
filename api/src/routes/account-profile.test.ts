@@ -185,7 +185,12 @@ describe('профиль и заказы', () => {
       orderNumber: newest.orderNumber,
       publicToken: newest.publicToken,
       itemCount: 2,
-      items: [{ name: 'Набор', quantity: 2, imageUrl: '/uploads/kit.webp' }],
+      items: [{ name: 'Набор', quantity: 2, unitPriceRub: 1500, imageUrl: '/uploads/kit.webp' }],
+      subtotalRub: 1500,
+      discountRub: 0,
+      shippingRub: 0,
+      deliveryMethod: 'cdek_pvz',
+      deliveryAddress: 'Москва, ул. Ленина, 1',
       shipment: { state: 'created', trackingNumber: '1234567890' },
     })
     expect(page1.body.data.nextCursor).toBeTruthy()
@@ -199,6 +204,96 @@ describe('профиль и заказы', () => {
       (o: { orderNumber: string }) => o.orderNumber,
     )
     expect(new Set(all).size).toBe(22)
+  })
+
+  it('GET /orders: подробности — все позиции (не первые три), суммы и доставка; чужие не видны', async () => {
+    const auth = await loginAsCustomer(app)
+    const c = await me()
+    const stranger = await AppDataSource.getRepository(Customer).save({ email: 'x@y.ru' })
+    const strangerOrder = await seedOrder({
+      customerId: stranger.id,
+      deliveryAddress: { address: 'Секретный адрес, 13', comment: null, cityCode: 1 },
+    })
+    const products = AppDataSource.getRepository(Product)
+    const saved: Product[] = []
+    for (let i = 1; i <= 5; i++) {
+      saved.push(
+        await products.save(
+          products.create({
+            slug: `p${i}`,
+            name: `Товар ${i}`,
+            priceRub: 100 * i,
+            stockStatus: 'in_stock',
+            isPublished: true,
+            longDescriptionBlocks: [],
+            translations: {},
+          }),
+        ),
+      )
+    }
+    const items = AppDataSource.getRepository(OrderItem)
+    await items.save({
+      orderId: strangerOrder.id,
+      productId: saved[0].id,
+      productSnapshot: { name: 'Чужой товар', sku: null, priceRub: 100 },
+      quantity: 1,
+      unitPriceRub: 100,
+    })
+    const mine = await seedOrder({
+      customerId: c.id,
+      deliveryMethod: 'cdek_courier',
+      deliveryAddress: {
+        address: 'Казань, ул. Баумана, 5, кв. 12',
+        comment: null,
+        cityCode: 424,
+        postalCode: '420111',
+      },
+      subtotalRub: 1500,
+      discountRub: 100,
+      shippingRub: 250,
+      totalRub: 1650,
+    })
+    for (const [i, p] of saved.entries()) {
+      await items.save({
+        orderId: mine.id,
+        productId: p.id,
+        productSnapshot: { name: p.name, sku: null, priceRub: p.priceRub },
+        quantity: i + 1,
+        unitPriceRub: p.priceRub,
+      })
+    }
+
+    const res = await request(app).get('/api/account/orders').set(customerHeaders(auth))
+    expect(res.status).toBe(200)
+    expect(res.body.data.orders).toHaveLength(1)
+    const o = res.body.data.orders[0]
+    expect(o.items).toHaveLength(5)
+    expect(o.items.map((i: { name: string }) => i.name).sort()).toEqual([
+      'Товар 1',
+      'Товар 2',
+      'Товар 3',
+      'Товар 4',
+      'Товар 5',
+    ])
+    expect(o.items.find((i: { name: string }) => i.name === 'Товар 3')).toMatchObject({
+      quantity: 3,
+      unitPriceRub: 300,
+      imageUrl: null,
+    })
+    expect(o.itemCount).toBe(15)
+    expect(o).toMatchObject({
+      subtotalRub: 1500,
+      discountRub: 100,
+      shippingRub: 250,
+      totalRub: 1650,
+      deliveryMethod: 'cdek_courier',
+      deliveryAddress: 'Казань, ул. Баумана, 5, кв. 12',
+    })
+    // Чужой заказ (его позиции и адрес) в ответе не появляется.
+    const body = JSON.stringify(res.body)
+    expect(body).not.toContain('Секретный адрес')
+    expect(body).not.toContain('Чужой товар')
+    expect(body).not.toContain(strangerOrder.orderNumber)
   })
 
   it('битый курсор — 400', async () => {

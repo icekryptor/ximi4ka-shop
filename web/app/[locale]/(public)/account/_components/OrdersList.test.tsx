@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import type { AccountOrderSummary } from '@ximi4ka-shop/shared'
 import { OrdersList } from './OrdersList'
 
@@ -18,7 +18,12 @@ const order = (n: number, extra: Partial<AccountOrderSummary> = {}): AccountOrde
   paymentProvider: 'tbank',
   totalRub: 2990,
   itemCount: 2,
-  items: [{ name: 'Набор юного химика', quantity: 2, imageUrl: null }],
+  items: [{ name: 'Набор юного химика', quantity: 2, unitPriceRub: 1495, imageUrl: null }],
+  subtotalRub: 2990,
+  discountRub: 0,
+  shippingRub: 0,
+  deliveryMethod: 'cdek_pvz',
+  deliveryAddress: 'Москва, ул. Ленина, 1',
   shipment: null,
   ...extra,
 })
@@ -31,7 +36,19 @@ describe('OrdersList', () => {
     expect(screen.getByRole('link', { name: /каталог/i })).toHaveAttribute('href', '/catalog')
   })
 
-  it('карточка ведёт на страницу заказа с секретом, есть статус, сумма, трек', async () => {
+  it('строка заказа: номер, дата, статус, сумма; подробности свёрнуты', async () => {
+    getOrders.mockResolvedValue({ orders: [order(1)], nextCursor: null })
+    render(<OrdersList />)
+    const row = await screen.findByRole('button', { name: /XM-2026-00001/ })
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Оплачен')).toBeInTheDocument()
+    expect(screen.getByText(/20 сентября 2026/)).toBeInTheDocument()
+    expect(within(row).getByText(/2\s?990/)).toBeInTheDocument()
+    expect(screen.queryByText('Набор юного химика × 2')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Страница заказа' })).toBeNull()
+  })
+
+  it('клик по строке раскрывает подробности, повторный — сворачивает', async () => {
     getOrders.mockResolvedValue({
       orders: [
         order(1, {
@@ -41,24 +58,29 @@ describe('OrdersList', () => {
       nextCursor: null,
     })
     render(<OrdersList />)
-    const link = await screen.findByRole('link', { name: /XM-2026-00001/ })
-    expect(link).toHaveAttribute('href', '/order/XM-2026-00001#t=tok1')
-    expect(screen.getByText('Оплачен')).toBeInTheDocument()
-    expect(screen.getByText(/2\s?990/)).toBeInTheDocument()
-    expect(screen.getByText(/Трек СДЭК: 123/)).toBeInTheDocument()
+    const row = await screen.findByRole('button', { name: /XM-2026-00001/ })
+    fireEvent.click(row)
+    expect(row).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Набор юного химика × 2')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Отследить посылку/ })).toHaveAttribute(
+      'href',
+      'https://cdek/123',
+    )
+    expect(screen.getByRole('link', { name: 'Страница заказа' })).toHaveAttribute(
+      'href',
+      '/order/XM-2026-00001#t=tok1',
+    )
+    fireEvent.click(row)
+    expect(row).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Набор юного химика × 2')).toBeNull()
   })
 
-  it('с фото товара — имя и количество всё равно видны', async () => {
-    getOrders.mockResolvedValue({
-      orders: [
-        order(1, {
-          items: [{ name: 'Набор юного химика', quantity: 2, imageUrl: 'https://cdn/x.jpg' }],
-        }),
-      ],
-      nextCursor: null,
-    })
+  it('можно раскрыть несколько заказов сразу', async () => {
+    getOrders.mockResolvedValue({ orders: [order(1), order(2)], nextCursor: null })
     render(<OrdersList />)
-    expect(await screen.findByText('Набор юного химика × 2')).toBeInTheDocument()
+    fireEvent.click(await screen.findByRole('button', { name: /XM-2026-00001/ }))
+    fireEvent.click(screen.getByRole('button', { name: /XM-2026-00002/ }))
+    expect(screen.getAllByRole('link', { name: 'Страница заказа' })).toHaveLength(2)
   })
 
   it('«Показать ещё» догружает по курсору', async () => {
@@ -67,7 +89,7 @@ describe('OrdersList', () => {
       .mockResolvedValueOnce({ orders: [order(2)], nextCursor: null })
     render(<OrdersList />)
     fireEvent.click(await screen.findByRole('button', { name: 'Показать ещё' }))
-    expect(await screen.findByRole('link', { name: /XM-2026-00002/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /XM-2026-00002/ })).toBeInTheDocument()
     expect(getOrders).toHaveBeenLastCalledWith('c1')
     expect(screen.queryByRole('button', { name: 'Показать ещё' })).toBeNull()
   })

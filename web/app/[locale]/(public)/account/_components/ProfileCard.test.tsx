@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { CustomerProfile } from '@ximi4ka-shop/shared'
-import { ProfilePanel } from './ProfilePanel'
+import { ProfileCard } from './ProfileCard'
 
 const api = vi.hoisted(() => ({
   getMe: vi.fn(),
@@ -42,11 +42,62 @@ const profile: CustomerProfile = {
   lastDelivery: null,
 }
 
-describe('ProfilePanel', () => {
+async function openEdit() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Изменить' }))
+}
+
+describe('ProfileCard', () => {
+  it('свёрнутая плашка показывает имя, телефон, email и Telegram', async () => {
+    api.getMe.mockResolvedValue({ ...profile, hasTelegram: true, telegramUsername: 'ivan_tg' })
+    render(<ProfileCard />)
+    expect(await screen.findByText('Иван')).toBeInTheDocument()
+    expect(screen.getByText('+7 (900) 123-45-67')).toBeInTheDocument()
+    expect(screen.getByText('ivan@example.com')).toBeInTheDocument()
+    expect(screen.getByText('@ivan_tg')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Имя')).toBeNull()
+    expect(screen.getByRole('link', { name: /Написать в поддержку/ })).toHaveAttribute(
+      'href',
+      'https://t.me/ximi4ka_support',
+    )
+  })
+
+  it('без Telegram и имени плашка пишет «не привязан» и «не указано»', async () => {
+    api.getMe.mockResolvedValue({ ...profile, name: null, phone: null })
+    render(<ProfileCard />)
+    expect(await screen.findByText('не привязан')).toBeInTheDocument()
+    expect(screen.getAllByText('не указано')).toHaveLength(2)
+  })
+
+  it('«Изменить» открывает форму, «Готово» сворачивает', async () => {
+    api.getMe.mockResolvedValue(profile)
+    render(<ProfileCard />)
+    expect(screen.queryByLabelText('Имя')).toBeNull()
+    await openEdit()
+    expect(screen.getByLabelText('Имя')).toHaveValue('Иван')
+    expect(screen.getByLabelText('Телефон')).toHaveValue('+7 (900) 123-45-67')
+    const toggle = screen.getByRole('button', { name: 'Готово' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(toggle)
+    expect(screen.queryByLabelText('Имя')).toBeNull()
+  })
+
+  it('несохранённые правки не переживают «Готово»: при повторном открытии — данные профиля', async () => {
+    api.getMe.mockResolvedValue(profile)
+    render(<ProfileCard />)
+    await openEdit()
+    fireEvent.change(screen.getByLabelText('Имя'), { target: { value: 'Чужое' } })
+    fireEvent.change(screen.getByLabelText('Телефон'), { target: { value: '9111111111' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Готово' }))
+    await openEdit()
+    expect(screen.getByLabelText('Имя')).toHaveValue('Иван')
+    expect(screen.getByLabelText('Телефон')).toHaveValue('+7 (900) 123-45-67')
+  })
+
   it('сохраняет имя и телефон', async () => {
     api.getMe.mockResolvedValue(profile)
     api.updateMe.mockResolvedValue({ ...profile, name: 'Пётр' })
-    render(<ProfilePanel />)
+    render(<ProfileCard />)
+    await openEdit()
     const name = await screen.findByLabelText('Имя')
     fireEvent.change(name, { target: { value: 'Пётр' } })
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
@@ -58,7 +109,8 @@ describe('ProfilePanel', () => {
 
   it('без Telegram — «Привязать Telegram»; отвязать единственный email нельзя', async () => {
     api.getMe.mockResolvedValue(profile)
-    render(<ProfilePanel />)
+    render(<ProfileCard />)
+    await openEdit()
     expect(await screen.findByRole('button', { name: 'Привязать Telegram' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Отвязать email' })).toBeNull()
   })
@@ -66,7 +118,8 @@ describe('ProfilePanel', () => {
   it('бот не настроен — вместо «Привязать Telegram» сообщение о недоступности', async () => {
     api.getMe.mockResolvedValue(profile)
     api.getAuthConfig.mockResolvedValue({ email: true, telegram: false, telegramBot: null })
-    render(<ProfilePanel />)
+    render(<ProfileCard />)
+    await openEdit()
     expect(await screen.findByText('Привязка Telegram пока недоступна')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Привязать Telegram' })).toBeNull()
   })
@@ -74,7 +127,8 @@ describe('ProfilePanel', () => {
   it('конфиг входа не загрузился — Telegram считается недоступным', async () => {
     api.getMe.mockResolvedValue(profile)
     api.getAuthConfig.mockRejectedValue(new Error('network'))
-    render(<ProfilePanel />)
+    render(<ProfileCard />)
+    await openEdit()
     expect(await screen.findByText('Привязка Telegram пока недоступна')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Привязать Telegram' })).toBeNull()
   })
@@ -82,8 +136,8 @@ describe('ProfilePanel', () => {
   it('с Telegram и email — можно отвязать Telegram', async () => {
     api.getMe.mockResolvedValue({ ...profile, hasTelegram: true, telegramUsername: 'ivan_tg' })
     api.unlinkTelegram.mockResolvedValue(undefined)
-    render(<ProfilePanel />)
-    expect(await screen.findByText('@ivan_tg')).toBeInTheDocument()
+    render(<ProfileCard />)
+    await openEdit()
     fireEvent.click(screen.getByRole('button', { name: 'Отвязать Telegram' }))
     await vi.waitFor(() => expect(api.unlinkTelegram).toHaveBeenCalled())
   })
@@ -91,7 +145,7 @@ describe('ProfilePanel', () => {
   it('выход ведёт на главную', async () => {
     api.getMe.mockResolvedValue(profile)
     api.logout.mockResolvedValue(undefined)
-    render(<ProfilePanel />)
+    render(<ProfileCard />)
     fireEvent.click(await screen.findByRole('button', { name: 'Выйти' }))
     await vi.waitFor(() => expect(redirect).toHaveBeenCalledWith('/'))
   })
