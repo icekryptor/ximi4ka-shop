@@ -1,4 +1,5 @@
 import { RateLimitError } from '../notifications/rateLimit.js'
+import { telegramFetch } from './transport.js'
 
 // Бот магазина пишет в рабочий чат (docs/superpowers/specs/2026-09-25-order-notifications-design.md).
 // Отдельный от бота ERP: если ERP лежит, заказы всё равно приходят.
@@ -27,7 +28,7 @@ export class TelegramBot {
   constructor(opts: { token: string; chatId: string; fetch?: Fetch }) {
     this.token = opts.token
     this.chatId = opts.chatId
-    this.fetchImpl = opts.fetch ?? ((input, init) => fetch(input, init))
+    this.fetchImpl = opts.fetch ?? telegramFetch
   }
 
   static fromEnv(env: NodeJS.ProcessEnv = process.env): TelegramBot | null {

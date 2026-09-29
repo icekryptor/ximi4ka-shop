@@ -55,9 +55,43 @@ describe('TelegramLoginBot', () => {
     expect(url).toBe('https://api.telegram.org/botT/getUpdates')
     expect(JSON.parse(init.body)).toEqual({
       offset: 5,
-      timeout: 25,
+      timeout: 10,
       allowed_updates: ['message', 'callback_query'],
     })
+  })
+
+  it('обрыв сети — один повтор; причина из cause попадает в текст ошибки', async () => {
+    const netErr = Object.assign(new TypeError('fetch failed'), { cause: { code: 'ECONNRESET' } })
+    const f = vi.fn().mockRejectedValueOnce(netErr).mockResolvedValueOnce(ok())
+    const bot = new TelegramLoginBot({ token: 'T', username: 'b', fetch: f })
+    await bot.sendMessage(5, 'Войти?')
+    expect(f).toHaveBeenCalledTimes(2)
+
+    const g = vi.fn().mockRejectedValue(netErr)
+    const bot2 = new TelegramLoginBot({ token: 'T', username: 'b', fetch: g })
+    await expect(bot2.sendMessage(5, 'Войти?')).rejects.toThrow(/sendMessage.*ECONNRESET/)
+    expect(g).toHaveBeenCalledTimes(2)
+  })
+
+  it('getUpdates при обрыве не повторяет сам — повтор за циклом опроса', async () => {
+    const netErr = Object.assign(new TypeError('fetch failed'), {
+      cause: { code: 'UND_ERR_SOCKET' },
+    })
+    const f = vi.fn().mockRejectedValue(netErr)
+    const bot = new TelegramLoginBot({ token: 'T', username: 'b', fetch: f })
+    await expect(bot.getUpdates(1)).rejects.toThrow(/getUpdates.*UND_ERR_SOCKET/)
+    expect(f).toHaveBeenCalledTimes(1)
+  })
+
+  it('ответ Telegram с ошибкой (не сеть) не повторяется', async () => {
+    const f = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: false, description: 'Bad Request' }), { status: 400 }),
+      )
+    const bot = new TelegramLoginBot({ token: 'T', username: 'b', fetch: f })
+    await expect(bot.sendMessage(1, 'x')).rejects.toThrow(/Bad Request/)
+    expect(f).toHaveBeenCalledTimes(1)
   })
 
   it('getLoginBot: TELEGRAM_LOGIN_POLLING=1 — polling, годен и без секрета вебхука', () => {

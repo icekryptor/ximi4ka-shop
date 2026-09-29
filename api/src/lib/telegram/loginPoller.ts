@@ -9,8 +9,10 @@ import { handleTelegramUpdate, type TelegramUpdate } from '../account/telegramLo
 
 type Handler = (bot: TelegramLoginBot, update: TelegramUpdate) => Promise<void>
 
-const RETRY_MIN_MS = 2_000
-const RETRY_MAX_MS = 60_000
+// Коротко: человек ждёт ответа бота на экране входа, а сбои у нас —
+// разовые обрывы соединения, не долгие простои Telegram.
+const RETRY_MIN_MS = 1_000
+const RETRY_MAX_MS = 5_000
 
 // Один цикл: забрать пачку, обработать по порядку, вернуть следующий offset.
 // Ошибка одного update не мешает остальным и не откатывает offset — иначе
@@ -37,7 +39,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 // Возвращает true, если опрос запущен. Цикл живёт весь процесс; ошибки сети
 // и 409 (второй экземпляр при выкатке, не снятый вебхук) — пауза с ростом до
-// минуты, затем снова.
+// 5 с, затем снова.
 export function startLoginBotPolling(): boolean {
   const bot = getLoginBot()
   if (!bot?.polling) return false
