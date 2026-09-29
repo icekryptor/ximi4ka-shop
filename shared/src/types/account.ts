@@ -39,8 +39,19 @@ export interface AccountOrderSummary {
   totalRub: number
   /** Сколько штук всего в заказе. */
   itemCount: number
-  /** Первые три позиции. */
-  items: Array<{ name: string; quantity: number; imageUrl: string | null }>
+  /** Все позиции заказа. */
+  items: Array<{
+    name: string
+    quantity: number
+    unitPriceRub: number
+    imageUrl: string | null
+  }>
+  subtotalRub: number
+  discountRub: number
+  shippingRub: number
+  deliveryMethod: DeliveryMethod
+  /** Адрес доставки одной строкой: «<город>, <ПВЗ или улица>». */
+  deliveryAddress: string
   shipment: PublicOrderShipment | null
 }
 
