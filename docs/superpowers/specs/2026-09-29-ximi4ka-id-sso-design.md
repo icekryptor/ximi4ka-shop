@@ -44,7 +44,7 @@ Telegram в Supabase не встроен); общая cookie на `.ximi4ka.ru` 
 Learn хранит id покупателя, и без следа слияние по почте завело бы человеку
 второй аккаунт на платформе.
 
-### Learn (миграция `027_ximi4ka_identities.sql`)
+### Learn (миграция `030_ximi4ka_identities.sql`)
 
 `ximi4ka_identities`: `user_id` PK → `auth.users` (on delete cascade),
 `customer_id` уникальный, снимок `email` / `telegram_id` /
@@ -129,7 +129,9 @@ invalid_client` (код не сгорает); код чужого клиента
 
 Learn: `XIMI4KA_SSO_CLIENT_SECRET` (то же значение), `XIMI4KA_SSO_URL`
 (по умолчанию `https://new.ximi4ka.ru`), `NEXT_PUBLIC_XIMI4KA_SSO=1` —
-кнопки на `/login`, `/register`, в профиле (инлайнится на билде).
+кнопки на `/login`, `/register`, в профиле (инлайнится на билде). Всё — в
+`/opt/ximilearn/deploy/app.env`: `deploy.sh` отдаёт `NEXT_PUBLIC_*` в сборку
+build-arg'ами, остальное — в рантайм.
 
 Порядок: миграции обеих сторон → секреты → деплой магазина → деплой learn с
 `NEXT_PUBLIC_XIMI4KA_SSO=1`. Пока флага нет, learn выглядит как раньше.
