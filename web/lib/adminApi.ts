@@ -299,6 +299,11 @@ export interface AdminBlogPostInput {
   excerpt?: string | null
   coverImageUrl?: string | null
   rubric?: string | null
+  authorName?: string | null
+  authorJobTitle?: string | null
+  authorBio?: string | null
+  authorUrl?: string | null
+  authorPhotoUrl?: string | null
   blocks?: unknown[]
   metaTitle?: string | null
   metaDescription?: string | null

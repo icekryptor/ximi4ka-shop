@@ -100,6 +100,31 @@ describe('Public blog routes', () => {
       expect(res.body.data.slug).toBe('opyty-doma')
       expect(res.body.data.title).toBe('Опыты дома')
     })
+    it('отдаёт поля автора (и null, когда автор не задан)', async () => {
+      await seedPost({
+        slug: 's-avtorom',
+        isPublished: true,
+        publishedAt: new Date(),
+        authorName: 'Имя Фамилия',
+        authorJobTitle: 'Должность',
+        authorBio: 'Справка',
+        authorUrl: 'https://example.com/a',
+        authorPhotoUrl: '/uploads/a.jpg',
+      })
+      await seedPost({ slug: 'bez-avtora', isPublished: true, publishedAt: new Date() })
+
+      const withAuthor = await request(app).get('/api/public/blog/s-avtorom')
+      expect(withAuthor.body.data).toMatchObject({
+        authorName: 'Имя Фамилия',
+        authorJobTitle: 'Должность',
+        authorBio: 'Справка',
+        authorUrl: 'https://example.com/a',
+        authorPhotoUrl: '/uploads/a.jpg',
+      })
+      const without = await request(app).get('/api/public/blog/bez-avtora')
+      expect(without.body.data.authorName).toBeNull()
+      expect(without.body.data.authorUrl).toBeNull()
+    })
     it('returns 404 for unpublished', async () => {
       await seedPost({ slug: 'private', isPublished: false })
       const res = await request(app).get('/api/public/blog/private')
@@ -159,6 +184,35 @@ describe('Admin blog routes', () => {
         publishedAt: null,
       })
       expect(res.body.data.id).toBeTruthy()
+    })
+    it('сохраняет автора при создании', async () => {
+      const res = await request(app).post('/api/admin/blog').set(authHeaders(auth)).send({
+        slug: 'avtor',
+        title: 'T',
+        authorName: 'Имя Фамилия',
+        authorJobTitle: 'Должность',
+        authorBio: 'Справка',
+        authorUrl: 'https://example.com/a',
+        authorPhotoUrl: '/uploads/a.jpg',
+      })
+      expect(res.status).toBe(201)
+      expect(res.body.data).toMatchObject({
+        authorName: 'Имя Фамилия',
+        authorJobTitle: 'Должность',
+        authorBio: 'Справка',
+        authorUrl: 'https://example.com/a',
+        authorPhotoUrl: '/uploads/a.jpg',
+      })
+    })
+    it('отклоняет ссылку автора не на http(s) (400)', async () => {
+      for (const authorUrl of ['javascript:alert(1)', '/profile', 'ftp://example.com']) {
+        const res = await request(app)
+          .post('/api/admin/blog')
+          .set(authHeaders(auth))
+          .send({ slug: 'bad-url', title: 'T', authorName: 'A', authorUrl })
+        expect(res.status).toBe(400)
+        expect(res.body.error.code).toBe('validation_error')
+      }
     })
     it('rejects invalid slug (400)', async () => {
       const res = await request(app).post('/api/admin/blog').set(authHeaders(auth)).send({
@@ -285,6 +339,29 @@ describe('Admin blog routes', () => {
       expect(res.status).toBe(200)
       expect(res.body.data.title).toBe('Updated')
       expect(res.body.data.rubric).toBe('Новости')
+    })
+    it('задаёт и снимает автора через PATCH', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app)
+        .post('/api/admin/blog')
+        .set(authHeaders(auth))
+        .send({ slug: 'pa', title: 'T' })
+      const set = await request(app)
+        .patch(`/api/admin/blog/${id}`)
+        .set(authHeaders(auth))
+        .send({ authorName: 'Имя', authorUrl: 'https://example.com/a' })
+      expect(set.status).toBe(200)
+      expect(set.body.data).toMatchObject({ authorName: 'Имя', authorUrl: 'https://example.com/a' })
+      const cleared = await request(app)
+        .patch(`/api/admin/blog/${id}`)
+        .set(authHeaders(auth))
+        .send({ authorName: null, authorUrl: null })
+      expect(cleared.status).toBe(200)
+      expect(cleared.body.data.authorName).toBeNull()
+      expect(cleared.body.data.authorUrl).toBeNull()
     })
     it('404 for missing', async () => {
       const res = await request(app)

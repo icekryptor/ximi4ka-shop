@@ -61,4 +61,36 @@ describe('BlogPost entity', () => {
     expect(found.rubric).toBeNull()
     expect(found.noindex).toBe(false)
   })
+
+  it('автор не обязателен: все поля автора по умолчанию null', async () => {
+    const repo = AppDataSource.getRepository(BlogPost)
+    const saved = await repo.save(repo.create({ slug: 'bez-avtora', title: 'Без автора' }))
+    const found = await repo.findOneByOrFail({ id: saved.id })
+    expect(found.authorName).toBeNull()
+    expect(found.authorJobTitle).toBeNull()
+    expect(found.authorBio).toBeNull()
+    expect(found.authorUrl).toBeNull()
+    expect(found.authorPhotoUrl).toBeNull()
+  })
+
+  it('сохраняет и читает поля автора', async () => {
+    const repo = AppDataSource.getRepository(BlogPost)
+    const saved = await repo.save(
+      repo.create({
+        slug: 's-avtorom',
+        title: 'С автором',
+        authorName: 'Имя Фамилия',
+        authorJobTitle: 'Должность',
+        authorBio: 'Короткая справка об авторе',
+        authorUrl: 'https://example.com/profile',
+        authorPhotoUrl: '/uploads/blog/author.jpg',
+      }),
+    )
+    const found = await repo.findOneByOrFail({ id: saved.id })
+    expect(found.authorName).toBe('Имя Фамилия')
+    expect(found.authorJobTitle).toBe('Должность')
+    expect(found.authorBio).toBe('Короткая справка об авторе')
+    expect(found.authorUrl).toBe('https://example.com/profile')
+    expect(found.authorPhotoUrl).toBe('/uploads/blog/author.jpg')
+  })
 })
