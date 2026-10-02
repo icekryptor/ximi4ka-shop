@@ -320,3 +320,113 @@ describe('generateYmlXml — offers', () => {
     expect(xml).not.toMatch(/<description>/)
   })
 })
+
+describe('escapeXml — недопустимые символы', () => {
+  it('вырезает управляющие символы, запрещённые в XML 1.0', () => {
+    expect(escapeXml('a\u0000b\u0008c\u000Bd\u001Fe')).toBe('abcde')
+    // Таб, перевод строки и возврат каретки допустимы.
+    expect(escapeXml('a\tb\nc\rd')).toBe('a\tb\nc\rd')
+  })
+})
+
+describe('generateYmlXml — vendor, vendorCode, oldprice', () => {
+  const gen = (overrides: Partial<ProductWithCategoryIds>) =>
+    generateYmlXml({
+      products: [makeProduct({ categoryIds: ['cat-1'], ...overrides })],
+      categories: [makeCategory()],
+      settings: baseSettings,
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+
+  it('всегда выводит vendor «Химичка»', () => {
+    expect(gen({})).toContain('<vendor>Химичка</vendor>')
+  })
+
+  it('выводит vendorCode из sku и экранирует его', () => {
+    expect(gen({ sku: 'XM-3.0 & <1>' })).toContain(
+      '<vendorCode>XM-3.0 &amp; &lt;1&gt;</vendorCode>',
+    )
+  })
+
+  it('не выводит vendorCode при пустом sku', () => {
+    expect(gen({ sku: null })).not.toContain('<vendorCode>')
+    expect(gen({ sku: '   ' })).not.toContain('<vendorCode>')
+  })
+
+  it('выводит oldprice, если старая цена выше текущей минимум на 5%', () => {
+    const xml = gen({ priceRub: 1000, compareAtPriceRub: 1500 })
+    expect(xml).toContain('<price>1000</price>\n      <oldprice>1500</oldprice>')
+  })
+
+  it('не выводит oldprice, если старой цены нет, она не выше текущей или скидка меньше 5%', () => {
+    expect(gen({ priceRub: 1000, compareAtPriceRub: null })).not.toContain('<oldprice>')
+    expect(gen({ priceRub: 1000, compareAtPriceRub: 1000 })).not.toContain('<oldprice>')
+    expect(gen({ priceRub: 1000, compareAtPriceRub: 800 })).not.toContain('<oldprice>')
+    expect(gen({ priceRub: 1000, compareAtPriceRub: 1040 })).not.toContain('<oldprice>')
+  })
+
+  it('не выдумывает barcode, param и sales_notes: данных для них нет', () => {
+    const xml = gen({ sku: 'A', priceRub: 1000, compareAtPriceRub: 2000 })
+    expect(xml).not.toMatch(/<barcode>|<param |<sales_notes>/)
+  })
+
+  it('соблюдает порядок элементов offer по спецификации', () => {
+    const xml = gen({
+      sku: 'A-1',
+      priceRub: 1000,
+      compareAtPriceRub: 2000,
+      shortDescription: 'Описание',
+      images: [{ id: 'i', productId: 'p', url: '/uploads/a.jpg', alt: '', sortOrder: 0 }],
+    })
+    // Только блок <offer>: <name> и <url> есть и у <shop>.
+    const offer = xml.slice(xml.indexOf('<offer '))
+    const order = [
+      '<url>',
+      '<price>',
+      '<oldprice>',
+      '<currencyId>',
+      '<categoryId>',
+      '<picture>',
+      '<name>',
+      '<vendor>',
+      '<vendorCode>',
+      '<description>',
+    ].map((tag) => offer.indexOf(tag))
+    expect(order.every((i) => i >= 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+  })
+})
+
+describe('generateYmlXml — description без HTML и до 3000 символов', () => {
+  const descOf = (overrides: Partial<ProductWithCategoryIds>) => {
+    const xml = generateYmlXml({
+      products: [makeProduct({ categoryIds: ['cat-1'], ...overrides })],
+      categories: [makeCategory()],
+      settings: baseSettings,
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    return /<description>([\s\S]*?)<\/description>/.exec(xml)?.[1]
+  }
+
+  it('убирает теги из shortDescription и не экранирует дважды готовые сущности', () => {
+    expect(descOf({ shortDescription: '<p>Соль &amp; <b>сода</b>&nbsp;и вода</p>' })).toBe(
+      'Соль &amp; сода и вода',
+    )
+  })
+
+  it('не принимает «<» и «>» в обычном тексте за теги', () => {
+    expect(descOf({ shortDescription: 'pH < 7 и температура > 3' })).toBe(
+      'pH &lt; 7 и температура &gt; 3',
+    )
+  })
+
+  it('обрезает описание до 3000 символов', () => {
+    const text = descOf({ shortDescription: 'ж'.repeat(5000) })!
+    expect(text).toHaveLength(3000)
+  })
+
+  it('не рвёт суррогатные пары при обрезке', () => {
+    const text = descOf({ shortDescription: '🧪'.repeat(3500) })!
+    expect(Array.from(text)).toHaveLength(3000)
+  })
+})
