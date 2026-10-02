@@ -268,24 +268,7 @@ describe('redirect middleware', () => {
     expect(res.headers.get('location')).toBeNull()
   })
 
-  // ---- <html lang>: локаль для корневого layout -------------------------------
-  //
-  // Корневой layout стоит выше сегмента [locale] и params не получает, поэтому
-  // middleware передаёт локаль заголовком запроса (x-locale).
-
-  it('passes the ru locale to the root layout on the internal rewrite', async () => {
-    fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ data: [] }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-    )
-    const res = await middleware(makeRequest('/product/foo'))
-    expect(res.headers.get('x-middleware-request-x-locale')).toBe('ru')
-    expect(res.headers.get('x-middleware-override-headers')).toContain('x-locale')
-  })
-
-  it('passes the en locale to the root layout for /en URLs', async () => {
+  it('leaves /en URLs with query alone (no redirect, no rewrite)', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ data: [] }), {
         status: 200,
@@ -293,23 +276,8 @@ describe('redirect middleware', () => {
       }),
     )
     const res = await middleware(makeRequest('/en/blog/foo?x=1'))
-    expect(res.headers.get('x-middleware-request-x-locale')).toBe('en')
     expect(res.headers.get('location')).toBeNull()
     expect(res.headers.get('x-middleware-rewrite')).toBeNull()
-  })
-
-  it('overrides a client-supplied x-locale header', async () => {
-    fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify({ data: [] }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      }),
-    )
-    const req = new NextRequest(new URL('http://localhost:3000/product/foo'), {
-      headers: { 'x-locale': 'en' },
-    })
-    const res = await middleware(req)
-    expect(res.headers.get('x-middleware-request-x-locale')).toBe('ru')
   })
 
   it('caches the list for 60s — second request within window does not re-fetch', async () => {

@@ -31,13 +31,6 @@ export function isLocale(value: string | undefined | null): value is Locale {
 }
 
 /**
- * Заголовок запроса, которым middleware передаёт локаль в корневой layout:
- * он стоит выше сегмента `[locale]`, params не получает, а `<html lang>` нужен
- * уже в нём. Значение всегда выставляет middleware (клиентское перезатирается).
- */
-export const LOCALE_HEADER = 'x-locale'
-
-/**
  * Shape contract for entities that support translations — Product,
  * ProductCategory, and Page all match this today. We type `translations`
  * loosely because its contents are per-locale JSON, but the top-level
