@@ -49,12 +49,18 @@ function htmlToPlaintext(html: string): string {
 }
 
 // Требование YML: description не длиннее 3000 символов. Режем по символам
-// Unicode, чтобы не оставить половину суррогатной пары.
+// Unicode, чтобы не оставить половину суррогатной пары, и по границе слова,
+// чтобы не оборвать описание на полуслове (слово без пробелов — режем жёстко).
 const DESCRIPTION_MAX_CHARS = 3000
 
 function truncateChars(text: string, max: number): string {
   const chars = Array.from(text)
-  return chars.length <= max ? text : chars.slice(0, max).join('').trimEnd()
+  if (chars.length <= max) return text
+  const cut = chars.slice(0, max)
+  if (/\s/.test(chars[max])) return cut.join('').trimEnd()
+  let lastSpace = cut.length - 1
+  while (lastSpace > 0 && !/\s/.test(cut[lastSpace])) lastSpace--
+  return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).join('').trimEnd()
 }
 
 // Маркет показывает скидку, когда старая цена выше текущей минимум на 5%.
@@ -63,24 +69,38 @@ function hasOldPrice(product: Product): product is Product & { compareAtPriceRub
   return old != null && old >= product.priceRub * 1.05
 }
 
+// Служебные заголовки блоков длинного описания: под ними идут списки состава
+// и характеристик, а не описание товара.
+const SERVICE_HEADINGS = new Set(['состав', 'характеристики', 'комплектация'])
+
+function isServiceHeading(text: string): boolean {
+  return SERVICE_HEADINGS.has(text.replace(/[\s:.]+$/, '').toLowerCase())
+}
+
+// Текст абзаца для описания или '' — если блок не текстовый, пустой или
+// относится к служебному разделу («Состав», «Характеристики»).
+function paragraphText(block: unknown): string {
+  if (typeof block !== 'object' || block === null) return ''
+  const { type, html } = block as { type?: string; html?: unknown }
+  if (type !== 'paragraph' || typeof html !== 'string') return ''
+  for (const heading of html.matchAll(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi)) {
+    if (isServiceHeading(htmlToPlaintext(heading[1]))) return ''
+  }
+  const text = htmlToPlaintext(html)
+  return isServiceHeading(text) ? '' : text
+}
+
 // Pick the description for the YML <description> field. Priority:
 //   1. shortDescription (admin-authored summary)
-//   2. first paragraph block's plaintext
+//   2. первый осмысленный текстовый блок длинного описания
 //   3. empty string — <description> is optional in YML, so we simply skip it.
 function productDescription(product: Product): string {
   const short = product.shortDescription ? htmlToPlaintext(product.shortDescription) : ''
   if (short) return short
   const blocks = Array.isArray(product.longDescriptionBlocks) ? product.longDescriptionBlocks : []
   for (const block of blocks) {
-    if (
-      typeof block === 'object' &&
-      block !== null &&
-      (block as { type?: string }).type === 'paragraph' &&
-      typeof (block as { html?: unknown }).html === 'string'
-    ) {
-      const text = htmlToPlaintext((block as { html: string }).html)
-      if (text) return text
-    }
+    const text = paragraphText(block)
+    if (text) return text
   }
   return ''
 }
@@ -127,8 +147,9 @@ export function generateYmlXml(input: YmlGeneratorInput): string {
   const categoryIdMap = new Map<string, number>()
   categories.forEach((cat, i) => categoryIdMap.set(cat.id, i + 1))
 
-  const shopName = settings.ymlShopName ?? 'Ximi4ka'
-  const shopCompany = settings.ymlCompany ?? shopName
+  // Пустое значение в настройках (null, '' или пробелы) — как отсутствие.
+  const shopName = settings.ymlShopName?.trim() || BRAND_NAME
+  const shopCompany = settings.ymlCompany?.trim() || shopName
   const shopUrl = settings.ymlUrl ?? siteUrl
   const currency = settings.ymlCurrency ?? 'RUB'
   const deliveryNote = settings.ymlDeliveryNote?.trim()

@@ -105,8 +105,30 @@ describe('generateYmlXml — structure', () => {
       },
       siteUrl: 'https://new.ximi4ka.ru',
     })
-    expect(xml).toContain('<name>Ximi4ka</name>')
+    expect(xml).toContain('<name>Химичка</name>')
+    expect(xml).toContain('<company>Химичка</company>')
     expect(xml).toContain('<url>https://new.ximi4ka.ru</url>')
+  })
+
+  it('подставляет «Химичка» и вместо пустых строк в настройках', () => {
+    const xml = generateYmlXml({
+      products: [],
+      categories: [],
+      settings: { ...baseSettings, ymlShopName: '  ', ymlCompany: '' },
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    expect(xml).toContain('<name>Химичка</name>')
+    expect(xml).toContain('<company>Химичка</company>')
+  })
+
+  it('компания без значения берёт название магазина из настроек', () => {
+    const xml = generateYmlXml({
+      products: [],
+      categories: [],
+      settings: { ...baseSettings, ymlShopName: 'Мой магазин', ymlCompany: null },
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    expect(xml).toContain('<company>Мой магазин</company>')
   })
 
   it('emits delivery-options when ymlDeliveryNote is set', () => {
@@ -188,6 +210,34 @@ describe('generateYmlXml — offers', () => {
     })
     expect(xml).toContain('<offer id="p-in" available="true">')
     expect(xml).toContain('<offer id="p-out" available="false">')
+  })
+
+  it('под заказ (preorder) — available="false"', () => {
+    const xml = generateYmlXml({
+      products: [makeProduct({ id: 'p-pre', stockStatus: 'preorder', categoryIds: ['cat-1'] })],
+      categories: [makeCategory()],
+      settings: baseSettings,
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    expect(xml).toContain('<offer id="p-pre" available="false">')
+  })
+
+  it('url оффера и относительные картинки строятся от переданного siteUrl', () => {
+    const xml = generateYmlXml({
+      products: [
+        makeProduct({
+          slug: 'nabor',
+          images: [{ url: '/uploads/a.jpg', alt: '', sortOrder: 0 }] as never,
+          categoryIds: ['cat-1'],
+        }),
+      ],
+      categories: [makeCategory()],
+      settings: { ...baseSettings, ymlUrl: null },
+      siteUrl: 'https://ximi4ka.ru',
+    })
+    expect(xml).toContain('<url>https://ximi4ka.ru/product/nabor</url>')
+    expect(xml).toContain('<picture>https://ximi4ka.ru/uploads/a.jpg</picture>')
+    expect(xml).not.toContain('new.ximi4ka.ru')
   })
 
   it('skips products without a linked category', () => {
@@ -428,5 +478,86 @@ describe('generateYmlXml — description без HTML и до 3000 символо
   it('не рвёт суррогатные пары при обрезке', () => {
     const text = descOf({ shortDescription: '🧪'.repeat(3500) })!
     expect(Array.from(text)).toHaveLength(3000)
+  })
+})
+
+describe('generateYmlXml — фолбэк описания из longDescriptionBlocks', () => {
+  const descOf = (overrides: Partial<ProductWithCategoryIds>) => {
+    const xml = generateYmlXml({
+      products: [makeProduct({ categoryIds: ['cat-1'], ...overrides })],
+      categories: [makeCategory()],
+      settings: baseSettings,
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    return /<description>([\s\S]*?)<\/description>/.exec(xml)?.[1]
+  }
+
+  it('shortDescription из одних пробелов и тегов не считается описанием — берётся текстовый блок', () => {
+    expect(
+      descOf({
+        shortDescription: '<p> </p>',
+        longDescriptionBlocks: [{ type: 'paragraph', html: '<p>Текст блока</p>' }],
+      }),
+    ).toBe('Текст блока')
+  })
+
+  it('пропускает нетекстовые блоки и пустые абзацы, берёт первый осмысленный', () => {
+    expect(
+      descOf({
+        longDescriptionBlocks: [
+          { type: 'image', url: '/a.jpg', alt: '' },
+          { type: 'paragraph', html: '<p>&nbsp;</p>' },
+          { type: 'paragraph', html: '<p>Первый <b>смысл</b></p>' },
+          { type: 'paragraph', html: '<p>Второй</p>' },
+        ],
+      }),
+    ).toBe('Первый смысл')
+  })
+
+  it('пропускает блоки со служебными заголовками «Состав» и «Характеристики»', () => {
+    expect(
+      descOf({
+        longDescriptionBlocks: [
+          {
+            type: 'paragraph',
+            html: '<h3>Характеристики</h3><ul><li><strong>Вес:</strong> 1 кг</li></ul>',
+          },
+          { type: 'paragraph', html: '<h2>Состав</h2><p>Соль, сода</p>' },
+          { type: 'paragraph', html: '<p>Состав:</p>' },
+          { type: 'paragraph', html: '<p>Настоящее описание</p>' },
+        ],
+      }),
+    ).toBe('Настоящее описание')
+  })
+
+  it('без осмысленных блоков описания нет', () => {
+    expect(
+      descOf({
+        longDescriptionBlocks: [
+          { type: 'paragraph', html: '<h3>Состав</h3><p>Соль</p>' },
+          { type: 'video', provider: 'youtube', videoId: 'x' },
+        ],
+      }),
+    ).toBeUndefined()
+  })
+
+  it('режет описание из блока по границе слова до 3000 символов', () => {
+    const text = descOf({
+      longDescriptionBlocks: [{ type: 'paragraph', html: `<p>х ${'слово '.repeat(1000)}</p>` }],
+    })!
+    expect(text.length).toBeLessThanOrEqual(3000)
+    expect(text.endsWith('слово')).toBe(true)
+    expect(
+      text
+        .split(' ')
+        .slice(1)
+        .every((w) => w === 'слово'),
+    ).toBe(true)
+  })
+
+  it('режет и shortDescription по границе слова', () => {
+    const text = descOf({ shortDescription: 'abcdefgh '.repeat(600) })!
+    expect(text.length).toBeLessThanOrEqual(3000)
+    expect(text.split(' ').every((w) => w === 'abcdefgh')).toBe(true)
   })
 })
