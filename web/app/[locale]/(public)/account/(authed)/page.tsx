@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import { OrdersList } from '../_components/OrdersList'
 import { ProfileCard } from '../_components/ProfileCard'
 
-export const metadata: Metadata = { title: 'Личный кабинет — Химичка',
+export const metadata: Metadata = {
+  title: 'Личный кабинет — Химичка',
   robots: { index: false, follow: false },
 }
 
