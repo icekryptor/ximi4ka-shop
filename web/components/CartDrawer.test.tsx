@@ -289,6 +289,7 @@ describe('CartDrawer: Метрика', () => {
     setMetrikaCounterId('777')
     render(<CartDrawer />)
     act(() => openDrawer())
+    expect(ym).toHaveBeenCalledTimes(1)
     expect(ym).toHaveBeenCalledWith('777', 'reachGoal', 'open_cart')
   })
 

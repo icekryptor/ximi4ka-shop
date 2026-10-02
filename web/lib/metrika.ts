@@ -25,6 +25,8 @@ export interface MetrikaProduct {
 const CURRENCY = 'RUB'
 const PENDING_PURCHASE_PREFIX = 'ximi4ka-metrika-purchase:'
 const SENT_PURCHASE_PREFIX = 'ximi4ka-metrika-purchase-sent:'
+// Снимок и отметка живут 2 суток: дольше они не нужны, а localStorage не растёт.
+const PURCHASE_TTL_MS = 2 * 24 * 60 * 60 * 1000
 
 type MetrikaWindow = Window & {
   ym?: ((...args: unknown[]) => void) & { a?: unknown[] }
@@ -33,7 +35,7 @@ type MetrikaWindow = Window & {
 
 let counterId: string | null = null
 
-/** Вызывается из MetrikaScript: включает отправку событий для этого счётчика. */
+/** Вызывается из MetrikaCounterId: включает отправку событий для этого счётчика. */
 export function setMetrikaCounterId(id: string | null): void {
   counterId = id
 }
@@ -50,7 +52,7 @@ function metrikaWindow(): MetrikaWindow | null {
  */
 export function reachGoal(goal: string, params?: Record<string, unknown>): void {
   const w = metrikaWindow()
-  if (!w || counterId === null) return
+  if (!w) return
   try {
     if (typeof w.ym !== 'function') {
       const queue: ((...args: unknown[]) => void) & { a?: unknown[] } = function () {
@@ -116,20 +118,89 @@ export function rememberPendingPurchase(orderNumber: string, products: MetrikaPr
   if (typeof window === 'undefined') return
   const storage = safeStorage()
   if (!storage) return
+  purgeExpired(storage)
   try {
-    storage.setItem(PENDING_PURCHASE_PREFIX + orderNumber, JSON.stringify(products))
+    storage.setItem(
+      PENDING_PURCHASE_PREFIX + orderNumber,
+      JSON.stringify({ ts: Date.now(), products }),
+    )
   } catch {
     // переполненное/закрытое хранилище — покупку просто не отправим
   }
 }
 
+/** Заказ провален/отменён — покупки не будет, снимок не нужен. */
+export function forgetPendingPurchase(orderNumber: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    safeStorage()?.removeItem(PENDING_PURCHASE_PREFIX + orderNumber)
+  } catch {
+    // см. выше
+  }
+}
+
+// Запись в хранилище — JSON с полем ts. Старый формат (без ts, не JSON-объект)
+// считается просроченным.
+function readTs(raw: string | null): number | null {
+  if (!raw) return null
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null
+    const ts = (parsed as { ts?: unknown }).ts
+    return typeof ts === 'number' && Number.isFinite(ts) ? ts : null
+  } catch {
+    return null
+  }
+}
+
+function isFresh(ts: number | null, now: number): boolean {
+  return ts !== null && now - ts <= PURCHASE_TTL_MS
+}
+
+// Удаляет просроченные снимки и отметки (и записи в старом формате).
+function purgeExpired(storage: Storage): void {
+  try {
+    const now = Date.now()
+    const stale: string[] = []
+    for (let i = 0; i < storage.length; i += 1) {
+      const key = storage.key(i)
+      if (!key) continue
+      if (!key.startsWith(PENDING_PURCHASE_PREFIX) && !key.startsWith(SENT_PURCHASE_PREFIX)) {
+        continue
+      }
+      if (!isFresh(readTs(storage.getItem(key)), now)) stale.push(key)
+    }
+    for (const key of stale) storage.removeItem(key)
+  } catch {
+    // чистка best-effort
+  }
+}
+
+// Товары из снимка: мусор (не строки/не числа) отбрасываем.
 function readPendingPurchase(storage: Storage, orderNumber: string): MetrikaProduct[] | null {
   try {
     const raw = storage.getItem(PENDING_PURCHASE_PREFIX + orderNumber)
     if (!raw) return null
     const parsed: unknown = JSON.parse(raw)
-    if (!Array.isArray(parsed) || parsed.length === 0) return null
-    return parsed as MetrikaProduct[]
+    if (typeof parsed !== 'object' || parsed === null) return null
+    const list = (parsed as { products?: unknown }).products
+    if (!Array.isArray(list)) return null
+    const products: MetrikaProduct[] = []
+    for (const item of list) {
+      if (typeof item !== 'object' || item === null) continue
+      const p = item as Record<string, unknown>
+      if (
+        typeof p.id === 'string' &&
+        typeof p.name === 'string' &&
+        typeof p.price === 'number' &&
+        Number.isFinite(p.price) &&
+        typeof p.quantity === 'number' &&
+        Number.isFinite(p.quantity)
+      ) {
+        products.push({ id: p.id, name: p.name, price: p.price, quantity: p.quantity })
+      }
+    }
+    return products.length > 0 ? products : null
   } catch {
     return null
   }
@@ -144,15 +215,20 @@ export function reportPurchaseOnce(orderNumber: string, revenueRub: number): boo
   if (!metrikaWindow()) return false
   const storage = safeStorage()
   if (!storage) return false
+  purgeExpired(storage)
   const products = readPendingPurchase(storage, orderNumber)
   if (!products) return false
   try {
     if (storage.getItem(SENT_PURCHASE_PREFIX + orderNumber)) return false
-    storage.setItem(SENT_PURCHASE_PREFIX + orderNumber, '1')
-    storage.removeItem(PENDING_PURCHASE_PREFIX + orderNumber)
+    storage.setItem(SENT_PURCHASE_PREFIX + orderNumber, JSON.stringify({ ts: Date.now() }))
   } catch {
     // Не смогли поставить отметку — лучше недосчитать, чем задвоить.
     return false
+  }
+  try {
+    storage.removeItem(PENDING_PURCHASE_PREFIX + orderNumber)
+  } catch {
+    // Отметка уже стоит — повтора не будет, снимок уберёт чистка по сроку.
   }
   pushEcommerce('purchase', {
     actionField: { id: orderNumber, revenue: revenueRub },

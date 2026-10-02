@@ -4,6 +4,7 @@ import {
   ecommerceAdd,
   ecommerceDetail,
   ecommerceRemove,
+  forgetPendingPurchase,
   reachGoal,
   rememberPendingPurchase,
   reportPurchaseOnce,
@@ -189,10 +190,155 @@ describe('reportPurchaseOnce', () => {
     expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(true)
   })
 
-  it('never puts personal data into the purchase package', () => {
-    rememberPendingPurchase('XM-2026-00042', products)
-    reportPurchaseOnce('XM-2026-00042', 3200)
-    const serialized = JSON.stringify([w.dataLayer, (w.ym as ReturnType<typeof vi.fn>).mock.calls])
-    expect(serialized).not.toMatch(/phone|email|телефон|address|адрес/i)
+  describe('сбои хранилища', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('getItem бросает: ничего не отправлено, снимок остался', () => {
+      rememberPendingPurchase('XM-2026-00042', products)
+      const spy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('denied')
+      })
+      expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
+      spy.mockRestore()
+      expect(w.dataLayer).toEqual([])
+      expect(w.ym).not.toHaveBeenCalled()
+      expect(window.localStorage.getItem('ximi4ka-metrika-purchase:XM-2026-00042')).not.toBeNull()
+    })
+
+    it('setItem бросает (отметку не поставить): ничего не отправлено, снимок остался', () => {
+      rememberPendingPurchase('XM-2026-00042', products)
+      const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('quota')
+      })
+      expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
+      spy.mockRestore()
+      expect(w.dataLayer).toEqual([])
+      expect(w.ym).not.toHaveBeenCalled()
+      expect(window.localStorage.getItem('ximi4ka-metrika-purchase:XM-2026-00042')).not.toBeNull()
+      expect(window.localStorage.getItem('ximi4ka-metrika-purchase-sent:XM-2026-00042')).toBeNull()
+    })
+
+    it('removeItem бросает после отметки: покупка всё равно уходит, повторно — нет', () => {
+      rememberPendingPurchase('XM-2026-00042', products)
+      vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+        throw new Error('denied')
+      })
+      expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(true)
+      expect(w.dataLayer).toHaveLength(1)
+      expect(w.ym).toHaveBeenCalledTimes(1)
+      expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
+      expect(w.dataLayer).toHaveLength(1)
+    })
+  })
+
+  describe('битый или чужой снимок', () => {
+    const KEY = 'ximi4ka-metrika-purchase:XM-2026-00042'
+
+    it.each([['{'], ['[]'], ['{"ts":1}'], ['null'], ['"str"']])('%s — не отправляется', (raw) => {
+      window.localStorage.setItem(KEY, raw)
+      expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
+      expect(w.dataLayer).toEqual([])
+      expect(w.ym).not.toHaveBeenCalled()
+    })
+
+    it('мусорные товары отбрасываются, нормальные уходят только с четырьмя полями', () => {
+      window.localStorage.setItem(
+        KEY,
+        JSON.stringify({
+          ts: Date.now(),
+          products: [
+            { id: 'p1', name: 'Набор А', price: 1000, quantity: 2, phone: '+79990000000' },
+            { id: 5, name: 'Набор Б', price: 10, quantity: 1 },
+            { id: 'p3', name: 'Набор В', price: '10', quantity: 1 },
+            { id: 'p4', name: 'Набор Г', price: 10, quantity: null },
+            null,
+            'строка',
+          ],
+        }),
+      )
+      expect(reportPurchaseOnce('XM-2026-00042', 2000)).toBe(true)
+      expect(w.dataLayer).toEqual([
+        {
+          ecommerce: {
+            currencyCode: 'RUB',
+            purchase: {
+              actionField: { id: 'XM-2026-00042', revenue: 2000 },
+              products: [{ id: 'p1', name: 'Набор А', price: 1000, quantity: 2 }],
+            },
+          },
+        },
+      ])
+    })
+
+    it('снимок, где все товары мусор, не отправляется', () => {
+      window.localStorage.setItem(
+        KEY,
+        JSON.stringify({ ts: Date.now(), products: [{ id: 1 }, 'x'] }),
+      )
+      expect(reportPurchaseOnce('XM-2026-00042', 2000)).toBe(false)
+      expect(w.dataLayer).toEqual([])
+    })
+  })
+
+  describe('срок хранения (2 суток)', () => {
+    const DAY = 24 * 60 * 60 * 1000
+    const P = 'ximi4ka-metrika-purchase:'
+    const S = 'ximi4ka-metrika-purchase-sent:'
+
+    function seedStorage() {
+      const ls = window.localStorage
+      ls.setItem(`${P}OLD`, JSON.stringify({ ts: Date.now() - 3 * DAY, products }))
+      ls.setItem(`${S}OLD`, JSON.stringify({ ts: Date.now() - 3 * DAY }))
+      ls.setItem(`${P}LEGACY`, JSON.stringify(products)) // старый формат: массив без ts
+      ls.setItem(`${S}LEGACY`, '1') // старый формат отметки
+      ls.setItem(`${P}FRESH`, JSON.stringify({ ts: Date.now() - DAY, products }))
+      ls.setItem(`${S}FRESH`, JSON.stringify({ ts: Date.now() - DAY }))
+      ls.setItem('unrelated-key', 'keep')
+    }
+
+    function expectCleaned() {
+      const ls = window.localStorage
+      for (const key of [`${P}OLD`, `${S}OLD`, `${P}LEGACY`, `${S}LEGACY`]) {
+        expect(ls.getItem(key)).toBeNull()
+      }
+      for (const key of [`${P}FRESH`, `${S}FRESH`, 'unrelated-key']) {
+        expect(ls.getItem(key)).not.toBeNull()
+      }
+    }
+
+    it('reportPurchaseOnce удаляет просроченные снимки и отметки, свежие и чужие ключи не трогает', () => {
+      seedStorage()
+      reportPurchaseOnce('XM-2026-00001', 100)
+      expectCleaned()
+    })
+
+    it('rememberPendingPurchase делает ту же чистку', () => {
+      seedStorage()
+      rememberPendingPurchase('XM-2026-00001', products)
+      expectCleaned()
+    })
+
+    it('просроченный снимок покупку не отправляет', () => {
+      window.localStorage.setItem(
+        `${P}XM-2026-00042`,
+        JSON.stringify({ ts: Date.now() - 3 * DAY, products }),
+      )
+      expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
+      expect(w.dataLayer).toEqual([])
+    })
+
+    it('снимок в старом формате (массив) считается просроченным и не отправляется', () => {
+      window.localStorage.setItem(`${P}XM-2026-00042`, JSON.stringify(products))
+      expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
+      expect(window.localStorage.getItem(`${P}XM-2026-00042`)).toBeNull()
+    })
+
+    it('forgetPendingPurchase убирает снимок заказа', () => {
+      rememberPendingPurchase('XM-2026-00042', products)
+      forgetPendingPurchase('XM-2026-00042')
+      expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
+    })
   })
 })

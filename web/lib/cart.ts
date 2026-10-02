@@ -219,21 +219,24 @@ export function useCart() {
   // (карточки, страница товара, drawer, страница корзины). clear() событий
   // не шлёт — его зовёт чекаут после оформления заказа, это не удаление.
   const add = useCallback((item: Omit<CartItem, 'quantity'>, qty?: number) => {
-    saveCart(addToCart(loadCart(), item, qty))
+    const current = loadCart()
+    saveCart(addToCart(current, item, qty))
     const quantity = qty ?? 1
     ecommerceAdd(metrikaProduct(item), quantity)
     reachGoal(METRIKA_GOALS.addToCart, { product_id: item.productId, quantity })
   }, [])
 
   const remove = useCallback((productId: string) => {
-    const existing = loadCart().find((i) => i.productId === productId)
-    saveCart(removeFromCart(loadCart(), productId))
+    const current = loadCart()
+    const existing = current.find((i) => i.productId === productId)
+    saveCart(removeFromCart(current, productId))
     if (existing) ecommerceRemove(metrikaProduct(existing), existing.quantity)
   }, [])
 
   const setQty = useCallback((productId: string, qty: number) => {
-    const existing = loadCart().find((i) => i.productId === productId)
-    saveCart(setQuantity(loadCart(), productId, qty))
+    const current = loadCart()
+    const existing = current.find((i) => i.productId === productId)
+    saveCart(setQuantity(current, productId, qty))
     if (!existing) return
     const delta = Math.max(qty, 0) - existing.quantity
     if (delta > 0) ecommerceAdd(metrikaProduct(existing), delta)

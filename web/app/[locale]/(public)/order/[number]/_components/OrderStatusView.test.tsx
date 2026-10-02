@@ -335,14 +335,90 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} />)
     await screen.findByTestId('order-status-label')
     expect(w.dataLayer).toEqual([])
+    expect(w.ym).not.toHaveBeenCalled()
   })
 
-  it('не шлёт покупку по проваленному заказу', async () => {
-    vi.stubGlobal('fetch', fetchReturning(statusPayload({ status: 'failed' })))
+  it.each(['failed', 'cancelled'] as const)(
+    'не шлёт покупку по заказу в статусе %s и удаляет снимок',
+    async (status) => {
+      vi.stubGlobal('fetch', fetchReturning(statusPayload({ status })))
+      render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
+      await screen.findByTestId('order-status-label')
+      expect(w.dataLayer).toEqual([])
+      expect(w.ym).not.toHaveBeenCalled()
+      expect(window.localStorage.getItem('ximi4ka-metrika-purchase:XM-2026-00042')).toBeNull()
+    },
+  )
+
+  it('Т-Касса: pending (оплата не подтверждена) — покупка не уходит', async () => {
+    vi.stubGlobal('fetch', fetchReturning(statusPayload({ paymentProvider: 'tbank' })))
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
     await screen.findByTestId('order-status-label')
     expect(w.dataLayer).toEqual([])
     expect(w.ym).not.toHaveBeenCalled()
+  })
+
+  it('Т-Касса: pending → paid во время поллинга — покупка уходит один раз', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal(
+      'fetch',
+      fetchReturning(
+        statusPayload({ paymentProvider: 'tbank', totalRub: 3399 }),
+        statusPayload({
+          paymentProvider: 'tbank',
+          totalRub: 3399,
+          status: 'paid',
+          paidAt: '2026-07-01T10:01:00.000Z',
+        }),
+      ),
+    )
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(w.dataLayer).toEqual([])
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(w.dataLayer).toHaveLength(1)
+    expect(w.ym).toHaveBeenCalledTimes(1)
+    expect(w.ym).toHaveBeenCalledWith('777', 'reachGoal', 'purchase', {
+      order_price: 3399,
+      currency: 'RUB',
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20000)
+    })
+    expect(w.dataLayer).toHaveLength(1)
+    expect(w.ym).toHaveBeenCalledTimes(1)
+  })
+
+  it('Т-Касса: заказ уже оплачен при загрузке — покупка уходит', async () => {
+    vi.stubGlobal(
+      'fetch',
+      fetchReturning(
+        statusPayload({
+          paymentProvider: 'tbank',
+          status: 'paid',
+          paidAt: '2026-07-01T10:01:00.000Z',
+        }),
+      ),
+    )
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
+    await screen.findByTestId('order-status-label')
+    expect(w.dataLayer).toHaveLength(1)
+  })
+
+  it('возврат из банка ?payment=failed: покупка не уходит, снимок остаётся для повторной оплаты', async () => {
+    vi.stubGlobal('fetch', fetchReturning(statusPayload({ paymentProvider: 'tbank' })))
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} paymentFailed />)
+    await screen.findByTestId('order-payment-failed')
+    expect(w.dataLayer).toEqual([])
+    expect(w.ym).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem('ximi4ka-metrika-purchase:XM-2026-00042')).not.toBeNull()
   })
 
   it('без счётчика Метрики страница работает, событий нет', async () => {

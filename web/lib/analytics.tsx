@@ -7,6 +7,11 @@ import { MetrikaCounterId } from '@/components/MetrikaCounterId'
 // stored-XSS vector if validation ever lapsed.
 // ecommerce:"dataLayer" включает приём электронной коммерции из
 // window.dataLayer (события — web/lib/metrika.ts). Вебвизор не включён.
+// dataLayer общий с GA4 (Ga4Script) и Метрикой. Метрика понимает и gtag-формат,
+// поэтому при включённом ecommerce:"dataLayer" НЕ добавлять
+// gtag('event','purchase',…) и т.п. — покупка задвоится. Если появится GTM —
+// перед каждым ecommerce-пакетом делать dataLayer.push({ ecommerce: null }),
+// чтобы данные прошлого события не склеились со следующим.
 export function MetrikaScript({ counterId }: { counterId: string }) {
   return (
     <>

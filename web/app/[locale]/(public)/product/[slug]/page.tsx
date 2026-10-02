@@ -314,7 +314,9 @@ export default async function ProductPage({ params }: Props) {
       {/* MOBILE BUY BAR — sticky bottom on mobile, IO-driven via the
           `data-add-to-cart-row` sentinel inside AddToCartWithQuantity. */}
       <MobileBuyBarMount product={product} />
-      <ProductViewTracker product={product} />
+      <ProductViewTracker
+        product={{ id: product.id, name: product.name, priceRub: product.priceRub }}
+      />
 
       {/* AMP discovery: поисковики ищут <link rel="amphtml"> на канонической
           странице. Намеренно ПОСЛЕДНИЙ ребёнок фрагмента: React 19 переносит

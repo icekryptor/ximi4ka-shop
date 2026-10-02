@@ -692,6 +692,19 @@ describe('чекаут: Метрика', () => {
     })
   })
 
+  it('begin_checkout: не повторяется при изменении корзины на странице', async () => {
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await screen.findByRole('button', { name: /оформить заказ/i })
+    expect(w.ym).toHaveBeenCalledTimes(1)
+
+    seedCart([{ ...seed[0]!, quantity: 3 }])
+    await screen.findByTestId('summary-total')
+    seedCart([])
+    seedCart(seed)
+    expect(w.ym).toHaveBeenCalledTimes(1)
+  })
+
   it('begin_checkout: пустая корзина цели не даёт', () => {
     render(<CheckoutPage />)
     expect(w.ym).not.toHaveBeenCalled()
@@ -710,9 +723,10 @@ describe('чекаут: Метрика', () => {
     await vi.waitFor(() => expect(mockPush).toHaveBeenCalled())
 
     const stored = window.localStorage.getItem('ximi4ka-metrika-purchase:XM-2026-00042')
-    expect(JSON.parse(stored ?? 'null')).toEqual([
-      { id: seed[0]!.productId, name: 'Набор A', price: 1000, quantity: 2 },
-    ])
+    expect(JSON.parse(stored ?? 'null')).toEqual({
+      ts: expect.any(Number),
+      products: [{ id: seed[0]!.productId, name: 'Набор A', price: 1000, quantity: 2 }],
+    })
     expect(stored).not.toMatch(/Мария|79123456789/)
     // Очистка корзины после заказа — не «remove».
     expect(w.dataLayer).toEqual([])
