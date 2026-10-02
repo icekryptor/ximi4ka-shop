@@ -62,19 +62,52 @@ describe('JSON-LD helpers', () => {
     expect(out.sameAs).toContain('https://t.me/ximi4kapublic')
   })
 
-  it('organizationJsonLd without options has no contactPoint', () => {
-    expect(serialized(organizationJsonLd())).not.toHaveProperty('contactPoint')
+  it('organizationJsonLd without options keeps the old fields and adds no contacts', () => {
+    const out = serialized(organizationJsonLd())
+    expect(out).not.toHaveProperty('telephone')
+    expect(out).not.toHaveProperty('email')
+    expect(out).not.toHaveProperty('contactPoint')
+    expect(out.sameAs).toContain('https://t.me/ximi4kapublic')
   })
 
-  it('organizationJsonLd adds a support contactPoint when supportUrl is given', () => {
-    const out = organizationJsonLd({ supportUrl: 'https://t.me/ximi4ka_support' })
+  it('organizationJsonLd sameAs lists all social profiles', () => {
+    expect(organizationJsonLd().sameAs).toEqual([
+      'https://t.me/ximi4kapublic',
+      'https://www.instagram.com/ximi4kaaa/',
+      'https://www.tiktok.com/@ximi4ka',
+      'https://www.youtube.com/@chemxenia',
+    ])
+  })
+
+  it('organizationJsonLd adds telephone, email and a full contactPoint when given', () => {
+    const out = serialized(
+      organizationJsonLd({
+        phone: '+79859938311',
+        email: 'info@ximi4ka.ru',
+        supportUrl: 'https://t.me/ximi4ka_support',
+      }),
+    )
+    expect(out.telephone).toBe('+79859938311')
+    expect(out.email).toBe('info@ximi4ka.ru')
+    expect(out.contactPoint).toEqual({
+      '@type': 'ContactPoint',
+      contactType: 'customer support',
+      telephone: '+79859938311',
+      email: 'info@ximi4ka.ru',
+      url: 'https://t.me/ximi4ka_support',
+      availableLanguage: 'ru',
+    })
+  })
+
+  it('organizationJsonLd contactPoint carries only the given channels', () => {
+    const out = serialized(organizationJsonLd({ supportUrl: 'https://t.me/ximi4ka_support' }))
+    expect(out).not.toHaveProperty('telephone')
     expect(out.contactPoint).toEqual({
       '@type': 'ContactPoint',
       contactType: 'customer support',
       url: 'https://t.me/ximi4ka_support',
+      availableLanguage: 'ru',
     })
-    // Остальные поля не меняются.
-    expect(out.sameAs).toContain('https://t.me/ximi4kapublic')
   })
 
   it('websiteJsonLd has no SearchAction (there is no /search page)', () => {

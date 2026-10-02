@@ -1,12 +1,12 @@
 import type { Product } from '@ximi4ka-shop/shared'
 import { siteUrl } from './metadata'
+import { SOCIAL_URLS } from './contacts'
 
 // Бренд в разметке — «Химичка» (рекомендации SEO-аудита). Юрлицо и ИНН
 // не указываем, пока владелец не подтвердит, какое из ИП выводить.
 const BRAND_NAME = 'Химичка'
 const BRAND_ALT_NAME = 'Ximi4ka'
 const LOGO_PATH = '/logo-himichka.svg'
-const SAME_AS = ['https://t.me/ximi4kapublic']
 
 /** Корневой путь (/uploads/…) → абсолютный URL сайта; абсолютные не трогаем. */
 export function absoluteUrl(url: string): string {
@@ -23,19 +23,29 @@ export interface OrganizationLd {
   url: string
   logo: string
   sameAs: string[]
-  contactPoint?: { '@type': 'ContactPoint'; contactType: 'customer support'; url: string }
+  telephone?: string
+  email?: string
+  contactPoint?: {
+    '@type': 'ContactPoint'
+    contactType: 'customer support'
+    telephone?: string
+    email?: string
+    url?: string
+    availableLanguage: 'ru'
+  }
 }
 
 export interface OrganizationLdOptions {
-  /**
-   * Ссылка на чат поддержки (Telegram). Телефона, почты и адреса в настройках
-   * сайта и футере нет — не выдумываем, выводим только то, что есть.
-   */
+  /** Телефон и e-mail магазина (см. lib/contacts.ts); без них поля не выводятся. */
+  phone?: string
+  email?: string
+  /** Ссылка на чат поддержки (Telegram). */
   supportUrl?: string
 }
 
 export function organizationJsonLd(options: OrganizationLdOptions = {}): OrganizationLd {
   const base = siteUrl()
+  const { phone, email, supportUrl } = options
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -44,10 +54,20 @@ export function organizationJsonLd(options: OrganizationLdOptions = {}): Organiz
     alternateName: BRAND_ALT_NAME,
     url: base,
     logo: `${base}${LOGO_PATH}`,
-    sameAs: SAME_AS,
-    contactPoint: options.supportUrl
-      ? { '@type': 'ContactPoint', contactType: 'customer support', url: options.supportUrl }
-      : undefined,
+    sameAs: [...SOCIAL_URLS],
+    telephone: phone,
+    email,
+    contactPoint:
+      phone || email || supportUrl
+        ? {
+            '@type': 'ContactPoint',
+            contactType: 'customer support',
+            telephone: phone,
+            email,
+            url: supportUrl,
+            availableLanguage: 'ru',
+          }
+        : undefined,
   }
 }
 
