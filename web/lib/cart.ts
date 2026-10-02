@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react'
 import { wholesaleUnitDiscounts } from './wholesale'
+import { METRIKA_GOALS, ecommerceAdd, ecommerceRemove, reachGoal } from './metrika'
 
 export interface CartItem {
   productId: string
@@ -206,19 +207,37 @@ function subscribe(onChange: () => void): () => void {
   }
 }
 
+// id товара в Метрике — productId: он же в detail и purchase.
+function metrikaProduct(item: Pick<CartItem, 'productId' | 'name' | 'priceRub'>) {
+  return { id: item.productId, name: item.name, price: item.priceRub }
+}
+
 export function useCart() {
   const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 
+  // События Метрики шлёт хук, а не кнопки: так покрыты все места корзины
+  // (карточки, страница товара, drawer, страница корзины). clear() событий
+  // не шлёт — его зовёт чекаут после оформления заказа, это не удаление.
   const add = useCallback((item: Omit<CartItem, 'quantity'>, qty?: number) => {
     saveCart(addToCart(loadCart(), item, qty))
+    const quantity = qty ?? 1
+    ecommerceAdd(metrikaProduct(item), quantity)
+    reachGoal(METRIKA_GOALS.addToCart, { product_id: item.productId, quantity })
   }, [])
 
   const remove = useCallback((productId: string) => {
+    const existing = loadCart().find((i) => i.productId === productId)
     saveCart(removeFromCart(loadCart(), productId))
+    if (existing) ecommerceRemove(metrikaProduct(existing), existing.quantity)
   }, [])
 
   const setQty = useCallback((productId: string, qty: number) => {
+    const existing = loadCart().find((i) => i.productId === productId)
     saveCart(setQuantity(loadCart(), productId, qty))
+    if (!existing) return
+    const delta = Math.max(qty, 0) - existing.quantity
+    if (delta > 0) ecommerceAdd(metrikaProduct(existing), delta)
+    else if (delta < 0) ecommerceRemove(metrikaProduct(existing), -delta)
   }, [])
 
   const clear = useCallback(() => {

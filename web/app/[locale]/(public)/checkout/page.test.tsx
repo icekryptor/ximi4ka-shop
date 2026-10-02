@@ -9,6 +9,7 @@ import type {
 } from '@ximi4ka-shop/shared'
 import CheckoutPage from './page'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
+import { reportPurchaseOnce, setMetrikaCounterId } from '@/lib/metrika'
 
 const mockPush = vi.fn<(path: string) => void>()
 
@@ -662,5 +663,59 @@ describe('чекаут для вошедшего покупателя', () => {
     expect(screen.getByRole('combobox', { name: /город/i })).toHaveValue('Москва')
     expect(screen.getByRole('radio', { name: /курьер/i })).toBeChecked()
     expect(screen.getByLabelText(/улица, дом/i)).toHaveValue('ул. Своя, 5')
+  })
+})
+
+describe('чекаут: Метрика', () => {
+  type W = Window & { ym?: unknown; dataLayer?: unknown[] }
+  const w = window as W
+
+  beforeEach(() => {
+    w.ym = vi.fn()
+    w.dataLayer = []
+    setMetrikaCounterId('777')
+  })
+  afterEach(() => {
+    setMetrikaCounterId(null)
+    delete w.ym
+    delete w.dataLayer
+  })
+
+  it('begin_checkout: цель уходит один раз при открытии чекаута с товарами', async () => {
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await screen.findByRole('button', { name: /оформить заказ/i })
+    expect(w.ym).toHaveBeenCalledTimes(1)
+    expect(w.ym).toHaveBeenCalledWith('777', 'reachGoal', 'begin_checkout', {
+      items_count: 2,
+      cart_total: 2000,
+    })
+  })
+
+  it('begin_checkout: пустая корзина цели не даёт', () => {
+    render(<CheckoutPage />)
+    expect(w.ym).not.toHaveBeenCalled()
+  })
+
+  it('после заказа состав сохранён для purchase: в нём нет персональных данных', async () => {
+    mapMock.available = false
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okCheckoutResponse()),
+    )
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await fillValidForm()
+    submit()
+    await vi.waitFor(() => expect(mockPush).toHaveBeenCalled())
+
+    const stored = window.localStorage.getItem('ximi4ka-metrika-purchase:XM-2026-00042')
+    expect(JSON.parse(stored ?? 'null')).toEqual([
+      { id: seed[0]!.productId, name: 'Набор A', price: 1000, quantity: 2 },
+    ])
+    expect(stored).not.toMatch(/Мария|79123456789/)
+    // Очистка корзины после заказа — не «remove».
+    expect(w.dataLayer).toEqual([])
+    expect(reportPurchaseOnce('XM-2026-00042', 2390)).toBe(true)
   })
 })

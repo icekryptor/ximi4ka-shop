@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { CartDrawer } from './CartDrawer'
 import { OPEN_CART_EVENT, loadCart, saveCart, type CartItem } from '@/lib/cart'
+import { setMetrikaCounterId } from '@/lib/metrika'
 
 const mockPrefetch = vi.fn()
 
@@ -270,5 +271,33 @@ describe('CartDrawer', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Закрыть корзину' }))
     })
     expect(screen.queryByRole('dialog', { name: 'Корзина' })).not.toBeInTheDocument()
+  })
+})
+
+describe('CartDrawer: Метрика', () => {
+  type W = Window & { ym?: unknown }
+  const w = window as W
+
+  afterEach(() => {
+    setMetrikaCounterId(null)
+    delete w.ym
+  })
+
+  it('цель open_cart при открытии drawer', () => {
+    const ym = vi.fn()
+    w.ym = ym
+    setMetrikaCounterId('777')
+    render(<CartDrawer />)
+    act(() => openDrawer())
+    expect(ym).toHaveBeenCalledWith('777', 'reachGoal', 'open_cart')
+  })
+
+  it('без счётчика drawer открывается, ym не трогается', () => {
+    const ym = vi.fn()
+    w.ym = ym
+    render(<CartDrawer />)
+    act(() => openDrawer())
+    expect(screen.getByRole('dialog', { name: 'Корзина' })).toBeInTheDocument()
+    expect(ym).not.toHaveBeenCalled()
   })
 })
