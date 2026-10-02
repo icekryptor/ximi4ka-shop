@@ -1,15 +1,15 @@
-import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { ApiError, getCategory, listProductsByCategory } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
+import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { ProductCard } from '@/components/ProductCard'
 import { LabSection } from '@/components/ui/LabSection'
 import { PaginationLJ } from '@/components/ui/PaginationLJ'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
-import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonLd'
+import { breadcrumbJsonLd, itemListJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 import type { SortKey } from '@/components/marketing/CategoryFilterBar'
 import { CategoryFilterBarMount } from './_components/CategoryFilterBarMount'
@@ -151,8 +151,13 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
   const description =
     pickField<string>(category, 'metaDescription', locale) ?? category.metaDescription ?? null
 
-  const categoriesPath = locale === DEFAULT_LOCALE ? '/categories' : `/${locale}/categories`
   const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
+  const catalogPath = locale === DEFAULT_LOCALE ? '/catalog' : `/${locale}/catalog`
+  const crumbs: BreadcrumbItem[] = [
+    { name: 'Главная', href: homePath },
+    { name: 'Каталог', href: catalogPath },
+    { name, href: pathForLocale(locale, category.slug) },
+  ]
 
   // First word of the category name is emphasised in brand colour, mirroring
   // the v3 hero pattern used elsewhere in Stage 8.
@@ -162,34 +167,11 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
     <>
       {/* PRESERVED: breadcrumb + product list JsonLd — search engines and
           editors depend on these schemas. */}
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: 'Главная', url: '/' },
-          { name: 'Каталог', url: '/categories' },
-          { name, url: pathForLocale(locale, category.slug) },
-        ])}
-      />
+      <JsonLd data={breadcrumbJsonLd(crumbs)} />
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
 
       {/* Mono breadcrumb trail — restyled from v2 dot-separated list */}
-      <nav
-        aria-label="breadcrumbs"
-        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70"
-      >
-        <Link href={homePath} className="hover:opacity-100">
-          Главная
-        </Link>
-        <span className="mx-2" aria-hidden="true">
-          /
-        </span>
-        <Link href={categoriesPath} className="hover:opacity-100">
-          Каталог
-        </Link>
-        <span className="mx-2" aria-hidden="true">
-          /
-        </span>
-        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">{name}</span>
-      </nav>
+      <Breadcrumbs items={crumbs} />
 
       {/* C. Категория (LAB CREAM) — v3 LJ hero */}
       <LabSection variant="cream" className="px-6 pt-12 pb-16">

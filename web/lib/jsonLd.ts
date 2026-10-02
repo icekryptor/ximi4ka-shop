@@ -60,10 +60,19 @@ export function websiteJsonLd(): WebSiteLd {
   }
 }
 
+/**
+ * Один элемент цепочки хлебных крошек. Тот же массив рисует компонент
+ * `Breadcrumbs` и строит BreadcrumbList, чтобы видимое и размеченное не
+ * расходились.
+ */
 export interface BreadcrumbItem {
   name: string
-  /** Absolute or root-relative URL; relative paths are turned absolute using the site URL. */
-  url: string
+  /**
+   * Absolute or root-relative URL; relative paths are turned absolute using the site URL.
+   * У последнего (текущая страница) в видимых крошках ссылки нет, но href нужен
+   * для разметки. Без href поле `item` в разметке опускается.
+   */
+  href?: string
 }
 
 export interface BreadcrumbListLd {
@@ -73,7 +82,7 @@ export interface BreadcrumbListLd {
     '@type': 'ListItem'
     position: number
     name: string
-    item: string
+    item?: string
   }>
 }
 
@@ -86,7 +95,9 @@ export function breadcrumbJsonLd(items: BreadcrumbItem[]): BreadcrumbListLd {
       '@type': 'ListItem',
       position: i + 1,
       name: item.name,
-      item: item.url.startsWith('http') ? item.url : `${base}${item.url}`,
+      ...(item.href != null && {
+        item: item.href.startsWith('http') ? item.href : `${base}${item.href}`,
+      }),
     })),
   }
 }
