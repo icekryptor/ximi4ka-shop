@@ -273,6 +273,37 @@ describe('generateYmlXml — offers', () => {
     expect(xml).not.toContain('<picture>https://cdn.example.com/10.jpg</picture>')
   })
 
+  it('делает абсолютными картинки из своего /uploads (после переезда с Tilda)', () => {
+    const image = (url: string, i: number) => ({
+      id: `img-${i}`,
+      productId: 'p',
+      url,
+      alt: 'a',
+      sortOrder: i,
+    })
+    const xml = generateYmlXml({
+      products: [
+        makeProduct({
+          id: 'p',
+          slug: 'p',
+          images: [
+            image('/uploads/tilda/0123abcd.png', 0),
+            image('uploads/tilda/no-slash.png', 1),
+            image('https://cdn.example.com/abs.jpg', 2),
+          ],
+          categoryIds: ['cat-1'],
+        }),
+      ],
+      categories: [makeCategory()],
+      settings: baseSettings,
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    expect(xml).toContain('<picture>https://new.ximi4ka.ru/uploads/tilda/0123abcd.png</picture>')
+    expect(xml).toContain('<picture>https://new.ximi4ka.ru/uploads/tilda/no-slash.png</picture>')
+    expect(xml).toContain('<picture>https://cdn.example.com/abs.jpg</picture>')
+    expect(xml).not.toMatch(/<picture>(?!https?:\/\/)/)
+  })
+
   it('uses shortDescription when available, else first paragraph plaintext', () => {
     const xml = generateYmlXml({
       products: [

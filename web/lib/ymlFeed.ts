@@ -131,7 +131,9 @@ export function generateYmlXml(input: YmlGeneratorInput): string {
       .slice(0, 10)
       // Маркет принимает только абсолютные адреса картинок.
       .map((img) => {
-        const url = /^https?:\/\//i.test(img.url) ? img.url : `${siteUrl}${img.url}`
+        const url = /^https?:\/\//i.test(img.url)
+          ? img.url
+          : `${siteUrl}${img.url.startsWith('/') ? '' : '/'}${img.url}`
         return `      <picture>${escapeXml(url)}</picture>`
       })
       .join('\n')
