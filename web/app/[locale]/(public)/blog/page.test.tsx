@@ -60,7 +60,7 @@ describe('BlogListPage', () => {
     const meta = await generateMetadata({
       params: Promise.resolve({ locale: 'ru' }),
     })
-    expect(meta.title).toBe('Блог о химии — Ximi4ka')
+    expect(meta.title).toBe('Блог о химии — Химичка')
     expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/blog')
   })
 

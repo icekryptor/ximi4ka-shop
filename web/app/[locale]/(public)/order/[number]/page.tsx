@@ -20,7 +20,7 @@ function decodeNumber(raw: string): string {
 export async function generateMetadata({ params }: Pick<Props, 'params'>): Promise<Metadata> {
   const { number } = await params
   return {
-    title: `Заказ ${decodeNumber(number)} — Ximi4ka`,
+    title: `Заказ ${decodeNumber(number)} — Химичка`,
     robots: { index: false, follow: false },
   }
 }
