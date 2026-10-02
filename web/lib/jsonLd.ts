@@ -23,9 +23,18 @@ export interface OrganizationLd {
   url: string
   logo: string
   sameAs: string[]
+  contactPoint?: { '@type': 'ContactPoint'; contactType: 'customer support'; url: string }
 }
 
-export function organizationJsonLd(): OrganizationLd {
+export interface OrganizationLdOptions {
+  /**
+   * Ссылка на чат поддержки (Telegram). Телефона, почты и адреса в настройках
+   * сайта и футере нет — не выдумываем, выводим только то, что есть.
+   */
+  supportUrl?: string
+}
+
+export function organizationJsonLd(options: OrganizationLdOptions = {}): OrganizationLd {
   const base = siteUrl()
   return {
     '@context': 'https://schema.org',
@@ -36,6 +45,9 @@ export function organizationJsonLd(): OrganizationLd {
     url: base,
     logo: `${base}${LOGO_PATH}`,
     sameAs: SAME_AS,
+    contactPoint: options.supportUrl
+      ? { '@type': 'ContactPoint', contactType: 'customer support', url: options.supportUrl }
+      : undefined,
   }
 }
 
@@ -103,6 +115,32 @@ function availabilityUrl(status: Product['stockStatus']): string {
   }
 }
 
+/** Оценка 1–5. Отзывов в системе пока нет — вход необязателен и по умолчанию ничего не выводит. */
+export interface ProductRatingInput {
+  ratingValue: number
+  reviewCount: number
+}
+
+export interface ProductReviewInput {
+  author: string
+  ratingValue: number
+  body?: string | null
+  /** ISO-дата публикации отзыва. */
+  datePublished?: string | null
+}
+
+export interface ProductLdExtras {
+  aggregateRating?: ProductRatingInput | null
+  reviews?: ProductReviewInput[] | null
+}
+
+interface RatingLd {
+  '@type': 'Rating'
+  ratingValue: number
+  bestRating: 5
+  worstRating: 1
+}
+
 export interface ProductLd {
   '@context': 'https://schema.org'
   '@type': 'Product'
@@ -111,6 +149,20 @@ export interface ProductLd {
   sku?: string
   image?: string[]
   brand: { '@type': 'Brand'; name: string }
+  aggregateRating?: {
+    '@type': 'AggregateRating'
+    ratingValue: number
+    reviewCount: number
+    bestRating: 5
+    worstRating: 1
+  }
+  review?: Array<{
+    '@type': 'Review'
+    author: { '@type': 'Person'; name: string }
+    reviewRating: RatingLd
+    reviewBody?: string
+    datePublished?: string
+  }>
   offers: {
     '@type': 'Offer'
     url: string
@@ -122,8 +174,9 @@ export interface ProductLd {
   }
 }
 
-export function productJsonLd(product: Product): ProductLd {
+export function productJsonLd(product: Product, extras: ProductLdExtras = {}): ProductLd {
   const base = siteUrl()
+  const { aggregateRating, reviews } = extras
   const url = `${base}/product/${product.slug}`
   const images = product.images?.map((img) => absoluteUrl(img.url))
   return {
@@ -134,7 +187,33 @@ export function productJsonLd(product: Product): ProductLd {
     sku: product.sku ?? undefined,
     image: images && images.length > 0 ? images : undefined,
     brand: { '@type': 'Brand', name: BRAND_NAME },
-    // Цена и наличие — только из базы; рейтинга нет, пока нет отзывов.
+    // Рейтинг и отзывы — только если переданы реальные данные.
+    aggregateRating:
+      aggregateRating && aggregateRating.reviewCount > 0
+        ? {
+            '@type': 'AggregateRating',
+            ratingValue: aggregateRating.ratingValue,
+            reviewCount: aggregateRating.reviewCount,
+            bestRating: 5,
+            worstRating: 1,
+          }
+        : undefined,
+    review:
+      reviews && reviews.length > 0
+        ? reviews.map((r) => ({
+            '@type': 'Review' as const,
+            author: { '@type': 'Person' as const, name: r.author },
+            reviewRating: {
+              '@type': 'Rating' as const,
+              ratingValue: r.ratingValue,
+              bestRating: 5 as const,
+              worstRating: 1 as const,
+            },
+            reviewBody: r.body?.trim() || undefined,
+            datePublished: r.datePublished ?? undefined,
+          }))
+        : undefined,
+    // Цена и наличие — только из базы.
     offers: {
       '@type': 'Offer',
       url,

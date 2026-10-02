@@ -4,6 +4,7 @@ import { CartDrawer } from '@/components/CartDrawer'
 import { getPublicSettings } from '@/lib/api'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
+import { SUPPORT_URL } from './account/_components/SupportButton'
 
 // Public storefront chrome. All non-admin routes live under this group so
 // they all get the same sticky Header + Footer + shared CartDrawer without
@@ -16,7 +17,7 @@ export default async function PublicLayout({ children }: Readonly<{ children: Re
   return (
     <>
       {/* Organization и WebSite — на каждой публичной странице (SEO-аудит). */}
-      <JsonLd data={organizationJsonLd()} />
+      <JsonLd data={organizationJsonLd({ supportUrl: SUPPORT_URL })} />
       <JsonLd data={websiteJsonLd()} />
       <Header headerPromoText={settings?.headerPromoText ?? null} />
       <main className="flex-1">{children}</main>
