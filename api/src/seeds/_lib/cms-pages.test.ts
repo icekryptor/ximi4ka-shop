@@ -114,6 +114,19 @@ describe('data/cms-pages.json', () => {
     expect(oferta).toMatch(/ОГРНИП \d{15}$/)
   })
 
+  it('продавец в оферте — ИП Аистов В. А. (решение владельца), без следов другого ИП', async () => {
+    const page = (await readCmsPages()).find((p) => p.slug === 'oferta')!
+    const oferta = pageText(page)
+    expect(page.sourceUrl).toBe('https://ximi4ka.ru/oferta')
+    expect(oferta).toMatch(/Аистов Василий Андреевич\s*, ИНН 431401950080, ОГРНИП 319435000027879/)
+    expect(oferta).toMatch(
+      /Продавец: ИП Аистов Василий Андреевич ИНН 431401950080 ОГРНИП 319435000027879$/,
+    )
+    expect(oferta).not.toMatch(/Ксени/)
+    expect(oferta).not.toContain('431402136660')
+    expect(oferta).not.toContain('323430000002972')
+  })
+
   it('FAQ — блок faq с вопросами и ответами (из него строится FAQPage JSON-LD)', async () => {
     const faq = (await readCmsPages()).find((p) => p.slug === 'faq')!
     const faqBlocks = faq.blocks.filter((b) => b.type === 'faq')
