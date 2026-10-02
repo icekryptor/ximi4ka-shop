@@ -63,7 +63,7 @@ docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
 
 Альтернатива с нуля (если дампа нет): `npm run migration:run -w api`, затем
 `seed`, `import:tilda-catalog -- --replace-dev-seed`, `import:tilda-articles`,
-`import:tilda-redirects` — исходники лежат в гите, в `api/data/`.
+`import:tilda-redirects`, `import:cms-pages` — исходники лежат в гите, в `api/data/`.
 
 ⚠️ **Закрыть от индексации сразу после restore.** В дампе с машины разработчика
 `site_settings.robots_txt` разрешает обход (`Allow: /`), а апекс всё ещё на

@@ -38,6 +38,7 @@ DATABASE_URL='<supabase-url>' npm run seed -w api                 # админ-�
 DATABASE_URL='<supabase-url>' npm run import:tilda-catalog -w api -- --replace-dev-seed   # 62 товара, 5 категорий
 DATABASE_URL='<supabase-url>' npm run import:tilda-articles -w api                        # 4 статьи блога
 DATABASE_URL='<supabase-url>' npm run import:tilda-redirects -w api                       # 85 × 301
+DATABASE_URL='<supabase-url>' npm run import:cms-pages -w api                           # 11 CMS-страниц (policy, oferta, faq…); только создаёт отсутствующие
 ```
 
 ### 3. api → Railway
