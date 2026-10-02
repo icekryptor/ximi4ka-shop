@@ -382,6 +382,14 @@ describe('Page routes', () => {
         isPublished: false,
       })
     })
+    it('accepts an underscore in the slug (URLs of pages migrated from Tilda, e.g. xim3_inst)', async () => {
+      const res = await request(app).post('/api/admin/pages').set(authHeaders(auth)).send({
+        slug: 'xim3_inst',
+        title: 'Химичка 3.0',
+      })
+      expect(res.status).toBe(201)
+      expect(res.body.data).toMatchObject({ slug: 'xim3_inst' })
+    })
     it('rejects invalid slug (400)', async () => {
       const res = await request(app).post('/api/admin/pages').set(authHeaders(auth)).send({
         slug: 'BAD SLUG!',
