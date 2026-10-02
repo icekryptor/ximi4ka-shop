@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import './globals.css'
 import { fontVariables } from './fonts'
 import { getPublicSettings, type PublicSettings } from '@/lib/api'
 import { MetrikaScript, Ga4Script } from '@/lib/analytics'
 import { siteUrl } from '@/lib/metadata'
+import { DEFAULT_LOCALE, LOCALE_HEADER, isLocale } from '@/lib/i18n'
 
 export const metadata: Metadata = {
   // Относительные og/twitter-картинки разрешаются от адреса сайта.
@@ -37,8 +39,12 @@ export default async function RootLayout({
   children: React.ReactNode
 }>) {
   const settings = await loadPublicSettings()
+  // Локаль выставляет middleware (см. LOCALE_HEADER). Вне его зоны — admin,
+  // amp, фиды, 404 вне [locale] — заголовка нет, остаётся язык по умолчанию.
+  const headerLocale = (await headers()).get(LOCALE_HEADER)
+  const lang = isLocale(headerLocale) ? headerLocale : DEFAULT_LOCALE
   return (
-    <html lang="ru" className={`${fontVariables} h-full antialiased`}>
+    <html lang={lang} className={`${fontVariables} h-full antialiased`}>
       <head>
         {settings?.yandexWebmasterVerification ? (
           <meta name="yandex-verification" content={settings.yandexWebmasterVerification} />

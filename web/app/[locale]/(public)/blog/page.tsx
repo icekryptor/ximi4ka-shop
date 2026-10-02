@@ -43,6 +43,7 @@ export async function generateMetadata({ params }: Pick<Props, 'params'>): Promi
     type: 'website',
     locale,
     alternatesByLocale,
+    rssPath: '/blog/rss.xml',
   })
 }
 
