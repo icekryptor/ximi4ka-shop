@@ -302,7 +302,20 @@ docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
 api — `telegram login bot polling started`; вебхук api снимает сам, секрет
 вебхука в этом режиме не нужен. Исходящие запросы в Telegram идут по IPv6 —
 для этого в образе api `NODE_OPTIONS` с `--dns-result-order=ipv6first` (см.
-`api/Dockerfile`).
+`api/Dockerfile`) **и вторая docker-сеть `ximishop_egress6` с IPv6** у
+контейнера api (см. `docker-compose.yml`). Без неё бот молчит: у
+`supabase_default` IPv6 нет, контейнер уходит в IPv4, а из IPv4-адресов
+Telegram с VPS отвечает один из семи проверенных (03.10.2026 бот не отвечал
+3,5 дня из-за этого; в логе — `UND_ERR_CONNECT_TIMEOUT` или `ENETUNREACH`).
+Docker сам включает `net.ipv6.conf.all.forwarding=1` при создании такой сети —
+на маршрут IPv6 по умолчанию (RA, systemd-networkd) это не влияет.
+
+Как понять, что бот жив: `curl -s https://new.ximi4ka.ru/api/health/telegram` — 200,
+если последний ответ `getUpdates` свежее 90 с, и 503 с `lastOkAt`, если нет
+(повесить на внешний монитор; путь под `/api`, иначе Caddy отдаст его витрине). `/health` остаётся «процесс жив». При 503
+`/api/account/auth/config` прячет вход через Telegram — остаётся почта. В логе
+нет связи — строка `НЕТ СВЯЗИ с Telegram`, возврат — `связь … восстановлена`.
+Проверка из контейнера: `docker exec ximishop-api node -e "require('https').get('https://api.telegram.org/',r=>console.log(r.statusCode))"` — 302.
 
 Вебхук — для сервера, до которого Telegram достучится. После деплоя:
 
