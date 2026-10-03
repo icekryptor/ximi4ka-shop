@@ -8,7 +8,7 @@ import { siteUrl } from '@/lib/metadata'
 export const metadata: Metadata = {
   // Относительные og/twitter-картинки разрешаются от адреса сайта.
   metadataBase: new URL(siteUrl()),
-  title: 'Ximi4ka — наборы для химических экспериментов',
+  title: 'Химичка — наборы для химических экспериментов',
   description: 'Химические наборы для детей и подростков. Научные эксперименты дома.',
 }
 

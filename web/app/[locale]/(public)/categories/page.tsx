@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     SUPPORTED_LOCALES.map((loc) => [loc, pathForLocale(loc)]),
   ) as Record<Locale, string>
   return buildMetadata({
-    title: 'Каталог — Ximi4ka',
+    title: 'Категории наборов для химических опытов — Химичка',
     metaDescription: 'Все наборы для химических экспериментов от Ximi4ka.',
     pathname: pathForLocale(locale),
     type: 'website',

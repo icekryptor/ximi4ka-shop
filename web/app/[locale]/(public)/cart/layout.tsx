@@ -5,7 +5,7 @@ import { buildMetadata } from '@/lib/metadata'
 // crawlers indexing. The page itself is `'use client'`, so the static
 // `metadata` export lives on this route-group layout instead.
 export const metadata: Metadata = buildMetadata({
-  title: 'Корзина — Ximi4ka',
+  title: 'Корзина — Химичка',
   description: 'Ваша корзина покупок',
   pathname: '/cart',
   noindex: true,
