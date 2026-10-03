@@ -12,6 +12,11 @@ function makePost(overrides: Partial<BlogPost> = {}): BlogPost {
     excerpt: null,
     coverImageUrl: null,
     rubric: null,
+    authorName: null,
+    authorJobTitle: null,
+    authorBio: null,
+    authorUrl: null,
+    authorPhotoUrl: null,
     blocks: [],
     metaTitle: null,
     metaDescription: null,
@@ -153,5 +158,111 @@ describe('BlogPostForm', () => {
       />,
     )
     expect(screen.getByText(/Статья с таким slug уже существует/i)).toBeInTheDocument()
+  })
+
+  describe('автор статьи', () => {
+    function fillTitle() {
+      fireEvent.change(screen.getByLabelText('Заголовок'), { target: { value: 'Химия дома' } })
+    }
+
+    it('рисует секцию «Автор» с полями', () => {
+      render(<BlogPostForm mode="create" onSubmit={async () => undefined} submitting={false} />)
+      expect(screen.getByText('Автор')).toBeInTheDocument()
+      expect(screen.getByLabelText('Имя автора')).toBeInTheDocument()
+      expect(screen.getByLabelText('Должность')).toBeInTheDocument()
+      expect(screen.getByLabelText('Об авторе')).toBeInTheDocument()
+      expect(screen.getByLabelText('Ссылка на профиль')).toBeInTheDocument()
+      expect(screen.getByLabelText('Фото автора')).toBeInTheDocument()
+    })
+
+    it('без автора шлёт null во все поля автора', async () => {
+      const onSubmit = vi.fn<(input: AdminBlogPostInput) => Promise<void>>(async () => undefined)
+      render(<BlogPostForm mode="create" onSubmit={onSubmit} submitting={false} />)
+      fillTitle()
+      fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toMatchObject({
+        authorName: null,
+        authorJobTitle: null,
+        authorBio: null,
+        authorUrl: null,
+        authorPhotoUrl: null,
+      })
+    })
+
+    it('передаёт заполненные поля автора (с обрезкой пробелов)', async () => {
+      const onSubmit = vi.fn<(input: AdminBlogPostInput) => Promise<void>>(async () => undefined)
+      render(<BlogPostForm mode="create" onSubmit={onSubmit} submitting={false} />)
+      fillTitle()
+      fireEvent.change(screen.getByLabelText('Имя автора'), { target: { value: ' Имя Фамилия ' } })
+      fireEvent.change(screen.getByLabelText('Должность'), { target: { value: 'Должность' } })
+      fireEvent.change(screen.getByLabelText('Об авторе'), { target: { value: 'Справка' } })
+      fireEvent.change(screen.getByLabelText('Ссылка на профиль'), {
+        target: { value: 'https://example.com/a' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).toMatchObject({
+        authorName: 'Имя Фамилия',
+        authorJobTitle: 'Должность',
+        authorBio: 'Справка',
+        authorUrl: 'https://example.com/a',
+        authorPhotoUrl: null,
+      })
+    })
+
+    it('в режиме правки подставляет сохранённого автора', () => {
+      render(
+        <BlogPostForm
+          mode="edit"
+          initialValue={makePost({
+            authorName: 'Имя Фамилия',
+            authorJobTitle: 'Должность',
+            authorBio: 'Справка',
+            authorUrl: 'https://example.com/a',
+          })}
+          onSubmit={async () => undefined}
+          submitting={false}
+        />,
+      )
+      expect(screen.getByLabelText('Имя автора')).toHaveValue('Имя Фамилия')
+      expect(screen.getByLabelText('Должность')).toHaveValue('Должность')
+      expect(screen.getByLabelText('Об авторе')).toHaveValue('Справка')
+      expect(screen.getByLabelText('Ссылка на профиль')).toHaveValue('https://example.com/a')
+    })
+
+    it('не даёт сохранить подробности автора без имени', async () => {
+      const onSubmit = vi.fn<(input: AdminBlogPostInput) => Promise<void>>(async () => undefined)
+      render(<BlogPostForm mode="create" onSubmit={onSubmit} submitting={false} />)
+      fillTitle()
+      fireEvent.change(screen.getByLabelText('Должность'), { target: { value: 'Химик' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('Укажите имя автора')
+      })
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+
+    it('не даёт сохранить ссылку не на http(s)', async () => {
+      const onSubmit = vi.fn<(input: AdminBlogPostInput) => Promise<void>>(async () => undefined)
+      render(<BlogPostForm mode="create" onSubmit={onSubmit} submitting={false} />)
+      fillTitle()
+      fireEvent.change(screen.getByLabelText('Имя автора'), { target: { value: 'Имя' } })
+      fireEvent.change(screen.getByLabelText('Ссылка на профиль'), {
+        target: { value: 'javascript:alert(1)' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent('http')
+      })
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+  })
+
+  it('в блоках можно добавить подборку товаров для перелинковки', () => {
+    render(<BlogPostForm mode="create" onSubmit={async () => undefined} submitting={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /добавить блок/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Подборка товаров' }))
+    expect(screen.getByLabelText(/Slugs товаров/)).toBeInTheDocument()
   })
 })

@@ -236,5 +236,62 @@ describe('JSON-LD helpers', () => {
       })
       expect(out.datePublished).toBe('2026-05-01T00:00:00.000Z')
     })
+
+    describe('автор статьи', () => {
+      const base = {
+        title: 'Почему пламя синее',
+        createdAt: '2026-05-01T00:00:00.000Z',
+        updatedAt: '2026-06-02T00:00:00.000Z',
+      }
+
+      it('без authorName автор остаётся Organization «Химичка»', () => {
+        for (const input of [
+          base,
+          { ...base, authorName: null },
+          { ...base, authorName: '   ', authorJobTitle: 'Химик', authorUrl: 'https://e.com/a' },
+        ]) {
+          expect(articleJsonLd(input, 'BlogPosting').author).toEqual({
+            '@type': 'Organization',
+            name: 'Химичка',
+            url: 'https://new.ximi4ka.ru',
+          })
+        }
+      })
+
+      it('с authorName автор — Person (name, jobTitle, url, image), издатель — Organization', () => {
+        const out = articleJsonLd(
+          {
+            ...base,
+            authorName: ' Имя Фамилия ',
+            authorJobTitle: 'Должность',
+            authorUrl: 'https://example.com/profile',
+            authorPhotoUrl: '/uploads/blog/author.jpg',
+          },
+          'BlogPosting',
+        )
+        expect(out.author).toEqual({
+          '@type': 'Person',
+          name: 'Имя Фамилия',
+          jobTitle: 'Должность',
+          url: 'https://example.com/profile',
+          image: 'https://new.ximi4ka.ru/uploads/blog/author.jpg',
+        })
+        expect(out.publisher).toMatchObject({ '@type': 'Organization', name: 'Химичка' })
+      })
+
+      it('в Person нет пустых необязательных полей', () => {
+        const out = articleJsonLd({ ...base, authorName: 'Имя', authorJobTitle: '' }, 'BlogPosting')
+        expect(out.author).toEqual({ '@type': 'Person', name: 'Имя' })
+        expect(JSON.stringify(out.author)).not.toContain('jobTitle')
+      })
+
+      it('ссылка не на http(s) в разметку не попадает', () => {
+        const out = articleJsonLd(
+          { ...base, authorName: 'Имя', authorUrl: 'javascript:alert(1)' },
+          'BlogPosting',
+        )
+        expect(out.author).toEqual({ '@type': 'Person', name: 'Имя' })
+      })
+    })
   })
 })

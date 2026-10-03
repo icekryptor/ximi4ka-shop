@@ -20,6 +20,8 @@ interface Props {
 }
 
 const SLUG_RE = /^[a-z0-9-]+$/
+// Как в api (blog.schemas.ts): ссылка автора уходит в Person.url и в href.
+const AUTHOR_URL_RE = /^https?:\/\/\S+$/i
 
 // Controlled create/edit form for blog posts. Mirrors PageForm plus the
 // editorial extras (excerpt, rubric, cover image). Parent owns the submit
@@ -35,6 +37,14 @@ export function BlogPostForm({ mode, initialValue, onSubmit, submitting, error }
   const [rubric, setRubric] = useState(initialValue?.rubric ?? '')
   const [coverImageUrl, setCoverImageUrl] = useState<string | null>(
     initialValue?.coverImageUrl ?? null,
+  )
+  // Автор (E-E-A-T): блок «Об авторе» и Person в разметке — только при имени.
+  const [authorName, setAuthorName] = useState(initialValue?.authorName ?? '')
+  const [authorJobTitle, setAuthorJobTitle] = useState(initialValue?.authorJobTitle ?? '')
+  const [authorBio, setAuthorBio] = useState(initialValue?.authorBio ?? '')
+  const [authorUrl, setAuthorUrl] = useState(initialValue?.authorUrl ?? '')
+  const [authorPhotoUrl, setAuthorPhotoUrl] = useState<string | null>(
+    initialValue?.authorPhotoUrl ?? null,
   )
   const [blocks, setBlocks] = useState<unknown[]>(() => initialValue?.blocks ?? [])
 
@@ -90,12 +100,28 @@ export function BlogPostForm({ mode, initialValue, onSubmit, submitting, error }
       return
     }
 
+    const hasAuthorDetails =
+      [authorJobTitle, authorBio, authorUrl].some((v) => v.trim()) || authorPhotoUrl
+    if (!authorName.trim() && hasAuthorDetails) {
+      setFormError('Укажите имя автора: без него блок «Об авторе» не показывается.')
+      return
+    }
+    if (authorUrl.trim() && !AUTHOR_URL_RE.test(authorUrl.trim())) {
+      setFormError('Ссылка на профиль автора должна начинаться с http:// или https://.')
+      return
+    }
+
     const input: AdminBlogPostInput = {
       slug,
       title: title.trim(),
       excerpt: excerpt.trim() || null,
       coverImageUrl: coverImageUrl || null,
       rubric: rubric.trim() || null,
+      authorName: authorName.trim() || null,
+      authorJobTitle: authorJobTitle.trim() || null,
+      authorBio: authorBio.trim() || null,
+      authorUrl: authorUrl.trim() || null,
+      authorPhotoUrl: authorPhotoUrl || null,
       blocks,
       metaTitle: metaTitle.trim() || null,
       metaDescription: metaDescription.trim() || null,
@@ -235,6 +261,60 @@ export function BlogPostForm({ mode, initialValue, onSubmit, submitting, error }
           label="Обложка"
           value={coverImageUrl}
           onChange={setCoverImageUrl}
+        />
+      </Section>
+
+      <Section title="Автор">
+        <Field label="Имя автора" htmlFor="author-name">
+          <input
+            id="author-name"
+            value={authorName}
+            onChange={(e) => setAuthorName(e.target.value)}
+            maxLength={255}
+            className="input"
+          />
+          <p className="mt-1 text-xs text-brand-text-secondary">
+            Если имя не задано, блока «Об авторе» нет, а автором в разметке остаётся «Химичка».
+          </p>
+        </Field>
+        <Field label="Должность" htmlFor="author-job-title">
+          <input
+            id="author-job-title"
+            value={authorJobTitle}
+            onChange={(e) => setAuthorJobTitle(e.target.value)}
+            maxLength={255}
+            className="input"
+          />
+        </Field>
+        <Field label="Об авторе" htmlFor="author-bio">
+          <textarea
+            id="author-bio"
+            value={authorBio}
+            onChange={(e) => setAuthorBio(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            className="input"
+          />
+          <p className="mt-1 text-xs text-brand-text-secondary">
+            Образование и опыт, по которым читатель поймёт, почему автору можно доверять.
+          </p>
+        </Field>
+        <Field label="Ссылка на профиль" htmlFor="author-url">
+          <input
+            id="author-url"
+            type="url"
+            value={authorUrl}
+            onChange={(e) => setAuthorUrl(e.target.value)}
+            placeholder="https://"
+            maxLength={500}
+            className="input"
+          />
+        </Field>
+        <ImageUploadField
+          id="author-photo"
+          label="Фото автора"
+          value={authorPhotoUrl}
+          onChange={setAuthorPhotoUrl}
         />
       </Section>
 

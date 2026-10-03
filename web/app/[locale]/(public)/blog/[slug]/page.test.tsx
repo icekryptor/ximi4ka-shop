@@ -27,6 +27,11 @@ function makePost(overrides: Partial<BlogPost> = {}): BlogPost {
     excerpt: 'Разбираем химию горения.',
     coverImageUrl: null,
     rubric: 'Опыты',
+    authorName: null,
+    authorJobTitle: null,
+    authorBio: null,
+    authorUrl: null,
+    authorPhotoUrl: null,
     blocks: [{ type: 'paragraph', html: '<p>Пламя окрашивают ионы меди.</p>' }],
     metaTitle: null,
     metaDescription: null,
@@ -166,6 +171,175 @@ describe('BlogPostPage', () => {
 
       const { container } = render(await BlogPostPage(props))
       expect(container.querySelector('img')).toBeNull()
+    })
+  })
+
+  describe('сигналы экспертности и перелинковка', () => {
+    const MIDDAY = '2026-06-01T12:00:00.000Z'
+
+    function jsonLd(container: HTMLElement) {
+      return Array.from(container.querySelectorAll('script[type="application/ld+json"]')).map((s) =>
+        JSON.parse(s.textContent ?? '{}'),
+      )
+    }
+
+    beforeEach(() => {
+      vi.mocked(listBlogPosts).mockResolvedValue({
+        data: [],
+        pagination: { limit: 100, offset: 0, page: 1, total: 0 },
+      })
+    })
+
+    describe('даты', () => {
+      it('показывает «Обновлено», когда дата правки позже даты публикации', async () => {
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(
+          makePost({ publishedAt: MIDDAY, updatedAt: '2026-06-05T12:00:00.000Z' }),
+        )
+        render(await BlogPostPage(props))
+        expect(screen.getByText('1 июня 2026')).toBeInTheDocument()
+        expect(screen.getByText(/Обновлено/)).toBeInTheDocument()
+        expect(screen.getByText('5 июня 2026')).toBeInTheDocument()
+      })
+
+      it('не показывает «Обновлено», если правка в тот же день', async () => {
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(
+          makePost({ publishedAt: MIDDAY, updatedAt: '2026-06-01T13:00:00.000Z' }),
+        )
+        render(await BlogPostPage(props))
+        expect(screen.queryByText(/Обновлено/)).toBeNull()
+      })
+
+      it('«Обновлено» считается от даты создания, когда publishedAt нет', async () => {
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(
+          makePost({
+            publishedAt: null,
+            createdAt: MIDDAY,
+            updatedAt: '2026-06-09T12:00:00.000Z',
+          }),
+        )
+        render(await BlogPostPage(props))
+        expect(screen.getByText('9 июня 2026')).toBeInTheDocument()
+      })
+    })
+
+    describe('оглавление', () => {
+      const headings = (n: number) => ({
+        type: 'paragraph',
+        html: Array.from({ length: n }, (_, i) => `<h2>Раздел ${i + 1}</h2><p>текст</p>`).join(''),
+      })
+
+      it('с тремя заголовками показывает оглавление и якоря на заголовках', async () => {
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost({ blocks: [headings(3)] }))
+        const { container } = render(await BlogPostPage(props))
+        const nav = screen.getByRole('navigation', { name: 'Содержание' })
+        const hrefs = Array.from(nav.querySelectorAll('a')).map((a) => a.getAttribute('href'))
+        expect(hrefs).toEqual(['#razdel-1', '#razdel-2', '#razdel-3'])
+        for (const href of hrefs) {
+          const id = (href as string).slice(1)
+          expect(container.querySelector(`h2[id="${id}"]`)).not.toBeNull()
+        }
+      })
+
+      it('с двумя заголовками оглавления нет, но тело статьи на месте', async () => {
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost({ blocks: [headings(2)] }))
+        render(await BlogPostPage(props))
+        expect(screen.queryByRole('navigation', { name: 'Содержание' })).toBeNull()
+        expect(screen.getByRole('heading', { level: 2, name: 'Раздел 1' })).toBeInTheDocument()
+      })
+    })
+
+    describe('автор', () => {
+      const author = {
+        authorName: 'Имя Фамилия',
+        authorJobTitle: 'Должность',
+        authorBio: 'Справка об авторе',
+        authorUrl: 'https://example.com/profile',
+      }
+
+      it('с автором: блок «Об авторе» внизу и Person в BlogPosting', async () => {
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost(author))
+        const { container } = render(await BlogPostPage(props))
+        expect(screen.getByRole('region', { name: 'Об авторе' })).toBeInTheDocument()
+        expect(screen.getByText('Справка об авторе')).toBeInTheDocument()
+        const article = jsonLd(container).find((d) => d['@type'] === 'BlogPosting')
+        expect(article.author).toEqual({
+          '@type': 'Person',
+          name: 'Имя Фамилия',
+          jobTitle: 'Должность',
+          url: 'https://example.com/profile',
+        })
+        expect(article.publisher).toMatchObject({ '@type': 'Organization', name: 'Химичка' })
+      })
+
+      it('без автора: блока нет, автор в разметке — Organization', async () => {
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost())
+        const { container } = render(await BlogPostPage(props))
+        expect(screen.queryByRole('region', { name: 'Об авторе' })).toBeNull()
+        const article = jsonLd(container).find((d) => d['@type'] === 'BlogPosting')
+        expect(article.author).toMatchObject({ '@type': 'Organization', name: 'Химичка' })
+      })
+    })
+
+    describe('похожие статьи', () => {
+      function listOf(posts: BlogPost[]) {
+        vi.mocked(listBlogPosts).mockResolvedValue({
+          data: posts,
+          pagination: { limit: 100, offset: 0, page: 1, total: posts.length },
+        })
+      }
+
+      it('показывает до трёх статей той же рубрики без текущей и без noindex', async () => {
+        const current = makePost()
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(current)
+        listOf([
+          current,
+          makePost({ id: 'r1', slug: 'r1', title: 'Опыт 1', rubric: 'Опыты' }),
+          makePost({ id: 'r2', slug: 'r2', title: 'Опыт 2', rubric: 'Опыты' }),
+          makePost({ id: 'r3', slug: 'r3', title: 'Опыт 3', rubric: 'Опыты' }),
+          makePost({ id: 'r4', slug: 'r4', title: 'Опыт 4', rubric: 'Опыты' }),
+          makePost({ id: 'h', slug: 'h', title: 'Скрытая', rubric: 'Опыты', noindex: true }),
+          makePost({ id: 'n', slug: 'n', title: 'Новость', rubric: 'Новости' }),
+        ])
+        render(await BlogPostPage(props))
+        expect(
+          screen.getByRole('heading', { level: 2, name: 'Похожие статьи' }),
+        ).toBeInTheDocument()
+        const links = screen
+          .getAllByRole('link')
+          .map((a) => a.getAttribute('href'))
+          .filter((h) => h?.startsWith('/blog/') && h !== '/blog')
+        // Три карточки, каждая — ссылка на статью (у карточки их две: обложка и заголовок).
+        expect(new Set(links).size).toBe(3)
+        expect(links).not.toContain('/blog/pochemu-plamya-sinee')
+        expect(links).not.toContain('/blog/h')
+        expect(links).not.toContain('/blog/n')
+      })
+
+      it('если в рубрике мало статей — добирает последними из других', async () => {
+        const current = makePost()
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(current)
+        listOf([current, makePost({ id: 'n', slug: 'n', title: 'Новость', rubric: 'Новости' })])
+        render(await BlogPostPage(props))
+        expect(screen.getByRole('link', { name: 'Новость' })).toHaveAttribute('href', '/blog/n')
+      })
+
+      it('нет других статей — блока нет', async () => {
+        const current = makePost()
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(current)
+        listOf([current])
+        render(await BlogPostPage(props))
+        expect(screen.queryByText('Похожие статьи')).toBeNull()
+      })
+
+      it('сбой списка статей не роняет страницу', async () => {
+        vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost())
+        vi.mocked(listBlogPosts).mockRejectedValue(new Error('offline'))
+        render(await BlogPostPage(props))
+        expect(
+          screen.getByRole('heading', { level: 1, name: 'Почему пламя синее' }),
+        ).toBeInTheDocument()
+        expect(screen.queryByText('Похожие статьи')).toBeNull()
+      })
     })
   })
 })
