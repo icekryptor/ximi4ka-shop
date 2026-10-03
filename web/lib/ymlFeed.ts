@@ -1,5 +1,6 @@
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import type { PublicSettings } from './api'
+import { BRAND_NAME } from './jsonLd'
 
 // --- XML escaping ---
 //
@@ -15,8 +16,12 @@ const XML_ESCAPES: Record<string, string> = {
   '"': '&quot;',
 }
 
+// Управляющие символы, которых нет в XML 1.0 (кроме таба, \n и \r): с ними
+// парсер Маркета отклоняет весь фид, а сущностями их не записать.
+const XML_INVALID_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g
+
 export function escapeXml(value: string): string {
-  return value.replace(/[&<>'"]/g, (ch) => XML_ESCAPES[ch] ?? ch)
+  return value.replace(XML_INVALID_CHARS, '').replace(/[&<>'"]/g, (ch) => XML_ESCAPES[ch] ?? ch)
 }
 
 // --- Helpers shared with product feeds ---
@@ -26,11 +31,36 @@ export function escapeXml(value: string): string {
 // avoid importing a sanitizer here (the admin's long-description blocks
 // already go through DOMPurify before storage).
 function htmlToPlaintext(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+  return (
+    html
+      // Тег начинается с буквы или «/», иначе «pH < 7 и > 3» съелось бы как тег.
+      .replace(/<\/?[a-zA-Z][^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      // Сущности раскрываем, потому что escapeXml экранирует «&» заново;
+      // «&amp;» последним, чтобы не раскрыть «&amp;lt;» дважды.
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;|&apos;/g, "'")
+      .replace(/&amp;/g, '&')
+      .replace(/\s+/g, ' ')
+      .trim()
+  )
+}
+
+// Требование YML: description не длиннее 3000 символов. Режем по символам
+// Unicode, чтобы не оставить половину суррогатной пары.
+const DESCRIPTION_MAX_CHARS = 3000
+
+function truncateChars(text: string, max: number): string {
+  const chars = Array.from(text)
+  return chars.length <= max ? text : chars.slice(0, max).join('').trimEnd()
+}
+
+// Маркет показывает скидку, когда старая цена выше текущей минимум на 5%.
+function hasOldPrice(product: Product): product is Product & { compareAtPriceRub: number } {
+  const old = product.compareAtPriceRub
+  return old != null && old >= product.priceRub * 1.05
 }
 
 // Pick the description for the YML <description> field. Priority:
@@ -38,7 +68,7 @@ function htmlToPlaintext(html: string): string {
 //   2. first paragraph block's plaintext
 //   3. empty string — <description> is optional in YML, so we simply skip it.
 function productDescription(product: Product): string {
-  const short = product.shortDescription?.trim()
+  const short = product.shortDescription ? htmlToPlaintext(product.shortDescription) : ''
   if (short) return short
   const blocks = Array.isArray(product.longDescriptionBlocks) ? product.longDescriptionBlocks : []
   for (const block of blocks) {
@@ -85,7 +115,8 @@ export interface YmlGeneratorInput {
 // Build the YML XML string. Pure function so tests can feed it fixtures and
 // assert line-level. Follows the minimal spec from the task brief: shop
 // metadata + currencies + categories + offers. We deliberately skip
-// variants/grouped offers/vendor codes — not needed for the MVP.
+// variants/grouped offers — not needed for the MVP. barcode, param и
+// sales_notes не выводим: в модели товара и настройках сайта для них нет данных.
 export function generateYmlXml(input: YmlGeneratorInput): string {
   const { products, categories, settings, siteUrl, now = new Date() } = input
 
@@ -123,7 +154,8 @@ export function generateYmlXml(input: YmlGeneratorInput): string {
 
     const available = product.stockStatus === 'in_stock' ? 'true' : 'false'
     const productUrl = product.canonicalUrl?.trim() || `${siteUrl}/product/${product.slug}`
-    const description = productDescription(product)
+    const description = truncateChars(productDescription(product), DESCRIPTION_MAX_CHARS)
+    const vendorCode = product.sku?.trim()
 
     // Cap at 10 pictures per the YML spec so the feed stays compliant even
     // for products with large galleries.
@@ -140,10 +172,13 @@ export function generateYmlXml(input: YmlGeneratorInput): string {
       `    <offer id="${escapeXml(product.id)}" available="${available}">`,
       `      <url>${escapeXml(productUrl)}</url>`,
       `      <price>${product.priceRub}</price>`,
+      hasOldPrice(product) ? `      <oldprice>${product.compareAtPriceRub}</oldprice>` : '',
       `      <currencyId>${escapeXml(currency)}</currencyId>`,
       `      <categoryId>${categoryId}</categoryId>`,
       pictureLines,
       `      <name>${escapeXml(product.name)}</name>`,
+      `      <vendor>${escapeXml(BRAND_NAME)}</vendor>`,
+      vendorCode ? `      <vendorCode>${escapeXml(vendorCode)}</vendorCode>` : '',
       description ? `      <description>${escapeXml(description)}</description>` : '',
     ]
       .filter(Boolean)
