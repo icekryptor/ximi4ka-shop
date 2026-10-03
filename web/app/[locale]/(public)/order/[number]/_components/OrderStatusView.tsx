@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { PublicOrderStatus } from '@ximi4ka-shop/shared'
 import { ApiError, getOrderStatus } from '@/lib/api'
 import { formatRub } from '@/lib/stockLabel'
+import { forgetPendingPurchase, reportPurchaseOnce } from '@/lib/metrika'
 import {
   ORDER_POLL_INTERVAL_MS,
   ORDER_POLL_MAX_ATTEMPTS,
@@ -115,6 +116,25 @@ export function OrderStatusView({
       cancelled = true
     }
   }, [orderNumber, token])
+
+  // Покупка для Метрики: после оформления (?new=1), когда заказ загружен.
+  // Онлайн-оплата (tbank) — только после подтверждения оплаты (paid/shipped;
+  // пока pending, поллинг ждёт webhook банка); ручной заказ — сразу (pending
+  // тоже). Повторов нет (отметка по номеру заказа), а без снимка состава из
+  // чекаута — страница открыта не тем браузером — ничего не уходит
+  // (lib/metrika.ts). Провал/отмена — снимок больше не нужен.
+  const status = order?.status
+  const paid = status === 'paid' || status === 'shipped'
+  const purchasable =
+    order !== null && (order.paymentProvider === 'tbank' ? paid : status === 'pending' || paid)
+  const totalRub = order?.totalRub
+  useEffect(() => {
+    if (status === 'failed' || status === 'cancelled') forgetPendingPurchase(orderNumber)
+  }, [status, orderNumber])
+  useEffect(() => {
+    if (!celebrate || !purchasable || totalRub === undefined) return
+    reportPurchaseOnce(orderNumber, totalRub)
+  }, [celebrate, purchasable, totalRub, orderNumber])
 
   // Поллинг каждые 5 секунд: пока tbank-платёж в полёте (максимум 5 минут)
   // и пока СДЭК регистрирует оплаченный заказ и не выдал трек (до 15 минут).
