@@ -18,6 +18,7 @@
     "import:tilda-articles": "tsx src/seeds/import-tilda-articles.ts",
     "import:tilda-redirects": "tsx src/seeds/import-tilda-redirects.ts",
     "audit:images": "tsx src/scripts/audit-images.ts",
+    "migrate:tilda-images": "tsx src/scripts/migrate-tilda-images.ts",
     "import:tilda-shipping": "tsx src/seeds/import-tilda-shipping.ts",
     "telegram:set-webhook": "tsx src/scripts/telegram-set-webhook.ts"
   },
