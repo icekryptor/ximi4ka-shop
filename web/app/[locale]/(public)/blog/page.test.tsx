@@ -64,6 +64,15 @@ describe('BlogListPage', () => {
     expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/blog')
   })
 
+  it('advertises the RSS feed via alternates.types', async () => {
+    const meta = await generateMetadata({
+      params: Promise.resolve({ locale: 'ru' }),
+    })
+    expect(meta.alternates?.types).toEqual({
+      'application/rss+xml': 'https://new.ximi4ka.ru/blog/rss.xml',
+    })
+  })
+
   it('renders post cards for every fetched post', async () => {
     vi.mocked(listBlogPosts).mockResolvedValue({
       data: [makePost(), makePost({ id: 'bp2', slug: 'kristally-doma', title: 'Кристаллы дома' })],

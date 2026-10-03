@@ -65,6 +65,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       type: 'article',
       locale,
       alternatesByLocale,
+      rssPath: '/blog/rss.xml',
     })
   } catch {
     return { title: 'Статья — Ximi4ka' }

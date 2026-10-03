@@ -96,6 +96,14 @@ describe('BlogPostPage', () => {
       expect(JSON.stringify(meta.openGraph)).toContain('/uploads/blog/flame.jpg')
     })
 
+    it('advertises the blog RSS feed via alternates.types', async () => {
+      vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost())
+      const meta = await generateMetadata(props)
+      expect(meta.alternates?.types).toEqual({
+        'application/rss+xml': 'https://new.ximi4ka.ru/blog/rss.xml',
+      })
+    })
+
     it('prefers metaTitle over title', async () => {
       vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost({ metaTitle: 'SEO заголовок' }))
       const meta = await generateMetadata(props)

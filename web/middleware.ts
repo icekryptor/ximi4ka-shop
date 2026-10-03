@@ -10,7 +10,9 @@ import { DEFAULT_LOCALE, isLocale } from '@/lib/i18n'
 //      internally to `/${DEFAULT_LOCALE}/product/foo` so the user's
 //      address bar stays prefix-free for Russian (launch language).
 //      Prefixed URLs (`/en/product/foo`) are left alone for Next to
-//      match the `[locale]` segment directly.
+//      match the `[locale]` segment directly. The default-locale prefix
+//      (`/ru/product/foo`) duplicates the unprefixed URL, so it gets a 308
+//      to `/product/foo` (query string kept).
 //
 //   2. Admin-defined redirects. Fetches the redirect table from the
 //      API (cached 60s in module scope) and issues Location redirects
@@ -133,6 +135,16 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   const path = req.nextUrl.pathname
   if (isExcluded(path)) {
     return NextResponse.next()
+  }
+
+  // /ru/... дублирует URL без префикса — уводим на него, query сохраняется.
+  // Делаем до обращения к API. Цикла нет: внутренний rewrite на /ru/...
+  // middleware повторно не запускает. pathname задаём через URL, а не
+  // склейкой строки, чтобы `/ru//host` не превратился в редирект на чужой хост.
+  if (firstSegment(path) === DEFAULT_LOCALE) {
+    const url = req.nextUrl.clone()
+    url.pathname = path.slice(DEFAULT_LOCALE.length + 1) || '/'
+    return NextResponse.redirect(url, 308)
   }
 
   const base = process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'

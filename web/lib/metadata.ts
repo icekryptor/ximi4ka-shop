@@ -20,6 +20,12 @@ export interface SeoInput {
    */
   ampPath?: string | null
   /**
+   * Route-relative path to the RSS feed, e.g. '/blog/rss.xml'. When set,
+   * buildMetadata emits `<link rel="alternate" type="application/rss+xml">`
+   * so readers and search engines can discover the feed from the page.
+   */
+  rssPath?: string | null
+  /**
    * Current locale this page renders in. Controls OG `locale` and
    * seeds the default alternates map if `alternatesByLocale` is omitted.
    */
@@ -150,7 +156,11 @@ export function buildMetadata(input: SeoInput): Metadata {
   return {
     title,
     description,
-    alternates: { canonical, languages },
+    alternates: {
+      canonical,
+      languages,
+      ...(input.rssPath ? { types: { 'application/rss+xml': `${base}${input.rssPath}` } } : {}),
+    },
     robots: input.noindex ? { index: false, follow: false } : undefined,
     other,
     openGraph: {
