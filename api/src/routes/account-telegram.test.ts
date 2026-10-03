@@ -109,6 +109,57 @@ describe('вход через Telegram', () => {
     expect(c.name).toBe('Иван')
   })
 
+  // Telegram с нашего VPS отвечает медленно: человек, нажавший «Старт», не должен
+  // смотреть в пустой чат, пока бот ходит в базу и шлёт запрос подтверждения.
+  it('/start: сначала сообщения о ходе работы, затем кнопка подтверждения', async () => {
+    const { nonce } = await startLogin()
+    expect((await hook(startMsg(nonce))).status).toBe(200)
+    const texts = calls.filter((c) => c.method === 'sendMessage').map((c) => String(c.body.text))
+    expect(texts).toHaveLength(3)
+    expect(texts[0]).toMatch(/Подключаемся к сервису/)
+    expect(texts[1]).toMatch(/Генерируем ссылку/)
+    expect(texts[2]).toMatch(/Войти на сайт/)
+    expect(lastButtonData()).toMatch(/^login:/)
+  })
+
+  it('/start: порядок сообщений сохраняется, даже если первое уходит медленно', async () => {
+    const arrived: string[] = []
+    let first = true
+    const slow = new TelegramLoginBot({
+      token: 'T',
+      username: 'ximi4ka_bot',
+      webhookSecret: SECRET,
+      fetch: async (url: string, init?: RequestInit) => {
+        const method = url.split('/').pop()!
+        const body = JSON.parse(String(init?.body))
+        if (method === 'sendMessage') {
+          if (first) {
+            first = false
+            await new Promise((r) => setTimeout(r, 80))
+          }
+          arrived.push(String(body.text))
+        }
+        return new Response(JSON.stringify({ ok: true, result: true }), { status: 200 })
+      },
+    })
+    setLoginBotForTests(slow)
+    const { nonce } = await startLogin()
+    await hook(startMsg(nonce))
+    expect(arrived.map((t) => t.slice(0, 12))).toEqual([
+      'Подключаемся',
+      'Генерируем с',
+      'Войти на сай',
+    ])
+  })
+
+  it('/start со старой ссылкой: «подключаемся», затем «ссылка устарела», без «генерируем»', async () => {
+    await hook(startMsg('nope'))
+    const texts = calls.filter((c) => c.method === 'sendMessage').map((c) => String(c.body.text))
+    expect(texts[0]).toMatch(/Подключаемся к сервису/)
+    expect(texts[texts.length - 1]).toMatch(/устарела/)
+    expect(texts.some((t) => /Генерируем/.test(t))).toBe(false)
+  })
+
   it('повторный вход тем же Telegram — тот же покупатель, username обновлён', async () => {
     await AppDataSource.getRepository(Customer).save({ telegramId: 1001, telegramUsername: 'old' })
     const { agent, nonce } = await startLogin()
@@ -169,7 +220,7 @@ describe('вход через Telegram', () => {
 
   it('неизвестный nonce — бот пишет, что ссылка устарела; статус без cookie — expired', async () => {
     expect((await hook(startMsg('nope'))).status).toBe(200)
-    const sent = calls.find((c) => c.method === 'sendMessage')!
+    const sent = calls.filter((c) => c.method === 'sendMessage').pop()!
     expect(String(sent.body.text)).toMatch(/устарела/)
     expect((await request(app).get('/api/account/auth/telegram/status')).body.data.status).toBe(
       'expired',

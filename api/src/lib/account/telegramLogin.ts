@@ -98,7 +98,12 @@ export async function handleTelegramUpdate(
       )
       return
     }
+    // Telegram у нас отвечает медленно (см. deploy/README.md), и человек после
+    // «Старт» смотрит в пустой чат. Первое сообщение уходит сразу, параллельно
+    // с базой; следующие ждут его (await progress), чтобы не обогнать в чате.
+    const progress = safe('прогресс', bot.sendMessage(msg.chat.id, 'Подключаемся к сервису…'))
     const req = await repo.findOneBy({ nonceHash: hashSessionToken(nonce) })
+    await progress
     if (!isLive(req)) {
       await safe(
         'ссылка устарела',
@@ -122,9 +127,19 @@ export async function handleTelegramUpdate(
       return
     }
     const linking = req.linkCustomerId !== null
+    // Второе сообщение уходит параллельно с поиском аккаунта для привязки;
+    // кнопка идёт строго после него.
+    const working = safe(
+      'прогресс (ссылка)',
+      bot.sendMessage(
+        msg.chat.id,
+        linking ? 'Готовим привязку Telegram…' : 'Генерируем ссылку для входа…',
+      ),
+    )
     const prompt = linking
       ? `Привязать этот Telegram к аккаунту ${await linkTargetLabel(req.linkCustomerId!)} на ${SITE}? Если вы не начинали привязку — просто проигнорируйте это сообщение.`
       : `Войти на сайт ${SITE}? Если вы не начинали вход, просто проигнорируйте это сообщение.`
+    await working
     await safe(
       'запрос подтверждения',
       bot.sendMessage(msg.chat.id, prompt, [
