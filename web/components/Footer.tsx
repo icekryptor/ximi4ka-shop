@@ -15,6 +15,9 @@ const ROW_STRANITSY: ColophonItem[] = [
   'оплата',
   'возврат',
   { label: 'отследить заказ', href: '/orders/track' },
+  { label: 'оферта', href: '/oferta' },
+  { label: 'политика конфиденциальности', href: '/policy' },
+  { label: 'сертификаты', href: '/cert' },
 ]
 
 interface ColophonRowProps {

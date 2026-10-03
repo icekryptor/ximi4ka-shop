@@ -6,7 +6,9 @@ export const CreatePageSchema = z.object({
     .string()
     .min(1)
     .max(255)
-    .regex(/^[a-z0-9-]+$/, 'slug must be lowercase kebab-case'),
+    // «_» нужен для URL, перенесённых с Tilda 1:1 (xim3_inst, get_materials):
+    // без него админка не сохранила бы правку такой страницы.
+    .regex(/^[a-z0-9_-]+$/, 'slug must be lowercase kebab-case (underscore allowed)'),
   title: z.string().min(1).max(500),
   blocks: z.array(z.unknown()).default([]),
   metaTitle: z.string().max(255).nullable().optional(),
