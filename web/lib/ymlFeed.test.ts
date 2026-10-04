@@ -105,8 +105,30 @@ describe('generateYmlXml — structure', () => {
       },
       siteUrl: 'https://new.ximi4ka.ru',
     })
-    expect(xml).toContain('<name>Ximi4ka</name>')
+    expect(xml).toContain('<name>Химичка</name>')
+    expect(xml).toContain('<company>Химичка</company>')
     expect(xml).toContain('<url>https://new.ximi4ka.ru</url>')
+  })
+
+  it('подставляет «Химичка» и вместо пустых строк в настройках', () => {
+    const xml = generateYmlXml({
+      products: [],
+      categories: [],
+      settings: { ...baseSettings, ymlShopName: '  ', ymlCompany: '' },
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    expect(xml).toContain('<name>Химичка</name>')
+    expect(xml).toContain('<company>Химичка</company>')
+  })
+
+  it('компания без значения берёт название магазина из настроек', () => {
+    const xml = generateYmlXml({
+      products: [],
+      categories: [],
+      settings: { ...baseSettings, ymlShopName: 'Мой магазин', ymlCompany: null },
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    expect(xml).toContain('<company>Мой магазин</company>')
   })
 
   it('emits delivery-options when ymlDeliveryNote is set', () => {
@@ -188,6 +210,34 @@ describe('generateYmlXml — offers', () => {
     })
     expect(xml).toContain('<offer id="p-in" available="true">')
     expect(xml).toContain('<offer id="p-out" available="false">')
+  })
+
+  it('под заказ (preorder) — available="false"', () => {
+    const xml = generateYmlXml({
+      products: [makeProduct({ id: 'p-pre', stockStatus: 'preorder', categoryIds: ['cat-1'] })],
+      categories: [makeCategory()],
+      settings: baseSettings,
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    expect(xml).toContain('<offer id="p-pre" available="false">')
+  })
+
+  it('url оффера и относительные картинки строятся от переданного siteUrl', () => {
+    const xml = generateYmlXml({
+      products: [
+        makeProduct({
+          slug: 'nabor',
+          images: [{ url: '/uploads/a.jpg', alt: '', sortOrder: 0 }] as never,
+          categoryIds: ['cat-1'],
+        }),
+      ],
+      categories: [makeCategory()],
+      settings: { ...baseSettings, ymlUrl: null },
+      siteUrl: 'https://ximi4ka.ru',
+    })
+    expect(xml).toContain('<url>https://ximi4ka.ru/product/nabor</url>')
+    expect(xml).toContain('<picture>https://ximi4ka.ru/uploads/a.jpg</picture>')
+    expect(xml).not.toContain('new.ximi4ka.ru')
   })
 
   it('skips products without a linked category', () => {
@@ -273,6 +323,37 @@ describe('generateYmlXml — offers', () => {
     expect(xml).not.toContain('<picture>https://cdn.example.com/10.jpg</picture>')
   })
 
+  it('делает абсолютными картинки из своего /uploads (после переезда с Tilda)', () => {
+    const image = (url: string, i: number) => ({
+      id: `img-${i}`,
+      productId: 'p',
+      url,
+      alt: 'a',
+      sortOrder: i,
+    })
+    const xml = generateYmlXml({
+      products: [
+        makeProduct({
+          id: 'p',
+          slug: 'p',
+          images: [
+            image('/uploads/tilda/0123abcd.png', 0),
+            image('uploads/tilda/no-slash.png', 1),
+            image('https://cdn.example.com/abs.jpg', 2),
+          ],
+          categoryIds: ['cat-1'],
+        }),
+      ],
+      categories: [makeCategory()],
+      settings: baseSettings,
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    expect(xml).toContain('<picture>https://new.ximi4ka.ru/uploads/tilda/0123abcd.png</picture>')
+    expect(xml).toContain('<picture>https://new.ximi4ka.ru/uploads/tilda/no-slash.png</picture>')
+    expect(xml).toContain('<picture>https://cdn.example.com/abs.jpg</picture>')
+    expect(xml).not.toMatch(/<picture>(?!https?:\/\/)/)
+  })
+
   it('uses shortDescription when available, else first paragraph plaintext', () => {
     const xml = generateYmlXml({
       products: [
@@ -318,5 +399,196 @@ describe('generateYmlXml — offers', () => {
     })
     // No <description> tag at all — legal YML, Yandex tolerates absence.
     expect(xml).not.toMatch(/<description>/)
+  })
+})
+
+describe('escapeXml — недопустимые символы', () => {
+  it('вырезает управляющие символы, запрещённые в XML 1.0', () => {
+    expect(escapeXml('a\u0000b\u0008c\u000Bd\u001Fe')).toBe('abcde')
+    // Таб, перевод строки и возврат каретки допустимы.
+    expect(escapeXml('a\tb\nc\rd')).toBe('a\tb\nc\rd')
+  })
+})
+
+describe('generateYmlXml — vendor, vendorCode, oldprice', () => {
+  const gen = (overrides: Partial<ProductWithCategoryIds>) =>
+    generateYmlXml({
+      products: [makeProduct({ categoryIds: ['cat-1'], ...overrides })],
+      categories: [makeCategory()],
+      settings: baseSettings,
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+
+  it('всегда выводит vendor «Химичка»', () => {
+    expect(gen({})).toContain('<vendor>Химичка</vendor>')
+  })
+
+  it('выводит vendorCode из sku и экранирует его', () => {
+    expect(gen({ sku: 'XM-3.0 & <1>' })).toContain(
+      '<vendorCode>XM-3.0 &amp; &lt;1&gt;</vendorCode>',
+    )
+  })
+
+  it('не выводит vendorCode при пустом sku', () => {
+    expect(gen({ sku: null })).not.toContain('<vendorCode>')
+    expect(gen({ sku: '   ' })).not.toContain('<vendorCode>')
+  })
+
+  it('выводит oldprice, если старая цена выше текущей минимум на 5%', () => {
+    const xml = gen({ priceRub: 1000, compareAtPriceRub: 1500 })
+    expect(xml).toContain('<price>1000</price>\n      <oldprice>1500</oldprice>')
+  })
+
+  it('не выводит oldprice, если старой цены нет, она не выше текущей или скидка меньше 5%', () => {
+    expect(gen({ priceRub: 1000, compareAtPriceRub: null })).not.toContain('<oldprice>')
+    expect(gen({ priceRub: 1000, compareAtPriceRub: 1000 })).not.toContain('<oldprice>')
+    expect(gen({ priceRub: 1000, compareAtPriceRub: 800 })).not.toContain('<oldprice>')
+    expect(gen({ priceRub: 1000, compareAtPriceRub: 1040 })).not.toContain('<oldprice>')
+  })
+
+  it('не выдумывает barcode, param и sales_notes: данных для них нет', () => {
+    const xml = gen({ sku: 'A', priceRub: 1000, compareAtPriceRub: 2000 })
+    expect(xml).not.toMatch(/<barcode>|<param |<sales_notes>/)
+  })
+
+  it('соблюдает порядок элементов offer по спецификации', () => {
+    const xml = gen({
+      sku: 'A-1',
+      priceRub: 1000,
+      compareAtPriceRub: 2000,
+      shortDescription: 'Описание',
+      images: [{ id: 'i', productId: 'p', url: '/uploads/a.jpg', alt: '', sortOrder: 0 }],
+    })
+    // Только блок <offer>: <name> и <url> есть и у <shop>.
+    const offer = xml.slice(xml.indexOf('<offer '))
+    const order = [
+      '<url>',
+      '<price>',
+      '<oldprice>',
+      '<currencyId>',
+      '<categoryId>',
+      '<picture>',
+      '<name>',
+      '<vendor>',
+      '<vendorCode>',
+      '<description>',
+    ].map((tag) => offer.indexOf(tag))
+    expect(order.every((i) => i >= 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+  })
+})
+
+describe('generateYmlXml — description без HTML и до 3000 символов', () => {
+  const descOf = (overrides: Partial<ProductWithCategoryIds>) => {
+    const xml = generateYmlXml({
+      products: [makeProduct({ categoryIds: ['cat-1'], ...overrides })],
+      categories: [makeCategory()],
+      settings: baseSettings,
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    return /<description>([\s\S]*?)<\/description>/.exec(xml)?.[1]
+  }
+
+  it('убирает теги из shortDescription и не экранирует дважды готовые сущности', () => {
+    expect(descOf({ shortDescription: '<p>Соль &amp; <b>сода</b>&nbsp;и вода</p>' })).toBe(
+      'Соль &amp; сода и вода',
+    )
+  })
+
+  it('не принимает «<» и «>» в обычном тексте за теги', () => {
+    expect(descOf({ shortDescription: 'pH < 7 и температура > 3' })).toBe(
+      'pH &lt; 7 и температура &gt; 3',
+    )
+  })
+
+  it('обрезает описание до 3000 символов', () => {
+    const text = descOf({ shortDescription: 'ж'.repeat(5000) })!
+    expect(text).toHaveLength(3000)
+  })
+
+  it('не рвёт суррогатные пары при обрезке', () => {
+    const text = descOf({ shortDescription: '🧪'.repeat(3500) })!
+    expect(Array.from(text)).toHaveLength(3000)
+  })
+})
+
+describe('generateYmlXml — фолбэк описания из longDescriptionBlocks', () => {
+  const descOf = (overrides: Partial<ProductWithCategoryIds>) => {
+    const xml = generateYmlXml({
+      products: [makeProduct({ categoryIds: ['cat-1'], ...overrides })],
+      categories: [makeCategory()],
+      settings: baseSettings,
+      siteUrl: 'https://new.ximi4ka.ru',
+    })
+    return /<description>([\s\S]*?)<\/description>/.exec(xml)?.[1]
+  }
+
+  it('shortDescription из одних пробелов и тегов не считается описанием — берётся текстовый блок', () => {
+    expect(
+      descOf({
+        shortDescription: '<p> </p>',
+        longDescriptionBlocks: [{ type: 'paragraph', html: '<p>Текст блока</p>' }],
+      }),
+    ).toBe('Текст блока')
+  })
+
+  it('пропускает нетекстовые блоки и пустые абзацы, берёт первый осмысленный', () => {
+    expect(
+      descOf({
+        longDescriptionBlocks: [
+          { type: 'image', url: '/a.jpg', alt: '' },
+          { type: 'paragraph', html: '<p>&nbsp;</p>' },
+          { type: 'paragraph', html: '<p>Первый <b>смысл</b></p>' },
+          { type: 'paragraph', html: '<p>Второй</p>' },
+        ],
+      }),
+    ).toBe('Первый смысл')
+  })
+
+  it('пропускает блоки со служебными заголовками «Состав» и «Характеристики»', () => {
+    expect(
+      descOf({
+        longDescriptionBlocks: [
+          {
+            type: 'paragraph',
+            html: '<h3>Характеристики</h3><ul><li><strong>Вес:</strong> 1 кг</li></ul>',
+          },
+          { type: 'paragraph', html: '<h2>Состав</h2><p>Соль, сода</p>' },
+          { type: 'paragraph', html: '<p>Состав:</p>' },
+          { type: 'paragraph', html: '<p>Настоящее описание</p>' },
+        ],
+      }),
+    ).toBe('Настоящее описание')
+  })
+
+  it('без осмысленных блоков описания нет', () => {
+    expect(
+      descOf({
+        longDescriptionBlocks: [
+          { type: 'paragraph', html: '<h3>Состав</h3><p>Соль</p>' },
+          { type: 'video', provider: 'youtube', videoId: 'x' },
+        ],
+      }),
+    ).toBeUndefined()
+  })
+
+  it('режет описание из блока по границе слова до 3000 символов', () => {
+    const text = descOf({
+      longDescriptionBlocks: [{ type: 'paragraph', html: `<p>х ${'слово '.repeat(1000)}</p>` }],
+    })!
+    expect(text.length).toBeLessThanOrEqual(3000)
+    expect(text.endsWith('слово')).toBe(true)
+    expect(
+      text
+        .split(' ')
+        .slice(1)
+        .every((w) => w === 'слово'),
+    ).toBe(true)
+  })
+
+  it('режет и shortDescription по границе слова', () => {
+    const text = descOf({ shortDescription: 'abcdefgh '.repeat(600) })!
+    expect(text.length).toBeLessThanOrEqual(3000)
+    expect(text.split(' ').every((w) => w === 'abcdefgh')).toBe(true)
   })
 })

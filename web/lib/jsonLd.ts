@@ -4,7 +4,7 @@ import { SOCIAL_URLS } from './contacts'
 
 // Бренд в разметке — «Химичка» (рекомендации SEO-аудита). Юрлицо и ИНН
 // не указываем, пока владелец не подтвердит, какое из ИП выводить.
-const BRAND_NAME = 'Химичка'
+export const BRAND_NAME = 'Химичка'
 const BRAND_ALT_NAME = 'Ximi4ka'
 const LOGO_PATH = '/logo-himichka.svg'
 

@@ -22,7 +22,8 @@ new.ximi4ka.ru → supabase-caddy (80/443, TLS сам)
 - Деплой: автоматически после зелёного CI на `main` (см. «Автодеплой»);
   руками — `cd /opt/ximishop/app && bash deploy/deploy.sh`.
 - Аплоады админки — docker-том `ximishop-uploads` (на Railway они умирали при
-  каждом редеплое); импортированные фото товаров пока лежат на static.tildacdn.com.
+  каждом редеплое); фото товаров и статей переносятся со static.tildacdn.com в
+  тот же том скриптом (см. «Перенос картинок с Tilda»).
 
 ## Порядок переезда
 
@@ -436,12 +437,82 @@ CMS и проставить на неё ссылку в этих местах.
 
 Таблица `sso_auth_codes` (коды на минуту) тоже пока не чистится автоматически.
 
+## Перенос картинок с Tilda
+
+Фото товаров, обложки и картинки статей лежат на `static.tildacdn.com`; если
+подписку Tilda не продлить, они пропадут вместе с `<picture>` в YML-фиде.
+Скрипт `api/src/scripts/migrate-tilda-images.ts` находит ссылки на
+`static|thb|optim.tildacdn.com` в БД (картинки товаров, `og_image`, обложки,
+блоки и переводы страниц/статей/товаров/категорий, настройки сайта, снимки
+правок), скачивает файлы (только GET) в `uploads/tilda/<sha256>.<ext>` и
+подменяет ссылку на `/uploads/tilda/…`. Одинаковое содержимое хранится одним
+файлом; карта «ссылка → путь» лежит в `uploads/tilda-image-map.json`, поэтому
+повторный запуск уже перенесённое не качает. Ошибка одной картинки не
+останавливает прогон: старая ссылка остаётся, ошибка печатается в отчёте и
+выставляет код выхода 1.
+
+Порядок на сервере (из `/opt/ximishop/app`):
+
+```bash
+C="docker compose --env-file deploy/web.env -f deploy/docker-compose.yml"
+
+# 1. Dry-run (по умолчанию): план без скачивания и без записи
+$C exec -T ximishop-api node api/dist/scripts/migrate-tilda-images.js
+
+# 2. Бэкап БД перед записью
+docker exec supabase-db pg_dump -U supabase_admin -Fc ximi4ka_shop \
+  > /root/backups/ximi4ka_shop.before-tilda-images.dump
+docker run --rm -v ximishop_ximishop-uploads:/u -v /root/backups:/b alpine \
+  tar czf /b/uploads.before-tilda-images.tgz -C /u .
+
+# 3. Запись: скачать и заменить ссылки (одна транзакция по БД)
+$C exec -T ximishop-api node api/dist/scripts/migrate-tilda-images.js --apply
+
+# 4. Проверка (витрина подхватит новые ссылки в течение ~минуты — ISR 60 с)
+docker exec supabase-db psql -U supabase_admin -d ximi4ka_shop -Atc \
+  "SELECT count(*) FROM product_images WHERE url LIKE '%tildacdn%'"   # ждём 0
+curl -s https://new.ximi4ka.ru/yml.xml | grep -c tildacdn              # ждём 0
+```
+
+Если в отчёте есть ошибки — повторить шаг 3 позже (нерабочие ссылки так и
+останутся ссылками на Tilda, остальное уже перенесено).
+
+**Откат.** Скрипт ничего не удаляет: ссылки на Tilda живы, пока жива подписка, а
+файлы в томе безвредны. Чтобы вернуть ссылки, восстановить БД из дампа шага 2
+при остановленном api:
+
+```bash
+$C stop ximishop-api
+docker cp /root/backups/ximi4ka_shop.before-tilda-images.dump supabase-db:/tmp/before.dump
+docker exec supabase-db pg_restore -U supabase_admin -d ximi4ka_shop --clean --if-exists --no-owner /tmp/before.dump
+$C start ximishop-api
+```
+
+Заказы, оформленные после дампа, при этом пропадут — откатывать в тихое время.
+
+**Сид-импорты после переноса.** `import:tilda-catalog` / `import:tilda-articles`
+каждый раз перезаписывают картинки значениями из `api/data/*.json` (там остались
+ссылки на Tilda, сами JSON не правятся). Чтобы повторный импорт не вернул Tilda,
+сиды подставляют перенесённые картинки по карте: по умолчанию из
+`uploads/tilda-image-map.json` (так работает при запуске в контейнере), либо с
+ноутбука с явным путём к карте, скопированной с сервера:
+
+```bash
+$C exec -T ximishop-api cat /app/api/uploads/tilda-image-map.json > /tmp/tilda-image-map.json
+DATABASE_URL=… npm run import:tilda-catalog -w api -- --image-map /tmp/tilda-image-map.json
+# --no-image-map — оставить ссылки на Tilda как в JSON
+```
+
+После переноса `images.remotePatterns` для `static.tildacdn.com` в
+`web/next.config.ts` можно оставить на переходный период; убрать, когда в БД не
+останется ни одной ссылки на tildacdn.
+
 ## Хвосты
 
 - Апекс `ximi4ka.ru` остаётся на Tilda; noindex снимать только при его переключении.
 - CMS-страницы 1:1 с Tilda не перенесены — список в `api/data/cms-pages-todo.md`
   (`/policy`, `/oferta`, `/faq`, `/success`, `/fail` и др.).
-- Картинки товаров — на static.tildacdn.com; перезаливка в наш Storage отдельной задачей.
+- Картинки товаров и статей — на static.tildacdn.com, пока не прогнан `migrate-tilda-images` (см. «Перенос картинок с Tilda»).
 - `web/middleware.ts` → конвенция `proxy` (deprecation Next 16).
 
 ## Проверено локально перед выездом
