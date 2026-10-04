@@ -418,6 +418,45 @@ docker compose exec ximishop-api node api/dist/scripts/migrate.js
 чекаут показывают только текст согласия. Для 152-ФЗ нужно завести страницу в
 CMS и проставить на неё ссылку в этих местах.
 
+## Блог: поля автора (миграция `AddBlogPostAuthor1790730000000`)
+
+Миграция только добавляет пять необязательных колонок `author_*` в `blog_posts`
+(мгновенно, без блокировки на запись) и написана с `IF NOT EXISTS`. Новый код
+api читает эти колонки, а `deploy.sh` сначала переключает контейнеры и только
+потом гоняет миграции — поэтому колонки лучше добавить **до** мёржа. Если
+таблицы снова окажутся у `supabase_admin` (`prod-db-table-ownership`), миграция
+от `ximishop_user` упадёт с «must be owner of table blog_posts» — `IF NOT EXISTS`
+от проверки владельца не спасает, владельца нужно вернуть заранее.
+
+```bash
+# 1. кто владелец (ожидаем только ximishop_user; пустой вывод второго запроса — норма)
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
+  -c "SELECT tablename, tableowner FROM pg_tables WHERE schemaname='public' AND tablename IN ('blog_posts','migrations');" \
+  -c "SELECT tablename, tableowner FROM pg_tables WHERE schemaname='public' AND tableowner <> 'ximishop_user';"
+# 2. только если владелец другой (для остальных таблиц из вывода — то же самое):
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
+  -c 'ALTER TABLE blog_posts OWNER TO ximishop_user;'
+# 3. колонки заранее, от superuser (идемпотентно; от владельца таблицы они не меняются)
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
+  -c 'ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS author_name varchar(255), ADD COLUMN IF NOT EXISTS author_job_title varchar(255), ADD COLUMN IF NOT EXISTS author_bio text, ADD COLUMN IF NOT EXISTS author_url varchar(500), ADD COLUMN IF NOT EXISTS author_photo_url varchar(500);'
+```
+
+Дальше обычный мёрж: деплой накатит миграцию как no-op и отметит её в таблице
+`migrations`. Проверка после деплоя — в логе деплоя
+(`/opt/ximishop/deploy-logs/…`) строка `миграция применена:
+AddBlogPostAuthor1790730000000`, и:
+
+```bash
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
+  -c "SELECT name FROM migrations ORDER BY id DESC LIMIT 1;" \
+  -c "SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name='blog_posts' AND column_name LIKE 'author_%' ORDER BY 1;"
+curl -s 'https://new.ximi4ka.ru/api/public/blog?limit=1' | grep -o '"authorName":[^,]*'
+```
+
+Откат: старый код новые колонки игнорирует, так что откат кода безопасен без
+правок схемы; сами колонки при необходимости снимаются `ALTER TABLE blog_posts
+DROP COLUMN author_…` от `supabase_admin`.
+
 ## ximi4ka ID: вход в XimiLearn аккаунтом магазина
 
 Спека — `docs/superpowers/specs/2026-09-29-ximi4ka-id-sso-design.md`. Магазин

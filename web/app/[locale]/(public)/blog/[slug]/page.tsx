@@ -8,8 +8,13 @@ import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { LabSection } from '@/components/ui/LabSection'
 import { PreFooterCta } from '@/components/marketing'
+import { BlogAuthorBox } from '@/components/BlogAuthorBox'
+import { BlogToc } from '@/components/BlogToc'
+import { RelatedPosts } from '@/components/RelatedPosts'
 import { buildMetadata } from '@/lib/metadata'
 import { articleJsonLd, breadcrumbJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
+import { addHeadingAnchors } from '@/lib/articleToc'
+import { pickRelatedPosts } from '@/lib/relatedPosts'
 import {
   DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
@@ -84,6 +89,16 @@ async function fetchPost(slug: string): Promise<BlogPost> {
   }
 }
 
+// Кандидаты для «Похожих статей». Сбой списка не должен ронять статью.
+async function fetchRelatedPosts(post: BlogPost): Promise<BlogPost[]> {
+  try {
+    const res = await listBlogPosts({ limit: 100 })
+    return pickRelatedPosts(post, res?.data ?? [])
+  } catch {
+    return []
+  }
+}
+
 export default async function BlogPostPage({ params }: Props) {
   const { locale: rawLocale, slug } = await params
   if (!isLocale(rawLocale)) notFound()
@@ -92,9 +107,17 @@ export default async function BlogPostPage({ params }: Props) {
   const post = await fetchPost(slug)
   const title = pickField<string>(post, 'title', locale) ?? post.title
   const excerpt = pickField<string>(post, 'excerpt', locale) ?? post.excerpt
-  const blocks = (pickField<unknown[]>(post, 'blocks', locale) ?? post.blocks ?? []) as unknown[]
+  const rawBlocks = (pickField<unknown[]>(post, 'blocks', locale) ?? post.blocks ?? []) as unknown[]
+  // Якоря на h2/h3 и оглавление строятся по тому же набору блоков, что и показан.
+  const { blocks, toc } = addHeadingAnchors(rawBlocks)
+  const relatedPosts = await fetchRelatedPosts(post)
 
   const dateIso = post.publishedAt ?? post.createdAt
+  // «Обновлено» — только если правка случилась в другой день, чем публикация:
+  // сама публикация тоже обновляет updatedAt, и дата дублировалась бы.
+  const showUpdated =
+    new Date(post.updatedAt) > new Date(dateIso) &&
+    formatDateRu(post.updatedAt) !== formatDateRu(dateIso)
   const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
   const blogPath = locale === DEFAULT_LOCALE ? '/blog' : `/${locale}/blog`
   const crumbs: BreadcrumbItem[] = [
@@ -132,6 +155,16 @@ export default async function BlogPostPage({ params }: Props) {
           </h1>
           <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-60 mb-6">
             <time dateTime={dateIso}>{formatDateRu(dateIso)}</time>
+            {showUpdated && (
+              <>
+                <span className="mx-3 opacity-60" aria-hidden="true">
+                  /
+                </span>
+                <span>
+                  Обновлено <time dateTime={post.updatedAt}>{formatDateRu(post.updatedAt)}</time>
+                </span>
+              </>
+            )}
           </p>
           {excerpt && <p className="text-xl leading-[1.45] opacity-78 max-w-[48ch]">{excerpt}</p>}
         </div>
@@ -152,8 +185,9 @@ export default async function BlogPostPage({ params }: Props) {
               />
             </div>
           )}
+          <BlogToc items={toc} />
           {blocks.length > 0 ? (
-            <div className="max-w-3xl">
+            <div className="max-w-3xl [&_h2]:scroll-mt-28 [&_h3]:scroll-mt-28">
               <BlockRenderer blocks={blocks} />
             </div>
           ) : (
@@ -161,8 +195,11 @@ export default async function BlogPostPage({ params }: Props) {
               Статья пока пуста
             </p>
           )}
+          <BlogAuthorBox post={post} />
         </div>
       </LabSection>
+
+      <RelatedPosts posts={relatedPosts} />
 
       {/* Pre-footer CTA */}
       <PreFooterCta

@@ -9,6 +9,14 @@ export interface BlogPost {
   excerpt: string | null
   coverImageUrl: string | null
   rubric: string | null
+  // Автор статьи (E-E-A-T). Блок «Об авторе» и Person в JSON-LD есть только
+  // при непустом authorName; остальные поля — необязательные уточнения.
+  authorName: string | null
+  authorJobTitle: string | null
+  authorBio: string | null
+  /** Абсолютная http(s)-ссылка на профиль автора. */
+  authorUrl: string | null
+  authorPhotoUrl: string | null
   blocks: unknown[]
   metaTitle: string | null
   metaDescription: string | null

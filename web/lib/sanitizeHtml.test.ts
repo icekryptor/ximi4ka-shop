@@ -31,6 +31,24 @@ describe('sanitizeHtml', () => {
     expect(out).not.toMatch(/href\s*=\s*["']?javascript:/i)
   })
 
+  it('сохраняет безопасный id только на h2/h3 (якоря оглавления)', () => {
+    expect(sanitizeHtml('<h2 id="kak-eto-rabotaet">Раздел</h2>')).toBe(
+      '<h2 id="kak-eto-rabotaet">Раздел</h2>',
+    )
+    expect(sanitizeHtml('<h3 id="reagenty-2">Раздел</h3>')).toBe('<h3 id="reagenty-2">Раздел</h3>')
+    // На других тегах id по-прежнему вырезается.
+    expect(sanitizeHtml('<p id="x">текст</p>')).toBe('<p>текст</p>')
+    expect(sanitizeHtml('<h4 id="x">текст</h4>')).toBe('<h4>текст</h4>')
+  })
+
+  it('вырезает небезопасный id у заголовка', () => {
+    expect(sanitizeHtml('<h2 id="a b">Раздел</h2>')).toBe('<h2>Раздел</h2>')
+    expect(sanitizeHtml('<h2 id="x&quot; onclick=&quot;alert(1)">Раздел</h2>')).toBe(
+      '<h2>Раздел</h2>',
+    )
+    expect(sanitizeHtml('<h3 id="">Раздел</h3>')).toBe('<h3>Раздел</h3>')
+  })
+
   it('returns an empty string for empty input', () => {
     expect(sanitizeHtml('')).toBe('')
   })

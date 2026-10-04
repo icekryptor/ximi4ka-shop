@@ -32,6 +32,23 @@ export class BlogPost {
   @Column({ type: 'varchar', length: 255, nullable: true })
   rubric!: string | null
 
+  // Автор статьи (E-E-A-T). Все поля необязательны; блок «Об авторе» и
+  // Person в JSON-LD появляются только при заданном author_name.
+  @Column({ type: 'varchar', length: 255, name: 'author_name', nullable: true })
+  authorName!: string | null
+
+  @Column({ type: 'varchar', length: 255, name: 'author_job_title', nullable: true })
+  authorJobTitle!: string | null
+
+  @Column({ type: 'text', name: 'author_bio', nullable: true })
+  authorBio!: string | null
+
+  @Column({ type: 'varchar', length: 500, name: 'author_url', nullable: true })
+  authorUrl!: string | null
+
+  @Column({ type: 'varchar', length: 500, name: 'author_photo_url', nullable: true })
+  authorPhotoUrl!: string | null
+
   @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
   blocks!: unknown[]
 

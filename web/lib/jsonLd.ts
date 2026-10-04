@@ -282,6 +282,10 @@ export function itemListJsonLd(products: Product[]): ItemListLd {
   }
 }
 
+export type ArticleAuthorLd =
+  | { '@type': 'Organization'; name: string; url: string }
+  | { '@type': 'Person'; name: string; jobTitle?: string; url?: string; image?: string }
+
 export interface ArticleLd {
   '@context': 'https://schema.org'
   '@type': 'Article' | 'BlogPosting'
@@ -291,7 +295,7 @@ export interface ArticleLd {
   datePublished: string
   dateModified: string
   mainEntityOfPage?: { '@type': 'WebPage'; '@id': string }
-  author: { '@type': 'Organization'; name: string; url: string }
+  author: ArticleAuthorLd
   publisher: {
     '@type': 'Organization'
     name: string
@@ -311,6 +315,28 @@ export interface ArticleLdInput {
   image?: string | null
   /** Путь или абсолютный URL страницы — для mainEntityOfPage. */
   url?: string
+  /** Автор-человек (поля BlogPost). Без authorName автор — Organization. */
+  authorName?: string | null
+  authorJobTitle?: string | null
+  authorUrl?: string | null
+  authorPhotoUrl?: string | null
+}
+
+// Автор-Person появляется только при заданном имени; пустые поля в разметку
+// не попадают, а ссылка — только http(s) (в админке то же правило).
+function articleAuthor(page: ArticleLdInput): ArticleAuthorLd {
+  const name = page.authorName?.trim()
+  if (!name) return { '@type': 'Organization', name: BRAND_NAME, url: siteUrl() }
+  const jobTitle = page.authorJobTitle?.trim()
+  const url = page.authorUrl?.trim()
+  const photo = page.authorPhotoUrl?.trim()
+  return {
+    '@type': 'Person',
+    name,
+    ...(jobTitle ? { jobTitle } : {}),
+    ...(url && /^https?:\/\//i.test(url) ? { url } : {}),
+    ...(photo ? { image: absoluteUrl(photo) } : {}),
+  }
 }
 
 export function articleJsonLd(
@@ -327,7 +353,7 @@ export function articleJsonLd(
     datePublished: page.publishedAt ?? page.createdAt,
     dateModified: page.updatedAt,
     mainEntityOfPage: page.url ? { '@type': 'WebPage', '@id': absoluteUrl(page.url) } : undefined,
-    author: { '@type': 'Organization', name: BRAND_NAME, url: base },
+    author: articleAuthor(page),
     publisher: {
       '@type': 'Organization',
       name: BRAND_NAME,
