@@ -26,6 +26,15 @@
 | `/success`       | Успешный заказ!                   |       ~300 |      0 | https://ximi4ka.ru/success       |
 | `/fail`          | Неудачное оформление заказа       |       ~130 |      0 | https://ximi4ka.ru/fail          |
 
+Статус переноса (`npm run import:cms-pages -w api`, данные в `api/data/cms-pages.json`):
+
+- Перенесены: `/policy`, `/oferta`, `/faq`, `/get_materials`, `/collab`, `/xim3_inst`,
+  `/mx_inst`, `/electroxim`, `/zhuk`, `/cert`, `/socials`.
+- Не перенесён `/experiment`: интенсив прошёл 11–13 мая 2026, форма заказа тарифов
+  работает только на Tilda — нужно решение владельца (архив, редирект или удалить).
+- `/success` и `/fail` — Next-роуты, как CMS не заводятся.
+- Картинки остались ссылками на static.tildacdn.com — перенос в наше хранилище отдельно.
+
 Заметки:
 
 - `/policy` и `/oferta` — цели редиректов `/policy2` и `/oferta2` из
