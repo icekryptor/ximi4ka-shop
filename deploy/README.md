@@ -75,7 +75,8 @@ docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
   -c $'UPDATE site_settings SET robots_txt = \'User-agent: *\nDisallow: /\';'
 ```
 
-Снять — только при переключении апекса (админка → Настройки → robots.txt).
+Снять — только при переключении апекса (админка → Настройки → robots.txt),
+готовый текст — в разделе «Открытие для индексации» ниже.
 
 ### 3. Код и секреты
 
@@ -225,6 +226,63 @@ rm -rf "$K"
 сид-паролем `admin-password-change-me`, который лежит открытым в
 `api/src/seeds/seed.ts`. Меняется в `/admin` под этим же аккаунтом.
 
+## Открытие для индексации при переключении апекса
+
+Пока апекс на Tilda, `site_settings.robots_txt` — `Disallow: /` (см. шаг 2), и
+код `/robots.txt` в этом режиме ничего не добавляет. В момент переключения:
+
+1. Пересобрать web с `NEXT_PUBLIC_SITE_URL=https://ximi4ka.ru`: canonical,
+   sitemap и JSON-LD строятся от этой переменной, вшитой в сборку.
+2. Заменить `robots.txt` в админке (Настройки → robots.txt) на текст ниже.
+   Строка `Sitemap:` в БД необязательна: если её нет и сайт открыт, `/robots.txt`
+   допишет `Sitemap: <NEXT_PUBLIC_SITE_URL>/sitemap.xml` сам. Если вписать свою,
+   дубль не появится.
+
+```text
+User-agent: *
+Allow: /
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account
+Disallow: /order
+Disallow: /orders
+Disallow: /success
+Disallow: /fail
+Disallow: /admin
+Disallow: /api
+Disallow: /en/cart
+Disallow: /en/checkout
+Disallow: /en/account
+Disallow: /en/order
+Disallow: /en/orders
+Disallow: /en/success
+Disallow: /en/fail
+
+# Только Яндекс; остальные поисковики директиву игнорируют.
+# sort и page есть у /categories/<slug>, page — ещё у /blog; canonical этих
+# страниц указывает на адрес без query.
+Clean-param: sort&page /categories/
+Clean-param: page /blog
+Clean-param: sort&page /en/categories/
+Clean-param: page /en/blog
+Clean-param: utm_source&utm_medium&utm_campaign&utm_term&utm_content&yclid&ysclid&gclid&fbclid&_openstat
+
+Sitemap: https://ximi4ka.ru/sitemap.xml
+```
+
+Заметки:
+
+- `/catalog` query-параметров не читает, `/categories` тоже; поиск в шапке живёт
+  без отдельной страницы.
+- `Clean-param: page` склеивает для Яндекса страницы пагинации с первой. Товары и
+  статьи из них всё равно лежат в sitemap; если нужно, чтобы Яндекс индексировал
+  `?page=2`, строки с `page` убрать.
+- `/success` и `/fail` уже отдают `noindex`, закрытие в robots — дополнительное.
+- Проверка после замены: `curl -s https://ximi4ka.ru/robots.txt` (должен
+  отдаваться этот текст, одна строка `Sitemap:`), затем «Анализ robots.txt» в
+  Яндекс.Вебмастере и проверка `/sitemap.xml`. Откат — вернуть
+  `User-agent: *\nDisallow: /`.
+
 ## Уведомления о заказах
 
 Каждый заказ уходит строкой в Google Таблицу и карточкой в рабочий Telegram-чат
@@ -303,7 +361,20 @@ docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
 api — `telegram login bot polling started`; вебхук api снимает сам, секрет
 вебхука в этом режиме не нужен. Исходящие запросы в Telegram идут по IPv6 —
 для этого в образе api `NODE_OPTIONS` с `--dns-result-order=ipv6first` (см.
-`api/Dockerfile`).
+`api/Dockerfile`) **и вторая docker-сеть `ximishop_egress6` с IPv6** у
+контейнера api (см. `docker-compose.yml`). Без неё бот молчит: у
+`supabase_default` IPv6 нет, контейнер уходит в IPv4, а из IPv4-адресов
+Telegram с VPS отвечает один из семи проверенных (03.10.2026 бот не отвечал
+3,5 дня из-за этого; в логе — `UND_ERR_CONNECT_TIMEOUT` или `ENETUNREACH`).
+Docker сам включает `net.ipv6.conf.all.forwarding=1` при создании такой сети —
+на маршрут IPv6 по умолчанию (RA, systemd-networkd) это не влияет.
+
+Как понять, что бот жив: `curl -s https://new.ximi4ka.ru/api/health/telegram` — 200,
+если последний ответ `getUpdates` свежее 90 с, и 503 с `lastOkAt`, если нет
+(повесить на внешний монитор; путь под `/api`, иначе Caddy отдаст его витрине). `/health` остаётся «процесс жив». При 503
+`/api/account/auth/config` прячет вход через Telegram — остаётся почта. В логе
+нет связи — строка `НЕТ СВЯЗИ с Telegram`, возврат — `связь … восстановлена`.
+Проверка из контейнера: `docker exec ximishop-api node -e "require('https').get('https://api.telegram.org/',r=>console.log(r.statusCode))"` — 302.
 
 Вебхук — для сервера, до которого Telegram достучится. После деплоя:
 

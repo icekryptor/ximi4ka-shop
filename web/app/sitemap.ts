@@ -24,6 +24,25 @@ function alternatesFor(pathname: string, base: string): Record<string, string> {
   return out
 }
 
+// Самая поздняя из дат (ISO-строки); пустые пропускаем. Нет ни одной — undefined,
+// тогда lastModified у записи не выводим вовсе: «сейчас» краулеру ничего не говорит.
+function latest(dates: Array<string | null | undefined>): string | undefined {
+  let best: string | undefined
+  let bestMs = -Infinity
+  for (const d of dates) {
+    if (!d) continue
+    const ms = Date.parse(d)
+    if (Number.isNaN(ms) || ms <= bestMs) continue
+    best = d
+    bestMs = ms
+  }
+  return best
+}
+
+function withLastModified(lastModified: string | undefined): { lastModified?: string } {
+  return lastModified ? { lastModified } : {}
+}
+
 // Next will serve this at /sitemap.xml. All enumeration failures degrade to
 // an empty section — we'd rather ship a partial sitemap than a 500.
 //
@@ -33,7 +52,7 @@ function alternatesFor(pathname: string, base: string): Record<string, string> {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl()
 
-  const [products, categories, pages, posts] = await Promise.all([
+  const [allProducts, categories, allPages, allPosts] = await Promise.all([
     listPublishedProducts({ limit: 1000 })
       .then((r) => r.data)
       .catch(() => []),
@@ -50,40 +69,50 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .catch(() => []),
   ])
 
-  const now = new Date().toISOString()
+  // Записи с noindex в карте не нужны: страница просит её не индексировать.
+  // У категорий поля noindex нет, поэтому они идут все.
+  const products = allProducts.filter((p) => !p.noindex)
+  const posts = allPosts.filter((p) => !p.noindex)
+  const pages = allPages.filter((p) => !p.noindex)
+
+  // lastmod общих страниц — по самой свежей из сущностей, что на них показаны.
+  // У категорий нет updatedAt, поэтому /categories смотрит на товары.
+  const productsUpdatedAt = latest(products.map((p) => p.updatedAt))
+  const postsUpdatedAt = latest(posts.flatMap((p) => [p.updatedAt, p.publishedAt]))
+  const homePageUpdatedAt = allPages.find((p) => p.slug === 'home')?.updatedAt
 
   return [
     {
       url: `${base}/`,
-      lastModified: now,
+      ...withLastModified(latest([productsUpdatedAt, postsUpdatedAt, homePageUpdatedAt])),
       changeFrequency: 'daily',
       priority: 1,
       alternates: { languages: alternatesFor('/', base) },
     },
     {
       url: `${base}/catalog`,
-      lastModified: now,
+      ...withLastModified(productsUpdatedAt),
       changeFrequency: 'daily',
       priority: 0.9,
       alternates: { languages: alternatesFor('/catalog', base) },
     },
     {
       url: `${base}/categories`,
-      lastModified: now,
+      ...withLastModified(productsUpdatedAt),
       changeFrequency: 'weekly',
       priority: 0.8,
       alternates: { languages: alternatesFor('/categories', base) },
     },
     {
       url: `${base}/blog`,
-      lastModified: now,
+      ...withLastModified(postsUpdatedAt),
       changeFrequency: 'weekly',
       priority: 0.7,
       alternates: { languages: alternatesFor('/blog', base) },
     },
     ...categories.map((c) => ({
       url: `${base}/categories/${c.slug}`,
-      lastModified: now,
+      lastModified: new Date().toISOString(),
       changeFrequency: 'weekly' as const,
       priority: 0.7,
       alternates: { languages: alternatesFor(`/categories/${c.slug}`, base) },

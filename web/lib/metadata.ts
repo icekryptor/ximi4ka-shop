@@ -36,6 +36,10 @@ export interface SeoInput {
   alternatesByLocale?: Partial<Record<Locale, string>>
 }
 
+// Описание сайта по умолчанию (layout.tsx и сгенерированный llms.txt).
+export const DEFAULT_SITE_DESCRIPTION =
+  'Химические наборы для детей и подростков. Научные эксперименты дома.'
+
 export function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? 'https://new.ximi4ka.ru'
 }
