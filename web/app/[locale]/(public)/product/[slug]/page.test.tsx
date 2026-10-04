@@ -69,7 +69,7 @@ describe('ProductPage', () => {
         params: Promise.resolve({ locale: 'ru', slug: 'kit' }),
       })
 
-      expect(meta.title).toBe('Custom SEO Title')
+      expect(meta.title).toBe('Custom SEO Title — Химичка')
       expect(meta.description).toBe('Custom SEO description')
       expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/product/kit')
       expect(meta.openGraph?.images).toEqual([{ url: 'https://cdn.example.com/og.jpg' }])
@@ -101,7 +101,37 @@ describe('ProductPage', () => {
       const meta = await generateMetadata({
         params: Promise.resolve({ locale: 'ru', slug: 'kit' }),
       })
-      expect(meta.title).toBe('Kit')
+      expect(meta.title).toBe('Kit — Химичка')
+    })
+
+    it('режет длинный shortDescription до 160 символов без HTML', async () => {
+      vi.mocked(getPublishedProduct).mockResolvedValue({
+        id: 'p1',
+        slug: 'kit',
+        sku: null,
+        name: 'Kit',
+        shortDescription: `<p>${Array.from({ length: 60 }, () => 'слово').join(' ')}</p>`,
+        longDescriptionBlocks: [],
+        priceRub: 100,
+        compareAtPriceRub: null,
+        stockStatus: 'in_stock',
+        isPublished: true,
+        sortOrder: 0,
+        metaTitle: null,
+        metaDescription: null,
+        ogImage: null,
+        canonicalUrl: null,
+        noindex: false,
+        translations: {},
+        images: [],
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      })
+      const meta = await generateMetadata({
+        params: Promise.resolve({ locale: 'ru', slug: 'kit' }),
+      })
+      expect(meta.description).toMatch(/^(слово )+слово…$/)
+      expect(meta.description!.length).toBeLessThanOrEqual(160)
     })
 
     it('links the AMP variant via other.amphtml', async () => {
@@ -140,7 +170,7 @@ describe('ProductPage', () => {
       const meta = await generateMetadata({
         params: Promise.resolve({ locale: 'ru', slug: 'missing' }),
       })
-      expect(meta.title).toBe('Товар — Ximi4ka')
+      expect(meta.title).toBe('Товар — Химичка')
     })
 
     it('uses the EN translation for title + meta when locale=en', async () => {
@@ -171,7 +201,7 @@ describe('ProductPage', () => {
       const meta = await generateMetadata({
         params: Promise.resolve({ locale: 'en', slug: 'kit' }),
       })
-      expect(meta.title).toBe('EN meta')
+      expect(meta.title).toBe('EN meta — Химичка')
       expect(meta.description).toBe('EN desc')
       // Canonical for the EN variant is the /en-prefixed URL.
       expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/en/product/kit')
@@ -209,7 +239,7 @@ describe('ProductPage', () => {
       const meta = await generateMetadata({
         params: Promise.resolve({ locale: 'en', slug: 'kit' }),
       })
-      expect(meta.title).toBe('RU meta')
+      expect(meta.title).toBe('RU meta — Химичка')
     })
   })
 })
