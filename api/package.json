@@ -17,6 +17,7 @@
     "import:tilda-catalog": "tsx src/seeds/import-tilda-catalog.ts",
     "import:tilda-articles": "tsx src/seeds/import-tilda-articles.ts",
     "import:tilda-redirects": "tsx src/seeds/import-tilda-redirects.ts",
+    "import:seo-blog-drafts": "tsx src/seeds/import-seo-blog-drafts.ts",
     "audit:images": "tsx src/scripts/audit-images.ts",
     "import:tilda-shipping": "tsx src/seeds/import-tilda-shipping.ts",
     "telegram:set-webhook": "tsx src/scripts/telegram-set-webhook.ts"
