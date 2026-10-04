@@ -4,10 +4,16 @@
 // Flags:
 //   --dry-run   подключается к БД только на чтение, печатает, что было бы
 //               создано и что уже есть; ничего не записывает.
+//   --set-author-on-existing
+//               для УЖЕ существующих статей из файла (по slug) без author_name
+//               дописывает пустые поля автора из данных; заполненное не
+//               перезаписывает. По умолчанию выключено. Нужен, если черновики
+//               были импортированы до появления автора в данных.
 //
 // Сид идемпотентен и безопасен: создаёт ТОЛЬКО отсутствующие статьи (по slug),
-// существующие и удалённые не трогает, всё создаётся черновиками
-// (is_published=false) — видны только в админке. Ничего не публикует.
+// существующие и удалённые не трогает (кроме --set-author-on-existing: только
+// пустые поля автора), всё создаётся черновиками (is_published=false) — видны
+// только в админке. Ничего не публикует.
 import 'reflect-metadata'
 import 'dotenv/config'
 import pino from 'pino'
@@ -21,16 +27,19 @@ const logger = pino().child({ mod: 'import-seo-blog-drafts' })
 
 interface CliArgs {
   dryRun: boolean
+  setAuthorOnExisting: boolean
 }
 
 function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { dryRun: false }
+  const args: CliArgs = { dryRun: false, setAuthorOnExisting: false }
   for (const a of argv) {
     if (a === '--dry-run') {
       args.dryRun = true
+    } else if (a === '--set-author-on-existing') {
+      args.setAuthorOnExisting = true
     } else {
       console.error(`unknown argument: ${a}`)
-      console.error('Usage: tsx import-seo-blog-drafts.ts [--dry-run]')
+      console.error('Usage: tsx import-seo-blog-drafts.ts [--dry-run] [--set-author-on-existing]')
       process.exit(2)
     }
   }
@@ -46,6 +55,9 @@ async function main(): Promise<void> {
   console.log(
     `Mode:    ${args.dryRun ? 'DRY RUN (no writes)' : 'LIVE (create missing, drafts only)'}`,
   )
+  console.log(
+    `Author:  ${args.setAuthorOnExisting ? 'fill empty author fields on existing posts' : 'existing posts untouched'}`,
+  )
   console.log(`Source:  ${SEO_BLOG_DRAFTS_PATH}`)
   console.log('')
 
@@ -57,14 +69,23 @@ async function main(): Promise<void> {
   try {
     const result = await importSeoBlogDrafts(AppDataSource.getRepository(BlogPost), drafts, {
       dryRun: args.dryRun,
+      setAuthorOnExisting: args.setAuthorOnExisting,
     })
     for (const slug of result.created) {
       console.log(`  ${args.dryRun ? 'would create' : 'created     '}  /blog/${slug}`)
     }
     for (const slug of result.skipped) console.log(`  exists, kept  /blog/${slug}`)
+    for (const slug of result.authorFilled) {
+      console.log(`  ${args.dryRun ? 'would set author' : 'author set     '}  /blog/${slug}`)
+    }
     console.log('')
     logger.info(
-      { created: result.created.length, skipped: result.skipped.length, dryRun: args.dryRun },
+      {
+        created: result.created.length,
+        skipped: result.skipped.length,
+        authorFilled: result.authorFilled.length,
+        dryRun: args.dryRun,
+      },
       args.dryRun ? 'dry-run complete — no DB writes' : 'import complete — drafts only',
     )
   } finally {

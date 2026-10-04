@@ -68,14 +68,25 @@ describe('data/seo-blog-drafts.json', () => {
     }
   })
 
-  it('не задаёт обложку и автора, всегда isPublished=false', async () => {
+  it('не задаёт обложку, всегда isPublished=false', async () => {
     const raw = JSON.parse(await readFile(path.join(DATA_DIR, 'seo-blog-drafts.json'), 'utf-8'))
     for (const entry of raw as Record<string, unknown>[]) {
       expect(entry.isPublished).toBe(false)
       expect(entry).not.toHaveProperty('coverImageUrl')
       expect(entry).not.toHaveProperty('ogImage')
-      expect(entry).not.toHaveProperty('author')
-      expect(entry).not.toHaveProperty('authorName')
+    }
+  })
+
+  it('автор у всех статей — «Василий Аистов», остальные поля автора пусты', async () => {
+    const raw = JSON.parse(await readFile(path.join(DATA_DIR, 'seo-blog-drafts.json'), 'utf-8'))
+    expect(raw).toHaveLength(10)
+    for (const entry of raw as Record<string, unknown>[]) {
+      expect(entry.authorName, `authorName ${entry.slug}`).toBe('Василий Аистов')
+      // Должность, био, ссылка и фото не заданы — их не придумываем.
+      expect(entry).not.toHaveProperty('authorJobTitle')
+      expect(entry).not.toHaveProperty('authorBio')
+      expect(entry).not.toHaveProperty('authorUrl')
+      expect(entry).not.toHaveProperty('authorPhotoUrl')
     }
   })
 
