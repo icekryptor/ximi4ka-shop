@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Pick<Props, 'params'>): Promi
     SUPPORTED_LOCALES.map((loc) => [loc, pathForLocale(loc)]),
   ) as Record<Locale, string>
   return buildMetadata({
-    title: 'Блог о химии — Ximi4ka',
+    title: 'Блог о химии — Химичка',
     metaDescription:
       'Статьи о химии, опытах и наборах Ximi4ka: как устроены реакции и как безопасно повторить их дома.',
     pathname: pathForLocale(locale),
