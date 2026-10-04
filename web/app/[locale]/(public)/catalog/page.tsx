@@ -1,6 +1,6 @@
-import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { ProductCard } from '@/components/ProductCard'
 import { LabSection } from '@/components/ui/LabSection'
 import { CatalogPromoBanner } from '@/components/catalog/CatalogPromoBanner'
@@ -9,7 +9,7 @@ import { CompactProductRow } from '@/components/catalog/CompactProductRow'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
-import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonLd'
+import { breadcrumbJsonLd, itemListJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
 import { fetchCatalog, densityForSlug, hasViewToggle } from '@/lib/catalogApi'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
 
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     SUPPORTED_LOCALES.map((loc) => [loc, pathForLocale(loc)]),
   ) as Record<Locale, string>
   return buildMetadata({
-    title: 'Каталог — Ximi4ka',
+    title: 'Каталог наборов, реактивов и оборудования — Химичка',
     metaDescription:
       'Все наборы для химических опытов, реактивы и лабораторное оборудование Ximi4ka в одном каталоге.',
     pathname: pathForLocale(locale),
@@ -55,33 +55,21 @@ export default async function CatalogPage({ params }: Props) {
 
   const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
   const catalogPath = pathForLocale(locale)
+  const crumbs: BreadcrumbItem[] = [
+    { name: 'Главная', href: homePath },
+    { name: 'Каталог', href: catalogPath },
+  ]
   const categoryPath = (slug: string) =>
     locale === DEFAULT_LOCALE ? `/categories/${slug}` : `/${locale}/categories/${slug}`
 
   return (
     <>
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: 'Главная', url: '/' },
-          { name: 'Каталог', url: '/catalog' },
-        ])}
-      />
+      <JsonLd data={breadcrumbJsonLd(crumbs)} />
       {/* Все товары каталога списком — в порядке групп на странице. */}
       {groups.length > 0 && <JsonLd data={itemListJsonLd(groups.flatMap((g) => g.products))} />}
 
       {/* Хлебные крошки */}
-      <nav
-        aria-label="breadcrumbs"
-        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.03em] opacity-70"
-      >
-        <Link href={homePath} className="hover:opacity-100">
-          Главная
-        </Link>
-        <span className="mx-2" aria-hidden="true">
-          /
-        </span>
-        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">Каталог</span>
-      </nav>
+      <Breadcrumbs items={crumbs} variant="catalog" />
 
       {/* Витрина каталога (LAB CREAM) */}
       <LabSection variant="cream" className="px-6 pt-12 pb-24">

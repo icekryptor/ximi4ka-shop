@@ -20,6 +20,12 @@ export interface SeoInput {
    */
   ampPath?: string | null
   /**
+   * Route-relative path to the RSS feed, e.g. '/blog/rss.xml'. When set,
+   * buildMetadata emits `<link rel="alternate" type="application/rss+xml">`
+   * so readers and search engines can discover the feed from the page.
+   */
+  rssPath?: string | null
+  /**
    * Current locale this page renders in. Controls OG `locale` and
    * seeds the default alternates map if `alternatesByLocale` is omitted.
    */
@@ -34,7 +40,24 @@ export interface SeoInput {
    * and EN URL only differ by prefix.
    */
   alternatesByLocale?: Partial<Record<Locale, string>>
+  /**
+   * Дописать к title « — Химичка», если бренда там ещё нет и итоговая длина
+   * не выходит за TITLE_MAX_LENGTH. Для товара, категории, статьи и CMS-страниц.
+   */
+  brandSuffix?: boolean
 }
+
+export const BRAND_NAME = 'Химичка'
+/** Длина title, выше которой поисковики обрезают заголовок в выдаче. */
+export const TITLE_MAX_LENGTH = 65
+/** Длина description, выше которой сниппет обрезается. */
+export const DESCRIPTION_MAX_LENGTH = 160
+/** Title главной, когда в CMS-странице `home` нет своего metaTitle. */
+export const DEFAULT_HOME_TITLE = 'Химичка — наборы для химических опытов для детей'
+
+// Описание сайта по умолчанию (layout.tsx и сгенерированный llms.txt).
+export const DEFAULT_SITE_DESCRIPTION =
+  'Химические наборы для детей и подростков. Научные эксперименты дома.'
 
 export function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? 'https://new.ximi4ka.ru'
@@ -44,6 +67,54 @@ function trimOrNull(value: string | null | undefined): string | null {
   if (value == null) return null
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : null
+}
+
+/**
+ * Добавляет бренд к title: «Набор» → «Набор — Химичка». Если бренд уже есть
+ * («Химичка» или «Ximi4ka», в любом регистре) или результат длиннее
+ * TITLE_MAX_LENGTH — title возвращается как есть.
+ */
+export function withBrandSuffix(title: string): string {
+  const trimmed = title.trim()
+  if (/химичка|ximi4ka/i.test(trimmed)) return trimmed
+  const withBrand = `${trimmed} — ${BRAND_NAME}`
+  return withBrand.length <= TITLE_MAX_LENGTH ? withBrand : trimmed
+}
+
+const HTML_ENTITIES: Array<[string, string]> = [
+  ['&nbsp;', ' '],
+  ['&lt;', '<'],
+  ['&gt;', '>'],
+  ['&quot;', '"'],
+  ['&#39;', "'"],
+  // &amp; последним, иначе «&amp;lt;» декодируется дважды.
+  ['&amp;', '&'],
+]
+
+/**
+ * Превращает HTML-фрагмент (например, shortDescription) в description для
+ * <meta>: без тегов, в одну строку, не длиннее `max` символов. Обрезает по
+ * границе слова и ставит «…». Пустой результат → undefined.
+ */
+export function truncateDescription(
+  html: string | null | undefined,
+  max: number = DESCRIPTION_MAX_LENGTH,
+): string | undefined {
+  if (html == null) return undefined
+  let text = html.replace(/<[^>]*>/g, ' ')
+  for (const [entity, char] of HTML_ENTITIES) text = text.split(entity).join(char)
+  text = text.replace(/\s+/g, ' ').trim()
+  if (text.length === 0) return undefined
+  if (text.length <= max) return text
+
+  // Место под «…»: берём max - 1 символ и, если режем посреди слова,
+  // откатываемся к последнему пробелу.
+  let head = text.slice(0, max - 1)
+  if (!/\s/.test(text.charAt(max - 1))) {
+    const lastSpace = head.search(/\s\S*$/)
+    if (lastSpace > 0) head = head.slice(0, lastSpace)
+  }
+  return `${head.replace(/[\s,;:—–-]+$/, '')}…`
 }
 
 // Map our internal locale codes to IETF BCP 47 tags used by hreflang +
@@ -102,8 +173,15 @@ export function buildMetadata(input: SeoInput): Metadata {
   const canonicalOverride = trimOrNull(input.canonicalUrl)
   const locale: Locale = input.locale ?? DEFAULT_LOCALE
 
-  const title = metaTitle ?? input.title
+  const baseTitle = metaTitle ?? input.title
+  const title = input.brandSuffix ? withBrandSuffix(baseTitle) : baseTitle
   const description = metaDescription ?? trimOrNull(input.description ?? null) ?? undefined
+
+  // noindex-страница в выдачу не попадает, поэтому canonical, hreflang и
+  // соцразметка только вводят в заблуждение — оставляем лишь robots.
+  if (input.noindex) {
+    return { title, description, robots: { index: false, follow: false } }
+  }
 
   const base = siteUrl()
   const canonical = canonicalOverride ?? `${base}${input.pathname}`
@@ -150,8 +228,11 @@ export function buildMetadata(input: SeoInput): Metadata {
   return {
     title,
     description,
-    alternates: { canonical, languages },
-    robots: input.noindex ? { index: false, follow: false } : undefined,
+    alternates: {
+      canonical,
+      languages,
+      ...(input.rssPath ? { types: { 'application/rss+xml': `${base}${input.rssPath}` } } : {}),
+    },
     other,
     openGraph: {
       title,
