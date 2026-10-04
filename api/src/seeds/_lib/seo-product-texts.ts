@@ -2,6 +2,7 @@
 //
 // Главное правило: импорт ТОЛЬКО ЗАПОЛНЯЕТ пустые поля. Всё, что уже есть в
 // БД (в том числе правки владельца в админке), остаётся как есть.
+import { isDeepStrictEqual } from 'node:util'
 import type { Repository } from 'typeorm'
 import type { Block } from '@ximi4ka-shop/shared'
 import type { Product } from '../../entities/Product.js'
@@ -113,9 +114,10 @@ export function planSeoFill(
     if (existing.length === 0) {
       patch.longDescriptionBlocks = newBlocks
     } else if (options.appendLongDescription) {
-      // Повторный запуск не должен дописывать тот же текст ещё раз.
-      const marker = JSON.stringify(newBlocks[0])
-      if (existing.some((b) => JSON.stringify(b) === marker)) skipped.push('longDescriptionBlocks')
+      // Повторный запуск не должен дописывать тот же текст ещё раз. Сравнение
+      // без учёта порядка ключей: jsonb в Postgres переупорядочивает их.
+      const marker = newBlocks[0]
+      if (existing.some((b) => isDeepStrictEqual(b, marker))) skipped.push('longDescriptionBlocks')
       else patch.longDescriptionBlocks = [...existing, ...newBlocks]
     } else {
       skipped.push('longDescriptionBlocks')
