@@ -31,6 +31,7 @@ import { parseCharacteristics } from '@/lib/parseCharacteristics'
 import { primaryCategory, productBreadcrumbs } from '@/lib/breadcrumbs'
 import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
+import { ProductViewTracker } from './_components/ProductViewTracker'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -325,6 +326,9 @@ export default async function ProductPage({ params }: Props) {
       {/* MOBILE BUY BAR — sticky bottom on mobile, IO-driven via the
           `data-add-to-cart-row` sentinel inside AddToCartWithQuantity. */}
       <MobileBuyBarMount product={product} />
+      <ProductViewTracker
+        product={{ id: product.id, name: product.name, priceRub: product.priceRub }}
+      />
 
       {/* AMP discovery: поисковики ищут <link rel="amphtml"> на канонической
           странице. Намеренно ПОСЛЕДНИЙ ребёнок фрагмента: React 19 переносит
