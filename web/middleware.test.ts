@@ -223,16 +223,61 @@ describe('redirect middleware', () => {
     expect(res.headers.get('location')).toBeNull()
   })
 
-  it('passes through /ru-prefixed URLs without double-rewriting', async () => {
+  // ---- /ru/... → /... (дубли страниц) --------------------------------------
+  //
+  // RU живёт без префикса (внутренний rewrite на /ru/...), поэтому прямой
+  // заход на /ru/... отдавал бы тот же контент вторым URL. Уводим 308-м на
+  // URL без префикса, до обращения к таблице редиректов API.
+
+  it.each([
+    ['/ru', 'http://localhost:3000/'],
+    ['/ru/', 'http://localhost:3000/'],
+    ['/ru/product/foo', 'http://localhost:3000/product/foo'],
+    ['/ru/blog', 'http://localhost:3000/blog'],
+    ['/ru/blog?page=2', 'http://localhost:3000/blog?page=2'],
+    ['/ru/catalog?sort=price&page=3', 'http://localhost:3000/catalog?sort=price&page=3'],
+  ])('redirects %s to the unprefixed URL with 308 (%s)', async (from, to) => {
+    const res = await middleware(makeRequest(from))
+    expect(res.status).toBe(308)
+    expect(res.headers.get('location')).toBe(to)
+    // Без rewrite и без похода в API: цикл с внутренним /ru/... исключён.
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('does not turn /ru// into a protocol-relative (off-site) redirect', async () => {
+    const res = await middleware(makeRequest('/ru//evil.example'))
+    expect(res.status).toBe(308)
+    expect(new URL(res.headers.get('location') ?? '').origin).toBe('http://localhost:3000')
+  })
+
+  it('does not treat /ru-like first segments as the ru locale', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ data: [] }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       }),
     )
-    const res = await middleware(makeRequest('/ru/product/foo'))
-    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+    const res = await middleware(makeRequest('/rubrics'))
     expect(res.headers.get('location')).toBeNull()
+    expect(res.headers.get('x-middleware-rewrite')).toContain('/ru/rubrics')
+  })
+
+  it('leaves /ru-looking paths under excluded prefixes alone', async () => {
+    const res = await middleware(makeRequest('/admin/ru/foo'))
+    expect(res.headers.get('location')).toBeNull()
+  })
+
+  it('leaves /en URLs with query alone (no redirect, no rewrite)', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ data: [] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const res = await middleware(makeRequest('/en/blog/foo?x=1'))
+    expect(res.headers.get('location')).toBeNull()
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
   })
 
   it('caches the list for 60s — second request within window does not re-fetch', async () => {

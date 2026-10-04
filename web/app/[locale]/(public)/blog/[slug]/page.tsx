@@ -66,6 +66,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       brandSuffix: true,
       locale,
       alternatesByLocale,
+      rssPath: '/blog/rss.xml',
     })
   } catch {
     return { title: 'Статья — Химичка' }
