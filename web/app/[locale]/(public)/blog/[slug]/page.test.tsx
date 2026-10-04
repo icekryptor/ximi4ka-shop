@@ -94,23 +94,37 @@ describe('BlogPostPage', () => {
         makePost({ coverImageUrl: '/uploads/blog/flame.jpg' }),
       )
       const meta = await generateMetadata(props)
-      expect(meta.title).toBe('Почему пламя синее')
+      expect(meta.title).toBe('Почему пламя синее — Химичка')
       expect(meta.description).toBe('Разбираем химию горения.')
       expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/blog/pochemu-plamya-sinee')
       // ogImage falls back to the cover when no explicit ogImage is set.
       expect(JSON.stringify(meta.openGraph)).toContain('/uploads/blog/flame.jpg')
     })
 
+    it('advertises the blog RSS feed via alternates.types', async () => {
+      vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost())
+      const meta = await generateMetadata(props)
+      expect(meta.alternates?.types).toEqual({
+        'application/rss+xml': 'https://new.ximi4ka.ru/blog/rss.xml',
+      })
+    })
+
     it('prefers metaTitle over title', async () => {
       vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost({ metaTitle: 'SEO заголовок' }))
       const meta = await generateMetadata(props)
-      expect(meta.title).toBe('SEO заголовок')
+      expect(meta.title).toBe('SEO заголовок — Химичка')
+    })
+
+    it('не дублирует бренд, если он уже есть в title', async () => {
+      vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost({ metaTitle: 'Пламя — Химичка' }))
+      const meta = await generateMetadata(props)
+      expect(meta.title).toBe('Пламя — Химичка')
     })
 
     it('degrades to a generic title when the API fails', async () => {
       vi.mocked(getBlogPostBySlug).mockRejectedValue(new Error('down'))
       const meta = await generateMetadata(props)
-      expect(meta.title).toBe('Статья — Ximi4ka')
+      expect(meta.title).toBe('Статья — Химичка')
     })
   })
 

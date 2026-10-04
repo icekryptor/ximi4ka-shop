@@ -240,4 +240,144 @@ describe('sitemap', () => {
     const out = await sitemap()
     expect(out[0].url).toBe('https://preview.example.com/')
   })
+
+  describe('noindex и lastModified', () => {
+    const product = (slug: string, over: Record<string, unknown> = {}) => ({
+      id: slug,
+      slug,
+      sku: null,
+      name: 'N',
+      shortDescription: null,
+      longDescriptionBlocks: [],
+      priceRub: 100,
+      compareAtPriceRub: null,
+      stockStatus: 'in_stock' as const,
+      isPublished: true,
+      sortOrder: 0,
+      metaTitle: null,
+      metaDescription: null,
+      ogImage: null,
+      canonicalUrl: null,
+      noindex: false,
+      translations: {},
+      images: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-02-01T00:00:00.000Z',
+      ...over,
+    })
+    const page = (slug: string, over: Record<string, unknown> = {}) => ({
+      id: slug,
+      slug,
+      title: slug,
+      blocks: [],
+      metaTitle: null,
+      metaDescription: null,
+      ogImage: null,
+      canonicalUrl: null,
+      noindex: false,
+      translations: {},
+      isPublished: true,
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-03T00:00:00.000Z',
+      ...over,
+    })
+    const post = (slug: string, over: Record<string, unknown> = {}) => ({
+      id: slug,
+      slug,
+      title: slug,
+      excerpt: null,
+      coverImageUrl: null,
+      rubric: null,
+      authorName: null,
+      authorJobTitle: null,
+      authorBio: null,
+      authorUrl: null,
+      authorPhotoUrl: null,
+      blocks: [],
+      metaTitle: null,
+      metaDescription: null,
+      ogImage: null,
+      canonicalUrl: null,
+      noindex: false,
+      translations: {},
+      isPublished: true,
+      publishedAt: '2026-06-01T00:00:00.000Z',
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-06-02T00:00:00.000Z',
+      ...over,
+    })
+    const paged = <T>(data: T[]) => ({
+      data,
+      pagination: { limit: 1000, offset: 0, total: data.length },
+    })
+
+    it('не включает товары, CMS-страницы и статьи с noindex', async () => {
+      vi.mocked(listPublishedProducts).mockResolvedValue(
+        paged([product('open'), product('hidden', { noindex: true })]),
+      )
+      vi.mocked(listCategories).mockResolvedValue(paged([]))
+      vi.mocked(listPages).mockResolvedValue(
+        paged([page('o-nas'), page('secret', { noindex: true })]),
+      )
+      vi.mocked(listBlogPosts).mockResolvedValue({
+        ...paged([post('open'), post('hidden', { noindex: true })]),
+        pagination: { limit: 100, offset: 0, page: 1, total: 2 },
+      })
+
+      const urls = (await sitemap()).map((e) => e.url)
+
+      expect(urls).toContain('https://new.ximi4ka.ru/product/open')
+      expect(urls).not.toContain('https://new.ximi4ka.ru/product/hidden')
+      expect(urls).toContain('https://new.ximi4ka.ru/o-nas')
+      expect(urls).not.toContain('https://new.ximi4ka.ru/secret')
+      expect(urls).toContain('https://new.ximi4ka.ru/blog/open')
+      expect(urls).not.toContain('https://new.ximi4ka.ru/blog/hidden')
+    })
+
+    it('lastModified общих страниц — максимум дат сущностей, а не «сейчас»', async () => {
+      vi.mocked(listPublishedProducts).mockResolvedValue(
+        paged([
+          product('a', { updatedAt: '2026-02-01T00:00:00.000Z' }),
+          product('b', { updatedAt: '2026-03-05T00:00:00.000Z' }),
+          // noindex-товар в расчёт не идёт
+          product('c', { updatedAt: '2026-09-09T00:00:00.000Z', noindex: true }),
+        ]),
+      )
+      vi.mocked(listCategories).mockResolvedValue(paged([]))
+      vi.mocked(listPages).mockResolvedValue(paged([]))
+      vi.mocked(listBlogPosts).mockResolvedValue({
+        ...paged([
+          post('a', {
+            updatedAt: '2026-06-02T00:00:00.000Z',
+            publishedAt: '2026-06-01T00:00:00.000Z',
+          }),
+          post('b', {
+            updatedAt: '2026-05-01T00:00:00.000Z',
+            publishedAt: '2026-07-01T00:00:00.000Z',
+          }),
+        ]),
+        pagination: { limit: 100, offset: 0, page: 1, total: 2 },
+      })
+
+      const out = await sitemap()
+      const lm = (path: string) =>
+        out.find((e) => e.url === `https://new.ximi4ka.ru${path}`)?.lastModified
+
+      expect(lm('/catalog')).toBe('2026-03-05T00:00:00.000Z')
+      expect(lm('/categories')).toBe('2026-03-05T00:00:00.000Z')
+      expect(lm('/blog')).toBe('2026-07-01T00:00:00.000Z')
+      expect(lm('/')).toBe('2026-07-01T00:00:00.000Z')
+    })
+
+    it('без сущностей у общих страниц нет lastModified', async () => {
+      vi.mocked(listPublishedProducts).mockResolvedValue(paged([]))
+      vi.mocked(listCategories).mockResolvedValue(paged([]))
+      vi.mocked(listPages).mockResolvedValue(paged([]))
+      vi.mocked(listBlogPosts).mockResolvedValue(emptyBlogResponse())
+
+      const out = await sitemap()
+
+      for (const e of out) expect(e).not.toHaveProperty('lastModified')
+    })
+  })
 })

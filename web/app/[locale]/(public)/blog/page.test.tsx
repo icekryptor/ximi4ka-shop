@@ -65,8 +65,17 @@ describe('BlogListPage', () => {
     const meta = await generateMetadata({
       params: Promise.resolve({ locale: 'ru' }),
     })
-    expect(meta.title).toBe('Блог о химии — Ximi4ka')
+    expect(meta.title).toBe('Блог о химии — Химичка')
     expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/blog')
+  })
+
+  it('advertises the RSS feed via alternates.types', async () => {
+    const meta = await generateMetadata({
+      params: Promise.resolve({ locale: 'ru' }),
+    })
+    expect(meta.alternates?.types).toEqual({
+      'application/rss+xml': 'https://new.ximi4ka.ru/blog/rss.xml',
+    })
   })
 
   it('renders post cards for every fetched post', async () => {

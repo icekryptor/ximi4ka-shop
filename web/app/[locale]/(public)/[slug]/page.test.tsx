@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import CmsPage, { revalidate, generateStaticParams } from './page'
+import CmsPage, { revalidate, generateStaticParams, generateMetadata } from './page'
 import * as api from '@/lib/api'
 
 describe('CmsPage ([slug] route)', () => {
@@ -61,5 +61,39 @@ describe('CmsPage ([slug] route)', () => {
     vi.spyOn(api, 'getPage').mockRejectedValue(new Error('offline'))
     const params = await generateStaticParams()
     expect(params).toEqual([])
+  })
+
+  describe('generateMetadata', () => {
+    const params = Promise.resolve({ locale: 'ru', slug: 'o-nas' })
+    const page = (overrides: Record<string, unknown> = {}) =>
+      ({
+        id: 'p1',
+        slug: 'o-nas',
+        title: 'О нас',
+        blocks: [],
+        isPublished: true,
+        translations: {},
+        ...overrides,
+      }) as unknown as Awaited<ReturnType<typeof api.getPage>>
+
+    it('добавляет бренд к title CMS-страницы', async () => {
+      vi.spyOn(api, 'getPage').mockResolvedValue(page())
+      const meta = await generateMetadata({ params })
+      expect(meta.title).toBe('О нас — Химичка')
+    })
+
+    it('не дублирует бренд из metaTitle', async () => {
+      vi.spyOn(api, 'getPage').mockResolvedValue(page({ metaTitle: 'О компании Химичка' }))
+      const meta = await generateMetadata({ params })
+      expect(meta.title).toBe('О компании Химичка')
+    })
+
+    it('для noindex-страницы не выдаёт canonical и hreflang', async () => {
+      vi.spyOn(api, 'getPage').mockResolvedValue(page({ noindex: true }))
+      const meta = await generateMetadata({ params })
+      expect(meta.robots).toEqual({ index: false, follow: false })
+      expect(meta.alternates).toBeUndefined()
+      expect(meta.openGraph).toBeUndefined()
+    })
   })
 })

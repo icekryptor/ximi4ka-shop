@@ -11,6 +11,9 @@ import {
 
 const ORIGINAL_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
 
+// Что реально попадёт в <script>: undefined-поля при сериализации пропадают.
+const serialized = (data: unknown): Record<string, unknown> => JSON.parse(JSON.stringify(data))
+
 function makeProduct(overrides: Partial<Product> = {}): Product {
   return {
     id: 'p1',
@@ -59,6 +62,54 @@ describe('JSON-LD helpers', () => {
     expect(out.sameAs).toContain('https://t.me/ximi4kapublic')
   })
 
+  it('organizationJsonLd without options keeps the old fields and adds no contacts', () => {
+    const out = serialized(organizationJsonLd())
+    expect(out).not.toHaveProperty('telephone')
+    expect(out).not.toHaveProperty('email')
+    expect(out).not.toHaveProperty('contactPoint')
+    expect(out.sameAs).toContain('https://t.me/ximi4kapublic')
+  })
+
+  it('organizationJsonLd sameAs lists all social profiles', () => {
+    expect(organizationJsonLd().sameAs).toEqual([
+      'https://t.me/ximi4kapublic',
+      'https://www.instagram.com/ximi4kaaa/',
+      'https://www.tiktok.com/@ximi4ka',
+      'https://www.youtube.com/@chemxenia',
+    ])
+  })
+
+  it('organizationJsonLd adds telephone, email and a full contactPoint when given', () => {
+    const out = serialized(
+      organizationJsonLd({
+        phone: '+79859938311',
+        email: 'info@ximi4ka.ru',
+        supportUrl: 'https://t.me/ximi4ka_support',
+      }),
+    )
+    expect(out.telephone).toBe('+79859938311')
+    expect(out.email).toBe('info@ximi4ka.ru')
+    expect(out.contactPoint).toEqual({
+      '@type': 'ContactPoint',
+      contactType: 'customer support',
+      telephone: '+79859938311',
+      email: 'info@ximi4ka.ru',
+      url: 'https://t.me/ximi4ka_support',
+      availableLanguage: 'ru',
+    })
+  })
+
+  it('organizationJsonLd contactPoint carries only the given channels', () => {
+    const out = serialized(organizationJsonLd({ supportUrl: 'https://t.me/ximi4ka_support' }))
+    expect(out).not.toHaveProperty('telephone')
+    expect(out.contactPoint).toEqual({
+      '@type': 'ContactPoint',
+      contactType: 'customer support',
+      url: 'https://t.me/ximi4ka_support',
+      availableLanguage: 'ru',
+    })
+  })
+
   it('websiteJsonLd has no SearchAction (there is no /search page)', () => {
     const out = websiteJsonLd()
     expect(out['@context']).toBe('https://schema.org')
@@ -71,9 +122,9 @@ describe('JSON-LD helpers', () => {
   describe('breadcrumbJsonLd', () => {
     it('positions items starting at 1 and preserves absolute URLs', () => {
       const out = breadcrumbJsonLd([
-        { name: 'Главная', url: '/' },
-        { name: 'Каталог', url: '/categories' },
-        { name: 'Set', url: 'https://external.example.com/x' },
+        { name: 'Главная', href: '/' },
+        { name: 'Каталог', href: '/catalog' },
+        { name: 'Set', href: 'https://external.example.com/x' },
       ])
       expect(out['@context']).toBe('https://schema.org')
       expect(out['@type']).toBe('BreadcrumbList')
@@ -86,12 +137,21 @@ describe('JSON-LD helpers', () => {
       })
       expect(out.itemListElement[1]).toMatchObject({
         position: 2,
-        item: 'https://new.ximi4ka.ru/categories',
+        item: 'https://new.ximi4ka.ru/catalog',
       })
       // Already-absolute URLs passed through unchanged
       expect(out.itemListElement[2]).toMatchObject({
         position: 3,
         item: 'https://external.example.com/x',
+      })
+    })
+
+    it('omits `item` for an element without href', () => {
+      const out = breadcrumbJsonLd([{ name: 'Главная', href: '/' }, { name: 'Страница' }])
+      expect(out.itemListElement[1]).toEqual({
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Страница',
       })
     })
   })
@@ -133,6 +193,54 @@ describe('JSON-LD helpers', () => {
         images: [{ ...p.images[0], url: '/uploads/kit.jpg' }],
       })
       expect(out.image).toEqual(['https://new.ximi4ka.ru/uploads/kit.jpg'])
+    })
+
+    it('emits no aggregateRating / review without data', () => {
+      const out = serialized(productJsonLd(makeProduct()))
+      expect(out).not.toHaveProperty('aggregateRating')
+      expect(out).not.toHaveProperty('review')
+      expect(serialized(productJsonLd(makeProduct(), { reviews: [] }))).not.toHaveProperty('review')
+      expect(
+        serialized(
+          productJsonLd(makeProduct(), { aggregateRating: { ratingValue: 5, reviewCount: 0 } }),
+        ),
+      ).not.toHaveProperty('aggregateRating')
+    })
+
+    it('emits aggregateRating when rating data is given', () => {
+      const out = productJsonLd(makeProduct(), {
+        aggregateRating: { ratingValue: 4.8, reviewCount: 12 },
+      })
+      expect(out.aggregateRating).toEqual({
+        '@type': 'AggregateRating',
+        ratingValue: 4.8,
+        reviewCount: 12,
+        bestRating: 5,
+        worstRating: 1,
+      })
+    })
+
+    it('emits review entries when reviews are given', () => {
+      const out = productJsonLd(makeProduct(), {
+        reviews: [
+          { author: 'Анна', ratingValue: 5, body: 'Отличный набор', datePublished: '2026-09-01' },
+          { author: 'Иван', ratingValue: 4 },
+        ],
+      })
+      expect(out.review).toEqual([
+        {
+          '@type': 'Review',
+          author: { '@type': 'Person', name: 'Анна' },
+          reviewRating: { '@type': 'Rating', ratingValue: 5, bestRating: 5, worstRating: 1 },
+          reviewBody: 'Отличный набор',
+          datePublished: '2026-09-01',
+        },
+        {
+          '@type': 'Review',
+          author: { '@type': 'Person', name: 'Иван' },
+          reviewRating: { '@type': 'Rating', ratingValue: 4, bestRating: 5, worstRating: 1 },
+        },
+      ])
     })
   })
 

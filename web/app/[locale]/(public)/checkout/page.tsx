@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CheckoutRequest } from '@ximi4ka-shop/shared'
@@ -9,6 +9,7 @@ import { useCart } from '@/lib/cart'
 import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 import { ApiError, quoteShipping, submitCheckout, type ShippingQuoteResponse } from '@/lib/api'
 import { formatRub } from '@/lib/stockLabel'
+import { METRIKA_GOALS, reachGoal, rememberPendingPurchase } from '@/lib/metrika'
 import { CdekDelivery } from '@/components/checkout/CdekDelivery'
 import { ERROR_CLASS, FIELD_CLASS, LABEL_CLASS } from '@/components/checkout/fieldStyles'
 import { useCdekDelivery } from '@/components/checkout/useCdekDelivery'
@@ -38,6 +39,15 @@ export default function CheckoutPage() {
   const [hydrated, setHydrated] = useState(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setHydrated(true), [])
+
+  // Цель «начало оформления»: раз за заход на страницу, когда в корзине есть
+  // товары (пустой чекаут оформлением не считается).
+  const checkoutReported = useRef(false)
+  useEffect(() => {
+    if (!hydrated || items.length === 0 || checkoutReported.current) return
+    checkoutReported.current = true
+    reachGoal(METRIKA_GOALS.beginCheckout, { items_count: itemCount, cart_total: totals.totalRub })
+  }, [hydrated, items.length, itemCount, totals.totalRub])
 
   const [fields, setFields] = useState<CheckoutFormFields>(INITIAL_FIELDS)
   const [errors, setErrors] = useState<CheckoutFormErrors>({})
@@ -143,6 +153,17 @@ export default function CheckoutPage() {
       // the same one, so the server never creates a duplicate order.
       const result = await submitCheckout(payload, getOrCreateIdempotencyKey())
       clearIdempotencyKey()
+      // Состав заказа — для события purchase на странице заказа (корзина
+      // сейчас очистится); персональных данных в снимке нет.
+      rememberPendingPurchase(
+        result.orderNumber,
+        items.map((i) => ({
+          id: i.productId,
+          name: i.name,
+          price: i.priceRub,
+          quantity: i.quantity,
+        })),
+      )
       clear()
       if (result.paymentUrl) {
         redirectTo(result.paymentUrl)

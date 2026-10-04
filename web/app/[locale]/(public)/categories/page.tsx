@@ -2,12 +2,13 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { listCategories } from '@/lib/api'
 import type { ProductCategory } from '@ximi4ka-shop/shared'
+import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { LabSection } from '@/components/ui/LabSection'
 import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
-import { breadcrumbJsonLd } from '@/lib/jsonLd'
+import { breadcrumbJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     SUPPORTED_LOCALES.map((loc) => [loc, pathForLocale(loc)]),
   ) as Record<Locale, string>
   return buildMetadata({
-    title: 'Каталог — Ximi4ka',
+    title: 'Категории наборов для химических опытов — Химичка',
     metaDescription: 'Все наборы для химических экспериментов от Ximi4ka.',
     pathname: pathForLocale(locale),
     type: 'website',
@@ -54,19 +55,25 @@ async function fetchCategories(): Promise<ProductCategory[]> {
 export default async function CategoriesListPage({ params }: Props) {
   const { locale: rawLocale } = await params
   if (!isLocale(rawLocale)) notFound()
+  const locale: Locale = rawLocale
   const categories = await fetchCategories()
+
+  // «Каталог» — страница /catalog (витрина по группам); /categories — отдельный
+  // раздел «Категории» уровнем ниже.
+  const crumbs: BreadcrumbItem[] = [
+    { name: 'Главная', href: locale === DEFAULT_LOCALE ? '/' : `/${locale}` },
+    { name: 'Каталог', href: locale === DEFAULT_LOCALE ? '/catalog' : `/${locale}/catalog` },
+    { name: 'Категории', href: pathForLocale(locale) },
+  ]
 
   return (
     <>
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: 'Главная', url: '/' },
-          { name: 'Каталог', url: '/categories' },
-        ])}
-      />
+      <JsonLd data={breadcrumbJsonLd(crumbs)} />
+
+      <Breadcrumbs items={crumbs} />
 
       {/* X. Каталог (LAB CREAM) — v3 LJ hero + drawer-card grid */}
-      <LabSection variant="cream" className="px-6 pt-32 pb-24">
+      <LabSection variant="cream" className="px-6 pt-12 pb-24">
         <div className="max-w-[var(--max-lj-content)] mx-auto">
           <h1 className="font-lj-display font-[900] text-[clamp(3rem,7vw,6rem)] leading-[0.92] tracking-[-0.045em] mb-8">
             Категории
