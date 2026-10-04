@@ -7,6 +7,10 @@
 //   (no --crawl)    import from the committed api/data/tilda-catalog.json.
 //
 // Flags:
+//   --image-map <path>  подставить картинки, уже перенесённые в /uploads скриптом
+//                       migrate:tilda-images (карта «ссылка → путь»); по умолчанию —
+//                       uploads/tilda-image-map.json, если он есть;
+//   --no-image-map      не подставлять, оставить ссылки на Tilda как в JSON;
 //   --replace-dev-seed  soft-delete the 8 dev products from seeds/seed.ts and
 //                       hard-delete the 3 dev categories so the catalog
 //                       contains only the real products;
@@ -38,6 +42,7 @@ import {
   resolveProductSlug,
   textToParagraphBlocks,
 } from './_lib/tilda-crawl.js'
+import { remapSeedImages } from './_lib/tilda-image-map.js'
 
 const logger = pino().child({ mod: 'import-tilda-catalog' })
 
@@ -82,8 +87,8 @@ interface CatalogEntry {
   sku: string | null
   shortDescription: string | null
   longDescriptionBlocks: ParagraphBlock[]
-  // Original static.tildacdn.com URLs, stored as-is. Re-hosting the images
-  // in our own storage is a separate follow-up task.
+  // Original static.tildacdn.com URLs, stored as-is in the JSON. Images moved to
+  // our own storage are substituted at import time (see remapSeedImages).
   images: Array<{ url: string; alt: string }>
   categorySlug: CatalogCategorySlug
   sourceUrl: string
@@ -93,10 +98,18 @@ interface CliArgs {
   crawlDir: string | null
   replaceDevSeed: boolean
   dryRun: boolean
+  imageMap: string | null
+  noImageMap: boolean
 }
 
 function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { crawlDir: null, replaceDevSeed: false, dryRun: false }
+  const args: CliArgs = {
+    crawlDir: null,
+    replaceDevSeed: false,
+    dryRun: false,
+    imageMap: null,
+    noImageMap: false,
+  }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!
     if (a === '--crawl') {
@@ -110,10 +123,19 @@ function parseArgs(argv: string[]): CliArgs {
       args.replaceDevSeed = true
     } else if (a === '--dry-run') {
       args.dryRun = true
+    } else if (a === '--image-map') {
+      const file = argv[++i]
+      if (!file) {
+        console.error('--image-map requires a file argument')
+        process.exit(2)
+      }
+      args.imageMap = file
+    } else if (a === '--no-image-map') {
+      args.noImageMap = true
     } else {
       console.error(`unknown argument: ${a}`)
       console.error(
-        'Usage: tsx import-tilda-catalog.ts [--crawl <dir>] [--replace-dev-seed] [--dry-run]',
+        'Usage: tsx import-tilda-catalog.ts [--crawl <dir>] [--replace-dev-seed] [--dry-run] [--image-map <file> | --no-image-map]',
       )
       process.exit(2)
     }
@@ -322,7 +344,9 @@ function printPlan(entries: CatalogEntry[], args: CliArgs): void {
   console.log(`Mode:            ${args.dryRun ? 'DRY RUN (no writes)' : 'LIVE (upsert by slug)'}`)
   console.log(`Source:          ${args.crawlDir ? `crawl ${args.crawlDir}` : CATALOG_JSON_PATH}`)
   console.log(`Products:        ${entries.length} (${withCompareAt} with compare-at price)`)
-  console.log(`Images:          ${images} (static.tildacdn.com URLs, re-hosting is a follow-up)`)
+  console.log(
+    `Images:          ${images} (URLs from the data file; moved ones are swapped via the image map)`,
+  )
   console.log(
     `Replace dev seed: ${args.replaceDevSeed ? `yes (${DEV_SEED_PRODUCT_SLUGS.length} products, ${DEV_SEED_CATEGORY_SLUGS.length} categories)` : 'no'}`,
   )
@@ -332,6 +356,12 @@ function printPlan(entries: CatalogEntry[], args: CliArgs): void {
     )
   }
   console.log('')
+}
+
+function remapEntries(entries: CatalogEntry[], args: CliArgs): Promise<CatalogEntry[]> {
+  return remapSeedImages(entries, args, (info) =>
+    logger.info(info, 'ссылки на Tilda заменены на перенесённые картинки'),
+  )
 }
 
 async function main(): Promise<void> {
@@ -351,7 +381,8 @@ async function main(): Promise<void> {
   // Persist the (possibly re-distilled) catalog so the committed JSON carries
   // clean names + metaTitle whether it came from a fresh crawl or a legacy JSON.
   await writeDataFiles(entries)
-  await importCatalog(entries, args.replaceDevSeed)
+  // JSON остаётся как есть; в БД уходит копия с перенесёнными картинками.
+  await importCatalog(await remapEntries(entries, args), args.replaceDevSeed)
   logger.info('import complete')
 }
 
