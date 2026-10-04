@@ -1,4 +1,4 @@
-export const SUPPORT_URL = 'https://t.me/ximi4ka_support'
+import { SUPPORT_URL } from '@/lib/contacts'
 
 // Ссылка на поддержку в плашке кабинета (спека §6): чат @ximi4ka_support.
 export function SupportButton() {
