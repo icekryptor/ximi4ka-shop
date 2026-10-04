@@ -26,7 +26,12 @@ services:
       # Аплоады из админки переживают пересборку образа (в отличие от Railway).
       - ximishop-uploads:/app/api/uploads
     networks:
-      - supabase
+      supabase:
+        # Маршрут по умолчанию для IPv4 остаётся здесь.
+        gw_priority: 10
+      # Единственный путь api до Telegram: IPv4 с VPS закрыт, а у сети
+      # supabase_default IPv6 нет вовсе (README, «Как бот получает сообщения»).
+      egress6: {}
     healthcheck:
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3001/health']
       interval: 15s
@@ -83,3 +88,11 @@ networks:
   supabase:
     external: true
     name: supabase_default
+  # Только ради исходящего IPv6 (NAT66 делает Docker). Подсеть ULA фиксирована,
+  # чтобы не зависеть от автовыбора. Ничьих сервисов, кроме api, в ней нет.
+  egress6:
+    name: ximishop_egress6
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fdc3:5a91:2e47:7b10::/64

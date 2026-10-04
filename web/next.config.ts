@@ -17,9 +17,10 @@ const nextConfig: NextConfig = {
   // Required because @ximi4ka-shop/shared ships .ts source rather than compiled JS.
   transpilePackages: ['@ximi4ka-shop/shared'],
   images: {
-    // The imported Tilda catalog and blog articles still reference images on
-    // Tilda's CDN (re-hosting them is a separate follow-up task) — next/image
-    // throws a 500 for any un-allowlisted remote host.
+    // Transition period: until `migrate:tilda-images -w api --apply` has run on
+    // the server (and while some admin-edited content may still point at
+    // Tilda's CDN), next/image throws a 500 for any un-allowlisted remote host.
+    // Drop this pattern once no tildacdn URL is left in the database.
     remotePatterns: [
       {
         protocol: 'https',

@@ -17,6 +17,37 @@ export const dynamic = 'force-dynamic'
 // Sitemap — абсолютным адресом, как требует протокол.
 const FALLBACK = `User-agent: *\nAllow: /\nSitemap: ${siteUrl()}/sitemap.xml\n`
 
+// Сайт закрыт целиком, если для `User-agent: *` есть `Disallow: /` без пути.
+// Группа — подряд идущие User-agent и следующие за ними правила.
+function isClosedForAll(text: string): boolean {
+  let starGroup = false
+  let afterAgent = false
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/#.*$/, '').trim()
+    const m = /^([a-z-]+)\s*:\s*(.*)$/i.exec(line)
+    if (!m) continue
+    const field = m[1].toLowerCase()
+    const value = m[2].trim()
+    if (field === 'user-agent') {
+      starGroup = afterAgent ? starGroup || value === '*' : value === '*'
+      afterAgent = true
+      continue
+    }
+    afterAgent = false
+    if (starGroup && field === 'disallow' && value === '/') return true
+  }
+  return false
+}
+
+// robots.txt редактируется в админке и Sitemap в нём могут забыть. Дописываем
+// его, если сайт открыт и своей строки Sitemap нет; закрытый режим не трогаем —
+// карта сайта в нём не нужна.
+function withSitemap(text: string): string {
+  if (/^\s*sitemap\s*:/im.test(text) || isClosedForAll(text)) return text
+  const sep = text === '' || text.endsWith('\n') ? '' : '\n'
+  return `${text}${sep}Sitemap: ${siteUrl()}/sitemap.xml\n`
+}
+
 export async function GET(): Promise<Response> {
   try {
     const res = await fetch(`${ADMIN_API_URL_SERVER}/api/public/settings/robots.txt`, {
@@ -27,7 +58,7 @@ export async function GET(): Promise<Response> {
         headers: { 'content-type': 'text/plain; charset=utf-8' },
       })
     }
-    const text = await res.text()
+    const text = withSitemap(await res.text())
     return new Response(text, {
       headers: { 'content-type': 'text/plain; charset=utf-8' },
     })

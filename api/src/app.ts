@@ -28,6 +28,7 @@ import { cdekWidgetRouter } from './routes/public/cdek-widget.js'
 import { cdekLocationsRouter } from './routes/public/cdek-locations.js'
 import { errorHandler } from './routes/errors.js'
 import { UPLOADS_DIR } from './lib/storage/index.js'
+import { getLoginPollerHealth } from './lib/telegram/loginPoller.js'
 
 export function createApp(): Express {
   const app = express()
@@ -52,6 +53,19 @@ export function createApp(): Express {
 
   app.get('/health', (_req, res) => {
     res.status(200).json({ ok: true })
+  })
+
+  // Отдельно от /health: тот остаётся «процесс жив» для Docker, а этот — «бот
+  // входа получает сообщения от Telegram» (для внешнего мониторинга). Под
+  // /api, иначе Caddy отдаст путь витрине (см. Caddyfile.snippet). В режиме
+  // вебхука polling:false — доставку вебхука этот маршрут не проверяет.
+  app.get('/api/health/telegram', (_req, res) => {
+    const h = getLoginPollerHealth()
+    res.status(h.healthy ? 200 : 503).json({
+      ok: h.healthy,
+      polling: h.running,
+      lastOkAt: h.lastOkAt === null ? null : new Date(h.lastOkAt).toISOString(),
+    })
   })
 
   app.use('/api/auth', authRouter)
