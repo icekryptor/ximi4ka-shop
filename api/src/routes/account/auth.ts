@@ -5,6 +5,7 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { CustomerSession } from '../../entities/CustomerSession.js'
 import { getMailer } from '../../lib/mail/mailer.js'
 import { getLoginBot, isLoginBotUsable } from '../../lib/telegram/loginBot.js'
+import { getLoginPollerHealth } from '../../lib/telegram/loginPoller.js'
 import {
   clearCustomerSessionCookies,
   cookieBase,
@@ -88,7 +89,10 @@ export function createAccountAuthRouter(): Router {
     // его как рабочий способ входа, и покупатель зависал на «ждём
     // подтверждения» без единого сообщения об ошибке. В режиме polling
     // секрет не нужен — update бот забирает сам (loginPoller.ts).
-    const usable = isLoginBotUsable(bot)
+    // Бот, до которого сервер не достучался (нет удачного getUpdates), тоже не
+    // способ входа: покупатель нажмёт кнопку и будет ждать ответа, которого не
+    // будет. Прячем — остаётся почта.
+    const usable = isLoginBotUsable(bot) && getLoginPollerHealth().healthy
     const data: AuthConfig = {
       email: getMailer() !== null,
       telegram: usable,
