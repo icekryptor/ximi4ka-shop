@@ -5,7 +5,8 @@ vi.mock('@/lib/api', () => ({
   listCategories: vi.fn(),
 }))
 
-import CategoriesListPage, { revalidate } from './page'
+import CategoriesListPage, { generateMetadata, revalidate } from './page'
+import { generateMetadata as catalogMetadata } from '../catalog/page'
 import { listCategories } from '@/lib/api'
 
 describe('CategoriesListPage', () => {
@@ -62,5 +63,13 @@ describe('CategoriesListPage', () => {
         .getAllByRole('link')
         .map((a) => a.getAttribute('href')),
     ).toEqual(['/en', '/en/catalog'])
+  })
+
+  it('title с брендом «Химичка» и не совпадает с title каталога', async () => {
+    const params = Promise.resolve({ locale: 'ru' })
+    const meta = await generateMetadata({ params })
+    const catalog = await catalogMetadata({ params })
+    expect(meta.title).toBe('Категории наборов для химических опытов — Химичка')
+    expect(meta.title).not.toBe(catalog.title)
   })
 })

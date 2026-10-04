@@ -11,7 +11,7 @@ import {
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { buildMetadata, siteUrl } from '@/lib/metadata'
+import { buildMetadata, siteUrl, truncateDescription } from '@/lib/metadata'
 import { breadcrumbJsonLd, productJsonLd } from '@/lib/jsonLd'
 import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 import { LabSection } from '@/components/ui/LabSection'
@@ -87,7 +87,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     return buildMetadata({
       title: name,
-      description: shortDescription,
+      // shortDescription — HTML и может быть длинным: для <meta> режем до сниппета.
+      description: truncateDescription(shortDescription),
       metaTitle,
       metaDescription,
       ogImage: product.ogImage ?? product.images?.[0]?.url ?? null,
@@ -95,12 +96,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       noindex: product.noindex,
       pathname: pathForLocale(locale, slug),
       type: 'product',
+      brandSuffix: true,
       ampPath: `/amp/product/${slug}`,
       locale,
       alternatesByLocale,
     })
   } catch {
-    return { title: 'Товар — Ximi4ka' }
+    return { title: 'Товар — Химичка' }
   }
 }
 

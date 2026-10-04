@@ -6,8 +6,8 @@ import { ssoClientLabel } from '@/lib/ssoClient'
 import { LoginPanel } from '../_components/LoginPanel'
 
 export const metadata: Metadata = {
-  title: 'Вход в личный кабинет — Ximi4ka',
-  robots: { index: false },
+  title: 'Вход в личный кабинет — Химичка',
+  robots: { index: false, follow: false },
 }
 
 export default async function AccountLoginPage({

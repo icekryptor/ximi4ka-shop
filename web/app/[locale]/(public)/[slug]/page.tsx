@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale: rawLocale, slug } = await params
   if (!isLocale(rawLocale)) notFound()
   const locale: Locale = rawLocale
-  if (slug === 'home') return { title: 'Ximi4ka' }
+  if (slug === 'home') return { title: 'Химичка' }
   try {
     const page = await getPage(slug)
     const title = pickField<string>(page, 'title', locale) ?? page.title
@@ -66,12 +66,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       noindex: page.noindex,
       pathname: pathForLocale(locale, slug),
       type: 'article',
+      brandSuffix: true,
       ampPath: `/amp/article/${slug}`,
       locale,
       alternatesByLocale,
     })
   } catch {
-    return { title: 'Страница — Ximi4ka' }
+    return { title: 'Страница — Химичка' }
   }
 }
 

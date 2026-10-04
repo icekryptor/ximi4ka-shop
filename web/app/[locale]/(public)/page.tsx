@@ -12,7 +12,7 @@ import type { Block, Page, Product, ProductCategory } from '@ximi4ka-shop/shared
 import { ProductCard } from '@/components/ProductCard'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { buildMetadata } from '@/lib/metadata'
+import { buildMetadata, DEFAULT_HOME_TITLE } from '@/lib/metadata'
 import { itemListJsonLd } from '@/lib/jsonLd'
 import { LabSection } from '@/components/ui/LabSection'
 import { Ticker } from '@/components/ui'
@@ -118,10 +118,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!isLocale(rawLocale)) notFound()
   const locale = rawLocale
   const home = await getPage('home').catch(() => null)
-  const title =
-    pickField<string>(home as unknown as Record<string, unknown>, 'title', locale) ??
-    home?.title ??
-    'Ximi4ka — наборы для химических экспериментов'
   const metaTitle = pickField<string>(
     home as unknown as Record<string, unknown>,
     'metaTitle',
@@ -133,7 +129,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     locale,
   )
   return buildMetadata({
-    title,
+    // title CMS-страницы `home` — служебное «Главная», в выдачу его не отдаём:
+    // без своего metaTitle у главной остаётся осмысленный дефолт с брендом.
+    title: DEFAULT_HOME_TITLE,
     description: 'Химические наборы для детей и подростков. Научные эксперименты дома.',
     metaTitle,
     metaDescription,

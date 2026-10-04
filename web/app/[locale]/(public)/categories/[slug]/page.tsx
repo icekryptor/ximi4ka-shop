@@ -65,11 +65,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       metaDescription,
       pathname: pathForLocale(locale, slug),
       type: 'website',
+      brandSuffix: true,
       locale,
       alternatesByLocale,
     })
   } catch {
-    return { title: 'Категория — Ximi4ka' }
+    return { title: 'Категория — Химичка' }
   }
 }
 

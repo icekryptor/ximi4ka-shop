@@ -63,11 +63,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       noindex: post.noindex,
       pathname: pathForLocale(locale, slug),
       type: 'article',
+      brandSuffix: true,
       locale,
       alternatesByLocale,
     })
   } catch {
-    return { title: 'Статья — Ximi4ka' }
+    return { title: 'Статья — Химичка' }
   }
 }
 

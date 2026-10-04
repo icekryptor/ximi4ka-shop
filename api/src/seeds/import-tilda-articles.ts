@@ -8,6 +8,10 @@
 //   (no --crawl)    import from the committed api/data/tilda-articles.json.
 //
 // Flags:
+//   --image-map <path>  подставить картинки, уже перенесённые в /uploads скриптом
+//                       migrate:tilda-images (карта «ссылка → путь»); по умолчанию —
+//                       uploads/tilda-image-map.json, если он есть;
+//   --no-image-map      не подставлять, оставить ссылки на Tilda как в JSON;
 //   --dry-run       extract + print the plan, no DB writes and no data-file
 //                   writes.
 //
@@ -29,6 +33,7 @@ import {
   extractCanonicalUrl,
   extractMetaDescription,
 } from './_lib/tilda-article.js'
+import { remapSeedImages } from './_lib/tilda-image-map.js'
 
 const logger = pino().child({ mod: 'import-tilda-articles' })
 
@@ -52,10 +57,12 @@ interface ArticleEntry {
 interface CliArgs {
   crawlDir: string | null
   dryRun: boolean
+  imageMap: string | null
+  noImageMap: boolean
 }
 
 function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { crawlDir: null, dryRun: false }
+  const args: CliArgs = { crawlDir: null, dryRun: false, imageMap: null, noImageMap: false }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]!
     if (a === '--crawl') {
@@ -67,9 +74,20 @@ function parseArgs(argv: string[]): CliArgs {
       args.crawlDir = dir
     } else if (a === '--dry-run') {
       args.dryRun = true
+    } else if (a === '--image-map') {
+      const file = argv[++i]
+      if (!file) {
+        console.error('--image-map requires a file argument')
+        process.exit(2)
+      }
+      args.imageMap = file
+    } else if (a === '--no-image-map') {
+      args.noImageMap = true
     } else {
       console.error(`unknown argument: ${a}`)
-      console.error('Usage: tsx import-tilda-articles.ts [--crawl <dir>] [--dry-run]')
+      console.error(
+        'Usage: tsx import-tilda-articles.ts [--crawl <dir>] [--dry-run] [--image-map <file> | --no-image-map]',
+      )
       process.exit(2)
     }
   }
@@ -209,7 +227,11 @@ async function main(): Promise<void> {
   }
 
   if (args.crawlDir) await writeDataFile(entries)
-  await importArticles(entries)
+  // JSON остаётся как есть; в БД уходит копия с перенесёнными картинками.
+  const dbEntries = await remapSeedImages(entries, args, (info) =>
+    logger.info(info, 'ссылки на Tilda заменены на перенесённые картинки'),
+  )
+  await importArticles(dbEntries)
   logger.info('import complete')
 }
 
