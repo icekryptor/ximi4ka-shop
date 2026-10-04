@@ -16,6 +16,7 @@
     "import:tilda": "tsx src/seeds/import-tilda-csv.ts",
     "import:tilda-catalog": "tsx src/seeds/import-tilda-catalog.ts",
     "import:tilda-articles": "tsx src/seeds/import-tilda-articles.ts",
+    "import:cms-pages": "tsx src/seeds/import-cms-pages.ts",
     "import:tilda-redirects": "tsx src/seeds/import-tilda-redirects.ts",
     "import:seo-blog-drafts": "tsx src/seeds/import-seo-blog-drafts.ts",
     "import:seo-product-texts": "tsx src/seeds/import-seo-product-texts.ts",

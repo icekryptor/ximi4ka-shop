@@ -38,6 +38,16 @@ describe('<Footer> v3 colophon', () => {
     )
   })
 
+  it('links the legal pages in the СТРАНИЦЫ row: оферта, политика, сертификаты', () => {
+    render(<Footer />)
+    expect(screen.getByRole('link', { name: 'оферта' })).toHaveAttribute('href', '/oferta')
+    expect(screen.getByRole('link', { name: 'политика конфиденциальности' })).toHaveAttribute(
+      'href',
+      '/policy',
+    )
+    expect(screen.getByRole('link', { name: 'сертификаты' })).toHaveAttribute('href', '/cert')
+  })
+
   it('renders the methane molecule accent (preserved from Stage 5)', () => {
     const { container } = render(<Footer />)
     const svgs = container.querySelectorAll('svg')

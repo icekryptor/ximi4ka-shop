@@ -129,6 +129,20 @@ describe('buildMetadata', () => {
     expect(meta.openGraph?.images).toEqual([{ url: 'https://new.ximi4ka.ru/uploads/kit.jpg' }])
   })
 
+  it('does not emit an RSS alternate unless rssPath is given', () => {
+    expect(buildMetadata({ title: 'T', pathname: '/' }).alternates?.types).toBeUndefined()
+  })
+
+  it('emits <link rel="alternate" type="application/rss+xml"> when rssPath is given', () => {
+    const meta = buildMetadata({ title: 'T', pathname: '/blog', rssPath: '/blog/rss.xml' })
+    expect(meta.alternates?.types).toEqual({
+      'application/rss+xml': 'https://new.ximi4ka.ru/blog/rss.xml',
+    })
+    // canonical и hreflang остаются как были.
+    expect(meta.alternates?.canonical).toBe('https://new.ximi4ka.ru/blog')
+    expect(meta.alternates?.languages).toMatchObject({ ru: 'https://new.ximi4ka.ru/blog' })
+  })
+
   it('maps type: product to a valid OG type (website)', () => {
     const meta = buildMetadata({ title: 'T', pathname: '/product/foo', type: 'product' })
     // Next's OpenGraph union keeps `type` narrowed per variant; cast for the assertion.
