@@ -224,9 +224,9 @@ $C exec -T ximishop-api node api/dist/scripts/migrate-tilda-images.js         # 
 
 **Два предупреждения.**
 
-1. **Боевой запуск с `--append-long-description` делать ровно один раз.** Флаг
-   неидемпотентен: повторный запуск дописывает те же блоки ещё раз (см. «Найдено»).
-   Проверять результат повторным dry-run **без** этого флага.
+1. **Повторные запуски с `--append-long-description` безопасны** (исправлено в PR #38,
+   сравнение блоков больше не зависит от порядка ключей jsonb). Проверять результат
+   повторным dry-run: ждём `filledProducts: 0`.
 2. **После этого шага не запускать `import:tilda-catalog`.** Он каждый раз
    перезаписывает `short_description` и `long_description_blocks` (и `metaTitle`,
    если он есть в JSON-каталоге) данными из `tilda-catalog.json`. Локально: после
@@ -264,8 +264,8 @@ $C exec -T ximishop-api node api/dist/seeds/import-seo-product-texts.js --includ
 Проверка после боевого запуска:
 
 ```bash
-# 1) дозаполнять нечего: ждём filledProducts 0 (флаг --append-long-description НЕ указывать)
-$C exec -T ximishop-api node api/dist/seeds/import-seo-product-texts.js --dry-run --include-drafts | tail -n 1
+# 1) дозаполнять нечего: ждём filledProducts 0
+$C exec -T ximishop-api node api/dist/seeds/import-seo-product-texts.js --dry-run --include-drafts --append-long-description | tail -n 1
 # 2) в БД пустых мета-полей не осталось
 $P -c "SELECT count(*) FILTER (WHERE coalesce(trim(meta_title),'')='') AS empty_meta_title, count(*) FILTER (WHERE coalesce(trim(meta_description),'')='') AS empty_meta_description FROM products WHERE deleted_at IS NULL;"
 # 3) на витрине (кеш ~минута): новый <title> и description
@@ -439,24 +439,11 @@ $C start ximishop-api
 
 ## Найдено
 
-1. **`--append-long-description` неидемпотентен на реальном Postgres.** Защита от
-   повторной дописи сравнивает `JSON.stringify(существующий_блок)` с
-   `JSON.stringify(новый_блок)`
-   (`api/src/seeds/_lib/seo-product-texts.ts:117-118`). У нового блока ключи в
-   порядке `{type, html}`, а jsonb в Postgres хранит их в своём порядке
-   (`{html, type}`), строки не совпадают, и защита не срабатывает. Тесты это не
-   ловят, потому что гоняют сравнение без круга через БД.
-   Воспроизведено локально на одноразовой БД: повторные запуски добавляли по 11–12
-   блоков каждому из 10 товаров с SEO-описанием (11 → 22, 12 → 23, 23 → 35), а
-   повторный dry-run показывал `filledProducts: 10`. Без `--append-long-description`
-   повтор безопасен (`filledProducts: 0`). Для единственного боевого запуска
-   проблемы нет, поэтому в памятке — «ровно один раз». Откат дублей — снимок
-   `seo_rollback_products` из шага 4. **Минимальная правка отдельным PR:** в
-   `planSeoFill` сравнивать без учёта порядка ключей, например
-   `import { isDeepStrictEqual } from 'node:util'` и
-   `existing.some((b) => isDeepStrictEqual(b, newBlocks[0]))` (проверено в node:
-   `isDeepStrictEqual({type:'paragraph',html:'x'},{html:'x',type:'paragraph'})`
-   даёт `true`), плюс тест на круг через БД. В этом PR код не менялся.
+1. **`--append-long-description` был неидемпотентен на реальном Postgres.** Защита сравнивала
+   `JSON.stringify` блоков, а jsonb хранит ключи в другом порядке, поэтому повторные запуски
+   дописывали SEO-блоки заново. **Исправлено в PR #38** (`isDeepStrictEqual`, тест на круг через
+   БД). Если вы всё же запускали версию до #38 больше одного раза, дубли откатываются
+   снимком `seo_rollback_products` из шага 4.
 2. **Команды `DATABASE_URL=… npm run import:… -w api`** из описаний PR с SEO-
    импортами в контейнере не работают (нет `tsx` и `api/data`); вместо них —
    таблица в начале этой памятки. Это не дефект кода: скомпилированный запуск
