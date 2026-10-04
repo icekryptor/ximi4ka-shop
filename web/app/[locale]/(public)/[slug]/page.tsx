@@ -3,9 +3,10 @@ import { notFound } from 'next/navigation'
 import type { Page } from '@ximi4ka-shop/shared'
 import { ApiError, getPage } from '@/lib/api'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
+import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata, siteUrl } from '@/lib/metadata'
-import { articleJsonLd, breadcrumbJsonLd } from '@/lib/jsonLd'
+import { articleJsonLd, breadcrumbJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 import { LabSection } from '@/components/ui/LabSection'
 import { PreFooterCta } from '@/components/marketing'
@@ -97,22 +98,23 @@ export default async function CmsPage({ params }: Props) {
   const title = pickField<string>(page, 'title', locale) ?? page.title
   const metaDescription = pickField<string>(page, 'metaDescription', locale)
   const blocks = (pickField<unknown[]>(page, 'blocks', locale) ?? page.blocks ?? []) as unknown[]
+  const crumbs: BreadcrumbItem[] = [
+    { name: 'Главная', href: locale === DEFAULT_LOCALE ? '/' : `/${locale}` },
+    { name: title, href: pathForLocale(locale, page.slug) },
+  ]
 
   return (
     <>
       <JsonLd
         data={articleJsonLd({ ...page, description: metaDescription, url: `/${page.slug}` })}
       />
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: 'Главная', url: '/' },
-          { name: title, url: pathForLocale(locale, page.slug) },
-        ])}
-      />
+      <JsonLd data={breadcrumbJsonLd(crumbs)} />
+
+      <Breadcrumbs items={crumbs} />
 
       {/* Hero (LAB CREAM) — v3 LJ: Unbounded h1. Аудит v3.5: страница была
           на v2-компонентах (Section soft + GradientBlob + оранжевая точка). */}
-      <LabSection variant="cream" className="px-6 pt-28 pb-16">
+      <LabSection variant="cream" className="px-6 pt-12 pb-16">
         <div className="max-w-[var(--max-lj-narrow)] mx-auto">
           <h1 className="font-lj-display font-[900] text-[clamp(2.5rem,6vw,5rem)] leading-[0.95] tracking-[-0.045em] mb-6 max-w-[18ch]">
             {title}

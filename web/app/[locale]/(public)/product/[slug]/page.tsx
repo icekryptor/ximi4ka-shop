@@ -1,14 +1,15 @@
-import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import type { Product } from '@ximi4ka-shop/shared'
+import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import {
   ApiError,
   getPublishedProduct,
+  listCategories,
   listPublishedProducts,
   type ProductWithCategories,
 } from '@/lib/api'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
+import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata, siteUrl, truncateDescription } from '@/lib/metadata'
 import { breadcrumbJsonLd, productJsonLd } from '@/lib/jsonLd'
@@ -27,6 +28,7 @@ import {
 import { ProductCard } from '@/components/ProductCard'
 import { PreFooterCta } from '@/components/marketing/PreFooterCta'
 import { parseCharacteristics } from '@/lib/parseCharacteristics'
+import { primaryCategory, productBreadcrumbs } from '@/lib/breadcrumbs'
 import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
@@ -139,6 +141,29 @@ async function fetchRelatedProducts(currentProductId: string): Promise<Product[]
   }
 }
 
+/**
+ * Основная категория товара для хлебных крошек. Публичный api товара
+ * категорий не отдаёт, поэтому берём их из списка с `?include=categories`
+ * (тот же запрос, что и у «похожих» — Next склеит его в один) и сверяем со
+ * списком категорий. Нет данных или api недоступен — крошки без категории.
+ */
+async function fetchPrimaryCategory(
+  currentProductId: string,
+): Promise<ProductCategory | undefined> {
+  try {
+    const [products, categories] = await Promise.all([
+      listPublishedProducts({ limit: 100, include: 'categories' }),
+      listCategories({ limit: 100 }),
+    ])
+    const current = (products.data as ProductWithCategories[]).find(
+      (p) => p.id === currentProductId,
+    )
+    return primaryCategory(current?.categoryIds, categories.data)
+  } catch {
+    return undefined
+  }
+}
+
 export default async function ProductPage({ params }: Props) {
   const { locale: rawLocale, slug } = await params
   if (!isLocale(rawLocale)) notFound()
@@ -200,7 +225,11 @@ export default async function ProductPage({ params }: Props) {
     })
   }
 
-  const related = await fetchRelatedProducts(product.id)
+  const [related, category] = await Promise.all([
+    fetchRelatedProducts(product.id),
+    fetchPrimaryCategory(product.id),
+  ])
+  const crumbs = productBreadcrumbs({ locale, name, slug: product.slug, category })
 
   // Первое слово названия — фиолетовое (Figma: «Набор» lj/brand).
   const [firstWord, ...restWords] = name.split(/\s+/)
@@ -208,31 +237,12 @@ export default async function ProductPage({ params }: Props) {
   return (
     <>
       <JsonLd data={productJsonLd(product)} />
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: 'Главная', url: '/' },
-          { name: 'Каталог', url: '/catalog' },
-          { name, url: pathForLocale(locale, product.slug) },
-        ])}
-      />
+      <JsonLd data={breadcrumbJsonLd(crumbs)} />
 
       {/* Хлебные крошки (Figma Breadcrumbs, Levels=3, Current=Ink):
           IBM Plex 11/16.5, uppercase, весь блок 70%. Выровнены по
-          колонкам hero ниже. */}
-      <nav
-        aria-label="breadcrumbs"
-        className="box-content max-w-[1260px] mx-auto px-6 pt-6 flex flex-wrap gap-x-2 font-lj-mono text-[length:var(--text-lj-mono-xs)] leading-[1.5] uppercase tracking-[0.03em] text-[var(--color-lj-ink)] opacity-70"
-      >
-        <Link href="/" className="hover:text-[var(--color-lj-brand)]">
-          Главная
-        </Link>
-        <span aria-hidden="true">/</span>
-        <Link href="/catalog" className="hover:text-[var(--color-lj-brand)]">
-          Каталог
-        </Link>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">{name}</span>
-      </nav>
+          колонкам hero ниже. Оформление — variant="product". */}
+      <Breadcrumbs items={crumbs} variant="product" />
 
       {/* SECTION 1 — HERO (Figma «Section 1 — Hero», 33:790): галерея 660
           и колонка 560 с зазором 40; на узких экранах — стопкой. */}

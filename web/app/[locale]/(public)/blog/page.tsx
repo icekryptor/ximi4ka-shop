@@ -1,15 +1,15 @@
-import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import type { BlogPost } from '@ximi4ka-shop/shared'
 import { listBlogPosts } from '@/lib/api'
 import { BlogPostCard } from '@/components/BlogPostCard'
+import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { LabSection } from '@/components/ui/LabSection'
 import { PaginationLJ } from '@/components/ui/PaginationLJ'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
-import { breadcrumbJsonLd } from '@/lib/jsonLd'
+import { breadcrumbJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
 
 // Пагинация живёт в searchParams, а ISR кеширует страницу без учёта query:
@@ -70,29 +70,17 @@ export default async function BlogListPage({ params, searchParams }: Props) {
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
+  const crumbs: BreadcrumbItem[] = [
+    { name: 'Главная', href: homePath },
+    { name: 'Блог', href: pathForLocale(locale) },
+  ]
 
   return (
     <>
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: 'Главная', url: '/' },
-          { name: 'Блог', url: '/blog' },
-        ])}
-      />
+      <JsonLd data={breadcrumbJsonLd(crumbs)} />
 
       {/* Mono breadcrumb trail */}
-      <nav
-        aria-label="breadcrumbs"
-        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70"
-      >
-        <Link href={homePath} className="hover:opacity-100">
-          Главная
-        </Link>
-        <span className="mx-2" aria-hidden="true">
-          /
-        </span>
-        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">Блог</span>
-      </nav>
+      <Breadcrumbs items={crumbs} />
 
       {/* B. Блог (LAB CREAM) — v3 LJ hero */}
       <LabSection variant="cream" className="px-6 pt-12 pb-16">

@@ -158,7 +158,7 @@ export function renderAmpProduct(product: Product, siteUrl: string): string {
     : ''
 
   const body = [
-    `<nav class="breadcrumbs"><a href="${escapeXml(siteUrl)}/">Главная</a> / <a href="${escapeXml(siteUrl)}/categories">Каталог</a></nav>`,
+    `<nav class="breadcrumbs"><a href="${escapeXml(siteUrl)}/">Главная</a> / <a href="${escapeXml(siteUrl)}/catalog">Каталог</a></nav>`,
     `<h1>${escapeXml(product.name)}</h1>`,
     `<p class="stock">${escapeXml(stockLabelRu(product.stockStatus))}</p>`,
     gallery ? `<div class="gallery">${gallery}</div>` : '',
