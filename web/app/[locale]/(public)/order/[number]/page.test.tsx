@@ -39,7 +39,7 @@ describe('/order/[number] page', () => {
       const meta = await generateMetadata({
         params: Promise.resolve({ locale: 'ru', number: 'XM-2026-00042' }),
       })
-      expect(meta.title).toBe('Заказ XM-2026-00042 — Ximi4ka')
+      expect(meta.title).toBe('Заказ XM-2026-00042 — Химичка')
       expect(meta.robots).toEqual({ index: false, follow: false })
     })
 
@@ -47,7 +47,7 @@ describe('/order/[number] page', () => {
       const meta = await generateMetadata({
         params: Promise.resolve({ locale: 'ru', number: 'XM%2D2026%2D00042' }),
       })
-      expect(meta.title).toBe('Заказ XM-2026-00042 — Ximi4ka')
+      expect(meta.title).toBe('Заказ XM-2026-00042 — Химичка')
     })
   })
 
