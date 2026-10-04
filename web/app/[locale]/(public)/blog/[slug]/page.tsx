@@ -1,15 +1,15 @@
 import Image from 'next/image'
-import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import type { BlogPost } from '@ximi4ka-shop/shared'
 import { ApiError, getBlogPostBySlug, listBlogPosts } from '@/lib/api'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
+import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { LabSection } from '@/components/ui/LabSection'
 import { PreFooterCta } from '@/components/marketing'
 import { buildMetadata } from '@/lib/metadata'
-import { articleJsonLd, breadcrumbJsonLd } from '@/lib/jsonLd'
+import { articleJsonLd, breadcrumbJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
 import {
   DEFAULT_LOCALE,
   SUPPORTED_LOCALES,
@@ -96,6 +96,11 @@ export default async function BlogPostPage({ params }: Props) {
   const dateIso = post.publishedAt ?? post.createdAt
   const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
   const blogPath = locale === DEFAULT_LOCALE ? '/blog' : `/${locale}/blog`
+  const crumbs: BreadcrumbItem[] = [
+    { name: 'Главная', href: homePath },
+    { name: 'Блог', href: blogPath },
+    { name: title, href: pathForLocale(locale, post.slug) },
+  ]
 
   return (
     <>
@@ -110,33 +115,10 @@ export default async function BlogPostPage({ params }: Props) {
           'BlogPosting',
         )}
       />
-      <JsonLd
-        data={breadcrumbJsonLd([
-          { name: 'Главная', url: '/' },
-          { name: 'Блог', url: '/blog' },
-          { name: title, url: pathForLocale(locale, post.slug) },
-        ])}
-      />
+      <JsonLd data={breadcrumbJsonLd(crumbs)} />
 
       {/* Mono breadcrumb trail */}
-      <nav
-        aria-label="breadcrumbs"
-        className="max-w-[var(--max-lj-content)] mx-auto px-6 pt-6 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-70"
-      >
-        <Link href={homePath} className="hover:opacity-100">
-          Главная
-        </Link>
-        <span className="mx-2" aria-hidden="true">
-          /
-        </span>
-        <Link href={blogPath} className="hover:opacity-100">
-          Блог
-        </Link>
-        <span className="mx-2" aria-hidden="true">
-          /
-        </span>
-        <span className="opacity-100 text-[var(--color-lj-brand-deep)]">{title}</span>
-      </nav>
+      <Breadcrumbs items={crumbs} />
 
       {/* B. Статья (LAB CREAM) — journal entry header */}
       <LabSection variant="cream" className="px-6 pt-12 pb-10">

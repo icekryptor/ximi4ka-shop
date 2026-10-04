@@ -122,9 +122,9 @@ describe('JSON-LD helpers', () => {
   describe('breadcrumbJsonLd', () => {
     it('positions items starting at 1 and preserves absolute URLs', () => {
       const out = breadcrumbJsonLd([
-        { name: 'Главная', url: '/' },
-        { name: 'Каталог', url: '/categories' },
-        { name: 'Set', url: 'https://external.example.com/x' },
+        { name: 'Главная', href: '/' },
+        { name: 'Каталог', href: '/catalog' },
+        { name: 'Set', href: 'https://external.example.com/x' },
       ])
       expect(out['@context']).toBe('https://schema.org')
       expect(out['@type']).toBe('BreadcrumbList')
@@ -137,12 +137,21 @@ describe('JSON-LD helpers', () => {
       })
       expect(out.itemListElement[1]).toMatchObject({
         position: 2,
-        item: 'https://new.ximi4ka.ru/categories',
+        item: 'https://new.ximi4ka.ru/catalog',
       })
       // Already-absolute URLs passed through unchanged
       expect(out.itemListElement[2]).toMatchObject({
         position: 3,
         item: 'https://external.example.com/x',
+      })
+    })
+
+    it('omits `item` for an element without href', () => {
+      const out = breadcrumbJsonLd([{ name: 'Главная', href: '/' }, { name: 'Страница' }])
+      expect(out.itemListElement[1]).toEqual({
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Страница',
       })
     })
   })
