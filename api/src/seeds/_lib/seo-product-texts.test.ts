@@ -242,4 +242,58 @@ describe('applySeoProductTexts', () => {
       ...buildLongDescriptionBlocks(ENTRY),
     ])
   })
+
+  // Регрессия: jsonb в Postgres хранит ключи объекта в своём порядке (короче —
+  // раньше, затем по алфавиту), поэтому блок после записи и чтения отличается
+  // от исходного порядком ключей. Сравнение через JSON.stringify этого не
+  // переживало, и каждый запуск дописывал SEO-блоки заново.
+  it('appendLongDescription идемпотентен на реальной БД (порядок ключей jsonb)', async () => {
+    const existingBlocks = [{ type: 'paragraph', html: '<p>Раствор серной кислоты 7% 65 мл</p>' }]
+    await createProduct('sernaya-kislota', { longDescriptionBlocks: existingBlocks })
+    const expected = [...existingBlocks, ...buildLongDescriptionBlocks(ENTRY)]
+
+    await applySeoProductTexts(repo(), [ENTRY], { appendLongDescription: true })
+    const afterFirst = await repo().findOneByOrFail({ slug: 'sernaya-kislota' })
+    expect(afterFirst.longDescriptionBlocks).toEqual(expected)
+
+    const second = await applySeoProductTexts(repo(), [ENTRY], { appendLongDescription: true })
+    const afterSecond = await repo().findOneByOrFail({ slug: 'sernaya-kislota' })
+    expect(afterSecond.longDescriptionBlocks).toHaveLength(expected.length)
+    expect(afterSecond.longDescriptionBlocks).toEqual(afterFirst.longDescriptionBlocks)
+    expect(afterSecond.updatedAt.getTime()).toBe(afterFirst.updatedAt.getTime())
+    expect(second.filled).toEqual([])
+
+    const dry = await applySeoProductTexts(repo(), [ENTRY], {
+      appendLongDescription: true,
+      dryRun: true,
+    })
+    expect(dry.filled).toEqual([])
+    expect(dry.untouched[0]?.fields).toContain('longDescriptionBlocks')
+    const afterDry = await repo().findOneByOrFail({ slug: 'sernaya-kislota' })
+    expect(afterDry.longDescriptionBlocks).toHaveLength(expected.length)
+  })
+
+  it('appendLongDescription узнаёт блок с вложенными объектами и массивами (faq) при другом порядке ключей', () => {
+    const [firstBlock] = buildLongDescriptionBlocks({ ...ENTRY, longDescription: undefined })
+    // faq в Postgres приходит с переставленными ключами, в том числе во вложенных объектах.
+    const stored = { items: [{ question: 'Вопрос?', answer: 'Ответ.' }], type: 'faq' }
+    const reordered = { type: 'faq', items: [{ answer: 'Ответ.', question: 'Вопрос?' }] }
+    expect(firstBlock).toEqual(stored)
+
+    const { patch, skipped } = planSeoFill(
+      { metaTitle: 'x', metaDescription: 'x', longDescriptionBlocks: [reordered] },
+      { ...ENTRY, longDescription: undefined },
+      { appendLongDescription: true },
+    )
+    expect(patch).toEqual({})
+    expect(skipped).toContain('longDescriptionBlocks')
+
+    const different = { type: 'faq', items: [{ answer: 'Другой ответ.', question: 'Вопрос?' }] }
+    const changed = planSeoFill(
+      { metaTitle: 'x', metaDescription: 'x', longDescriptionBlocks: [different] },
+      { ...ENTRY, longDescription: undefined },
+      { appendLongDescription: true },
+    )
+    expect(changed.patch.longDescriptionBlocks).toHaveLength(2)
+  })
 })
