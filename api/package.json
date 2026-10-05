@@ -20,6 +20,7 @@
     "import:tilda-redirects": "tsx src/seeds/import-tilda-redirects.ts",
     "import:seo-blog-drafts": "tsx src/seeds/import-seo-blog-drafts.ts",
     "import:seo-product-texts": "tsx src/seeds/import-seo-product-texts.ts",
+    "import:seo-landings": "tsx src/seeds/import-seo-landings.ts",
     "import:seo-article-refresh": "tsx src/seeds/import-seo-article-refresh.ts",
     "audit:images": "tsx src/scripts/audit-images.ts",
     "migrate:tilda-images": "tsx src/scripts/migrate-tilda-images.ts",
