@@ -1,58 +1,14 @@
 @import 'tailwindcss';
 
-@font-face {
-  font-family: 'Mazzard H';
-  src: url('/fonts/MazzardH-ExtraBold.woff2') format('woff2');
-  font-weight: 800;
-  font-style: normal;
-  font-display: swap;
-  unicode-range: U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F;
-}
-
-@font-face {
-  font-family: 'Mazzard H';
-  src: url('/fonts/MazzardH-ExtraBoldItalic.woff2') format('woff2');
-  font-weight: 800;
-  font-style: italic;
-  font-display: swap;
-  unicode-range: U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F;
-}
-
 /* Mazzard H — шрифт карточек по макету Figma (лист «Карточки»): названия,
    цены, кнопки, цифры и метки. Файлы — подмножество TTF из того же семейства
    (латиница, кириллица, пунктуация, №, стрелки, минус); ₽ и индексы вроде ₂
-   в Mazzard нет — они берутся из следующего шрифта стека. Figma пишет вес
-   ExtraLight как 275, в CSS это 200. */
-@font-face {
-  font-family: 'Mazzard H';
-  src: url('/fonts/MazzardH-ExtraLight.woff2') format('woff2');
-  font-weight: 200;
-  font-style: normal;
-  font-display: swap;
-  unicode-range:
-    U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F, U+2100-214F, U+2190-21FF, U+2212;
-}
-
-@font-face {
-  font-family: 'Mazzard H';
-  src: url('/fonts/MazzardH-Light.woff2') format('woff2');
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
-  unicode-range:
-    U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F, U+2100-214F, U+2190-21FF, U+2212;
-}
-
-@font-face {
-  font-family: 'Mazzard H';
-  src: url('/fonts/MazzardH-LightItalic.woff2') format('woff2');
-  font-weight: 300;
-  font-style: italic;
-  font-display: swap;
-  unicode-range:
-    U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F, U+2100-214F, U+2190-21FF, U+2212;
-}
-
+   в Mazzard нет — они берутся из следующего шрифта стека.
+   Подключены только Regular 400, Medium 500 и Bold 700, курсивных файлов нет:
+   каждое начертание — отдельный запрос до первой отрисовки (Lighthouse mobile).
+   Остальные веса браузер подбирает по правилам CSS: 200 и 300 → 400, 800 и 900
+   → 700; курсив (`italic`) рисуется синтетическим наклоном обычного начертания.
+   Тест app/mazzard-fonts.test.ts держит этот набор. */
 @font-face {
   font-family: 'Mazzard H';
   src: url('/fonts/MazzardH-Regular.woff2') format('woff2');
