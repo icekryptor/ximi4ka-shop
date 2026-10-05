@@ -12,6 +12,8 @@ export const CreateCategorySchema = z.object({
   metaTitle: z.string().max(255).nullable().optional(),
   metaDescription: z.string().max(2000).nullable().optional(),
   sortOrder: z.number().int().default(0),
+  // Как blocks у страниц и статей: форма блоков проверяется при выводе (isBlock).
+  seoBlocks: z.array(z.unknown()).nullable().optional(),
   translations: TranslationsSchema.default({}),
 })
 

@@ -299,6 +299,77 @@ describe('Category routes', () => {
       expect(res.status).toBe(200)
       expect(res.body.data.name).toBe('Updated')
     })
+    describe('seoBlocks (SEO-текст категории)', () => {
+      const SEO_BLOCKS = [
+        { type: 'paragraph', html: '<h2>О категории</h2>' },
+        { type: 'paragraph', html: '<p>Текст со <a href="/product/probirka">ссылкой</a>.</p>' },
+        { type: 'faq', items: [{ question: 'Вопрос?', answer: 'Ответ.' }] },
+      ]
+
+      it('по умолчанию null — у категории без SEO-текста', async () => {
+        const created = await request(app)
+          .post('/api/admin/categories')
+          .set(authHeaders(auth))
+          .send({ slug: 'plain', name: 'Plain' })
+        expect(created.status).toBe(201)
+        expect(created.body.data.seoBlocks).toBeNull()
+        const pub = await request(app).get('/api/public/categories/plain')
+        expect(pub.body.data.seoBlocks).toBeNull()
+      })
+
+      it('сохраняется при создании и отдаётся публично и в админке', async () => {
+        const created = await request(app)
+          .post('/api/admin/categories')
+          .set(authHeaders(auth))
+          .send({ slug: 'texted', name: 'Texted', seoBlocks: SEO_BLOCKS })
+        expect(created.status).toBe(201)
+        const pub = await request(app).get('/api/public/categories/texted')
+        expect(pub.body.data.seoBlocks).toEqual(SEO_BLOCKS)
+        const adm = await request(app)
+          .get(`/api/admin/categories/${created.body.data.id}`)
+          .set(authHeaders(auth))
+        expect(adm.body.data.seoBlocks).toEqual(SEO_BLOCKS)
+      })
+
+      it('PATCH задаёт блоки, не трогая остальные поля, и сбрасывает их в null', async () => {
+        const created = await request(app)
+          .post('/api/admin/categories')
+          .set(authHeaders(auth))
+          .send({ slug: 'patched', name: 'Patched', metaTitle: 'Свой title' })
+        const id = created.body.data.id
+        const set = await request(app)
+          .patch(`/api/admin/categories/${id}`)
+          .set(authHeaders(auth))
+          .send({ seoBlocks: SEO_BLOCKS })
+        expect(set.status).toBe(200)
+        expect(set.body.data.seoBlocks).toEqual(SEO_BLOCKS)
+        expect(set.body.data.metaTitle).toBe('Свой title')
+
+        // PATCH без seoBlocks не стирает их.
+        const other = await request(app)
+          .patch(`/api/admin/categories/${id}`)
+          .set(authHeaders(auth))
+          .send({ name: 'Renamed' })
+        expect(other.body.data.seoBlocks).toEqual(SEO_BLOCKS)
+
+        const cleared = await request(app)
+          .patch(`/api/admin/categories/${id}`)
+          .set(authHeaders(auth))
+          .send({ seoBlocks: null })
+        expect(cleared.status).toBe(200)
+        expect(cleared.body.data.seoBlocks).toBeNull()
+      })
+
+      it('отклоняет seoBlocks, который не массив (400 validation_error)', async () => {
+        const res = await request(app)
+          .post('/api/admin/categories')
+          .set(authHeaders(auth))
+          .send({ slug: 'bad', name: 'Bad', seoBlocks: 'текст' })
+        expect(res.status).toBe(400)
+        expect(res.body.error.code).toBe('validation_error')
+      })
+    })
+
     it('404 for missing id', async () => {
       const res = await request(app)
         .patch('/api/admin/categories/00000000-0000-0000-0000-000000000000')

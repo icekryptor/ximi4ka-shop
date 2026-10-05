@@ -7,7 +7,9 @@ import { ProductCard } from '@/components/ProductCard'
 import { LabSection } from '@/components/ui/LabSection'
 import { PaginationLJ } from '@/components/ui/PaginationLJ'
 import { PreFooterCta } from '@/components/marketing'
+import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
+import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 import { buildMetadata } from '@/lib/metadata'
 import { breadcrumbJsonLd, itemListJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
@@ -152,6 +154,18 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
   const description =
     pickField<string>(category, 'metaDescription', locale) ?? category.metaDescription ?? null
 
+  // SEO-текст и FAQ — только на первой странице пагинации: на ?page=2 тот же
+  // текст дублировался бы, а FAQPage-разметка должна быть у страницы одна.
+  // Блоки без валидной формы отбрасываем здесь же, чтобы не рисовать пустую секцию.
+  const seoBlocks =
+    page === 1
+      ? (
+          (pickField<unknown[]>(category, 'seoBlocks', locale) ??
+            category.seoBlocks ??
+            []) as unknown[]
+        ).filter(isBlock)
+      : []
+
   const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
   const catalogPath = locale === DEFAULT_LOCALE ? '/catalog' : `/${locale}/catalog`
   const crumbs: BreadcrumbItem[] = [
@@ -258,6 +272,15 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
           />
         </div>
       </LabSection>
+
+      {/* SEO-текст и FAQ категории (редактируются в админке, блоки как у страниц) */}
+      {seoBlocks.length > 0 ? (
+        <LabSection variant="cream" className="px-6 pb-16" data-seo-blocks>
+          <div className="max-w-[var(--max-lj-narrow)] mx-auto">
+            <BlockRenderer blocks={seoBlocks} />
+          </div>
+        </LabSection>
+      ) : null}
 
       {/* Pre-footer CTA */}
       <PreFooterCta

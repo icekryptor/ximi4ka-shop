@@ -41,6 +41,11 @@ export class ProductCategory {
   @Column({ type: 'integer', name: 'sort_order', default: 0 })
   sortOrder!: number
 
+  // SEO-текст и FAQ под сеткой товаров (те же блоки, что у страниц и статей).
+  // NULL — текста нет, витрина ничего не выводит.
+  @Column({ type: 'jsonb', name: 'seo_blocks', nullable: true })
+  seoBlocks!: unknown[] | null
+
   @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
   translations!: Record<string, unknown>
 

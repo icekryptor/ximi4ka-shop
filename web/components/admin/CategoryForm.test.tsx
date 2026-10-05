@@ -89,6 +89,72 @@ describe('CategoryForm', () => {
     })
   })
 
+  describe('SEO-текст категории (seoBlocks)', () => {
+    const blocks = [
+      { type: 'paragraph', html: '<h2>О категории</h2>' },
+      { type: 'faq', items: [{ question: 'Вопрос?', answer: 'Ответ.' }] },
+    ]
+
+    async function submitEdit(initial: ProductCategory) {
+      const onSubmit = vi.fn<(input: AdminCategoryInput) => Promise<void>>(async () => undefined)
+      render(
+        <CategoryForm
+          mode="edit"
+          initialValue={initial}
+          allCategories={[initial]}
+          onSubmit={onSubmit}
+          submitting={false}
+        />,
+      )
+      return onSubmit
+    }
+
+    it('показывает редактор блоков в отдельной секции, поле необязательное', () => {
+      render(
+        <CategoryForm
+          mode="create"
+          allCategories={[]}
+          onSubmit={async () => undefined}
+          submitting={false}
+        />,
+      )
+      expect(screen.getByText('SEO-текст и FAQ')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /добавить блок/i })).toBeInTheDocument()
+    })
+
+    it('категория без текста отправляет seoBlocks: null', async () => {
+      const onSubmit = await submitEdit(cat('a', 'A', null))
+      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0].seoBlocks).toBeNull()
+    })
+
+    it('существующие блоки приходят в редактор и уходят обратно без изменений', async () => {
+      const onSubmit = await submitEdit({ ...cat('a', 'A', null), seoBlocks: blocks })
+      expect(screen.getAllByLabelText('Удалить блок')).toHaveLength(2)
+      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0].seoBlocks).toEqual(blocks)
+    })
+
+    it('добавленный блок попадает в seoBlocks, а удаление всех блоков даёт null', async () => {
+      const onSubmit = await submitEdit({ ...cat('a', 'A', null), seoBlocks: blocks })
+      fireEvent.click(screen.getByRole('button', { name: /добавить блок/i }))
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Вопросы и ответы' }))
+      expect(screen.getAllByLabelText('Удалить блок')).toHaveLength(3)
+      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0].seoBlocks).toHaveLength(3)
+
+      for (let i = 0; i < 3; i++) {
+        fireEvent.click(screen.getAllByLabelText('Удалить блок')[0])
+      }
+      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2))
+      expect(onSubmit.mock.calls[1][0].seoBlocks).toBeNull()
+    })
+  })
+
   it('excludes self and descendants from parent options in edit mode', () => {
     // Tree: r → a → a1; r → b. Editing "a" — options must exclude "a" and "a1".
     const all = [cat('r', 'R', null), cat('a', 'A', 'r'), cat('b', 'B', 'r'), cat('a1', 'A1', 'a')]
