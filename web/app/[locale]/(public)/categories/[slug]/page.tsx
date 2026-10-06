@@ -9,6 +9,7 @@ import { PaginationLJ } from '@/components/ui/PaginationLJ'
 import { PreFooterCta } from '@/components/marketing'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
+import { firstScreenCardLoading } from '@/lib/imageLoading'
 import { breadcrumbJsonLd, itemListJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 import type { SortKey } from '@/components/marketing/CategoryFilterBar'
@@ -211,7 +212,7 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
           ) : density === 'compact' ? (
             // Компактная плотная сетка: 2 колонки на мобиле, до 6 на десктопе.
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-5 gap-y-8">
-              {products.map((p) => (
+              {products.map((p, i) => (
                 <ProductCard
                   key={p.id}
                   product={p}
@@ -219,6 +220,7 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
                   statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
                   images={p.images}
                   density="compact"
+                  imageLoading={firstScreenCardLoading('compact', i)}
                 />
               ))}
             </div>
@@ -238,6 +240,7 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
                       statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
                       images={p.images}
                       featured={isFeatured}
+                      imageLoading={firstScreenCardLoading('kit', i)}
                     />
                   </div>
                 )

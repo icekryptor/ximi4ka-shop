@@ -103,8 +103,13 @@ const EXCLUDED_EXACT = new Set([
   '/blog/rss.xml',
 ])
 
+// Файл подтверждения прав в Яндекс.Вебмастере лежит в корне (`web/public`)
+// и должен отдаваться как есть, без локального префикса.
+const YANDEX_VERIFICATION_FILE_RE = /^\/yandex_[0-9a-f]+\.html$/
+
 function isExcluded(path: string): boolean {
   if (EXCLUDED_EXACT.has(path)) return true
+  if (YANDEX_VERIFICATION_FILE_RE.test(path)) return true
   return EXCLUDED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))
 }
 
@@ -186,7 +191,7 @@ export const config = {
   // (robots/sitemap/yml/turbo/llms). Everything else is public,
   // localizable, and potentially redirect-targeted.
   matcher: [
-    '/((?!_next|api|admin|fonts|img/|uploads|amp|v3-preview-e|v3-preview-d|v3-preview-c|v3-preview-b|v3-preview|favicon\\.ico|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml|blog/rss\\.xml).*)',
+    '/((?!_next|api|admin|fonts|img/|uploads|amp|v3-preview-e|v3-preview-d|v3-preview-c|v3-preview-b|v3-preview|favicon\\.ico|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml|blog/rss\\.xml|yandex_[0-9a-f]+\\.html).*)',
   ],
 }
 

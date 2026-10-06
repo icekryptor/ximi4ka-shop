@@ -5,6 +5,7 @@ import { Chip } from '@/components/ui/Chip'
 import { StatBar } from '@/components/ui/StatBar'
 import { SpecimenCard } from './ui/SpecimenCard'
 import { CompactProductCard } from './catalog/CompactProductCard'
+import { imageLoadingProps, type ImageLoading } from '@/lib/imageLoading'
 
 interface Stats {
   reagents: number
@@ -32,6 +33,10 @@ interface Props {
   // CompactProductCard. Дефолт сохраняет существующее поведение — вызовы на
   // главной по типам не ломаются.
   density?: 'kit' | 'compact'
+  // Как грузить фото: 'lazy' (по умолчанию) — ниже первого экрана; 'eager' —
+  // виден в первом экране; 'priority' — главный кадр страницы (LCP). См.
+  // lib/imageLoading.ts. Вторая картинка (подмена при наведении) всегда ленива.
+  imageLoading?: ImageLoading
 }
 
 export function ProductCard({
@@ -44,11 +49,12 @@ export function ProductCard({
   hoverFormula,
   featured = false,
   density = 'kit',
+  imageLoading = 'lazy',
 }: Props) {
   // Компактная плотность — отдельная клиентская карточка со степпером.
   // Возврат до вычислений «kit»-разметки: у compact своя структура.
   if (density === 'compact') {
-    return <CompactProductCard product={product} images={images} />
+    return <CompactProductCard product={product} images={images} imageLoading={imageLoading} />
   }
 
   // Категорийные карточки пока не имеют реальных стат (TODO Task 4.4) —
@@ -89,6 +95,7 @@ export function ProductCard({
               alt={images[0].alt}
               fill
               sizes={featured ? '(max-width: 768px) 100vw, 66vw' : '(max-width: 768px) 100vw, 33vw'}
+              {...imageLoadingProps(imageLoading)}
               className="object-cover transition-[opacity,transform] duration-500 group-hover/pcard:scale-[1.04] group-hover/pcard:opacity-0"
             />
             {images[1] && (

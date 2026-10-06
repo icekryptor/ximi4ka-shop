@@ -175,6 +175,13 @@ describe('redirect middleware', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('skips locale rewrite for the Yandex.Webmaster verification file in the root', async () => {
+    const res = await middleware(makeRequest('/yandex_376808ffe98ea97c.html'))
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+    expect(res.headers.get('location')).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('still locale-rewrites /blog pages (only the feed is excluded)', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ data: [] }), {
