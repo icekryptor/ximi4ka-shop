@@ -19,15 +19,15 @@ describe('importSeoBlogDrafts', () => {
 
   const repo = () => AppDataSource.getRepository(BlogPost)
 
-  it('создаёт все 10 статей черновиками', async () => {
+  it('создаёт все статьи черновиками', async () => {
     const drafts = await loadSeoBlogDrafts()
     const result = await importSeoBlogDrafts(repo(), drafts, { dryRun: false })
 
-    expect(result.created).toHaveLength(10)
+    expect(result.created).toHaveLength(drafts.length)
     expect(result.skipped).toEqual([])
 
     const posts = await repo().find()
-    expect(posts).toHaveLength(10)
+    expect(posts).toHaveLength(drafts.length)
     for (const post of posts) {
       expect(post.isPublished).toBe(false)
       expect(post.publishedAt).toBeNull()
@@ -63,8 +63,8 @@ describe('importSeoBlogDrafts', () => {
     const second = await importSeoBlogDrafts(repo(), drafts, { dryRun: false })
 
     expect(second.created).toEqual([])
-    expect(second.skipped).toHaveLength(10)
-    expect(await repo().count()).toBe(10)
+    expect(second.skipped).toHaveLength(drafts.length)
+    expect(await repo().count()).toBe(drafts.length)
   })
 
   it('не трогает существующие статьи — ни опубликованные, ни правленные в админке', async () => {
@@ -83,7 +83,7 @@ describe('importSeoBlogDrafts', () => {
 
     const result = await importSeoBlogDrafts(repo(), drafts, { dryRun: false })
 
-    expect(result.created).toHaveLength(9)
+    expect(result.created).toHaveLength(drafts.length - 1)
     expect(result.skipped).toEqual([target.slug])
     const kept = await repo().findOneByOrFail({ slug: target.slug })
     expect(kept.title).toBe('Правка из админки')
@@ -101,7 +101,7 @@ describe('importSeoBlogDrafts', () => {
     const result = await importSeoBlogDrafts(repo(), drafts, { dryRun: false })
 
     expect(result.skipped).toEqual([target.slug])
-    expect(result.created).toHaveLength(9)
+    expect(result.created).toHaveLength(drafts.length - 1)
     const row = await repo().findOneOrFail({ where: { slug: target.slug }, withDeleted: true })
     expect(row.title).toBe('Удалена')
     expect(row.deletedAt).not.toBeNull()
@@ -113,7 +113,7 @@ describe('importSeoBlogDrafts', () => {
 
     const result = await importSeoBlogDrafts(repo(), drafts, { dryRun: true })
 
-    expect(result.created).toHaveLength(9)
+    expect(result.created).toHaveLength(drafts.length - 1)
     expect(result.skipped).toEqual([drafts[0]!.slug])
     expect(await repo().count()).toBe(1)
   })
@@ -145,7 +145,7 @@ describe('importSeoBlogDrafts', () => {
       })
 
       expect(result.authorFilled.sort()).toEqual([drafts[0]!.slug, drafts[1]!.slug].sort())
-      expect(result.created).toHaveLength(8)
+      expect(result.created).toHaveLength(drafts.length - 2)
       for (const d of [drafts[0]!, drafts[1]!]) {
         const row = await repo().findOneByOrFail({ slug: d.slug })
         expect(row.authorName).toBe('Василий Аистов')
@@ -218,7 +218,7 @@ describe('importSeoBlogDrafts', () => {
 
       expect(second.created).toEqual([])
       expect(second.authorFilled).toEqual([])
-      expect(await repo().count()).toBe(10)
+      expect(await repo().count()).toBe(drafts.length)
     })
 
     it('--dry-run сообщает, у кого был бы заполнен автор, но ничего не пишет', async () => {
