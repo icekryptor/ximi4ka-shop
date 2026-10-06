@@ -173,29 +173,35 @@ export default async function BlogPostPage({ params }: Props) {
       {/* Cover + body */}
       <LabSection variant="cream" className="px-6 pb-16">
         <div className="max-w-[var(--max-lj-content)] mx-auto">
-          {post.coverImageUrl && (
-            <div className="relative aspect-[16/9] max-w-4xl mb-12 bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden">
-              <Image
-                src={post.coverImageUrl}
-                alt={title}
-                fill
-                priority
-                sizes="(max-width: 768px) 100vw, 896px"
-                className="object-cover"
-              />
-            </div>
-          )}
-          <BlogToc items={toc} />
-          {blocks.length > 0 ? (
-            <div className="max-w-3xl [&_h2]:scroll-mt-28 [&_h3]:scroll-mt-28">
+          {/* 9 из 12 колонок на lg+, на узких экранах — вся ширина. Абзацы блоков
+              ограничены 60ch в ParagraphBlock; здесь это снимается, иначе
+              колонка шире, а текст остаётся узким. */}
+          <div
+            data-blog-article-column
+            className="w-full lg:w-9/12 [&_[data-block=paragraph]]:max-w-none [&_h2]:scroll-mt-28 [&_h3]:scroll-mt-28"
+          >
+            {post.coverImageUrl && (
+              <div className="relative aspect-[16/9] mb-12 bg-[var(--color-lj-cream-shade)] border border-[var(--color-lj-rule)] overflow-hidden">
+                <Image
+                  src={post.coverImageUrl}
+                  alt={title}
+                  fill
+                  priority
+                  sizes="(max-width: 1024px) 100vw, 1200px"
+                  className="object-cover"
+                />
+              </div>
+            )}
+            <BlogToc items={toc} />
+            {blocks.length > 0 ? (
               <BlockRenderer blocks={blocks} />
-            </div>
-          ) : (
-            <p className="max-w-3xl opacity-60 font-lj-mono uppercase tracking-[0.06em]">
-              Статья пока пуста
-            </p>
-          )}
-          <BlogAuthorBox post={post} />
+            ) : (
+              <p className="opacity-60 font-lj-mono uppercase tracking-[0.06em]">
+                Статья пока пуста
+              </p>
+            )}
+            <BlogAuthorBox post={post} />
+          </div>
         </div>
       </LabSection>
 

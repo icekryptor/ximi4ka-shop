@@ -180,6 +180,32 @@ describe('BlogPostPage', () => {
       expect(img).toHaveAttribute('alt', 'Почему пламя синее')
     })
 
+    it('обложка, оглавление, текст и автор лежат в колонке на 9 из 12 колонок', async () => {
+      vi.mocked(getBlogPostBySlug).mockResolvedValue(
+        makePost({
+          coverImageUrl: '/uploads/blog/flame.jpg',
+          authorName: 'Василий Аистов',
+          blocks: [
+            { type: 'paragraph', html: '<h2>Один</h2><p>Текст.</p>' },
+            { type: 'paragraph', html: '<h2>Два</h2><p>Текст.</p>' },
+            { type: 'paragraph', html: '<h2>Три</h2><p>Текст.</p>' },
+          ],
+        }),
+      )
+
+      const { container } = render(await BlogPostPage(props))
+      const column = container.querySelector('[data-blog-article-column]')
+      expect(column).not.toBeNull()
+      // 9/12 только с lg: на узких экранах колонка занимает всю ширину.
+      expect(column!.className).toContain('lg:w-9/12')
+      // Абзацы блоков внутри колонки не ограничены 60ch.
+      expect(column!.className).toContain('[&_[data-block=paragraph]]:max-w-none')
+      expect(column!.querySelector('img')).not.toBeNull()
+      expect(column!.querySelector('[data-block=paragraph]')).not.toBeNull()
+      expect(column!.querySelector('nav')).not.toBeNull() // оглавление
+      expect(column!.querySelector('section')).not.toBeNull() // «Об авторе»
+    })
+
     it('omits the cover block when there is no cover', async () => {
       vi.mocked(getBlogPostBySlug).mockResolvedValue(makePost())
 
