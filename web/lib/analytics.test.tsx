@@ -8,7 +8,7 @@ vi.mock('next/script', () => ({
   ),
 }))
 
-import { MetrikaScript } from './analytics'
+import { MetrikaScript, VkPixelScript } from './analytics'
 import { reachGoal, setMetrikaCounterId } from './metrika'
 
 afterEach(() => {
@@ -34,5 +34,19 @@ describe('MetrikaScript', () => {
     render(<MetrikaScript counterId="12345" />)
     reachGoal('open_cart')
     expect(ym).toHaveBeenCalledWith('12345', 'reachGoal', 'open_cart')
+  })
+})
+
+describe('VkPixelScript', () => {
+  it('ставит пиксель VK 3799738 и грузит code.js с top-fwz1.mail.ru', () => {
+    const { getByTestId } = render(<VkPixelScript />)
+    const code = getByTestId('vk-pixel').textContent ?? ''
+    expect(code).toContain('_tmr.push({id: "3799738", type: "pageView"')
+    expect(code).toContain('https://top-fwz1.mail.ru/js/code.js')
+  })
+
+  it('экранирует ID через JSON.stringify', () => {
+    const { getByTestId } = render(<VkPixelScript pixelId={'1"});alert(1);//'} />)
+    expect(getByTestId('vk-pixel').textContent).toContain('id: "1\\"});alert(1);//"')
   })
 })

@@ -5,6 +5,7 @@ vi.mock('./fonts', () => ({ fontVariables: '' }))
 vi.mock('@/lib/analytics', () => ({
   MetrikaScript: () => null,
   Ga4Script: () => null,
+  VkPixelScript: () => <i data-vk-pixel />,
 }))
 vi.mock('@/lib/api', () => ({
   getPublicSettings: vi.fn(),
@@ -40,5 +41,10 @@ describe('RootLayout verification tags', () => {
     const html = await renderHtml()
     expect(html).toContain(`content="${MERCHANTS_VERIFICATION}"`)
     expect(html).toContain('<meta name="yandex-verification" content="webmaster-code"/>')
+  })
+
+  it('mounts the VK pixel even when settings are unavailable', async () => {
+    vi.mocked(getPublicSettings).mockRejectedValue(new Error('api down'))
+    expect(await renderHtml()).toContain('data-vk-pixel')
   })
 })
