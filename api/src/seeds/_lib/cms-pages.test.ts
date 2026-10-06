@@ -149,6 +149,39 @@ describe('data/cms-pages.json', () => {
     }
   })
 
+  it('страницы для Яндекс Мерчантов: оплата, доставка, возврат — из текста оферты и FAQ', async () => {
+    const bySlug = new Map((await readCmsPages()).map((p) => [p.slug, p]))
+    const oferta = pageText(bySlug.get('oferta')!)
+
+    for (const slug of ['payment', 'delivery', 'return']) {
+      const page = bySlug.get(slug)
+      expect(page, slug).toBeDefined()
+      expect(page!.noindex, slug).toBe(false)
+      // Текст взят из оферты: фиксируем это ссылкой на источник.
+      expect(page!.sourceUrl, slug).toBe('https://ximi4ka.ru/oferta')
+    }
+
+    const payment = pageText(bySlug.get('payment')!)
+    expect(payment).toContain('в рублях Российской Федерации')
+    expect(payment).toContain('способами, доступными на сайте интернет-магазина')
+    expect(payment).toContain('с момента поступления денежных средств на расчётный счёт Продавца')
+
+    const delivery = pageText(bySlug.get('delivery')!)
+    expect(delivery).toContain('СДЭК')
+    expect(delivery).toContain('Российская Федерация и страны СНГ')
+    expect(delivery).toContain('рассчитываются при оформлении заказа')
+    expect(delivery).toContain('с момента передачи товара службе доставки')
+
+    // Условие о возврате переносится дословно из оферты (раздел 6), без смягчений
+    // и без выдуманных сроков: любые изменения — решение владельца.
+    const returns = pageText(bySlug.get('return')!)
+    expect(oferta).toContain('не подлежат возврату и обмену')
+    expect(returns).toContain('не подлежат возврату и обмену после передачи Покупателю')
+    expect(returns).toContain('Покупатель подтверждает своё согласие с данным условием')
+    expect(returns).toContain('@ximi4ka_support')
+    expect(returns).not.toMatch(/\d+\s*(дн|день|дней|суток)/i)
+  })
+
   it('/success и /fail не заведены как CMS', async () => {
     const slugs = (await readCmsPages()).map((p) => p.slug)
     expect(slugs).not.toContain('success')
