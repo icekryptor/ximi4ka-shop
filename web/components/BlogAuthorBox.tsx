@@ -26,7 +26,7 @@ export function BlogAuthorBox({ post }: Props) {
   return (
     <section
       aria-label="Об авторе"
-      className="mt-14 max-w-3xl border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream-shade)] p-6 md:p-8"
+      className="mt-14 border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream-shade)] p-6 md:p-8"
     >
       <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] opacity-60 mb-4">
         Об авторе

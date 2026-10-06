@@ -14,7 +14,7 @@ export function BlogToc({ items }: Props) {
   return (
     <nav
       aria-label="Содержание"
-      className="max-w-3xl mb-10 border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream-shade)] p-6"
+      className="mb-10 border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream-shade)] p-6"
     >
       <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.08em] opacity-60 mb-3">
         Содержание
