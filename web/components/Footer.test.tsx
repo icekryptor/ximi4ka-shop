@@ -48,6 +48,13 @@ describe('<Footer> v3 colophon', () => {
     expect(screen.getByRole('link', { name: 'сертификаты' })).toHaveAttribute('href', '/cert')
   })
 
+  it('links доставка, оплата, возврат to their CMS pages in the СТРАНИЦЫ row', () => {
+    render(<Footer />)
+    expect(screen.getByRole('link', { name: 'доставка' })).toHaveAttribute('href', '/delivery')
+    expect(screen.getByRole('link', { name: 'оплата' })).toHaveAttribute('href', '/payment')
+    expect(screen.getByRole('link', { name: 'возврат' })).toHaveAttribute('href', '/return')
+  })
+
   it('renders the methane molecule accent (preserved from Stage 5)', () => {
     const { container } = render(<Footer />)
     const svgs = container.querySelectorAll('svg')

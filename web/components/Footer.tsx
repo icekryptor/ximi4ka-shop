@@ -11,9 +11,9 @@ const ROW_SVYAZ: ColophonItem[] = ['telegram', 'whatsapp', 'phone', 'email']
 const ROW_STRANITSY: ColophonItem[] = [
   'каталог',
   'о нас',
-  'доставка',
-  'оплата',
-  'возврат',
+  { label: 'доставка', href: '/delivery' },
+  { label: 'оплата', href: '/payment' },
+  { label: 'возврат', href: '/return' },
   { label: 'отследить заказ', href: '/orders/track' },
   { label: 'оферта', href: '/oferta' },
   { label: 'политика конфиденциальности', href: '/policy' },
