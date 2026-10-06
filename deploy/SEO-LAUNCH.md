@@ -20,13 +20,16 @@
 `DATABASE_URL=… npm run import:… -w api` в контейнере не работают: они для
 ноутбука с репозиторием. На сервере сиды запускаются скомпилированным `node`:
 
-| Сид (npm-скрипт)                    | Команда в контейнере                              | Данные из `/app/api/data/` |
-| ----------------------------------- | ------------------------------------------------- | -------------------------- |
-| `import:cms-pages`                  | `node api/dist/seeds/import-cms-pages.js`         | `cms-pages.json`           |
-| `migrate:tilda-images`              | `node api/dist/scripts/migrate-tilda-images.js`   | не обязательны (см. ниже)  |
-| `import:seo-product-texts`          | `node api/dist/seeds/import-seo-product-texts.js` | `seo-product-texts.json`   |
-| `import:seo-blog-drafts`            | `node api/dist/seeds/import-seo-blog-drafts.js`   | `seo-blog-drafts.json`     |
-| `import:tilda-redirects` (не нужен) | `node api/dist/seeds/import-tilda-redirects.js`   | `tilda-redirects.csv`      |
+| Сид (npm-скрипт)                    | Команда в контейнере                                | Данные из `/app/api/data/` |
+| ----------------------------------- | --------------------------------------------------- | -------------------------- |
+| `import:cms-pages`                  | `node api/dist/seeds/import-cms-pages.js`           | `cms-pages.json`           |
+| `migrate:tilda-images`              | `node api/dist/scripts/migrate-tilda-images.js`     | не обязательны (см. ниже)  |
+| `import:seo-product-texts`          | `node api/dist/seeds/import-seo-product-texts.js`   | `seo-product-texts.json`   |
+| `import:seo-blog-drafts`            | `node api/dist/seeds/import-seo-blog-drafts.js`     | `seo-blog-drafts.json`     |
+| `import:seo-article-refresh`        | `node api/dist/seeds/import-seo-article-refresh.js` | `seo-article-refresh.json` |
+| `import:seo-landings`               | `node api/dist/seeds/import-seo-landings.js`        | `seo-landings.json`        |
+| `import:seo-category-texts`         | `node api/dist/seeds/import-seo-category-texts.js`  | `seo-category-texts.json`  |
+| `import:tilda-redirects` (не нужен) | `node api/dist/seeds/import-tilda-redirects.js`     | `tilda-redirects.csv`      |
 
 Что установлено по коду и проверено запуском:
 
@@ -319,6 +322,123 @@ $P -c "SELECT is_published, count(*) AS posts, count(author_name) AS with_author
 curl -s 'https://new.ximi4ka.ru/api/public/blog?limit=50' | grep -o '"slug":"[^"]*"' | wc -l                                              # 4: черновики публично не видны
 ```
 
+## 5а. Освежение 4 старых статей (`import:seo-article-refresh`)
+
+Правит **уже опубликованные** статьи `khimiya-v-shkole`, `nabory-dlya-opytov-himichka`,
+`podhodyat-li-nabory-dlya-oge`, `himiya-8-klass-programma`: заполняет только
+пустые `metaTitle`, `metaDescription` и автора «Василий Аистов», дописывает в
+конец блоки «Читайте также», сетку товаров и FAQ (3 вопроса; у
+`himiya-8-klass-programma` FAQ уже есть). Текст статей не переписывает,
+заполненное не трогает, повтор ничего не меняет. Записи в файле помечены
+`draft: true`, поэтому нужен флаг `--include-drafts`; запускать **после вычитки**
+(тексты написаны сессией). Обложки у `nabory-dlya-opytov-himichka` нет, её надо
+загрузить в админке.
+
+⚠️ После этого шага **не запускать `import:tilda-articles`**: он пересоздаёт
+`blocks` и `metaDescription` и сотрёт дописанное.
+
+```bash
+# каталог данных мог быть удалён уборкой в конце шага 5: создать заново
+docker exec -u 0 ximishop-api mkdir -p /app/api/data
+
+# 1. снимок полей, которые сид может изменить (откат — раздел 8)
+$P -c "CREATE TABLE blog_posts_refresh_snapshot AS
+SELECT id, slug, meta_title, meta_description, author_name, blocks, updated_at
+FROM blog_posts
+WHERE slug IN ('khimiya-v-shkole','nabory-dlya-opytov-himichka','podhodyat-li-nabory-dlya-oge','himiya-8-klass-programma');"
+$P -c "SELECT slug, meta_title, meta_description, author_name, jsonb_array_length(blocks) AS blocks FROM blog_posts_refresh_snapshot ORDER BY slug;"   # 4 строки; сохранить вывод
+
+# 2. файл данных и dry-run (БД не пишется)
+docker cp api/data/seo-article-refresh.json ximishop-api:/app/api/data/seo-article-refresh.json
+$C exec -T ximishop-api node api/dist/seeds/import-seo-article-refresh.js --dry-run --include-drafts
+
+# 3. боевой запуск (после вычитки)
+$C exec -T ximishop-api node api/dist/seeds/import-seo-article-refresh.js --include-drafts \
+  | tee -a /root/backups/seo-launch.log | tail -n 25
+
+# 4. повтор ничего не меняет: filledArticles 0, untouchedArticles 4
+$C exec -T ximishop-api node api/dist/seeds/import-seo-article-refresh.js --include-drafts | tail -n 1
+```
+
+В dry-run (если админкой ничего не правили) ожидается `would fill` для всех 4 статей. Строки `kept` и `WARNING`
+показывают, что уже заполнено и не будет тронуто; `NOT FOUND` или другой вывод —
+остановиться и прислать его.
+
+После запуска: `/blog/<slug>` отдаёт 200, внизу FAQ, сетка товаров и «Читайте также»,
+в `<head>` новые title и description; в Яндекс.Вебмастере «Переобход страниц» для 4 URL.
+
+**[проверено локально через `tsx`]** (в PR): dry-run, боевой запуск, повтор, снимок и откат. **[не
+проверено]**: запуск скомпилированным `node api/dist/seeds/…` и `docker`-команды.
+
+## 5б. Лендинги (`import:seo-landings`)
+
+Создаёт отсутствующие страницы `opyty-dlya-detej` (хаб), `opyty-dlya-detej-v-nachalnoj-shkole`
+и `khimicheskie-opyty-dlya-detej` **неопубликованными**: на сайте и в sitemap их нет, пока
+владелец не опубликует в админке. Существующие и мягко удалённые страницы не трогаются.
+Записи помечены `draft: true`, нужен `--include-drafts`. Ссылки хаба на статьи блога
+(`eksperimenty-dlya-detej-doma`, `chem-zanyat-rebenka-doma`) дают 404, пока эти статьи не
+опубликованы: публиковать лендинги и статьи вместе.
+
+```bash
+docker exec -u 0 ximishop-api mkdir -p /app/api/data
+docker cp api/data/seo-landings.json ximishop-api:/app/api/data/seo-landings.json
+
+# dry-run: ждём 3 строки would create
+$C exec -T ximishop-api node api/dist/seeds/import-seo-landings.js --dry-run --include-drafts
+# боевой запуск
+$C exec -T ximishop-api node api/dist/seeds/import-seo-landings.js --include-drafts \
+  | tee -a /root/backups/seo-launch.log | tail -n 10
+```
+
+Проверка:
+
+```bash
+$P -c "SELECT slug, is_published FROM pages WHERE slug IN ('opyty-dlya-detej','opyty-dlya-detej-v-nachalnoj-shkole','khimicheskie-opyty-dlya-detej');"   # три строки, is_published = f
+curl -s -o /dev/null -w "%{http_code}\n" https://new.ximi4ka.ru/opyty-dlya-detej   # 404: страница не опубликована, это норма
+```
+
+Дальше в админке: вычитать три страницы, решить вопрос с набором для 1–4 классов (в PR),
+опубликовать. **[проверено локально через `tsx`]** (в PR); `docker` и скомпилированный запуск **[не проверено]**.
+
+## 5в. Тексты категорий (`import:seo-category-texts`): только после мёржа PR #43
+
+Требует миграции `AddProductCategorySeoBlocks1790740000000` (колонка `product_categories.seo_blocks`).
+Каталог — ядро магазина: `deploy.sh` сначала переключает контейнеры и только потом гоняет миграции,
+поэтому упавшая миграция = API категорий и товаров отвечает 500. Колонку добавляют **до мёржа**:
+
+```bash
+# 1. владельцы таблиц (ожидаем только ximishop_user; пустой вывод второго запроса — норма)
+$P -c "SELECT tablename, tableowner FROM pg_tables WHERE schemaname='public' AND tablename IN ('product_categories','migrations');" \
+   -c "SELECT tablename, tableowner FROM pg_tables WHERE schemaname='public' AND tableowner <> 'ximishop_user';"
+# 2. только если владелец другой:
+$P -c 'ALTER TABLE product_categories OWNER TO ximishop_user;'
+# 3. колонка заранее, от superuser, ДО мёржа (идемпотентно, мгновенно)
+$P -c 'ALTER TABLE product_categories ADD COLUMN IF NOT EXISTS seo_blocks jsonb;'
+```
+
+Затем мёрж PR #43 (= деплой; миграция станет no-op и отметится в `migrations`), проверка:
+
+```bash
+$P -c "SELECT name FROM migrations ORDER BY id DESC LIMIT 1;"   # AddProductCategorySeoBlocks1790740000000
+$P -c "SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name='product_categories' AND column_name='seo_blocks';"
+for u in /categories/reagents /categories/kits /api/public/categories "/api/public/products?limit=1"; do
+  echo -n "$u "; curl -s -m 20 -o /dev/null -w "%{http_code}\n" "https://new.ximi4ka.ru$u"; done   # все 200
+```
+
+Импорт текстов (после вычитки; текст появляется на первой странице категории):
+
+```bash
+docker exec -u 0 ximishop-api mkdir -p /app/api/data
+docker cp api/data/seo-category-texts.json ximishop-api:/app/api/data/seo-category-texts.json
+$C exec -T ximishop-api node api/dist/seeds/import-seo-category-texts.js --dry-run --include-drafts | tail -n 6   # 4 would fill, 0 unknown
+$C exec -T ximishop-api node api/dist/seeds/import-seo-category-texts.js --include-drafts \
+  | tee -a /root/backups/seo-launch.log | tail -n 15   # вывод сохранить: по нему делается откат
+```
+
+Сид заполняет только пустые `seo_blocks`, `meta_title`, `meta_description`, остальное не перезаписывает.
+**[проверено локально через `tsx`]** (в PR): миграция up/down, сид, рендер на первой и второй страницах;
+**[не проверено]**: прод-владельцы таблиц `product_categories`, `docker`, скомпилированный запуск.
+
 Уборка после серии (каталог данных в контейнере больше не нужен):
 
 ```bash
@@ -351,7 +471,13 @@ exec`. Второй запрос **[проверено только по син�
 3. **`llms.txt` заполнять не нужно.** Если поле «llms.txt» в настройках пустое
    (так по умолчанию), `/llms.txt` строится сам из каталога, блога и CMS-страниц.
    Заполнять вручную только если нужен собственный текст: он отдаётся как есть.
-4. **Яндекс.Метрика.** В интерфейсе счётчика:
+4. **Освежённые статьи, лендинги и категории (шаги 5а–5в).** Вычитать до запуска сидов; в PR #41
+   перечислено сомнительное в старых статьях: две почти одинаковые статьи
+   (`nabory-dlya-opytov-himichka` и `podhodyat-li-nabory-dlya-oge`) конкурируют за одни запросы, в
+   `himiya-8-klass-programma` потеряны абзацы, в статьях противоречивые цифры и формулировки без
+   подтверждения; у `nabory-dlya-opytov-himichka` нужна обложка. Лендинги публиковать вместе со статьями,
+   на которые они ссылаются.
+5. **Яндекс.Метрика.** В интерфейсе счётчика:
    - Цели → Добавить цель → «JavaScript-событие», идентификаторы ровно такие:
      `add_to_cart`, `open_cart`, `begin_checkout`, `purchase`
      (источник — `METRIKA_GOALS` в `web/lib/metrika.ts`);
@@ -359,7 +485,7 @@ exec`. Второй запрос **[проверено только по син�
      `dataLayer`, валюта RUB (витрина кладёт события в `window.dataLayer`);
    - ID счётчика задаётся в админке (Настройки → «Яндекс.Метрика (ID счётчика)»)
      или через `NEXT_PUBLIC_METRIKA_ID`.
-5. **Директ: не включать оплату за конверсии по цели `purchase`.** Цель
+6. **Директ: не включать оплату за конверсии по цели `purchase`.** Цель
    отправляется из браузера покупателя (по снимку корзины, сохранённому при
    оформлении): заказ без онлайн-оплаты засчитывается сразу после оформления, а
    покупка, страницу которой открыли в другом браузере или устройстве, не
@@ -434,6 +560,9 @@ $C start ximishop-api
 | 4. SEO-тексты товаров   | Вернуть три поля из снимка шага 4: `$P -c "UPDATE products p SET meta_title = b.meta_title, meta_description = b.meta_description, long_description_blocks = b.long_description_blocks FROM seo_rollback_products b WHERE p.id = b.id AND (p.meta_title, p.meta_description, p.long_description_blocks) IS DISTINCT FROM (b.meta_title, b.meta_description, b.long_description_blocks);"` Правки, сделанные в админке после запуска, у этих трёх полей тоже откатятся. Когда снимок не нужен: `$P -c "DROP TABLE seo_rollback_products;"` |
 | 5. Черновики статей     | Удалить созданные неопубликованные: `$P -c "DELETE FROM blog_posts WHERE is_published = false AND slug IN ('dlya-chego-ispolzuetsya-sernaya-kislota','s-chem-reagiruet-sernaya-kislota','gidroksid-natriya-chto-eto','permanganat-kaliya-chto-eto','fenolftalein-chto-eto','s-chem-reagiruet-azotnaya-kislota','azotnaya-kislota-dlya-chego-ispolzuetsya','chashka-petri-chto-eto','chem-zanyat-rebenka-doma','eksperimenty-dlya-detej-doma');"`                                                                                          |
 | 5. Автор у существующих | Только для slug из строк `author set` вывода сида: `$P -c "UPDATE blog_posts SET author_name=NULL, author_job_title=NULL, author_bio=NULL, author_url=NULL, author_photo_url=NULL WHERE slug IN ('<slug>');"`                                                                                                                                                                                                                                                                                                                             |
+| 5а. Освежение статей    | Вернуть поля из снимка шага 5а: `$P -c "UPDATE blog_posts b SET meta_title = s.meta_title, meta_description = s.meta_description, author_name = s.author_name, blocks = s.blocks, updated_at = s.updated_at FROM blog_posts_refresh_snapshot s WHERE s.id = b.id;"`; снимок удалить после проверки: `$P -c "DROP TABLE blog_posts_refresh_snapshot;"`.                                                                                                                                                                                    |
+| 5б. Лендинги            | Удалить созданные неопубликованные — только если по выводу сида их раньше не было: `$P -c "DELETE FROM pages WHERE is_published = false AND slug IN ('opyty-dlya-detej','opyty-dlya-detej-v-nachalnoj-shkole','khimicheskie-opyty-dlya-detej');"` (опубликованные удалять в админке).                                                                                                                                                                                                                                                     |
+| 5в. Тексты категорий    | Старый код колонку игнорирует: откат кода безопасен без правок схемы. Тексты: `$P -c "UPDATE product_categories SET seo_blocks = NULL, meta_title = NULL, meta_description = NULL WHERE slug IN (<slug из вывода импорта, у которых поля были пустыми до него>);"`. Колонку при необходимости снимает от `supabase_admin`: `ALTER TABLE product_categories DROP COLUMN seo_blocks`.                                                                                                                                                       |
 | 6. Админка, Метрика     | Настройки YML очищаются в админке (фид вернётся к «Химичка»); цели и «Электронная коммерция» — в интерфейсе Метрики.                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 7. Апекс                | Вернуть `robots.txt` на `User-agent: *\nDisallow: /` и `NEXT_PUBLIC_SITE_URL` на `https://new.ximi4ka.ru` (см. «Откат» в разделе про индексацию `README.md`).                                                                                                                                                                                                                                                                                                                                                                             |
 
@@ -477,3 +606,14 @@ $C start ximishop-api
 содержимое прод-БД (шаг 0), отдача страниц, ISR-кеш и `<title>` после импорта,
 шаги в админке и кабинетах Метрики, Вебмастера, Search Console, Яндекс Бизнеса
 и Bing, переключение апекса.
+
+### Шаги 5а–5в (добавлены 06.10.2026)
+
+Команды этих шагов взяты из описаний PR #41 (освежение статей), #42 (лендинги) и #43 (тексты
+категорий), где агенты прогоняли сиды локально через `tsx` на одноразовой БД: dry-run, боевой запуск,
+повтор, откат (для 5а), рендер на первой и второй страницах (для 5в). Раскладку рантайм-образа и
+запуск **скомпилированным** `node api/dist/seeds/…` для этих трёх сидов никто не проверял: по коду
+они устроены так же, как сиды шагов 2–5 (путь к данным от `import.meta.url`), но живьём не гонялись.
+Не проверено также: права на каталог `/app/api/data` после `rm -rf` в конце шага 5, прод-владелец
+таблицы `product_categories`, внешний вид страниц. Если вывод не совпадает с ожидаемым в шагах, остановиться и
+прислать его.

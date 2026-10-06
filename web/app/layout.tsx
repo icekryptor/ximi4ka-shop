@@ -40,6 +40,8 @@ export default async function RootLayout({
   return (
     <html lang="ru" className={`${fontVariables} h-full antialiased`}>
       <head>
+        {/* Подтверждение сайта в Яндекс Мерчантах (merchants.yandex.ru). Не зависит от БД. */}
+        <meta name="yandex-verification" content="02c1ec697bf7da58" />
         {settings?.yandexWebmasterVerification ? (
           <meta name="yandex-verification" content={settings.yandexWebmasterVerification} />
         ) : null}

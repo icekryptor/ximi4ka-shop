@@ -7,10 +7,13 @@ import type { Product, ProductImage } from '@ximi4ka-shop/shared'
 import { AddToCartButton } from '@/components/AddToCartButton'
 import { SpecimenCard } from '@/components/ui/SpecimenCard'
 import { QuantityStepper } from './QuantityStepper'
+import { imageLoadingProps, type ImageLoading } from '@/lib/imageLoading'
 
 interface Props {
   product: Product
   images: ProductImage[]
+  /** Как грузить фото: ниже первого экрана — 'lazy' (по умолчанию). См. lib/imageLoading.ts. */
+  imageLoading?: ImageLoading
 }
 
 /**
@@ -25,7 +28,7 @@ interface Props {
  * по ширине самой карточки (@container): в сетке на 6 колонок карточка бывает
  * уже 200px и на десктопе, тогда кнопка уходит под ряд, а не вылезает за край.
  */
-export function CompactProductCard({ product, images }: Props) {
+export function CompactProductCard({ product, images, imageLoading = 'lazy' }: Props) {
   const [qty, setQty] = useState(1)
   const sku = product.sku || product.slug
   const formattedPrice = product.priceRub.toLocaleString('ru-RU').replace(/,/g, ' ')
@@ -46,6 +49,7 @@ export function CompactProductCard({ product, images }: Props) {
               alt={images[0].alt}
               fill
               sizes="(max-width: 640px) 45vw, (max-width: 1280px) 22vw, 16vw"
+              {...imageLoadingProps(imageLoading)}
               className="object-cover transition-transform duration-500 group-hover/compact:scale-[1.04]"
             />
           </div>

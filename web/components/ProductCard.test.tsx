@@ -197,6 +197,76 @@ describe('ProductCard images behavior', () => {
     expect(imgs.length).toBe(2)
   })
 
+  describe('загрузка фото (imageLoading)', () => {
+    const twoImages = [
+      { id: 'i1', productId: 'p1', url: '/a.png', alt: 'a', sortOrder: 0 },
+      { id: 'i2', productId: 'p1', url: '/b.png', alt: 'b', sortOrder: 1 },
+    ]
+
+    it('по умолчанию фото ленивые, без повышенного приоритета', () => {
+      const { container } = render(
+        <ProductCard
+          product={baseProduct}
+          stats={stats}
+          statMaxes={statMaxes}
+          images={twoImages}
+        />,
+      )
+      const imgs = container.querySelectorAll('img')
+      expect(imgs[0]).toHaveAttribute('loading', 'lazy')
+      expect(imgs[0]).not.toHaveAttribute('fetchpriority')
+    })
+
+    it('priority: первое фото без lazy и с fetchpriority="high"', () => {
+      const { container } = render(
+        <ProductCard
+          product={baseProduct}
+          stats={stats}
+          statMaxes={statMaxes}
+          images={twoImages}
+          imageLoading="priority"
+        />,
+      )
+      const imgs = container.querySelectorAll('img')
+      expect(imgs[0]).toHaveAttribute('loading', 'eager')
+      expect(imgs[0]).toHaveAttribute('fetchpriority', 'high')
+      // Второе фото — подмена при наведении, в первом экране не нужна.
+      expect(imgs[1]).toHaveAttribute('loading', 'lazy')
+      expect(imgs[1]).not.toHaveAttribute('fetchpriority')
+    })
+
+    it('eager: фото без lazy, но без fetchpriority', () => {
+      const { container } = render(
+        <ProductCard
+          product={baseProduct}
+          stats={stats}
+          statMaxes={statMaxes}
+          images={twoImages}
+          imageLoading="eager"
+        />,
+      )
+      const img = container.querySelector('img')!
+      expect(img).toHaveAttribute('loading', 'eager')
+      expect(img).not.toHaveAttribute('fetchpriority')
+    })
+
+    it('передаёт imageLoading в компактную карточку', () => {
+      const { container } = render(
+        <ProductCard
+          product={baseProduct}
+          stats={stats}
+          statMaxes={statMaxes}
+          images={twoImages}
+          density="compact"
+          imageLoading="priority"
+        />,
+      )
+      const img = container.querySelector('img')!
+      expect(img).toHaveAttribute('loading', 'eager')
+      expect(img).toHaveAttribute('fetchpriority', 'high')
+    })
+  })
+
   it('delegates to the compact card (stepper + add button) when density="compact"', () => {
     const images = [{ id: 'i1', productId: 'p1', url: '/a.png', alt: 'a', sortOrder: 0 }]
     const { container } = render(
