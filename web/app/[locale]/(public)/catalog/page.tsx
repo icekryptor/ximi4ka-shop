@@ -11,6 +11,7 @@ import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { breadcrumbJsonLd, itemListJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
 import { fetchCatalog, densityForSlug, hasViewToggle } from '@/lib/catalogApi'
+import { firstScreenCardLoading } from '@/lib/imageLoading'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -93,7 +94,7 @@ export default async function CatalogPage({ params }: Props) {
             </p>
           ) : (
             <div className="flex flex-col gap-24">
-              {groups.map((group) => {
+              {groups.map((group, groupIndex) => {
                 const density = densityForSlug(group.category.slug)
                 return (
                   <CatalogGroupSection
@@ -110,7 +111,7 @@ export default async function CatalogPage({ params }: Props) {
                         : undefined
                     }
                   >
-                    {group.products.map((p) => (
+                    {group.products.map((p, i) => (
                       <ProductCard
                         key={p.id}
                         product={p}
@@ -118,6 +119,11 @@ export default async function CatalogPage({ params }: Props) {
                         statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
                         images={p.images}
                         density={density}
+                        // Только первая группа начинается в первом экране —
+                        // остальные ниже, им хватает ленивой загрузки.
+                        imageLoading={
+                          groupIndex === 0 ? firstScreenCardLoading(density, i) : 'lazy'
+                        }
                       />
                     ))}
                   </CatalogGroupSection>

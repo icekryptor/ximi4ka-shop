@@ -86,6 +86,31 @@ describe('CompactProductCard', () => {
     expect(group).not.toContainElement(within(container).getByText('290'))
   })
 
+  it('фото по умолчанию ленивое', () => {
+    const { container } = render(<CompactProductCard product={base} images={images} />)
+    const img = container.querySelector('img')!
+    expect(img).toHaveAttribute('loading', 'lazy')
+    expect(img).not.toHaveAttribute('fetchpriority')
+  })
+
+  it('imageLoading="priority": фото без lazy и с fetchpriority="high"', () => {
+    const { container } = render(
+      <CompactProductCard product={base} images={images} imageLoading="priority" />,
+    )
+    const img = container.querySelector('img')!
+    expect(img).toHaveAttribute('loading', 'eager')
+    expect(img).toHaveAttribute('fetchpriority', 'high')
+  })
+
+  it('imageLoading="eager": фото без lazy и без fetchpriority', () => {
+    const { container } = render(
+      <CompactProductCard product={base} images={images} imageLoading="eager" />,
+    )
+    const img = container.querySelector('img')!
+    expect(img).toHaveAttribute('loading', 'eager')
+    expect(img).not.toHaveAttribute('fetchpriority')
+  })
+
   it('renders a SpecimenCard placeholder when no images are provided', () => {
     const { container } = render(<CompactProductCard product={base} images={[]} />)
     expect(within(container).getByText('ОБРАЗЕЦ № R-11')).toBeInTheDocument()
