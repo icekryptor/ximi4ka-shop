@@ -85,16 +85,16 @@ $P \
 Что ожидаем увидеть и что из этого уже известно без доступа к серверу
 (публичные запросы к `new.ximi4ka.ru` на 04.10.2026):
 
-| Проверка                              | Ожидание перед запуском                                                                                                                          |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `redirects`                           | 84 и больше. Карта уже на проде: все 84 `from_path` из `tilda-redirects.csv` отвечают 301 на нужный `to_path`; `import:tilda-redirects` не нужен |
-| `pages`                               | нет `policy`, `oferta`, `collab`, `cert`, `faq` (сейчас их URL отдают 404); если какая-то есть, сид её пропустит, не перезапишет                 |
-| `author_*` в `blog_posts`             | 5 строк (`author_bio`, `author_job_title`, `author_name`, `author_photo_url`, `author_url`); публичный API блога уже отдаёт `authorName`         |
-| `blog_posts`                          | 4 опубликованные статьи; есть ли среди них slug из `seo-blog-drafts.json` — покажет запрос                                                       |
-| `tilda_product_images`                | около 70 (в `yml.xml` сейчас 70 ссылок на tildacdn)                                                                                              |
-| `empty_meta_*`, `no_long_description` | 37 / 62 / 32 из 62 товаров (по публичному API; все 62 slug из `seo-product-texts.json` в каталоге есть, неизвестных не будет)                    |
-| `yml_shop_name`, `yml_company`        | пусто: фид подставляет «Химичка» для обоих полей                                                                                                 |
-| `migrations`                          | последняя — `AddBlogPostAuthor1790730000000`                                                                                                     |
+| Проверка                              | Ожидание перед запуском                                                                                                                                           |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `redirects`                           | 84 и больше. Карта уже на проде: все 84 `from_path` из `tilda-redirects.csv` отвечают 301 на нужный `to_path`; `import:tilda-redirects` не нужен                  |
+| `pages`                               | нет `policy`, `oferta`, `collab`, `cert`, `faq`, `payment`, `delivery`, `return` (сейчас их URL отдают 404); если какая-то есть, сид её пропустит, не перезапишет |
+| `author_*` в `blog_posts`             | 5 строк (`author_bio`, `author_job_title`, `author_name`, `author_photo_url`, `author_url`); публичный API блога уже отдаёт `authorName`                          |
+| `blog_posts`                          | 4 опубликованные статьи; есть ли среди них slug из `seo-blog-drafts.json` — покажет запрос                                                                        |
+| `tilda_product_images`                | около 70 (в `yml.xml` сейчас 70 ссылок на tildacdn)                                                                                                               |
+| `empty_meta_*`, `no_long_description` | 37 / 62 / 32 из 62 товаров (по публичному API; все 62 slug из `seo-product-texts.json` в каталоге есть, неизвестных не будет)                                     |
+| `yml_shop_name`, `yml_company`        | пусто: фид подставляет «Химичка» для обоих полей                                                                                                                  |
+| `migrations`                          | последняя — `AddBlogPostAuthor1790730000000`                                                                                                                      |
 
 Если `redirects` вдруг меньше 84 (чего по публичной проверке быть не должно) —
 карта доливается тем же способом, что и остальные сиды, файл
@@ -130,8 +130,8 @@ docker exec -i supabase-db pg_restore --list < /root/backups/ximi4ka_shop.before
 
 ## 2. CMS-страницы (`import:cms-pages`)
 
-Создаёт 11 страниц из `cms-pages.json`: `policy`, `oferta`, `collab`, `cert`,
-`faq` и шесть служебных (`get_materials`, `xim3_inst`, `mx_inst`, `electroxim`,
+Создаёт 14 страниц из `cms-pages.json`: `policy`, `oferta`, `collab`, `cert`,
+`faq`, три страницы для Яндекс Мерчантов (`payment`, `delivery`, `return`) и шесть служебных (`get_materials`, `xim3_inst`, `mx_inst`, `electroxim`,
 `zhuk`, `socials`, они `noindex`). Создаются только отсутствующие по slug;
 существующие, в том числе мягко удалённые, не трогаются. Страницы публикуются
 сразу (`is_published = true`). Картинки в них остаются ссылками на tildacdn —
@@ -147,26 +147,26 @@ $C exec -T ximishop-api node api/dist/seeds/import-cms-pages.js --dry-run
 $C exec -T ximishop-api node api/dist/seeds/import-cms-pages.js | tee -a /root/backups/seo-launch.log
 ```
 
-Сам сид **[проверено локально]**. Dry-run печатает 11 строк вида
+Сам сид **[проверено локально]**. Dry-run печатает 14 строк вида
 `/policy [paragraph:95]` и `Dry-run complete — no DB writes.`; боевой запуск
-заканчивается строкой `"created":11,"skipped":0,"total":11` (повтор:
-`"created":0,"skipped":11`). Без `cms-pages.json` падает с
+заканчивается строкой `"created":14,"skipped":0,"total":14` (повтор:
+`"created":0,"skipped":14`). Без `cms-pages.json` падает с
 `ENOENT: … /app/api/data/cms-pages.json`. Команды `mkdir`/`docker cp` —
 **[не проверено на сервере]**.
 
 Проверка (кеш витрины до минуты, если сразу 404 — повторить):
 
 ```bash
-for p in policy oferta collab cert faq; do
+for p in policy oferta collab cert faq payment delivery return; do
   printf '/%s -> ' "$p"; curl -s -o /dev/null -w '%{http_code}\n' "https://new.ximi4ka.ru/$p"
 done
 curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://new.ximi4ka.ru/policy2   # 301 https://new.ximi4ka.ru/policy
 ```
 
-Ожидаем пять `200` и `301 https://new.ximi4ka.ru/policy`. Редирект `/policy2`
+Ожидаем восемь `200` и `301 https://new.ximi4ka.ru/policy`. Редирект `/policy2`
 уже работает сейчас (проверено на публичном сайте), а вот `/policy`, `/oferta`,
 `/collab` пока отвечают 404; страницы отдаёт API по `/api/public/pages/<slug>`
-(локально все пять — 200). Ответ витрины (`200`) у `/cert`, `/faq` и у шести
+(локально все пять — 200; `payment`, `delivery`, `return` проверены только тестом данных, через API не гонялись). Ответ витрины (`200`) у `/cert`, `/faq`, трёх новых и у шести
 служебных страниц, а также скорость обновления кеша — **[не проверено на
 сервере]**.
 
@@ -555,7 +555,7 @@ $C start ximishop-api
 
 | Шаг                     | Что восстанавливается и чем                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2. CMS-страницы         | Удалить созданные страницы — только если по шагу 0 их до импорта не было (список созданных — в выводе сида): `$P -c "DELETE FROM pages WHERE slug IN ('policy','oferta','collab','cert','faq','get_materials','xim3_inst','mx_inst','electroxim','zhuk','socials');"`. Не удалять мягко: сид пропускает и мягко удалённые страницы, повторный импорт их не вернёт.                                                                                                                                                                        |
+| 2. CMS-страницы         | Удалить созданные страницы — только если по шагу 0 их до импорта не было (список созданных — в выводе сида): `$P -c "DELETE FROM pages WHERE slug IN ('policy','oferta','collab','cert','faq','payment','delivery','return','get_materials','xim3_inst','mx_inst','electroxim','zhuk','socials');"`. Не удалять мягко: сид пропускает и мягко удалённые страницы, повторный импорт их не вернёт.                                                                                                                                          |
 | 3. Картинки             | Только из дампа (`before-tilda-images`, команды в разделе про картинки `README.md`). Скачанные файлы в томе безвредны и ничего не ломают, ссылки на Tilda живы, пока жива подписка.                                                                                                                                                                                                                                                                                                                                                       |
 | 4. SEO-тексты товаров   | Вернуть три поля из снимка шага 4: `$P -c "UPDATE products p SET meta_title = b.meta_title, meta_description = b.meta_description, long_description_blocks = b.long_description_blocks FROM seo_rollback_products b WHERE p.id = b.id AND (p.meta_title, p.meta_description, p.long_description_blocks) IS DISTINCT FROM (b.meta_title, b.meta_description, b.long_description_blocks);"` Правки, сделанные в админке после запуска, у этих трёх полей тоже откатятся. Когда снимок не нужен: `$P -c "DROP TABLE seo_rollback_products;"` |
 | 5. Черновики статей     | Удалить созданные неопубликованные: `$P -c "DELETE FROM blog_posts WHERE is_published = false AND slug IN ('dlya-chego-ispolzuetsya-sernaya-kislota','s-chem-reagiruet-sernaya-kislota','gidroksid-natriya-chto-eto','permanganat-kaliya-chto-eto','fenolftalein-chto-eto','s-chem-reagiruet-azotnaya-kislota','azotnaya-kislota-dlya-chego-ispolzuetsya','chashka-petri-chto-eto','chem-zanyat-rebenka-doma','eksperimenty-dlya-detej-doma');"`                                                                                          |
