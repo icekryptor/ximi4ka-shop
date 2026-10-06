@@ -10,6 +10,7 @@ import {
   type CategoryTreeNode,
 } from '@/lib/categoryTree'
 import { LanguageTabs, countFilled } from './LanguageTabs'
+import { BlockEditor } from './block-editor/BlockEditor'
 import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n'
 
 const EN_TRACKED_FIELDS = ['name', 'metaTitle', 'metaDescription'] as const
@@ -42,6 +43,8 @@ export function CategoryForm({
   const [sortOrder, setSortOrder] = useState<number>(initialValue?.sortOrder ?? 0)
   const [metaTitle, setMetaTitle] = useState(initialValue?.metaTitle ?? '')
   const [metaDescription, setMetaDescription] = useState(initialValue?.metaDescription ?? '')
+  // SEO-текст и FAQ под сеткой товаров; необязательны (нет блоков — нет текста).
+  const [seoBlocks, setSeoBlocks] = useState<unknown[]>(() => initialValue?.seoBlocks ?? [])
   // i18n — see ProductForm for rationale.
   const [activeLocale, setActiveLocale] = useState<Locale>(DEFAULT_LOCALE)
   const initialEn = (initialValue?.translations as { en?: Record<string, unknown> } | undefined)?.en
@@ -93,6 +96,7 @@ export function CategoryForm({
       sortOrder: Math.trunc(sortOrder),
       metaTitle: metaTitle.trim() || null,
       metaDescription: metaDescription.trim() || null,
+      seoBlocks: seoBlocks.length > 0 ? seoBlocks : null,
     }
 
     // EN translation block, only when at least one field is filled.
@@ -257,6 +261,14 @@ export function CategoryForm({
             </Field>
           </>
         )}
+      </Section>
+
+      <Section title="SEO-текст и FAQ">
+        <p className="text-sm text-brand-text-secondary">
+          Необязательно. Выводится под сеткой товаров, только на первой странице категории. Блок
+          «Вопросы и ответы» даёт разметку FAQPage.
+        </p>
+        <BlockEditor value={seoBlocks} onChange={(b) => setSeoBlocks(b)} />
       </Section>
 
       {formError || (error && !slugConflictError) ? (

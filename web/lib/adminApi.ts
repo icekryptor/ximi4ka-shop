@@ -179,6 +179,7 @@ export interface AdminCategoryInput {
   metaTitle?: string | null
   metaDescription?: string | null
   sortOrder?: number
+  seoBlocks?: unknown[] | null
   translations?: Record<string, unknown>
 }
 
