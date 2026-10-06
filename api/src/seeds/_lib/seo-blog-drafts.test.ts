@@ -1,4 +1,5 @@
-// Контракт данных api/data/seo-blog-drafts.json: 10 черновиков SEO-статей.
+// Контракт данных api/data/seo-blog-drafts.json: 15 черновиков SEO-статей
+// (10 спринта + 5 по листам «Инф» и «Ком» СЯ: 3 информационные, 2 коммерческие).
 // Тесты фиксируют требования плана и редакционные запреты (обещания «без
 // присмотра», «лучшая цена», штампы), чтобы правка текста их не сломала.
 import { readFile } from 'node:fs/promises'
@@ -11,6 +12,10 @@ import { loadSeoBlogDrafts, type SeoBlogDraft } from './seo-blog-drafts.js'
 const DATA_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../data')
 
 const KNOWN_RUBRICS = ['Химия школьнику', 'Наборы для опытов']
+
+// Чисто теоретические статьи без реактивов и опытов: раздел «Безопасность» им
+// не нужен (правило 6.3 WORKFLOW — только для статей про реактивы).
+const NO_SAFETY_SECTION = ['kak-opredelit-valentnost-po-tablice-mendeleeva']
 
 const FORBIDDEN_PHRASES = [
   'безопасно для детей без присмотра',
@@ -57,11 +62,11 @@ function h2Titles(draft: SeoBlogDraft): string[] {
 }
 
 describe('data/seo-blog-drafts.json', () => {
-  it('содержит ровно 10 статей с уникальными slug', async () => {
+  it('содержит ровно 15 статей с уникальными slug', async () => {
     const drafts = await loadSeoBlogDrafts()
-    expect(drafts).toHaveLength(10)
+    expect(drafts).toHaveLength(15)
     const slugs = drafts.map((d) => d.slug)
-    expect(new Set(slugs).size).toBe(10)
+    expect(new Set(slugs).size).toBe(15)
     for (const slug of slugs) {
       expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
       expect(slug.length).toBeLessThanOrEqual(60)
@@ -79,7 +84,7 @@ describe('data/seo-blog-drafts.json', () => {
 
   it('автор у всех статей — «Василий Аистов», остальные поля автора пусты', async () => {
     const raw = JSON.parse(await readFile(path.join(DATA_DIR, 'seo-blog-drafts.json'), 'utf-8'))
-    expect(raw).toHaveLength(10)
+    expect(raw).toHaveLength(15)
     for (const entry of raw as Record<string, unknown>[]) {
       expect(entry.authorName, `authorName ${entry.slug}`).toBe('Василий Аистов')
       // Должность, био, ссылка и фото не заданы — их не придумываем.
@@ -169,25 +174,34 @@ describe('data/seo-blog-drafts.json', () => {
     }
   })
 
-  it('ссылки внутри текста ведут только на существующие товары', async () => {
+  it('ссылки внутри текста ведут только на существующие товары и статьи блога', async () => {
     const catalog = JSON.parse(
       await readFile(path.join(DATA_DIR, 'tilda-catalog.json'), 'utf-8'),
     ) as { slug: string }[]
     const catalogSlugs = new Set(catalog.map((p) => p.slug))
-    for (const d of await loadSeoBlogDrafts()) {
+    const old = JSON.parse(await readFile(path.join(DATA_DIR, 'tilda-articles.json'), 'utf-8')) as {
+      slug: string
+    }[]
+    const drafts = await loadSeoBlogDrafts()
+    const postSlugs = new Set([...old.map((a) => a.slug), ...drafts.map((d) => d.slug)])
+    for (const d of drafts) {
       for (const block of d.blocks) {
         if (block.type !== 'paragraph') continue
         for (const m of block.html.matchAll(/href="([^"]*)"/g)) {
           const href = m[1]!
-          expect(href, `${d.slug}: ссылка ${href}`).toMatch(/^\/product\/[a-z0-9-]+$/)
-          expect(catalogSlugs.has(href.replace('/product/', ''))).toBe(true)
+          expect(href, `${d.slug}: ссылка ${href}`).toMatch(/^\/(product|blog)\/[a-z0-9-]+$/)
+          const [, kind, slug] = href.split('/')
+          const known = kind === 'product' ? catalogSlugs : postSlugs
+          expect(known.has(slug!), `${d.slug}: нет страницы ${href}`).toBe(true)
+          expect(slug, `${d.slug}: ссылка на себя`).not.toBe(d.slug)
         }
       }
     }
   })
 
-  it('есть раздел «Безопасность»', async () => {
+  it('есть раздел «Безопасность» (кроме чисто теоретических статей)', async () => {
     for (const d of await loadSeoBlogDrafts()) {
+      if (NO_SAFETY_SECTION.includes(d.slug)) continue
       expect(
         h2Titles(d).some((t) => /безопасност/i.test(t)),
         `раздел безопасности в ${d.slug}`,
@@ -204,6 +218,31 @@ describe('data/seo-blog-drafts.json', () => {
         expect(text, `«${phrase}» в ${d.slug}`).not.toContain(phrase)
       }
       expect(text, `цена в ${d.slug}`).not.toMatch(/\d\s*(₽|руб)/)
+    }
+  })
+  it('новые статьи по СЯ: 3 информационные («Химия школьнику») и 2 коммерческие («Наборы для опытов»)', async () => {
+    const bySlug = new Map((await loadSeoBlogDrafts()).map((d) => [d.slug, d]))
+    const info = [
+      'kak-opredelit-valentnost-po-tablice-mendeleeva',
+      'tablica-mendeleeva-chto-eto-kak-chitat-i-uchit',
+      'sernaya-kislota-kak-vyglyadit-i-chem-opasna',
+    ]
+    const commercial = ['pipetka-pastera-kak-vybrat', 'himicheskie-reaktivy-dlya-shkoly-kak-vybrat']
+    for (const slug of info) expect(bySlug.get(slug)?.rubric, slug).toBe('Химия школьнику')
+    for (const slug of commercial) expect(bySlug.get(slug)?.rubric, slug).toBe('Наборы для опытов')
+  })
+
+  it('коммерческие статьи ведут на карточки и наборы (в сетке не меньше двух товаров)', async () => {
+    const bySlug = new Map((await loadSeoBlogDrafts()).map((d) => [d.slug, d]))
+    for (const slug of [
+      'pipetka-pastera-kak-vybrat',
+      'himicheskie-reaktivy-dlya-shkoly-kak-vybrat',
+    ]) {
+      const grid = bySlug.get(slug)!.blocks.find((b) => b.type === 'product_grid')
+      expect(
+        grid && grid.type === 'product_grid' ? grid.productSlugs.length : 0,
+        slug,
+      ).toBeGreaterThanOrEqual(2)
     }
   })
 })

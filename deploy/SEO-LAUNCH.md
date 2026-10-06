@@ -285,7 +285,7 @@ curl -s https://new.ximi4ka.ru/product/himichka-30 | grep -o '<meta name="descri
 
 ## 5. Черновики статей (`import:seo-blog-drafts`)
 
-Создаёт отсутствующие по slug статьи из `seo-blog-drafts.json` (10 штук)
+Создаёт отсутствующие по slug статьи из `seo-blog-drafts.json` (15 штук: 10 спринта и 5 по семантическому ядру)
 **неопубликованными** (`is_published = false`, `published_at = NULL`): их видно
 только в админке, на сайте и в sitemap они не появятся. Существующие статьи не
 трогаются. Автор «Василий Аистов» записывается в новые статьи сразу. Если
@@ -307,18 +307,18 @@ $C exec -T ximishop-api node api/dist/seeds/import-seo-blog-drafts.js --set-auth
   | tee -a /root/backups/seo-launch.log | tail -n 20
 ```
 
-**[проверено локально]**: dry-run — 10 строк `would create  /blog/<slug>` и
+**[проверено локально на первых 10 статьях; для 15 число в выводе — 15, логика не менялась, тест сида не зависит от числа статей]**: dry-run — 10 строк `would create  /blog/<slug>` и
 `"created":10,"skipped":0,"authorFilled":0,"dryRun":true`; боевой —
 `"created":10`; повтор — `"created":0,"skipped":10`. Сценарий «черновики есть,
 автор пуст» (у двух статей обнулён `author_name`): dry-run и боевой запуск с
 флагом печатают `would set author` / `author set` для этих двух и
 `"authorFilled":2`. После запуска в БД 10 новых статей с `is_published = f` и
-автором «Василий Аистов», 4 прежние опубликованные не тронуты.
+автором «Василий Аистов» (в файле сейчас 15), 4 прежние опубликованные не тронуты.
 
 Проверка:
 
 ```bash
-$P -c "SELECT is_published, count(*) AS posts, count(author_name) AS with_author FROM blog_posts WHERE deleted_at IS NULL GROUP BY 1;"   # f: 10/10, t: 4/0 (авторов у старых нет — норма)
+$P -c "SELECT is_published, count(*) AS posts, count(author_name) AS with_author FROM blog_posts WHERE deleted_at IS NULL GROUP BY 1;"   # f: 15/15, t: 4/0 (авторов у старых нет — норма)
 curl -s 'https://new.ximi4ka.ru/api/public/blog?limit=50' | grep -o '"slug":"[^"]*"' | wc -l                                              # 4: черновики публично не видны
 ```
 
@@ -459,7 +459,7 @@ exec`. Второй запрос **[проверено только по син�
      правки — в админке, повторный сид их не перезапишет;
    - CMS-страницы `policy` и `oferta` — юридические тексты, перенесённые с Tilda:
      сверить реквизиты, контакты и актуальность; страницы уже опубликованы;
-   - 10 статей-черновиков: прочитать, поправить и опубликовать вручную в админке
+   - 15 статей-черновиков: прочитать, поправить и опубликовать вручную в админке
      (сид ничего не публикует). Автор в них — «Василий Аистов»; должность, био,
      фото и ссылку на автора в данные не вписаны, их при желании заполнить в
      админке (E-E-A-T).
