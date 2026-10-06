@@ -45,7 +45,7 @@ describe('redirect middleware', () => {
   })
 
   it('skips /fonts/* without locale-rewriting (so /fonts/foo.woff2 hits the static handler)', async () => {
-    const res = await middleware(makeRequest('/fonts/MazzardH-ExtraBold.woff2'))
+    const res = await middleware(makeRequest('/fonts/MazzardH-Regular.woff2'))
     expect(res.headers.get('x-middleware-rewrite')).toBeNull()
     expect(res.headers.get('location')).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
