@@ -57,3 +57,36 @@ export function Ga4Script({ measurementId }: { measurementId: string }) {
     </>
   )
 }
+
+// Пиксель VK (Top.Mail.Ru) для ретаргетинга и конверсий в VK Рекламе. ID — не
+// секрет и не меняется между окружениями, поэтому зашит в код, как и тег
+// Яндекс Мерчантов в layout.tsx: пиксель работает, даже если API настроек лежит.
+export const VK_PIXEL_ID = '3799738'
+
+export function VkPixelScript({ pixelId = VK_PIXEL_ID }: { pixelId?: string }) {
+  return (
+    <>
+      <Script id="vk-pixel" strategy="afterInteractive">{`
+        var _tmr = window._tmr || (window._tmr = []);
+        _tmr.push({id: ${JSON.stringify(pixelId)}, type: "pageView", start: (new Date()).getTime()});
+        (function (d, w, id) {
+          if (d.getElementById(id)) return;
+          var ts = d.createElement("script"); ts.type = "text/javascript"; ts.async = true; ts.id = id;
+          ts.src = "https://top-fwz1.mail.ru/js/code.js";
+          var f = function () {var s = d.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ts, s);};
+          if (w.opera == "[object Opera]") { d.addEventListener("DOMContentLoaded", f, false); } else { f(); }
+        })(document, window, "tmr-code");
+      `}</Script>
+      <noscript>
+        <div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- tracking pixel must be a plain img; next/image adds unwanted optimization pipeline. */}
+          <img
+            src={`https://top-fwz1.mail.ru/counter?id=${encodeURIComponent(pixelId)};js=na`}
+            style={{ position: 'absolute', left: '-9999px' }}
+            alt="Top.Mail.Ru"
+          />
+        </div>
+      </noscript>
+    </>
+  )
+}
