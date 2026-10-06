@@ -28,6 +28,9 @@ export const CreateProductSchema = z.object({
   shipBoxes: z.array(ShippingBoxSchema).max(10).optional(),
   looseUnits: z.number().int().min(1).max(500).optional(),
   minBox: ShippingBoxSchema.nullable().optional(),
+  // Полный список категорий товара: на PATCH отсутствие поля оставляет связи
+  // как есть, пустой массив — снимает все.
+  categoryIds: z.array(z.string().uuid()).max(50).optional(),
 })
 
 export const UpdateProductSchema = CreateProductSchema.partial()

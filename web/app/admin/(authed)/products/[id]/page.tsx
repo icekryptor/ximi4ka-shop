@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import type { Product } from '@ximi4ka-shop/shared'
+import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
+import type { Paginated } from '@/lib/api'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import { ProductEditClient } from './ProductEditClient'
 
@@ -18,9 +19,23 @@ async function fetchProduct(id: string): Promise<Product | null> {
   return body.data
 }
 
+async function fetchAllCategories(): Promise<ProductCategory[]> {
+  const store = await cookies()
+  const cookieHeader = store.toString()
+  const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/categories?limit=200`, {
+    headers: { cookie: cookieHeader },
+    cache: 'no-store',
+  })
+  // Список категорий — удобство формы, а не её основа: при сбое товар остаётся
+  // редактируемым (его категории форма при этом сохраняет как есть).
+  if (!res.ok) return []
+  const body = (await res.json()) as Paginated<ProductCategory>
+  return body.data
+}
+
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const product = await fetchProduct(id)
+  const [product, allCategories] = await Promise.all([fetchProduct(id), fetchAllCategories()])
   if (!product) notFound()
 
   return (
@@ -31,7 +46,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           ← К списку
         </Link>
       </div>
-      <ProductEditClient initial={product} />
+      <ProductEditClient initial={product} allCategories={allCategories} />
     </div>
   )
 }

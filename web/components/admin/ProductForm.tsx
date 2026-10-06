@@ -1,21 +1,42 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { Product, StockStatus } from '@ximi4ka-shop/shared'
+import type { Product, ProductCategory, ShippingBox, StockStatus } from '@ximi4ka-shop/shared'
 import { ImageUploadField, MultiImageUploadField } from './ImageUploadField'
 import { BlockEditor } from './block-editor/BlockEditor'
 import { ApiError, type AdminProductInput } from '@/lib/adminApi'
 import { LanguageTabs, countFilled } from './LanguageTabs'
 import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n'
+import { buildCategoryTree, flattenTree } from '@/lib/categoryTree'
 
 // Which fields we consider for EN completeness. We keep the list
 // small on purpose — admins translate top-of-funnel SEO copy first;
 // long blocks can come later without blocking launch.
 const EN_TRACKED_FIELDS = ['name', 'metaTitle', 'metaDescription'] as const
 
+// Коробки в том порядке, в каком они уходят в shipBoxes. Лимиты совпадают
+// с CreateProductSchema (api/src/routes/admin/products.schemas.ts).
+const BOX_FIELDS: { box: ShippingBox; id: string; label: string }[] = [
+  { box: 'small', id: 'box-small', label: 'Малая коробка, шт' },
+  { box: 'medium', id: 'box-medium', label: 'Средняя коробка, шт' },
+  { box: 'elektro', id: 'box-elektro', label: 'Коробка Электро, шт' },
+  { box: 'large', id: 'box-large', label: 'Большая коробка, шт' },
+]
+const MAX_BOXES = 10
+const MAX_WEIGHT_G = 50_000
+const MAX_LOOSE_UNITS = 500
+
+function countBoxes(boxes: ShippingBox[] | undefined): Record<ShippingBox, number> {
+  const counts: Record<ShippingBox, number> = { small: 0, medium: 0, elektro: 0, large: 0 }
+  for (const b of boxes ?? []) counts[b] += 1
+  return counts
+}
+
 interface Props {
   mode: 'create' | 'edit'
   initialValue?: Product
+  // Все категории магазина — для выбора категорий товара.
+  allCategories?: ProductCategory[]
   onSubmit: (input: AdminProductInput) => Promise<void>
   submitting: boolean
   error?: ApiError | null
@@ -30,7 +51,14 @@ interface ImageItem {
 
 // Controlled create/edit form. Groups inputs by section; keeps local state
 // only (the parent decides how to submit).
-export function ProductForm({ mode, initialValue, onSubmit, submitting, error }: Props) {
+export function ProductForm({
+  mode,
+  initialValue,
+  allCategories = [],
+  onSubmit,
+  submitting,
+  error,
+}: Props) {
   const [slug, setSlug] = useState(initialValue?.slug ?? '')
   const [name, setName] = useState(initialValue?.name ?? '')
   const [sku, setSku] = useState(initialValue?.sku ?? '')
@@ -43,6 +71,19 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
   const [shortDescription, setShortDescription] = useState(initialValue?.shortDescription ?? '')
   const [longDescriptionBlocks, setLongDescriptionBlocks] = useState<unknown[]>(
     () => initialValue?.longDescriptionBlocks ?? [],
+  )
+
+  // Категории и доставка
+  const [categoryIds, setCategoryIds] = useState<string[]>(initialValue?.categoryIds ?? [])
+  const [weightG, setWeightG] = useState<number | ''>(initialValue?.weightG ?? '')
+  const [boxCounts, setBoxCounts] = useState<Record<ShippingBox, number>>(() =>
+    countBoxes(initialValue?.shipBoxes),
+  )
+  const [looseUnits, setLooseUnits] = useState<number>(initialValue?.looseUnits ?? 1)
+  const [minBox, setMinBox] = useState<ShippingBox | ''>(initialValue?.minBox ?? '')
+  const categoryOptions = useMemo(
+    () => flattenTree(buildCategoryTree(allCategories)),
+    [allCategories],
   )
 
   // SEO
@@ -99,6 +140,33 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
       return
     }
 
+    if (weightG !== '' && (!Number.isInteger(weightG) || weightG < 1 || weightG > MAX_WEIGHT_G)) {
+      setFormError(`Вес — целое число граммов от 1 до ${MAX_WEIGHT_G}.`)
+      return
+    }
+    if (!Number.isInteger(looseUnits) || looseUnits < 1 || looseUnits > MAX_LOOSE_UNITS) {
+      setFormError(`«Предметов мелочи» — целое число от 1 до ${MAX_LOOSE_UNITS}.`)
+      return
+    }
+    const boxValues = BOX_FIELDS.map(({ box }) => boxCounts[box])
+    if (boxValues.some((n) => !Number.isInteger(n) || n < 0)) {
+      setFormError('Число коробок — целое неотрицательное.')
+      return
+    }
+    if (boxValues.reduce((a, b) => a + b, 0) > MAX_BOXES) {
+      setFormError(`Коробок у одного товара не больше ${MAX_BOXES}.`)
+      return
+    }
+
+    // Порядок коробок в shipBoxes задаёт, в какое место едет товар (pack.ts),
+    // поэтому, если счётчики не менялись, отдаём исходный список как есть.
+    const initialBoxes = initialValue?.shipBoxes ?? []
+    const initialCounts = countBoxes(initialBoxes)
+    const boxesUnchanged = BOX_FIELDS.every(({ box }) => initialCounts[box] === boxCounts[box])
+    const nextShipBoxes = boxesUnchanged
+      ? initialBoxes
+      : BOX_FIELDS.flatMap(({ box }) => Array<ShippingBox>(boxCounts[box]).fill(box))
+
     const input: AdminProductInput = {
       slug,
       name: name.trim(),
@@ -114,6 +182,15 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
       ogImage: ogImage || null,
       canonicalUrl: canonicalUrl.trim() || null,
       noindex,
+      weightG: weightG === '' ? null : weightG,
+      shipBoxes: nextShipBoxes,
+      looseUnits,
+      minBox: minBox === '' ? null : minBox,
+    }
+    // Без categoryIds в ответе API (старый сервер) пустой список стёр бы связи
+    // товара, поэтому в режиме правки шлём его только когда он известен.
+    if (mode === 'create' || initialValue?.categoryIds !== undefined) {
+      input.categoryIds = categoryIds
     }
 
     // Build the translations blob. EN fields go under `translations.en`;
@@ -260,6 +337,97 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
             rows={3}
             className="input"
           />
+        </Field>
+      </Section>
+
+      <Section
+        title="Категории"
+        note="Товар без категории не показывается в каталоге, но открывается по ссылке."
+      >
+        {categoryOptions.length === 0 ? (
+          <p className="text-sm text-brand-text-secondary">Категорий пока нет.</p>
+        ) : (
+          <div className="space-y-1">
+            {categoryOptions.map((node) => (
+              <label
+                key={node.id}
+                className="flex items-center gap-2 text-sm text-brand-text"
+                style={{ paddingLeft: `${node.depth * 1.25}rem` }}
+              >
+                <input
+                  type="checkbox"
+                  checked={categoryIds.includes(node.id)}
+                  onChange={(e) =>
+                    setCategoryIds((prev) =>
+                      e.target.checked ? [...prev, node.id] : prev.filter((id) => id !== node.id),
+                    )
+                  }
+                />
+                <span>{node.name}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </Section>
+
+      <Section
+        title="Доставка (СДЭК)"
+        note="Без веса расчёт берёт 100 г. «Коробки» — для наборов, которые едут в своих коробках; мелочь раскладывается по числу предметов."
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <Field label="Вес, г" htmlFor="weight-g">
+            <input
+              id="weight-g"
+              type="number"
+              min={1}
+              max={MAX_WEIGHT_G}
+              value={weightG}
+              onChange={(e) => setWeightG(e.target.value === '' ? '' : Number(e.target.value))}
+              className="input"
+            />
+          </Field>
+          <Field label="Предметов мелочи в штуке" htmlFor="loose-units">
+            <input
+              id="loose-units"
+              type="number"
+              min={1}
+              max={MAX_LOOSE_UNITS}
+              value={looseUnits}
+              onChange={(e) => setLooseUnits(Number(e.target.value))}
+              className="input"
+            />
+          </Field>
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {BOX_FIELDS.map(({ box, id, label }) => (
+            <Field key={box} label={label} htmlFor={id}>
+              <input
+                id={id}
+                type="number"
+                min={0}
+                max={MAX_BOXES}
+                value={boxCounts[box]}
+                onChange={(e) =>
+                  setBoxCounts((prev) => ({ ...prev, [box]: Number(e.target.value) }))
+                }
+                className="input"
+              />
+            </Field>
+          ))}
+        </div>
+        <Field label="Минимальная коробка для мелочи" htmlFor="min-box">
+          <select
+            id="min-box"
+            value={minBox}
+            onChange={(e) => setMinBox(e.target.value as ShippingBox | '')}
+            className="input"
+          >
+            <option value="">— По числу предметов —</option>
+            <option value="small">Малая</option>
+            <option value="medium">Средняя</option>
+            <option value="elektro">Электро</option>
+            <option value="large">Большая</option>
+          </select>
         </Field>
       </Section>
 

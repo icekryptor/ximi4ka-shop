@@ -7,6 +7,7 @@ import type {
   Page,
   Product,
   ProductCategory,
+  ShippingBox,
 } from '@ximi4ka-shop/shared'
 import { ApiError, type Paginated } from './api'
 
@@ -61,6 +62,11 @@ export interface AdminProductInput {
   canonicalUrl?: string | null
   noindex?: boolean
   translations?: Record<string, unknown>
+  weightG?: number | null
+  shipBoxes?: ShippingBox[]
+  looseUnits?: number
+  minBox?: ShippingBox | null
+  categoryIds?: string[]
 }
 
 function readCsrfToken(): string {

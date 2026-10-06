@@ -34,6 +34,8 @@ export interface Product {
   shipBoxes?: ShippingBox[]
   looseUnits?: number
   minBox?: ShippingBox | null
+  // Только в ответах админского API (GET/POST/PATCH /api/admin/products).
+  categoryIds?: string[]
   images: ProductImage[]
   createdAt: string
   updatedAt: string
