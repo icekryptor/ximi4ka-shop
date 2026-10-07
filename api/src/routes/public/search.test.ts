@@ -5,6 +5,7 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { Product } from '../../entities/Product.js'
 import { ProductImage } from '../../entities/ProductImage.js'
 import { BlogPost } from '../../entities/BlogPost.js'
+import { ProductCategory } from '../../entities/ProductCategory.js'
 import { createApp } from '../../app.js'
 
 async function seedProduct(overrides: Partial<Product> = {}): Promise<Product> {
@@ -23,6 +24,11 @@ async function seedProduct(overrides: Partial<Product> = {}): Promise<Product> {
       ...overrides,
     }),
   )
+}
+
+async function seedCategory(slug: string, products: Product[]): Promise<ProductCategory> {
+  const repo = AppDataSource.getRepository(ProductCategory)
+  return repo.save(repo.create({ slug, name: slug, translations: {}, products }))
 }
 
 async function seedPost(overrides: Partial<BlogPost> = {}): Promise<BlogPost> {
@@ -54,7 +60,7 @@ describe('GET /api/public/search', () => {
 
   beforeEach(async () => {
     await AppDataSource.query(
-      'TRUNCATE product_images, products, blog_posts RESTART IDENTITY CASCADE',
+      'TRUNCATE product_images, products, blog_posts, product_categories RESTART IDENTITY CASCADE',
     )
   })
 
@@ -170,5 +176,50 @@ describe('GET /api/public/search', () => {
     }
     const res = await request(app).get('/api/public/search').query({ q: 'опытный' })
     expect(res.body.data.products).toHaveLength(6)
+  })
+
+  it('returns id, stockStatus and category slugs for every product', async () => {
+    const p = await seedProduct({ name: 'Сульфат меди', slug: 'cu', stockStatus: 'out_of_stock' })
+    await seedCategory('reagents', [p])
+
+    const res = await request(app).get('/api/public/search').query({ q: 'сульфат' })
+
+    expect(res.body.data.products[0]).toMatchObject({
+      id: p.id,
+      slug: 'cu',
+      stockStatus: 'out_of_stock',
+      categories: ['reagents'],
+    })
+  })
+
+  it('scope=wholesale keeps only kits, reagents and equipment', async () => {
+    const reagent = await seedProduct({ name: 'Набор реактивов А', slug: 'a' })
+    const kit = await seedProduct({ name: 'Набор реактивов Б', slug: 'b' })
+    const combo = await seedProduct({ name: 'Набор реактивов В', slug: 'c' })
+    await seedProduct({ name: 'Набор реактивов Г', slug: 'd' }) // без категории
+    await seedCategory('reagents', [reagent])
+    await seedCategory('kits', [kit])
+    await seedCategory('combo', [combo])
+
+    const res = await request(app)
+      .get('/api/public/search')
+      .query({ q: 'набор реактивов', scope: 'wholesale' })
+
+    const slugs = res.body.data.products.map((p: { slug: string }) => p.slug).sort()
+    expect(slugs).toEqual(['a', 'b'])
+  })
+
+  it('without scope the search is unchanged (combo is still found)', async () => {
+    const combo = await seedProduct({ name: 'Комбо-набор', slug: 'combo-1' })
+    await seedCategory('combo', [combo])
+
+    const res = await request(app).get('/api/public/search').query({ q: 'комбо' })
+
+    expect(res.body.data.products).toHaveLength(1)
+  })
+
+  it('rejects an unknown scope', async () => {
+    const res = await request(app).get('/api/public/search').query({ q: 'набор', scope: 'x' })
+    expect(res.status).toBe(400)
   })
 })

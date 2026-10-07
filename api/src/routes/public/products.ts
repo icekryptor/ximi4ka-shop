@@ -50,7 +50,7 @@ publicProductsRouter.get('/:slug', async (req, res, next) => {
         isPublished: true,
         deletedAt: IsNull(),
       },
-      relations: { images: true },
+      relations: { images: true, categories: true },
     })
     if (product?.images) {
       // Sort gallery thumbnails by their stored order in JS — `findOne`
@@ -58,7 +58,9 @@ publicProductsRouter.get('/:slug', async (req, res, next) => {
       product.images = [...product.images].sort((a, b) => a.sortOrder - b.sortOrder)
     }
     if (!product) throw notFound('product_not_found', 'Product not found')
-    res.json({ data: product })
+    // Наружу — только слаги категорий: объекты категорий (SEO-блоки и т.д.) карточке не нужны.
+    const { categories, ...rest } = product
+    res.json({ data: { ...rest, categorySlugs: (categories ?? []).map((c) => c.slug) } })
   } catch (err) {
     next(err)
   }

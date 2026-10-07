@@ -15,8 +15,24 @@ vi.mock('@/lib/api', () => ({
 
 const sample: SearchResult = {
   products: [
-    { slug: 'himichka-30', name: 'Химичка 3.0', priceRub: 1500, image: 'https://cdn/x.png' },
-    { slug: 'slizi', name: 'Слаймы', priceRub: 490, image: null },
+    {
+      id: 'p1',
+      slug: 'himichka-30',
+      name: 'Химичка 3.0',
+      priceRub: 1500,
+      image: 'https://cdn/x.png',
+      stockStatus: 'in_stock',
+      categories: ['kits'],
+    },
+    {
+      id: 'p2',
+      slug: 'slizi',
+      name: 'Слаймы',
+      priceRub: 490,
+      image: null,
+      stockStatus: 'in_stock',
+      categories: [],
+    },
   ],
   posts: [{ slug: 'sky', title: 'Почему небо голубое' }],
 }
