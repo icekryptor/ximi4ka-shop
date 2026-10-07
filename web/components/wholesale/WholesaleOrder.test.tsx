@@ -7,9 +7,11 @@ import { WholesaleOrder } from './WholesaleOrder'
 
 const mockSearch = vi.fn<(q: string, opts?: unknown) => Promise<SearchResult>>()
 const mockProduct = vi.fn()
+const mockCategory = vi.fn()
 vi.mock('@/lib/api', () => ({
   searchCatalog: (q: string, opts?: unknown) => mockSearch(q, opts),
   getPublishedProduct: (slug: string) => mockProduct(slug),
+  listProductsByCategory: (slug: string, opts?: unknown) => mockCategory(slug, opts),
 }))
 
 const tube = {
@@ -84,6 +86,8 @@ beforeEach(() => {
   window.localStorage.clear()
   mockSearch.mockReset()
   mockProduct.mockReset()
+  mockCategory.mockReset()
+  mockCategory.mockResolvedValue({ data: [], pagination: { limit: 200, offset: 0, total: 0 } })
   mockSearch.mockResolvedValue({
     products: [tube, reagent, soldOut, himichka, electro],
     posts: [],
@@ -95,6 +99,66 @@ afterEach(() => {
 })
 
 describe('WholesaleOrder', () => {
+  it('реактив из мини-каталога получает процентную скидку: 5 шт по 200 ₽ = 850 ₽', async () => {
+    mockCategory.mockImplementation((slug: string) =>
+      Promise.resolve({
+        data:
+          slug === 'reagents'
+            ? [
+                {
+                  id: 'r-soda',
+                  slug: 'soda',
+                  sku: 'S',
+                  name: 'Сода',
+                  shortDescription: '',
+                  priceRub: 200,
+                  compareAtPriceRub: null,
+                  stockStatus: 'in_stock',
+                  images: [],
+                },
+              ]
+            : [],
+        pagination: { limit: 200, offset: 0, total: 1 },
+      }),
+    )
+    render(<WholesaleOrder />)
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Реактивы' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Сода: добавить в заказ' }))
+
+    await screen.findByTestId('wholesale-line')
+    expect(screen.getByTestId('wholesale-total')).toHaveTextContent(rub(850))
+  })
+
+  it('«В заказ» в мини-каталоге добавляет строку в список, как выбор из поиска', async () => {
+    mockCategory.mockResolvedValue({
+      data: [
+        {
+          id: 'k-himichka',
+          slug: 'himichka-30',
+          sku: 'H30',
+          name: 'Химичка 30',
+          shortDescription: '',
+          priceRub: 2990,
+          compareAtPriceRub: null,
+          stockStatus: 'in_stock',
+          images: [{ url: 'https://cdn.test/h30.jpg' }],
+        },
+      ],
+      pagination: { limit: 24, offset: 0, total: 1 },
+    })
+    render(<WholesaleOrder />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Химичка 30: добавить в заказ' }))
+
+    const row = await screen.findByTestId('wholesale-line')
+    expect(within(row).getByText('Химичка 30')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Химичка 30: уже в заказе' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+  })
+
   it('ищет с scope=wholesale и показывает карточки с описанием скидки', async () => {
     render(<WholesaleOrder />)
     type('про')

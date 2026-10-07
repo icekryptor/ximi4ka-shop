@@ -20,6 +20,7 @@ interface Props {
  */
 export function WholesaleSearch({ onPick }: Props) {
   const listboxId = useId()
+  const inputId = useId()
   const optionIdBase = useId()
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -108,31 +109,66 @@ export function WholesaleSearch({ onPick }: Props) {
 
   const optionId = (i: number) => `${optionIdBase}-opt-${i}`
 
+  // Подсказки уже живые, поэтому «Найти» — не отдельный запрос, а понятная
+  // точка входа: ведёт курсор в поле и раскрывает выдачу, если там есть запрос.
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setOpen(true)
+    inputRef.current?.focus()
+  }
+
   return (
     <div ref={rootRef} className="relative w-full">
-      <div
-        role="combobox"
-        aria-expanded={showList}
-        aria-haspopup="listbox"
-        aria-owns={listboxId}
-        aria-controls={listboxId}
+      <label
+        htmlFor={inputId}
+        className="mb-2 block font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]"
       >
-        <input
-          ref={inputRef}
-          type="search"
-          value={query}
-          onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setOpen(true)}
-          onKeyDown={onKeyDown}
-          placeholder="Начните вводить название: набор, реактив, пробирка…"
-          aria-label="Найти товар для оптового заказа"
-          aria-autocomplete="list"
+        Найдите товар по названию
+      </label>
+      <form role="search" onSubmit={onSubmit} className="relative">
+        <div
+          role="combobox"
+          aria-expanded={showList}
+          aria-haspopup="listbox"
+          aria-owns={listboxId}
           aria-controls={listboxId}
-          aria-activedescendant={showList && activeIndex >= 0 ? optionId(activeIndex) : undefined}
-          autoComplete="off"
-          className="w-full rounded-full border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream)] px-5 py-3.5 font-lj-body text-base text-[var(--color-lj-ink)] outline-none transition-colors placeholder:opacity-55 focus:border-[var(--color-lj-brand)]"
-        />
-      </div>
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[var(--color-lj-ink)] opacity-60"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <input
+            id={inputId}
+            ref={inputRef}
+            type="search"
+            value={query}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={() => setOpen(true)}
+            onKeyDown={onKeyDown}
+            placeholder="Пробирка, реактив"
+            aria-autocomplete="list"
+            aria-controls={listboxId}
+            aria-activedescendant={showList && activeIndex >= 0 ? optionId(activeIndex) : undefined}
+            autoComplete="off"
+            className="w-full rounded-full border border-[var(--color-lj-ink)] bg-white py-3.5 pl-12 pr-24 sm:pr-28 font-lj-body text-base text-[var(--color-lj-ink)] outline-none transition-colors placeholder:opacity-55 focus:border-[var(--color-lj-brand)] focus:ring-2 focus:ring-[var(--color-lj-brand)]/30"
+          />
+        </div>
+        <button
+          type="submit"
+          className="lj-btn lj-btn-primary absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-4 py-2 sm:px-5"
+        >
+          Найти
+        </button>
+      </form>
       {loading && hasQuery ? (
         <span role="status" aria-label="Загрузка" className="sr-only">
           Загрузка

@@ -14,6 +14,7 @@ import {
   toStagedLine,
   type StagedLine,
 } from '@/lib/wholesaleStaging'
+import { WholesaleCatalog } from './WholesaleCatalog'
 import { WholesaleSearch } from './WholesaleSearch'
 
 const STEP_BTN =
@@ -63,6 +64,8 @@ export function WholesaleOrder() {
 
   const suggestion = useMemo(() => suggestCombo(lines, offers), [lines, offers])
 
+  const stagedIds = useMemo(() => new Set(lines.map((l) => l.productId)), [lines])
+
   const pick = (product: SearchProductResult) =>
     setLines((cur) =>
       cur.some((l) => l.productId === product.id) ? cur : [...cur, toStagedLine(product)],
@@ -102,9 +105,19 @@ export function WholesaleOrder() {
     <div className="flex flex-col gap-6">
       <WholesaleSearch onPick={pick} />
 
+      <div className="flex items-center gap-4" aria-hidden="true">
+        <span className="h-px flex-1 bg-[var(--color-lj-rule)]" />
+        <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-65">
+          или выберите из каталога
+        </span>
+        <span className="h-px flex-1 bg-[var(--color-lj-rule)]" />
+      </div>
+
+      <WholesaleCatalog onPick={pick} stagedIds={stagedIds} />
+
       {lines.length === 0 ? (
         <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-65">
-          Найдите товар — он появится здесь с оптовой ценой
+          Добавленные товары появятся здесь с оптовой ценой
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
