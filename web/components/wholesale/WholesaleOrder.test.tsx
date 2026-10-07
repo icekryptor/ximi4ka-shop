@@ -7,9 +7,13 @@ import { WholesaleOrder } from './WholesaleOrder'
 
 const mockSearch = vi.fn<(q: string, opts?: unknown) => Promise<SearchResult>>()
 const mockProduct = vi.fn()
+const mockCategories = vi.fn()
+const mockByCategory = vi.fn()
 vi.mock('@/lib/api', () => ({
   searchCatalog: (q: string, opts?: unknown) => mockSearch(q, opts),
   getPublishedProduct: (slug: string) => mockProduct(slug),
+  listCategories: (opts?: unknown) => mockCategories(opts),
+  listProductsByCategory: (slug: string, opts?: unknown) => mockByCategory(slug, opts),
 }))
 
 const tube = {
@@ -80,10 +84,52 @@ async function pick(query: string, name: RegExp) {
   fireEvent.click(option)
 }
 
+// Блок «уже в зоне видимости»: наблюдатель сразу сообщает о пересечении.
+class VisibleObserver {
+  constructor(private cb: IntersectionObserverCallback) {}
+  observe(el: Element) {
+    this.cb([{ isIntersecting: true, target: el } as IntersectionObserverEntry], this as never)
+  }
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return []
+  }
+}
+
+// Карточки каталога из API категорий (форма Product, как отдаёт маршрут).
+const catalogProduct = (p: SearchResult['products'][number]) => ({
+  id: p.id,
+  slug: p.slug,
+  name: p.name,
+  priceRub: p.priceRub,
+  stockStatus: p.stockStatus,
+  images: [],
+})
+
 beforeEach(() => {
+  vi.stubGlobal('IntersectionObserver', VisibleObserver)
   window.localStorage.clear()
   mockSearch.mockReset()
   mockProduct.mockReset()
+  mockCategories.mockReset()
+  mockByCategory.mockReset()
+  mockCategories.mockResolvedValue({
+    data: [
+      { slug: 'kits', name: 'Наборы' },
+      { slug: 'reagents', name: 'Реактивы' },
+      { slug: 'equipment', name: 'Лабораторное оборудование' },
+    ],
+  })
+  mockByCategory.mockImplementation(async (slug: string) => ({
+    data: (
+      {
+        kits: [catalogProduct(himichka), catalogProduct(electro)],
+        reagents: [catalogProduct(reagent), catalogProduct(soldOut)],
+        equipment: [catalogProduct(tube)],
+      } as Record<string, ReturnType<typeof catalogProduct>[]>
+    )[slug],
+  }))
   mockSearch.mockResolvedValue({
     products: [tube, reagent, soldOut, himichka, electro],
     posts: [],
@@ -91,6 +137,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  vi.unstubAllGlobals()
   window.localStorage.clear()
 })
 
@@ -233,5 +280,80 @@ describe('WholesaleOrder', () => {
     await waitFor(() => expect(mockProduct).toHaveBeenCalled())
     expect(screen.queryByTestId('combo-suggestion')).toBeNull()
     expect(screen.getAllByTestId('wholesale-line')).toHaveLength(2)
+  })
+
+  describe('карусель каталога под поиском', () => {
+    const carouselCard = (name: string) =>
+      screen.getAllByRole('article').find((a) => a.textContent?.includes(name)) as HTMLElement
+
+    it('показывает вкладки и карточки наборов под строкой поиска', async () => {
+      render(<WholesaleOrder />)
+      await screen.findByText('Химичка 3.0')
+      const search = screen.getByRole('searchbox')
+      const tablist = screen.getByRole('tablist')
+      expect(
+        search.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(screen.getByRole('tab', { name: 'Наборы' })).toHaveAttribute('aria-selected', 'true')
+    })
+
+    it('«В список» кладёт позицию в список теми же стартовыми количеством и ценой, что поиск', async () => {
+      render(<WholesaleOrder />)
+      await screen.findByText('Химичка 3.0')
+      fireEvent.click(within(carouselCard('Химичка 3.0')).getByRole('button', { name: /В список/ }))
+      const row = screen.getByTestId('wholesale-line')
+      expect(row).toHaveTextContent('Химичка 3.0')
+      expect(within(row).getByText('5')).toBeInTheDocument()
+      // 5 наборов по 3099 ₽ с оптовой скидкой −299 ₽ с набора
+      expect(screen.getByTestId('wholesale-total')).toHaveTextContent(rub(5 * 2800))
+      expect(within(carouselCard('Химичка 3.0')).getByRole('button')).toHaveTextContent('В списке')
+    })
+
+    it('повторный клик и выбор той же позиции через поиск не дублируют строку', async () => {
+      render(<WholesaleOrder />)
+      await screen.findByText('Химичка 3.0')
+      const button = () => within(carouselCard('Химичка 3.0')).getByRole('button')
+      fireEvent.click(button())
+      fireEvent.click(button())
+      await pick('хи', /Химичка 3\.0/)
+      expect(screen.getAllByTestId('wholesale-line')).toHaveLength(1)
+    })
+
+    it('позиция, добавленная поиском, в карусели отмечена «В списке»; после удаления — снова «В список»', async () => {
+      render(<WholesaleOrder />)
+      await screen.findByText('Химичка 3.0')
+      await pick('хи', /Химичка 3\.0/)
+      expect(within(carouselCard('Химичка 3.0')).getByRole('button')).toHaveTextContent('В списке')
+      fireEvent.click(screen.getByRole('button', { name: /Убрать Химичка 3\.0/ }))
+      expect(within(carouselCard('Химичка 3.0')).getByRole('button')).toHaveTextContent('В список')
+      expect(within(carouselCard('Химичка 3.0')).getByRole('button')).not.toHaveTextContent(
+        'В списке',
+      )
+    })
+
+    it('карточка и подсказка собирают один общий список с общим итогом', async () => {
+      render(<WholesaleOrder />)
+      await screen.findByText('Химичка 3.0')
+      fireEvent.click(screen.getByRole('tab', { name: 'Реактивы' }))
+      await screen.findByText('Сульфат меди')
+      fireEvent.click(
+        within(carouselCard('Сульфат меди')).getByRole('button', { name: /В список/ }),
+      )
+      await pick('про', /Пробирка/)
+      expect(screen.getAllByTestId('wholesale-line')).toHaveLength(2)
+      // реагент ×5: 500 → 425 ₽; пробирка ×2: 39 ₽ вместо 58 ₽
+      expect(screen.getByTestId('wholesale-total')).toHaveTextContent(rub(425 + 39))
+    })
+
+    it('«Нет в наличии»: позиция в список не попадает', async () => {
+      render(<WholesaleOrder />)
+      await screen.findByText('Химичка 3.0')
+      fireEvent.click(screen.getByRole('tab', { name: 'Реактивы' }))
+      await screen.findByText('Редкий реактив')
+      const button = within(carouselCard('Редкий реактив')).getByRole('button')
+      expect(button).toBeDisabled()
+      fireEvent.click(button)
+      expect(screen.queryAllByTestId('wholesale-line')).toHaveLength(0)
+    })
   })
 })

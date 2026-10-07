@@ -7,6 +7,7 @@ import {
   stepQuantity,
   toStagedLine,
   wholesaleBadge,
+  wholesaleFromPrice,
   type StagedLine,
 } from './wholesaleStaging'
 
@@ -137,5 +138,34 @@ describe('wholesaleBadge', () => {
     expect(wholesaleBadge('copper-sulfate', ['reagents'])).toBe('от 5 шт: −15%')
     expect(wholesaleBadge('probirka', ['equipment'])).toBe('партиями от 2 шт')
     expect(wholesaleBadge('poster', ['print'])).toBeNull()
+  })
+})
+
+describe('wholesaleFromPrice', () => {
+  it('набор: цена за штуку на первой скидочной ступени', () => {
+    expect(wholesaleFromPrice('himichka-30', ['kits'], 3099)).toEqual({ unitRub: 2800, minQty: 5 })
+    expect(wholesaleFromPrice('mini-himichka', ['kits'], 1699)).toEqual({
+      unitRub: 1500,
+      minQty: 5,
+    })
+  })
+
+  it('реагент: процент на первой ступени, округление до рубля', () => {
+    // 99 × 5 = 495 → −15% = 420,75 → 421 ₽ за пять → 84 ₽ за штуку
+    expect(wholesaleFromPrice('copper-sulfate', ['reagents'], 99)).toEqual({
+      unitRub: 84,
+      minQty: 5,
+    })
+  })
+
+  it('партия: первая ступень, на которой выходит дешевле обычной цены', () => {
+    expect(wholesaleFromPrice('probirka', ['equipment'], 29)).toEqual({ unitRub: 20, minQty: 2 })
+    // при цене 19 ₽ партии из 2 и 5 штук не дешевле обычной — берём ступень 10
+    expect(wholesaleFromPrice('probirka', ['equipment'], 19)).toEqual({ unitRub: 17, minQty: 10 })
+  })
+
+  it('без оптового правила или без выгоды — null', () => {
+    expect(wholesaleFromPrice('poster', ['print'], 300)).toBeNull()
+    expect(wholesaleFromPrice('probirka', ['equipment'], 5)).toBeNull()
   })
 })

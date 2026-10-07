@@ -106,3 +106,22 @@ export function wholesaleBadge(slug: string, categories: readonly string[]): str
   }
   return null
 }
+
+/**
+ * Цена за штуку на первой ступени, где оптом выходит дешевле обычной цены, и
+ * количество этой ступени; null — оптового правила нет или выгоды нет. Сумму
+ * считает тот же движок, что корзина: у партий дорогая первая ступень пропускается.
+ */
+export function wholesaleFromPrice(
+  slug: string,
+  categories: readonly string[],
+  priceRub: number,
+): { unitRub: number; minQty: number } | null {
+  for (const minQty of ascendingThresholds(slug, categories)) {
+    const total = wholesaleLineTotals([{ slug, quantity: minQty, priceRub, categories }]).get(slug)
+    if (total !== undefined && total < priceRub * minQty) {
+      return { unitRub: Math.round(total / minQty), minQty }
+    }
+  }
+  return null
+}
