@@ -192,4 +192,11 @@ describe('wholesaleLineTotals', () => {
     expect(t.get('copper-sulfate')).toBe(800)
     expect(t.get('probirka')).toBe(99)
   })
+  it('набор с категорией реагентов сохраняет скидку набора, а не процентную', () => {
+    expect(total(rl('himichka-30', 5, 3099, ['kits', 'reagents']))).toBe(14000)
+  })
+
+  it('цена не поднимается выше обычной: бесплатный товар остаётся бесплатным', () => {
+    expect(total(rl('free-reagent', 5, 0, ['reagents']))).toBe(0)
+  })
 })

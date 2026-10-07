@@ -116,12 +116,13 @@ export function batchTotal(pricing: BatchPricing, quantity: number): number | nu
   return pricing.steps.find((s) => s.qty === quantity)?.totalRub ?? null
 }
 
-/** Процентная скидка у реагентов и оборудования, кроме товаров с ценой партии. */
+/** Процентная скидка у реагентов и оборудования, кроме наборов и товаров с ценой партии. */
 export function isPercentEligible(
   slug: string,
   categories: readonly string[] | undefined,
 ): boolean {
-  if (BATCH_PRICING.has(slug)) return false
+  // Наборы (в т.ч. с лишней категорией реагентов) и партии — только по своим правилам.
+  if (BATCH_PRICING.has(slug) || WHOLESALE_GROUPS.some((g) => g.slugs.includes(slug))) return false
   return (categories ?? []).some((c) => PERCENT_CATEGORIES.includes(c))
 }
 
@@ -149,6 +150,8 @@ export function wholesaleLineTotals(lines: readonly WholesaleLine[]): Map<string
       const percent = percentOff(l.quantity)
       if (percent > 0) total = Math.max(Math.round((list * (100 - percent)) / 100), floor)
     }
+    // Правила не поднимают цену выше обычной (в т.ч. у бесплатных товаров пол в 1 ₽ неприменим).
+    total = Math.min(total, list)
     result.set(l.slug, total)
   }
   return result
