@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } 
 import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Product } from '../entities/Product.js'
+import { ProductCategory } from '../entities/ProductCategory.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { OrderNotification } from '../entities/OrderNotification.js'
@@ -35,6 +36,11 @@ async function seedProduct(overrides: Partial<Product> = {}): Promise<Product> {
       ...overrides,
     }),
   )
+}
+
+async function seedCategory(slug: string, products: Product[]): Promise<ProductCategory> {
+  const repo = AppDataSource.getRepository(ProductCategory)
+  return repo.save(repo.create({ slug, name: slug, translations: {}, products }))
 }
 
 function checkoutBody(items: Array<{ productId: string; quantity: number }>) {
@@ -86,7 +92,9 @@ describe('POST /api/checkout', () => {
   })
 
   beforeEach(async () => {
-    await AppDataSource.query('TRUNCATE orders, order_items, products RESTART IDENTITY CASCADE')
+    await AppDataSource.query(
+      'TRUNCATE orders, order_items, products, product_categories RESTART IDENTITY CASCADE',
+    )
   })
 
   afterEach(() => {
@@ -97,7 +105,7 @@ describe('POST /api/checkout', () => {
     clearCdekLocationCache()
   })
 
-  it('applies the wholesale kit discount: Химичка 3.0 + Электрохимичка counted together', async () => {
+  it('applies the wholesale kit discount: each kit is counted on its own', async () => {
     const big = await seedProduct({ slug: 'himichka-30', priceRub: 3099 })
     const electro = await seedProduct({ slug: 'elektrohimichka', priceRub: 3099, sku: 'EL-1' })
     const mini = await seedProduct({ slug: 'mini-himichka', priceRub: 1699, sku: 'MINI-1' })
@@ -106,9 +114,9 @@ describe('POST /api/checkout', () => {
       .post('/api/checkout')
       .send(
         checkoutBody([
-          { productId: big.id, quantity: 3 },
-          { productId: electro.id, quantity: 2 },
-          { productId: mini.id, quantity: 4 },
+          { productId: big.id, quantity: 5 },
+          { productId: electro.id, quantity: 3 },
+          { productId: mini.id, quantity: 5 },
         ]),
       )
 
@@ -117,16 +125,85 @@ describe('POST /api/checkout', () => {
       where: { orderNumber: res.body.data.orderNumber },
       relations: { items: true },
     })
-    // 5 больших наборов → −299 ₽ с каждого; 4 мини — ниже порога.
-    expect(order.subtotalRub).toBe(5 * 3099 + 4 * 1699)
-    expect(order.discountRub).toBe(5 * 299)
+    // 5 Химичек → −299 ₽ с каждой; 3 Электрохимички — ниже порога и с Химичкой не
+    // складываются; 5 мини → −199 ₽ с каждой.
+    expect(order.subtotalRub).toBe(5 * 3099 + 3 * 3099 + 5 * 1699)
+    expect(order.discountRub).toBe(5 * 299 + 5 * 199)
     expect(order.shippingRub).toBe(0)
     expect(order.totalRub).toBe(order.subtotalRub - order.discountRub)
     const byProduct = new Map(order.items.map((i) => [i.productId, i]))
     expect(byProduct.get(big.id)!.unitPriceRub).toBe(2800)
+    expect(byProduct.get(big.id)!.lineTotalRub).toBe(5 * 2800)
     expect(byProduct.get(big.id)!.productSnapshot.priceRub).toBe(3099)
-    expect(byProduct.get(electro.id)!.unitPriceRub).toBe(2800)
-    expect(byProduct.get(mini.id)!.unitPriceRub).toBe(1699)
+    expect(byProduct.get(electro.id)!.unitPriceRub).toBe(3099)
+    expect(byProduct.get(electro.id)!.lineTotalRub).toBe(3 * 3099)
+    expect(byProduct.get(mini.id)!.unitPriceRub).toBe(1500)
+    expect(byProduct.get(mini.id)!.lineTotalRub).toBe(5 * 1500)
+  })
+
+  it('applies the percent discount per reagent position and stores the line total', async () => {
+    const reagent = await seedProduct({ slug: 'copper-sulfate', priceRub: 100, sku: 'CU-1' })
+    const other = await seedProduct({ slug: 'soda', priceRub: 100, sku: 'NA-1' })
+    await seedCategory('reagents', [reagent, other])
+
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(
+        checkoutBody([
+          { productId: reagent.id, quantity: 10 },
+          { productId: other.id, quantity: 4 },
+        ]),
+      )
+
+    expect(res.status).toBe(201)
+    const order = await AppDataSource.getRepository(Order).findOneOrFail({
+      where: { orderNumber: res.body.data.orderNumber },
+      relations: { items: true },
+    })
+    // 10 шт → −20% (800 ₽), 4 шт — ниже порога (400 ₽): позиции не складываются.
+    expect(order.subtotalRub).toBe(1400)
+    expect(order.discountRub).toBe(200)
+    expect(order.totalRub).toBe(order.subtotalRub - order.discountRub + order.shippingRub)
+    const byProduct = new Map(order.items.map((i) => [i.productId, i]))
+    expect(byProduct.get(reagent.id)!.lineTotalRub).toBe(800)
+    expect(byProduct.get(reagent.id)!.unitPriceRub).toBe(80)
+    expect(byProduct.get(other.id)!.lineTotalRub).toBe(400)
+  })
+
+  it('prices tubes by batch: 5 pcs cost 99 ₽ in total, not a whole ₽ per piece', async () => {
+    const tube = await seedProduct({ slug: 'probirka', priceRub: 29, sku: 'T-1' })
+    await seedCategory('equipment', [tube])
+
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: tube.id, quantity: 5 }]))
+
+    expect(res.status).toBe(201)
+    const order = await AppDataSource.getRepository(Order).findOneOrFail({
+      where: { orderNumber: res.body.data.orderNumber },
+      relations: { items: true },
+    })
+    expect(order.subtotalRub).toBe(145)
+    expect(order.discountRub).toBe(46)
+    expect(order.items[0].lineTotalRub).toBe(99)
+    expect(order.items[0].unitPriceRub).toBe(20)
+  })
+
+  it('does not charge more than the regular price when the batch price is higher', async () => {
+    const tube = await seedProduct({ slug: 'probirka', priceRub: 19, sku: 'T-2' })
+    await seedCategory('equipment', [tube])
+
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: tube.id, quantity: 2 }]))
+
+    expect(res.status).toBe(201)
+    const order = await AppDataSource.getRepository(Order).findOneOrFail({
+      where: { orderNumber: res.body.data.orderNumber },
+      relations: { items: true },
+    })
+    expect(order.discountRub).toBe(0)
+    expect(order.items[0].lineTotalRub).toBe(38)
   })
 
   it('creates a pending order with DB-recomputed prices and snapshots', async () => {

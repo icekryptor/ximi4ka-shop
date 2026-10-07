@@ -2,13 +2,15 @@ import { In, IsNull } from 'typeorm'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Product } from '../../entities/Product.js'
 import { ApiError } from '../../routes/errors.js'
-import { wholesaleUnitDiscounts } from '../pricing/wholesale.js'
+import { wholesaleLineTotals } from '../pricing/wholesale.js'
 import type { PackLine } from './pack.js'
 
 export interface CartLine {
   product: Product
   quantity: number
-  /** Цена за штуку с оптовой скидкой; без скидки равна product.priceRub. */
+  /** Сумма строки с оптовой скидкой, ₽ — то, что платит покупатель за позицию. */
+  lineTotalRub: number
+  /** Цена за штуку для читателей, которым нужна целая цена: сумма строки / количество, округлённая. */
   unitPriceRub: number
 }
 
@@ -16,7 +18,7 @@ export interface LoadedCart {
   lines: CartLine[]
   /** Сумма товаров по обычным ценам. */
   subtotalRub: number
-  /** Оптовая скидка на наборы; к оплате за товары — subtotalRub − discountRub. */
+  /** Оптовая скидка (наборы, проценты, партии); к оплате за товары — subtotalRub − discountRub. */
   discountRub: number
   packLines: PackLine[]
 }
@@ -36,6 +38,7 @@ export async function loadCart(
 
   const products = await AppDataSource.getRepository(Product).find({
     where: { id: In(productIds), deletedAt: IsNull() },
+    relations: { categories: true },
   })
   const productById = new Map(products.map((p) => [p.id, p]))
 
@@ -57,23 +60,26 @@ export async function loadCart(
     })
   }
 
-  const unitOff = wholesaleUnitDiscounts(
+  const lineTotals = wholesaleLineTotals(
     productIds.map((id) => {
       const p = productById.get(id)!
-      return { slug: p.slug, quantity: qtyByProduct.get(id)!, priceRub: p.priceRub }
+      return {
+        slug: p.slug,
+        quantity: qtyByProduct.get(id)!,
+        priceRub: p.priceRub,
+        categories: (p.categories ?? []).map((c) => c.slug),
+      }
     }),
   )
   const lines = productIds.map((id) => {
     const product = productById.get(id)!
-    return {
-      product,
-      quantity: qtyByProduct.get(id)!,
-      unitPriceRub: product.priceRub - (unitOff.get(product.slug) ?? 0),
-    }
+    const quantity = qtyByProduct.get(id)!
+    const lineTotalRub = lineTotals.get(product.slug)!
+    return { product, quantity, lineTotalRub, unitPriceRub: Math.round(lineTotalRub / quantity) }
   })
   const subtotalRub = lines.reduce((sum, l) => sum + l.product.priceRub * l.quantity, 0)
   const discountRub = lines.reduce(
-    (sum, l) => sum + (l.product.priceRub - l.unitPriceRub) * l.quantity,
+    (sum, l) => sum + (l.product.priceRub * l.quantity - l.lineTotalRub),
     0,
   )
   const packLines: PackLine[] = lines.map(({ product, quantity }) => ({

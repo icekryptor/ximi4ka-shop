@@ -148,7 +148,7 @@ checkoutRouter.post('/', async (req, res, next) => {
         )
         const itemRepo = em.getRepository(OrderItem)
         await itemRepo.save(
-          lines.map(({ product: p, quantity, unitPriceRub }) =>
+          lines.map(({ product: p, quantity, unitPriceRub, lineTotalRub }) =>
             itemRepo.create({
               orderId: created.id,
               productId: p.id,
@@ -157,6 +157,8 @@ checkoutRouter.post('/', async (req, res, next) => {
               // Со скидкой: по ней СДЭК объявляет ценность, её видят бот и таблица.
               // Обычная цена остаётся в productSnapshot.priceRub.
               unitPriceRub,
+              // Точная сумма строки: цена партии не делится на целые рубли за штуку.
+              lineTotalRub,
             }),
           ),
         )
