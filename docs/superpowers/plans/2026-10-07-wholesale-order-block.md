@@ -18,7 +18,7 @@
 - Next.js здесь версии 16: перед правкой страниц и маршрутов читать `web/AGENTS.md` и нужный гайд в `node_modules/next/dist/docs/`. `params` страницы — Promise.
 - `api/src/lib/pricing/wholesale.ts` и `web/lib/wholesale.ts` остаются зеркалами: тело файла, начиная со строки `export interface WholesaleGroup`, одинаково (проверяет тест из Задачи 2); тесты обеих копий одинаковые, различается только суффикс импорта `.js`.
 - Правила цен (дословно из спеки):
-  - Наборы Химичка 3.0, Электрохимичка, ОГЭ (`himichka-30`, `elektrohimichka`, `bolshoi-nabor-dlya-oge`) — вместе: −299 / −399 / −499 / −599 ₽ с набора от 5 / 10 / 20 / 50 шт.
+  - Наборы Химичка 3.0 (`himichka-30`), Электрохимичка (`elektrohimichka`), набор для ОГЭ (`bolshoi-nabor-dlya-oge`): **каждый набор считается отдельно** по своему количеству, количества разных наборов не складываются; −299 / −399 / −499 / −599 ₽ с набора от 5 / 10 / 20 / 50 шт.
   - Мини-Химичка (`mini-himichka`): −199 / −299 / −399 / −499 ₽ от 5 / 10 / 20 / 50 шт.
   - Реагенты и оборудование (категории `reagents`, `equipment`): −15% / −20% / −25% / −30% на позицию от 5 / 10 / 20 / 50 шт.
   - Пробирки `probirka`: 2 шт — 39 ₽, 5 — 99, 10 — 169, 20 — 299, свыше 20 — 299 ₽ + 14 ₽ за каждую штуку сверх 20.
@@ -38,6 +38,8 @@
 - Цена товара ниже партионной цены (`probirka` по 19 ₽ в сид-данных): партия не применяется, заказ не дороже обычной цены (Задача 1, Задача 4).
 - Результаты поиска с `stockStatus: 'out_of_stock'`: в блок их добавить нельзя (Задача 9).
 - Заказы без `line_total_rub` (старые): все читатели суммы строки берут `unitPriceRub × quantity` (Задача 5).
+- Комбо дороже суммы отдельных наборов с оптовой скидкой (по 5 + 5 Химичка и Электро): подсказка не должна уговаривать на более дорогой вариант (Задача 9a, тест `не предлагает комбо, если наборы с оптовой скидкой дешевле`).
+- Комбо `vse-chetyre-nabora` ещё нет в каталоге или карточка не открывается: блок работает без подсказки (Задача 9a, тест про упавший запрос).
 
 ---
 
@@ -82,7 +84,7 @@
 
 - [ ] **Step 1: Write the failing tests**
 
-В `api/src/lib/pricing/wholesale.test.ts` замените строку импорта и добавьте в конец файла новый блок:
+В `api/src/lib/pricing/wholesale.test.ts` замените строку импорта, **удалите** существующий тест `counts Химичка 3.0 and Электрохимичка together` (он описывает прежнее правило «наборы суммируются») и добавьте в конец файла новый блок:
 
 ```ts
 import { wholesaleUnitDiscounts, wholesaleLineTotals } from './wholesale.js'
@@ -98,11 +100,27 @@ const rl = (slug: string, quantity: number, priceRub: number, categories: string
 const total = (l: { slug: string; quantity: number; priceRub: number; categories?: string[] }) =>
   wholesaleLineTotals([l]).get(l.slug)
 
-describe('wholesaleUnitDiscounts: ОГЭ-набор', () => {
-  it('counts Химичка 3.0, Электрохимичка и набор для ОГЭ вместе', () => {
-    const d = wholesaleUnitDiscounts([line('himichka-30', 3), line('bolshoi-nabor-dlya-oge', 2)])
+describe('wholesaleUnitDiscounts: наборы считаются раздельно', () => {
+  it('не складывает количества Химичка 3.0, Электрохимичка и набора для ОГЭ', () => {
+    const d = wholesaleUnitDiscounts([
+      line('himichka-30', 3),
+      line('elektrohimichka', 2),
+      line('bolshoi-nabor-dlya-oge', 4),
+    ])
+    expect(d.get('himichka-30')).toBe(0)
+    expect(d.get('elektrohimichka')).toBe(0)
+    expect(d.get('bolshoi-nabor-dlya-oge')).toBe(0)
+  })
+
+  it('у каждого набора своя ступень по его количеству', () => {
+    const d = wholesaleUnitDiscounts([
+      line('himichka-30', 5),
+      line('elektrohimichka', 10),
+      line('bolshoi-nabor-dlya-oge', 20),
+    ])
     expect(d.get('himichka-30')).toBe(299)
-    expect(d.get('bolshoi-nabor-dlya-oge')).toBe(299)
+    expect(d.get('elektrohimichka')).toBe(399)
+    expect(d.get('bolshoi-nabor-dlya-oge')).toBe(499)
   })
 })
 
@@ -210,13 +228,13 @@ describe('wholesaleLineTotals', () => {
 
   it('считает смешанную корзину по строкам независимо', () => {
     const t = wholesaleLineTotals([
-      rl('himichka-30', 3, 3099, ['kits']),
-      rl('bolshoi-nabor-dlya-oge', 2, 3099, ['kits']),
+      rl('himichka-30', 5, 3099, ['kits']),
+      rl('bolshoi-nabor-dlya-oge', 3, 3099, ['kits']),
       rl('copper-sulfate', 10, 100, ['reagents']),
       rl('probirka', 5, 29, ['equipment']),
     ])
-    expect(t.get('himichka-30')).toBe(3 * 2800)
-    expect(t.get('bolshoi-nabor-dlya-oge')).toBe(2 * 2800)
+    expect(t.get('himichka-30')).toBe(5 * 2800)
+    expect(t.get('bolshoi-nabor-dlya-oge')).toBe(3 * 3099)
     expect(t.get('copper-sulfate')).toBe(800)
     expect(t.get('probirka')).toBe(99)
   })
@@ -226,7 +244,7 @@ describe('wholesaleLineTotals', () => {
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `cd api && npx vitest run src/lib/pricing/wholesale.test.ts`
-Expected: FAIL — `wholesaleLineTotals is not a function` (и падает тест про ОГЭ: у `bolshoi-nabor-dlya-oge` скидка 0).
+Expected: FAIL — `wholesaleLineTotals is not a function` (и падает тест про раздельный счёт наборов: Химичка и Электро пока суммируются).
 
 - [ ] **Step 3: Implement**
 
@@ -245,18 +263,40 @@ Expected: FAIL — `wholesaleLineTotals is not a function` (и падает те
 
 ```ts
 // Оптовые скидки (решения владельца, 27.09.2026 и 07.10.2026):
-// — наборы: скидка в рублях с каждого набора, ступень — по количеству наборов
-//   группы в заказе (Химичка 3.0, Электрохимичка и набор для ОГЭ вместе, у
-//   Мини-Химички своя шкала);
+// — наборы: скидка в рублях с каждого набора, ступень — по количеству именно
+//   этого набора в заказе (наборы не складываются; для совместных заказов
+//   есть комбо); у Мини-Химички своя шкала;
 // — реагенты и оборудование: процент на позицию по её количеству;
 // — пробирки и пипетки: цена всей партии по таблице.
 // Комбо и прочие товары в акции не участвуют.
 ```
 
-2. В первой группе слагов добавьте ОГЭ:
+2. Замените константу `WHOLESALE_GROUPS` целиком: каждый набор — отдельная группа (одна и та же шкала у Химичка 3.0, Электрохимичка и набора для ОГЭ, но количества не складываются):
 
 ```ts
-    slugs: ['himichka-30', 'elektrohimichka', 'bolshoi-nabor-dlya-oge'],
+const KIT_TIERS: WholesaleGroup['tiers'] = [
+  { minQty: 50, offRub: 599 },
+  { minQty: 20, offRub: 499 },
+  { minQty: 10, offRub: 399 },
+  { minQty: 5, offRub: 299 },
+]
+
+const MINI_TIERS: WholesaleGroup['tiers'] = [
+  { minQty: 50, offRub: 499 },
+  { minQty: 20, offRub: 399 },
+  { minQty: 10, offRub: 299 },
+  { minQty: 5, offRub: 199 },
+]
+
+// Одна группа — один набор: ступень зависит только от его количества.
+// Шкалы Химички, Электро и ОГЭ — один и тот же массив (по нему страница /opt
+// сводит их в одну строку таблицы).
+export const WHOLESALE_GROUPS: readonly WholesaleGroup[] = [
+  { slugs: ['himichka-30'], tiers: KIT_TIERS },
+  { slugs: ['elektrohimichka'], tiers: KIT_TIERS },
+  { slugs: ['bolshoi-nabor-dlya-oge'], tiers: KIT_TIERS },
+  { slugs: ['mini-himichka'], tiers: MINI_TIERS },
+]
 ```
 
 3. В `WholesaleLine` добавьте поле:
@@ -375,7 +415,7 @@ Expected: PASS (все тесты файла, включая старые).
 
 ```bash
 git add api/src/lib/pricing/wholesale.ts api/src/lib/pricing/wholesale.test.ts
-git commit -m "feat(api): оптовый движок — проценты на реагенты, партии пробирок и пипеток, ОГЭ в группе наборов
+git commit -m "feat(api): оптовый движок — проценты на реагенты, партии пробирок и пипеток, наборы раздельно
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
@@ -569,11 +609,44 @@ async function seedCategory(slug: string, products: Product[]): Promise<ProductC
 
 3. В `beforeEach` замените запрос на
    `'TRUNCATE orders, order_items, products, product_categories RESTART IDENTITY CASCADE'`.
-4. В существующем тесте про наборы после проверки `unitPriceRub` добавьте:
+4. Замените весь существующий тест `applies the wholesale kit discount: Химичка 3.0 + Электрохимичка counted together` на (каждый набор считается отдельно):
 
 ```ts
-expect(byProduct.get(big.id)!.lineTotalRub).toBe(3 * 2800)
-expect(byProduct.get(mini.id)!.lineTotalRub).toBe(4 * 1699)
+it('applies the wholesale kit discount: each kit is counted on its own', async () => {
+  const big = await seedProduct({ slug: 'himichka-30', priceRub: 3099 })
+  const electro = await seedProduct({ slug: 'elektrohimichka', priceRub: 3099, sku: 'EL-1' })
+  const mini = await seedProduct({ slug: 'mini-himichka', priceRub: 1699, sku: 'MINI-1' })
+
+  const res = await request(app)
+    .post('/api/checkout')
+    .send(
+      checkoutBody([
+        { productId: big.id, quantity: 5 },
+        { productId: electro.id, quantity: 3 },
+        { productId: mini.id, quantity: 5 },
+      ]),
+    )
+
+  expect(res.status).toBe(201)
+  const order = await AppDataSource.getRepository(Order).findOneOrFail({
+    where: { orderNumber: res.body.data.orderNumber },
+    relations: { items: true },
+  })
+  // 5 Химичек → −299 ₽ с каждой; 3 Электрохимички — ниже порога и с Химичкой не
+  // складываются; 5 мини → −199 ₽ с каждой.
+  expect(order.subtotalRub).toBe(5 * 3099 + 3 * 3099 + 5 * 1699)
+  expect(order.discountRub).toBe(5 * 299 + 5 * 199)
+  expect(order.shippingRub).toBe(0)
+  expect(order.totalRub).toBe(order.subtotalRub - order.discountRub)
+  const byProduct = new Map(order.items.map((i) => [i.productId, i]))
+  expect(byProduct.get(big.id)!.unitPriceRub).toBe(2800)
+  expect(byProduct.get(big.id)!.lineTotalRub).toBe(5 * 2800)
+  expect(byProduct.get(big.id)!.productSnapshot.priceRub).toBe(3099)
+  expect(byProduct.get(electro.id)!.unitPriceRub).toBe(3099)
+  expect(byProduct.get(electro.id)!.lineTotalRub).toBe(3 * 3099)
+  expect(byProduct.get(mini.id)!.unitPriceRub).toBe(1500)
+  expect(byProduct.get(mini.id)!.lineTotalRub).toBe(5 * 1500)
+})
 ```
 
 5. После него добавьте три теста:
@@ -1234,7 +1307,23 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 - [ ] **Step 1: Write the failing tests**
 
-В `web/lib/cart.test.ts`, в блок `describe('cartTotals', …)` добавьте:
+В `web/lib/cart.test.ts`, в блоке `describe('cartTotals', …)` замените существующий тест `applies the wholesale tier across Химичка 3.0 + Электрохимичка` (прежнее правило «наборы суммируются») на два теста:
+
+```ts
+it('counts each kit on its own: Химичка 3.0 and Электрохимичка are not summed', () => {
+  const t = cartTotals([kit('himichka-30', 3), kit('elektrohimichka', 2)])
+  expect(t.wholesaleRub).toBe(0)
+  expect(t.totalRub).toBe(5 * 3099)
+})
+
+it('applies the tier only to the kit that reached it', () => {
+  const t = cartTotals([kit('himichka-30', 5), kit('elektrohimichka', 4)])
+  expect(t.wholesaleRub).toBe(5 * 299)
+  expect(t.totalRub).toBe(9 * 3099 - 5 * 299)
+})
+```
+
+и в тот же блок добавьте:
 
 ```ts
 it('applies the percent discount to reagents with known categories', () => {
@@ -1497,7 +1586,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
   - `initialQuantity(slug: string): number`;
   - `stepQuantity(slug: string, current: number, direction: 1 | -1): number`;
   - `priceStaged(lines: readonly StagedLine[]): { lines: PricedLine[]; listRub: number; totalRub: number; savingsRub: number }`, где `PricedLine = StagedLine & { listRub: number; totalRub: number }`;
-  - `nextTierHint(line: StagedLine, all: readonly StagedLine[]): string | null`;
+  - `nextTierHint(line: StagedLine): string | null`;
   - `wholesaleBadge(slug: string, categories: readonly string[]): string | null`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1600,12 +1689,12 @@ describe('priceStaged', () => {
     expect(priced.savingsRub).toBe(121)
   })
 
-  it('наборы Химичка/Электро/ОГЭ считаются вместе', () => {
+  it('наборы считаются каждый по своему количеству', () => {
     const priced = priceStaged([
-      line('himichka-30', 3, 3099, ['kits']),
-      line('bolshoi-nabor-dlya-oge', 2, 3099, ['kits']),
+      line('himichka-30', 5, 3099, ['kits']),
+      line('bolshoi-nabor-dlya-oge', 3, 3099, ['kits']),
     ])
-    expect(priced.totalRub).toBe(5 * 2800)
+    expect(priced.totalRub).toBe(5 * 2800 + 3 * 3099)
   })
 
   it('пустой список — нули', () => {
@@ -1616,25 +1705,24 @@ describe('priceStaged', () => {
 describe('nextTierHint', () => {
   it('реактив: сколько штук до следующей ступени', () => {
     const l = line('copper-sulfate', 5, 100, ['reagents'])
-    expect(nextTierHint(l, [l])).toBe('ещё 5 шт — и цена станет ниже')
+    expect(nextTierHint(l)).toBe('ещё 5 шт — и цена станет ниже')
   })
 
-  it('наборы: количество суммируется по группе', () => {
+  it('набор: считается по его собственному количеству', () => {
     const a = line('himichka-30', 3, 3099, ['kits'])
-    const b = line('bolshoi-nabor-dlya-oge', 4, 3099, ['kits'])
-    expect(nextTierHint(a, [a, b])).toBe('ещё 3 шт — и цена станет ниже')
+    expect(nextTierHint(a)).toBe('ещё 2 шт — и цена станет ниже')
   })
 
   it('партия: следующая ступень таблицы', () => {
     const l = line('probirka', 2, 29, ['equipment'])
-    expect(nextTierHint(l, [l])).toBe('ещё 3 шт — и цена станет ниже')
+    expect(nextTierHint(l)).toBe('ещё 3 шт — и цена станет ниже')
   })
 
   it('на верхней ступени подсказки нет', () => {
     const l = line('copper-sulfate', 50, 100, ['reagents'])
-    expect(nextTierHint(l, [l])).toBeNull()
+    expect(nextTierHint(l)).toBeNull()
     const t = line('probirka', 21, 29, ['equipment'])
-    expect(nextTierHint(t, [t])).toBeNull()
+    expect(nextTierHint(t)).toBeNull()
   })
 })
 
@@ -1745,14 +1833,9 @@ function ascendingThresholds(slug: string, categories: readonly string[]): numbe
 }
 
 /** «ещё N шт — и цена станет ниже»; null, если следующей ступени нет. */
-export function nextTierHint(line: StagedLine, all: readonly StagedLine[]): string | null {
-  // Наборы одной группы копят ступень вместе.
-  const group = WHOLESALE_GROUPS.find((g) => g.slugs.includes(line.slug))
-  const quantity = group
-    ? all.filter((l) => group.slugs.includes(l.slug)).reduce((sum, l) => sum + l.quantity, 0)
-    : line.quantity
-  const next = ascendingThresholds(line.slug, line.categories).find((t) => t > quantity)
-  return next === undefined ? null : `ещё ${next - quantity} шт — и цена станет ниже`
+export function nextTierHint(line: StagedLine): string | null {
+  const next = ascendingThresholds(line.slug, line.categories).find((t) => t > line.quantity)
+  return next === undefined ? null : `ещё ${next - line.quantity} шт — и цена станет ниже`
 }
 
 /** Короткое описание оптового правила товара для карточки в подсказках; null — правила нет. */
@@ -2244,7 +2327,7 @@ export function WholesaleOrder() {
       ) : (
         <ul className="flex flex-col gap-3">
           {priced.lines.map((l) => {
-            const hint = nextTierHint(l, lines)
+            const hint = nextTierHint(l)
             const discounted = l.totalRub < l.listRub
             return (
               <li
@@ -2370,6 +2453,434 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 
 ---
 
+### Task 9a: Подсказка «выгоднее комбо»
+
+Если покупатель собрал в списке отдельно наборы, из которых состоит комбо, и комбо выходит **дешевле** (с учётом оптовой скидки на отдельные наборы), блок предлагает заменить их на комбо. Комбо не входят в поиск `scope=wholesale`, поэтому цену и `id` комбо блок берёт из карточки товара (`getPublishedProduct`).
+
+Состав комбо — по коробкам в `api/src/seeds/_lib/tilda-shipping.ts` (комбо едет теми же коробками, что входящие в него наборы): «Химичка и Электрохимичка» = Химичка 3.0 + Электрохимичка; «Три набора» (`vse-tri-nabora`) = Химичка 3.0 + Электрохимичка + Мини-Химичка; «Все четыре набора» (`vse-chetyre-nabora`, новый товар) = эти три + набор для ОГЭ. Пока товара `vse-chetyre-nabora` нет в каталоге, запрос за ним вернёт 404, и подсказка про него просто не появится.
+
+**Files:**
+
+- Create: `web/lib/kitCombos.ts`
+- Create: `web/lib/comboSuggestion.ts`
+- Create: `web/lib/comboSuggestion.test.ts`
+- Modify: `web/components/wholesale/WholesaleOrder.tsx`
+- Modify: `web/components/wholesale/WholesaleOrder.test.tsx`
+
+**Interfaces:**
+
+- Consumes: `StagedLine`, `priceStaged`, `MAX_QTY` (`@/lib/wholesaleStaging`, Задача 8); `getPublishedProduct(slug)` с `categorySlugs` (Задача 6); `WholesaleOrder` (Задача 9).
+- Produces:
+  - `KitCombo { slug: string; components: readonly string[] }`, `KIT_COMBOS: readonly KitCombo[]` — от большего комбо к меньшему;
+  - `ComboProduct = Pick<StagedLine, 'productId' | 'slug' | 'name' | 'priceRub' | 'image' | 'categories' | 'stockStatus'>`;
+  - `ComboSuggestion { combo: ComboProduct; times: number; nextLines: StagedLine[]; savingsRub: number }`;
+  - `suggestCombo(lines: readonly StagedLine[], offers: ReadonlyMap<string, ComboProduct>): ComboSuggestion | null`.
+
+- [ ] **Step 1: Write the failing tests for `suggestCombo`**
+
+`web/lib/comboSuggestion.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { suggestCombo, type ComboProduct } from './comboSuggestion'
+import type { StagedLine } from './wholesaleStaging'
+
+const kit = (slug: string, quantity: number, priceRub: number): StagedLine => ({
+  productId: `id-${slug}`,
+  slug,
+  name: slug,
+  priceRub,
+  image: null,
+  categories: ['kits'],
+  stockStatus: 'in_stock',
+  quantity,
+})
+
+const combo = (
+  slug: string,
+  priceRub: number,
+  extra: Partial<ComboProduct> = {},
+): ComboProduct => ({
+  productId: `id-${slug}`,
+  slug,
+  name: slug,
+  priceRub,
+  image: null,
+  categories: ['combo'],
+  stockStatus: 'in_stock',
+  ...extra,
+})
+
+const H = (q: number) => kit('himichka-30', q, 3099)
+const E = (q: number) => kit('elektrohimichka', q, 3099)
+const M = (q: number) => kit('mini-himichka', q, 1699)
+const O = (q: number) => kit('bolshoi-nabor-dlya-oge', q, 3490)
+
+const pair = combo('himichka-i-elektrohimichka', 5678)
+const triple = combo('vse-tri-nabora', 6499)
+const offers = new Map([
+  [pair.slug, pair],
+  [triple.slug, triple],
+])
+
+describe('suggestCombo', () => {
+  it('предлагает комбо на пару наборов: 3099 + 3099 → 5678', () => {
+    const s = suggestCombo([H(1), E(1)], offers)
+    expect(s?.combo.slug).toBe('himichka-i-elektrohimichka')
+    expect(s?.times).toBe(1)
+    expect(s?.savingsRub).toBe(520)
+    expect(s?.nextLines.map((l) => [l.slug, l.quantity])).toEqual([
+      ['himichka-i-elektrohimichka', 1],
+    ])
+  })
+
+  it('из нескольких комбо берёт самое выгодное: три набора лучше пары', () => {
+    const s = suggestCombo([H(1), E(1), M(1)], offers)
+    expect(s?.combo.slug).toBe('vse-tri-nabora')
+    expect(s?.savingsRub).toBe(1398)
+    expect(s?.nextLines.map((l) => l.slug)).toEqual(['vse-tri-nabora'])
+  })
+
+  it('«Все четыре набора» выигрывает у «Трёх наборов», когда он есть в каталоге', () => {
+    const four = combo('vse-chetyre-nabora', 9000)
+    const s = suggestCombo([H(1), E(1), M(1), O(1)], new Map([...offers, [four.slug, four]]))
+    expect(s?.combo.slug).toBe('vse-chetyre-nabora')
+    expect(s?.savingsRub).toBe(3099 + 3099 + 1699 + 3490 - 9000)
+  })
+
+  it('заменяет только полные комплекты, остаток наборов остаётся в списке', () => {
+    const s = suggestCombo([H(2), E(1)], offers)
+    expect(s?.times).toBe(1)
+    expect(s?.savingsRub).toBe(520)
+    expect(s?.nextLines.map((l) => [l.slug, l.quantity])).toEqual([
+      ['himichka-30', 1],
+      ['himichka-i-elektrohimichka', 1],
+    ])
+  })
+
+  it('не предлагает комбо, если наборы с оптовой скидкой выходят дешевле', () => {
+    // 5 + 5 по 2800 = 28000, а пять комбо по 5678 = 28390.
+    expect(suggestCombo([H(5), E(5)], offers)).toBeNull()
+  })
+
+  it('добавляет к уже выбранным комбо, а не дублирует строку', () => {
+    const s = suggestCombo(
+      [H(1), E(1), { ...kit(pair.slug, 1, 5678), categories: ['combo'] }],
+      offers,
+    )
+    expect(s?.nextLines).toHaveLength(1)
+    expect(s?.nextLines[0].quantity).toBe(2)
+  })
+
+  it('не предлагает без полного набора компонентов или без данных о комбо', () => {
+    expect(suggestCombo([H(1)], offers)).toBeNull()
+    expect(suggestCombo([H(1), E(1)], new Map())).toBeNull()
+  })
+
+  it('пропускает комбо, которого нет в наличии', () => {
+    const sold = new Map([[pair.slug, { ...pair, stockStatus: 'out_of_stock' as const }]])
+    expect(suggestCombo([H(1), E(1)], sold)).toBeNull()
+  })
+})
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+Run: `cd web && npx vitest run lib/comboSuggestion.test.ts`
+Expected: FAIL — модулей нет.
+
+- [ ] **Step 3: Implement**
+
+`web/lib/kitCombos.ts`:
+
+```ts
+// Комбо наборов и состав. Состав — по коробкам в
+// api/src/seeds/_lib/tilda-shipping.ts: комбо едет теми же коробками, что
+// входящие в него наборы. Если состав комбо изменится, правьте здесь.
+export interface KitCombo {
+  slug: string
+  /** Слаги наборов, из которых состоит комбо. */
+  components: readonly string[]
+}
+
+/** От большего комбо к меньшему: при равной выгоде выигрывает первое в списке. */
+export const KIT_COMBOS: readonly KitCombo[] = [
+  {
+    slug: 'vse-chetyre-nabora',
+    components: ['himichka-30', 'elektrohimichka', 'mini-himichka', 'bolshoi-nabor-dlya-oge'],
+  },
+  {
+    slug: 'vse-tri-nabora',
+    components: ['himichka-30', 'elektrohimichka', 'mini-himichka'],
+  },
+  {
+    slug: 'himichka-i-elektrohimichka',
+    components: ['himichka-30', 'elektrohimichka'],
+  },
+]
+```
+
+`web/lib/comboSuggestion.ts`:
+
+```ts
+import { KIT_COMBOS } from './kitCombos'
+import { MAX_QTY, priceStaged, type StagedLine } from './wholesaleStaging'
+
+/** Комбо-товар в том виде, в каком он кладётся в список: поля строки без количества. */
+export type ComboProduct = Pick<
+  StagedLine,
+  'productId' | 'slug' | 'name' | 'priceRub' | 'image' | 'categories' | 'stockStatus'
+>
+
+export interface ComboSuggestion {
+  combo: ComboProduct
+  /** Сколько комбо заменят отдельные наборы. */
+  times: number
+  /** Список после замены. */
+  nextLines: StagedLine[]
+  savingsRub: number
+}
+
+/**
+ * Самая выгодная замена отдельных наборов комбо или null. Выгода считается
+ * по реальным ценам: оптовая скидка на отдельные наборы учитывается, поэтому
+ * на больших количествах комбо дороже и подсказки не будет.
+ */
+export function suggestCombo(
+  lines: readonly StagedLine[],
+  offers: ReadonlyMap<string, ComboProduct>,
+): ComboSuggestion | null {
+  const before = priceStaged(lines).totalRub
+  let best: ComboSuggestion | null = null
+  for (const def of KIT_COMBOS) {
+    const combo = offers.get(def.slug)
+    if (!combo || combo.stockStatus === 'out_of_stock') continue
+    const quantityOf = (slug: string) => lines.find((l) => l.slug === slug)?.quantity ?? 0
+    const times = Math.min(...def.components.map(quantityOf))
+    if (times < 1) continue
+
+    const rest = lines
+      .map((l) => (def.components.includes(l.slug) ? { ...l, quantity: l.quantity - times } : l))
+      .filter((l) => l.quantity > 0)
+    const nextLines = rest.some((l) => l.slug === def.slug)
+      ? rest.map((l) =>
+          l.slug === def.slug ? { ...l, quantity: Math.min(MAX_QTY, l.quantity + times) } : l,
+        )
+      : [...rest, { ...combo, quantity: times }]
+
+    const savingsRub = before - priceStaged(nextLines).totalRub
+    if (savingsRub > 0 && (!best || savingsRub > best.savingsRub)) {
+      best = { combo, times, nextLines, savingsRub }
+    }
+  }
+  return best
+}
+```
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `cd web && npx vitest run lib/comboSuggestion.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Write the failing UI tests**
+
+В `web/components/wholesale/WholesaleOrder.test.tsx`:
+
+1. Замените мок API на такой, где `getPublishedProduct` управляется тестом:
+
+```tsx
+const mockSearch = vi.fn<(q: string, opts?: unknown) => Promise<SearchResult>>()
+const mockProduct = vi.fn()
+vi.mock('@/lib/api', () => ({
+  searchCatalog: (q: string, opts?: unknown) => mockSearch(q, opts),
+  getPublishedProduct: (slug: string) => mockProduct(slug),
+}))
+```
+
+2. После `soldOut` добавьте фикстуры:
+
+```tsx
+const himichka = {
+  id: 'p-h',
+  slug: 'himichka-30',
+  name: 'Химичка 3.0',
+  priceRub: 3099,
+  image: null,
+  stockStatus: 'in_stock' as const,
+  categories: ['kits'],
+}
+const electro = {
+  id: 'p-e',
+  slug: 'elektrohimichka',
+  name: 'Электрохимичка',
+  priceRub: 3099,
+  image: null,
+  stockStatus: 'in_stock' as const,
+  categories: ['kits'],
+}
+const pairCombo = {
+  id: 'p-pair',
+  slug: 'himichka-i-elektrohimichka',
+  name: 'Химичка и Электрохимичка',
+  priceRub: 5678,
+  stockStatus: 'in_stock',
+  images: [],
+  categorySlugs: ['combo'],
+}
+```
+
+3. В `beforeEach`: `mockProduct.mockReset()` и `mockSearch.mockResolvedValue({ products: [tube, reagent, soldOut, himichka, electro], posts: [] })`.
+
+4. Новые тесты в конце `describe('WholesaleOrder', …)`:
+
+```tsx
+it('предлагает комбо, когда отдельные наборы выходят дороже, и заменяет по кнопке', async () => {
+  mockProduct.mockResolvedValue(pairCombo)
+  render(<WholesaleOrder />)
+  await pick('хи', /Химичка 3\.0/)
+  await pick('эл', /Электрохимичка/)
+  for (const row of screen.getAllByTestId('wholesale-line')) {
+    for (let i = 0; i < 4; i++) {
+      fireEvent.click(within(row).getByRole('button', { name: 'Уменьшить количество' }))
+    }
+  }
+
+  const banner = await screen.findByTestId('combo-suggestion')
+  expect(banner).toHaveTextContent('Химичка и Электрохимичка')
+  expect(banner).toHaveTextContent(formatRub(520))
+
+  fireEvent.click(within(banner).getByRole('button', { name: 'Заменить на комбо' }))
+
+  const rows = screen.getAllByTestId('wholesale-line')
+  expect(rows).toHaveLength(1)
+  expect(rows[0]).toHaveTextContent('Химичка и Электрохимичка')
+  expect(screen.getByTestId('wholesale-total')).toHaveTextContent(formatRub(5678))
+  expect(screen.queryByTestId('combo-suggestion')).toBeNull()
+})
+
+it('не предлагает комбо, если наборы с оптовой скидкой дешевле', async () => {
+  mockProduct.mockResolvedValue(pairCombo)
+  render(<WholesaleOrder />)
+  await pick('хи', /Химичка 3\.0/)
+  await pick('эл', /Электрохимичка/)
+  // по 5 шт: 28 000 ₽ против 28 390 ₽ за пять комбо
+
+  await waitFor(() => expect(mockProduct).toHaveBeenCalledWith('himichka-i-elektrohimichka'))
+  expect(screen.queryByTestId('combo-suggestion')).toBeNull()
+})
+
+it('без комбо в каталоге (запрос упал) подсказки нет и блок работает', async () => {
+  mockProduct.mockRejectedValue(new Error('404'))
+  render(<WholesaleOrder />)
+  await pick('хи', /Химичка 3\.0/)
+  await pick('эл', /Электрохимичка/)
+  await waitFor(() => expect(mockProduct).toHaveBeenCalled())
+  expect(screen.queryByTestId('combo-suggestion')).toBeNull()
+  expect(screen.getAllByTestId('wholesale-line')).toHaveLength(2)
+})
+```
+
+В импорт Testing Library добавьте `waitFor`: `import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'`.
+
+- [ ] **Step 6: Run to verify they fail**
+
+Run: `cd web && npx vitest run components/wholesale/WholesaleOrder.test.tsx`
+Expected: FAIL — подсказки нет, `getPublishedProduct` не вызывается.
+
+- [ ] **Step 7: Implement the UI**
+
+В `web/components/wholesale/WholesaleOrder.tsx`:
+
+1. Импорты:
+
+```tsx
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { getPublishedProduct } from '@/lib/api'
+import { suggestCombo, type ComboProduct } from '@/lib/comboSuggestion'
+import { KIT_COMBOS } from '@/lib/kitCombos'
+```
+
+(и `import { useMemo, useState } from 'react'` заменить первой строкой.)
+
+2. В теле компонента после `const priced = …`:
+
+```tsx
+const [offers, setOffers] = useState<ReadonlyMap<string, ComboProduct>>(() => new Map())
+const requested = useRef(new Set<string>())
+
+// Комбо подгружаем, когда в списке собрались все наборы, из которых оно
+// состоит. Не нашли комбо (404) или нет сети — подсказки просто не будет.
+useEffect(() => {
+  const present = new Set(lines.map((l) => l.slug))
+  for (const def of KIT_COMBOS) {
+    if (requested.current.has(def.slug) || !def.components.every((s) => present.has(s))) continue
+    requested.current.add(def.slug)
+    getPublishedProduct(def.slug)
+      .then((p) =>
+        setOffers((cur) =>
+          new Map(cur).set(def.slug, {
+            productId: p.id,
+            slug: p.slug,
+            name: p.name,
+            priceRub: p.priceRub,
+            image: p.images[0]?.url ?? null,
+            categories: p.categorySlugs ?? [],
+            stockStatus: p.stockStatus,
+          }),
+        ),
+      )
+      .catch(() => {
+        // комбо нет в каталоге или сеть недоступна — остаёмся без подсказки
+      })
+  }
+}, [lines])
+
+const suggestion = useMemo(() => suggestCombo(lines, offers), [lines, offers])
+```
+
+3. Над блоком итогов (`<div className="flex flex-col gap-2 border-t …">`) вставьте:
+
+```tsx
+{
+  suggestion ? (
+    <div
+      role="status"
+      data-testid="combo-suggestion"
+      className="flex flex-wrap items-center gap-3 rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-brand)] bg-[var(--color-lj-cream-shade)] p-3 font-lj-body text-sm"
+    >
+      <span className="min-w-[12rem] flex-1">
+        {`Выгоднее комбо «${suggestion.combo.name}»${
+          suggestion.times > 1 ? ` × ${suggestion.times}` : ''
+        }: сэкономите ${formatRub(suggestion.savingsRub)}`}
+      </span>
+      <button
+        type="button"
+        className="lj-btn lj-btn-outline rounded-[4px] px-4 py-2"
+        onClick={() => setLines([...suggestion.nextLines])}
+      >
+        Заменить на комбо
+      </button>
+    </div>
+  ) : null
+}
+```
+
+- [ ] **Step 8: Run to verify it passes**
+
+Run: `cd web && npx vitest run components/wholesale lib/comboSuggestion.test.ts && npx eslint components/wholesale lib && npx tsc --noEmit`
+Expected: PASS, без ошибок линтера и типов.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add web/lib/kitCombos.ts web/lib/comboSuggestion.ts web/lib/comboSuggestion.test.ts web/components/wholesale
+git commit -m "feat(web): подсказка заменить отдельные наборы на комбо, если так выгоднее
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+```
+
+---
+
 ### Task 10: Страница `/opt`, таблица скидок, sitemap
 
 **Files:**
@@ -2407,7 +2918,7 @@ describe('WholesaleTiersTable', () => {
     expect(kits).toHaveTextContent('−599 ₽')
     expect(kits).toHaveTextContent('−199 ₽')
     expect(kits).toHaveTextContent('−499 ₽')
-    expect(kits).toHaveTextContent('набор для ОГЭ')
+    expect(kits).toHaveTextContent('Набор для ОГЭ')
   })
 
   it('показывает проценты для реагентов и оборудования', () => {
@@ -2503,8 +3014,10 @@ import { formatRub } from '@/lib/stockLabel'
 // Таблица читает ступени из того же движка, по которому считают корзина и
 // сервер, — цифры на странице не могут разойтись с реальными ценами.
 
-const KIT_TITLES: Record<string, string> = {
-  'himichka-30': 'Химичка 3.0, Электрохимичка, набор для ОГЭ (считаются вместе)',
+const KIT_NAMES: Record<string, string> = {
+  'himichka-30': 'Химичка 3.0',
+  elektrohimichka: 'Электрохимичка',
+  'bolshoi-nabor-dlya-oge': 'Набор для ОГЭ',
   'mini-himichka': 'Мини-Химичка',
 }
 
@@ -2514,7 +3027,15 @@ const TH =
 const TD = 'border-b border-[var(--color-lj-rule-soft)] px-3 py-3 tabular-nums'
 
 export function WholesaleTiersTable() {
-  const kitThresholds = [...WHOLESALE_GROUPS[0].tiers].reverse().map((t) => t.minQty)
+  // Наборы с одной и той же шкалой — одной строкой (считаются они по отдельности).
+  const scales: { tiers: (typeof WHOLESALE_GROUPS)[number]['tiers']; names: string[] }[] = []
+  for (const group of WHOLESALE_GROUPS) {
+    const name = KIT_NAMES[group.slugs[0]] ?? group.slugs[0]
+    const scale = scales.find((sc) => sc.tiers === group.tiers)
+    if (scale) scale.names.push(name)
+    else scales.push({ tiers: group.tiers, names: [name] })
+  }
+  const kitThresholds = [...scales[0].tiers].reverse().map((t) => t.minQty)
   const percentTiers = [...PERCENT_TIERS].reverse()
   const batchSteps = BATCH_PRICING.get('probirka')!.steps.map((s) => s.qty)
 
@@ -2532,10 +3053,13 @@ export function WholesaleTiersTable() {
           </tr>
         </thead>
         <tbody>
-          {WHOLESALE_GROUPS.map((group) => (
-            <tr key={group.slugs[0]}>
-              <td className={TD}>{KIT_TITLES[group.slugs[0]] ?? group.slugs[0]}</td>
-              {[...group.tiers].reverse().map((t) => (
+          {scales.map((scale) => (
+            <tr key={scale.names.join()}>
+              <td className={TD}>
+                {scale.names.join(', ')}
+                {scale.names.length > 1 ? ' — каждый набор считается отдельно' : ''}
+              </td>
+              {[...scale.tiers].reverse().map((t) => (
                 <td key={t.minQty} className={TD}>
                   −{formatRub(t.offRub)} с набора
                 </td>
@@ -2692,8 +3216,9 @@ export default async function OptPage({ params }: Props) {
             </h2>
             <WholesaleTiersTable />
             <p className="font-lj-body text-sm opacity-70">
-              Для реагентов и оборудования скидка считается на каждую позицию отдельно. Наборы
-              Химичка 3.0, Электрохимичка и для ОГЭ считаются вместе.
+              Скидка считается на каждую позицию отдельно: количества разных наборов, реагентов и
+              другого товара не складываются. Несколько разных наборов можно взять комбо: на
+              небольших количествах оно выходит дешевле.
             </p>
           </section>
 
@@ -2903,12 +3428,16 @@ Expected: пусто. Иначе — реализовать или явно со
 
 - [ ] **Step 5: Hand off**
 
-Сообщить владельцу: что сделано, результаты проверок, открытые вопросы (цены `probirka` и `pipetka-pastera` на проде, права на таблицу `order_items` при миграции). Мёрж в `main` — только по явной команде.
+Сообщить владельцу: что сделано, результаты проверок, открытые вопросы (цены `probirka` и `pipetka-pastera` на проде, права на таблицу `order_items` при миграции, нужна ли подсказка про комбо ещё и в корзине). Мёрж в `main` — только по явной команде.
+
+- [ ] **Step 6: Update the project memory**
+
+Обновите `~/.claude/projects/-Users-vasilijaistov-Desktop-continuum-ximi4ka-shop/memory/wholesale-kit-discounts.md`: наборы с 07.10.2026 считаются раздельно (по своему количеству, Химичка и Электро больше не суммируются); добавлены ОГЭ в шкалу 299…599, проценты на реагенты и оборудование, цены партий пробирок и пипеток, `order_items.line_total_rub`; код движка и зеркало — те же файлы. Хронологию правок в память не пишите: она в `git log`.
 
 ---
 
 ## Self-review
 
-**Покрытие спеки:** §3 правила цен — Задача 1 (+ОГЭ, правка спеки); §4 движок и зеркало — Задачи 1–2; §5 сервер и заказ — Задачи 3–5; §5 витрина — Задача 7; §6 поиск — Задача 6; §7 блок, `/opt`, главная — Задачи 8–11; §8 тесты — в каждой задаче, §9 выкатка — Задача 12. Пробел: в спеке «два варианта компонента», в плане один (отмечено в Задаче 9).
+**Покрытие спеки:** §3 правила цен — Задача 1 (наборы раздельно, ОГЭ в шкале 299…599); §4 движок и зеркало — Задачи 1–2; §5 сервер и заказ — Задачи 3–5; §5 витрина — Задача 7; §6 поиск — Задача 6; §7 блок, подсказка про комбо, `/opt`, главная — Задачи 8–11 (подсказка — 9a); §8 тесты — в каждой задаче, §9 выкатка — Задача 12. Пробел: в спеке «два варианта компонента», в плане один (отмечено в Задаче 9).
 
 **Типы:** `wholesaleLineTotals`, `isPercentEligible`, `BATCH_PRICING` (Map), `StagedLine`, `stepQuantity`, `priceStaged`, `SearchProductResult` (id, stockStatus, categories), `CartItem.categories`, `lineTotalRub` — имена одинаковы во всех задачах.
