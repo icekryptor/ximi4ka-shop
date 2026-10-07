@@ -14,6 +14,7 @@ import {
   toStagedLine,
   type StagedLine,
 } from '@/lib/wholesaleStaging'
+import { WholesalePicker } from './WholesalePicker'
 import { WholesaleSearch } from './WholesaleSearch'
 
 const STEP_BTN =
@@ -23,7 +24,7 @@ const SUMMARY_ROW =
   'flex justify-between gap-4 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em]'
 
 /**
- * Блок оптового заказа: найти позиции, выбрать количества, увидеть цену с
+ * Блок оптового заказа: найти позиции (поиском или из каталога), выбрать количества, увидеть цену с
  * оптовой скидкой и одним кликом отправить список в обычную корзину. Список
  * живёт в памяти страницы. Цены считает тот же движок, что корзина и сервер.
  */
@@ -63,6 +64,8 @@ export function WholesaleOrder() {
 
   const suggestion = useMemo(() => suggestCombo(lines, offers), [lines, offers])
 
+  const addedIds = useMemo(() => new Set(lines.map((l) => l.productId)), [lines])
+
   const pick = (product: SearchProductResult) =>
     setLines((cur) =>
       cur.some((l) => l.productId === product.id) ? cur : [...cur, toStagedLine(product)],
@@ -100,11 +103,14 @@ export function WholesaleOrder() {
 
   return (
     <div className="flex flex-col gap-6">
-      <WholesaleSearch onPick={pick} />
+      <div className="flex flex-col gap-4">
+        <WholesaleSearch onPick={pick} />
+        <WholesalePicker addedIds={addedIds} onPick={pick} />
+      </div>
 
       {lines.length === 0 ? (
         <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-65">
-          Найдите товар — он появится здесь с оптовой ценой
+          Найдите товар или выберите из каталога — он появится здесь с оптовой ценой
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
