@@ -49,6 +49,14 @@ describe('AddToCartWithQuantity', () => {
     ])
   })
 
+  it('stores the product categories so the wholesale preview sees them at once', () => {
+    render(<AddToCartWithQuantity product={{ ...product, categorySlugs: ['reagents'] }} />)
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'В корзину →' }))
+    })
+    expect(loadCart()[0].categories).toEqual(['reagents'])
+  })
+
   it('stores no image when the product has none (drawer falls back to placeholder)', () => {
     render(<AddToCartWithQuantity product={{ ...product, images: [] }} />)
     act(() => {

@@ -20,6 +20,24 @@ const inStock = {
 }
 
 describe('AddToCartButton', () => {
+  it('stores the product categories when the caller has them', () => {
+    const { container } = render(
+      <AddToCartButton product={{ ...inStock, categorySlugs: ['reagents'] }} />,
+    )
+    act(() => {
+      fireEvent.click(within(container).getByRole('button'))
+    })
+    expect(loadCart()[0].categories).toEqual(['reagents'])
+  })
+
+  it('stores no categories when the caller has none (backfill fills them later)', () => {
+    const { container } = render(<AddToCartButton product={inStock} />)
+    act(() => {
+      fireEvent.click(within(container).getByRole('button'))
+    })
+    expect(loadCart()[0]).not.toHaveProperty('categories')
+  })
+
   it('renders "В корзину" label for in_stock product and is enabled', () => {
     const { container } = render(<AddToCartButton product={inStock} />)
     const btn = within(container).getByRole('button')

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import {
   type CartItem,
+  MAX_LINE_QTY,
   addToCart,
   calculateSubtotal,
   cartTotals,
@@ -68,6 +69,23 @@ describe('addToCart categories', () => {
     const twice = addToCart(once, itemA, 2)
     expect(twice[0].categories).toEqual(['reagents'])
     expect(twice[0].quantity).toBe(3)
+  })
+})
+
+describe('лимит количества в строке', () => {
+  it('сливает повторное добавление не выше лимита сервера', () => {
+    const start: CartItem[] = [{ ...itemA, quantity: 60 }]
+    expect(addToCart(start, itemA, 50)[0].quantity).toBe(99)
+    expect(MAX_LINE_QTY).toBe(99)
+  })
+
+  it('новая строка не выше лимита', () => {
+    expect(addToCart([], itemA, 120)[0].quantity).toBe(99)
+  })
+
+  it('setQuantity не поднимает выше лимита', () => {
+    const start: CartItem[] = [{ ...itemA, quantity: 98 }]
+    expect(setQuantity(start, 'a', 150)[0].quantity).toBe(99)
   })
 })
 

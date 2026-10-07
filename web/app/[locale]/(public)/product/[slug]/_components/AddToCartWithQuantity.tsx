@@ -8,7 +8,7 @@ import { QuantityStepperLJ } from '@/components/product/QuantityStepperLJ'
 
 interface Props {
   product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'> &
-    Partial<Pick<Product, 'compareAtPriceRub'>>
+    Partial<Pick<Product, 'compareAtPriceRub' | 'categorySlugs'>>
 }
 
 /**
@@ -38,6 +38,8 @@ export function AddToCartWithQuantity({ product }: Props) {
         priceRub: product.priceRub,
         compareAtPriceRub: product.compareAtPriceRub ?? undefined,
         image: product.images[0]?.url,
+        // Категории — для процентной оптовой скидки в превью корзины.
+        ...(product.categorySlugs ? { categories: product.categorySlugs } : {}),
       },
       quantity,
     )

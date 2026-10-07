@@ -3,7 +3,14 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 const getPublishedProduct = vi.fn()
 vi.mock('./api', () => ({ getPublishedProduct: (slug: string) => getPublishedProduct(slug) }))
 
-import { backfillCartCategories, loadCart, saveCart, type CartItem } from './cart'
+import {
+  backfillCartCategories,
+  loadCart,
+  removeFromCart,
+  resetCategoryCacheForTests,
+  saveCart,
+  type CartItem,
+} from './cart'
 
 const item = (slug: string, extra: Partial<CartItem> = {}): CartItem => ({
   productId: `id-${slug}`,
@@ -17,6 +24,7 @@ const item = (slug: string, extra: Partial<CartItem> = {}): CartItem => ({
 beforeEach(() => {
   window.localStorage.clear()
   getPublishedProduct.mockReset()
+  resetCategoryCacheForTests()
 })
 afterEach(() => {
   window.localStorage.clear()
@@ -50,5 +58,34 @@ describe('backfillCartCategories', () => {
     await expect(backfillCartCategories()).resolves.toBeUndefined()
 
     expect(loadCart()[0].categories).toBeUndefined()
+  })
+  it('повторно добавленный без категорий товар получает их из кэша без сети', async () => {
+    saveCart([item('again')])
+    getPublishedProduct.mockResolvedValue({ categorySlugs: ['reagents'] })
+    await backfillCartCategories()
+    expect(getPublishedProduct).toHaveBeenCalledTimes(1)
+
+    // Удалили и добавили снова — уже без категорий.
+    saveCart(removeFromCart(loadCart(), 'id-again'))
+    saveCart([item('again')])
+    expect(loadCart()[0].categories).toBeUndefined()
+
+    await backfillCartCategories()
+
+    expect(getPublishedProduct).toHaveBeenCalledTimes(1)
+    expect(loadCart()[0].categories).toEqual(['reagents'])
+  })
+
+  it('после неудачного запроса следующий вызов пробует снова', async () => {
+    saveCart([item('flaky')])
+    getPublishedProduct.mockRejectedValueOnce(new Error('offline'))
+    await backfillCartCategories()
+    expect(loadCart()[0].categories).toBeUndefined()
+
+    getPublishedProduct.mockResolvedValueOnce({ categorySlugs: ['equipment'] })
+    await backfillCartCategories()
+
+    expect(getPublishedProduct).toHaveBeenCalledTimes(2)
+    expect(loadCart()[0].categories).toEqual(['equipment'])
   })
 })

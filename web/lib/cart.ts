@@ -30,6 +30,13 @@ export interface CartItem {
   categories?: string[]
 }
 
+// Лимит количества в одной строке — как max у CheckoutSchema (api/src/routes/
+// checkout.schemas.ts). Дубль wholesaleStaging.MAX_QTY: тот модуль импортирует
+// корзину, обратный импорт дал бы цикл.
+export const MAX_LINE_QTY = 99
+
+const clampQty = (qty: number): number => Math.min(qty, MAX_LINE_QTY)
+
 const STORAGE_KEY = 'ximi4ka-shop-cart'
 const EVENT_NAME = 'cart-updated'
 
@@ -123,11 +130,11 @@ export function addToCart(
     const categories = fresh.categories ?? existing.categories
     return items.map((i) =>
       i.productId === item.productId
-        ? { ...fresh, ...(categories ? { categories } : {}), quantity: i.quantity + qty }
+        ? { ...fresh, ...(categories ? { categories } : {}), quantity: clampQty(i.quantity + qty) }
         : i,
     )
   }
-  return [...items, { ...fresh, quantity: qty }]
+  return [...items, { ...fresh, quantity: clampQty(qty) }]
 }
 
 // Цена «до» имеет смысл, только если она выше текущей.
@@ -146,35 +153,55 @@ export function removeFromCart(items: CartItem[], productId: string): CartItem[]
 
 export function setQuantity(items: CartItem[], productId: string, qty: number): CartItem[] {
   if (qty <= 0) return removeFromCart(items, productId)
-  return items.map((i) => (i.productId === productId ? { ...i, quantity: qty } : i))
+  return items.map((i) => (i.productId === productId ? { ...i, quantity: clampQty(qty) } : i))
 }
 
 export function clearCart(): CartItem[] {
   return []
 }
 
-// Слаги, по которым категории уже запрошены: функцию зовут из нескольких мест,
-// без этого одна и та же позиция уходила бы в сеть повторно.
-const categoryRequests = new Set<string>()
+// Категории, уже полученные по слагу: товар, удалённый из корзины и добавленный
+// снова без категорий, берёт их отсюда без похода в сеть.
+const categoryCache = new Map<string, string[]>()
+// Слаги с запросом «в полёте»: функцию зовут из нескольких мест, без этого одна
+// и та же позиция уходила бы в сеть повторно. Из набора слаг убирается в finally,
+// так что неудавшийся запрос можно повторить следующим вызовом.
+const categoryInFlight = new Set<string>()
+
+/** Только для тестов: кэш модульный, между тестами его надо сбрасывать. */
+export function resetCategoryCacheForTests(): void {
+  categoryCache.clear()
+  categoryInFlight.clear()
+}
 
 /**
  * Докачивает категории позициям корзины, у которых их нет (корзины старого
- * формата). Нет сети или товар снят — позиция остаётся как есть: в превью не
- * будет процентной скидки, а сервер при оформлении посчитает сам.
+ * формата, товары, добавленные из карточек каталога). Нет сети или товар снят —
+ * позиция остаётся как есть: в превью не будет процентной скидки, а сервер при
+ * оформлении посчитает сам.
  */
 export async function backfillCartCategories(): Promise<void> {
-  const missing = loadCart().filter(
-    (i) => i.categories === undefined && !categoryRequests.has(i.slug),
-  )
+  const missing = loadCart().filter((i) => i.categories === undefined)
   await Promise.all(
     missing.map(async (item) => {
-      categoryRequests.add(item.slug)
+      const apply = (categories: string[]) =>
+        saveCart(loadCart().map((i) => (i.productId === item.productId ? { ...i, categories } : i)))
+      const cached = categoryCache.get(item.slug)
+      if (cached) {
+        apply(cached)
+        return
+      }
+      if (categoryInFlight.has(item.slug)) return
+      categoryInFlight.add(item.slug)
       try {
         const product = await getPublishedProduct(item.slug)
         const categories = product.categorySlugs ?? []
-        saveCart(loadCart().map((i) => (i.productId === item.productId ? { ...i, categories } : i)))
+        categoryCache.set(item.slug, categories)
+        apply(categories)
       } catch {
         // см. комментарий выше: тихо остаёмся без категорий.
+      } finally {
+        categoryInFlight.delete(item.slug)
       }
     }),
   )
