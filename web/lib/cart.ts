@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react'
-import { wholesaleUnitDiscounts } from './wholesale'
+import { wholesaleLineTotals } from './wholesale'
+import { getPublishedProduct } from './api'
 import { METRIKA_GOALS, ecommerceAdd, ecommerceRemove, reachGoal } from './metrika'
 
 export interface CartItem {
@@ -21,6 +22,12 @@ export interface CartItem {
    * если она выше priceRub. Нужна, чтобы показать скидку в подытоге.
    */
   compareAtPriceRub?: number
+  /**
+   * Слаги категорий товара — по ним считается процентная оптовая скидка.
+   * Optional: корзины, сохранённые до введения поля, его не имеют;
+   * backfillCartCategories докачивает категории по слагу.
+   */
+  categories?: string[]
 }
 
 const STORAGE_KEY = 'ximi4ka-shop-cart'
@@ -73,6 +80,9 @@ function normalizeCartItem(value: unknown): CartItem | null {
   if (typeof v.compareAtPriceRub === 'number' && v.compareAtPriceRub > v.priceRub) {
     item.compareAtPriceRub = v.compareAtPriceRub
   }
+  if (Array.isArray(v.categories) && v.categories.every((c) => typeof c === 'string')) {
+    item.categories = v.categories as string[]
+  }
   return item
 }
 
@@ -109,8 +119,12 @@ export function addToCart(
   const existing = items.find((i) => i.productId === item.productId)
   if (existing) {
     // Повторное добавление обновляет снимок цены — в корзине актуальная.
+    // Категории переносим из старой записи, если новая их не принесла.
+    const categories = fresh.categories ?? existing.categories
     return items.map((i) =>
-      i.productId === item.productId ? { ...fresh, quantity: i.quantity + qty } : i,
+      i.productId === item.productId
+        ? { ...fresh, ...(categories ? { categories } : {}), quantity: i.quantity + qty }
+        : i,
     )
   }
   return [...items, { ...fresh, quantity: qty }]
@@ -139,6 +153,33 @@ export function clearCart(): CartItem[] {
   return []
 }
 
+// Слаги, по которым категории уже запрошены: функцию зовут из нескольких мест,
+// без этого одна и та же позиция уходила бы в сеть повторно.
+const categoryRequests = new Set<string>()
+
+/**
+ * Докачивает категории позициям корзины, у которых их нет (корзины старого
+ * формата). Нет сети или товар снят — позиция остаётся как есть: в превью не
+ * будет процентной скидки, а сервер при оформлении посчитает сам.
+ */
+export async function backfillCartCategories(): Promise<void> {
+  const missing = loadCart().filter(
+    (i) => i.categories === undefined && !categoryRequests.has(i.slug),
+  )
+  await Promise.all(
+    missing.map(async (item) => {
+      categoryRequests.add(item.slug)
+      try {
+        const product = await getPublishedProduct(item.slug)
+        const categories = product.categorySlugs ?? []
+        saveCart(loadCart().map((i) => (i.productId === item.productId ? { ...i, categories } : i)))
+      } catch {
+        // см. комментарий выше: тихо остаёмся без категорий.
+      }
+    }),
+  )
+}
+
 export function calculateSubtotal(items: CartItem[]): number {
   return items.reduce((sum, i) => sum + i.priceRub * i.quantity, 0)
 }
@@ -148,7 +189,7 @@ export interface CartTotals {
   goodsRub: number
   /** Товары по текущим ценам — так считает сервер (subtotal заказа). */
   subtotalRub: number
-  /** Оптовая скидка на наборы (web/lib/wholesale.ts, зеркало сервера). */
+  /** Оптовая скидка: наборы, проценты на реагенты, партии (web/lib/wholesale.ts, зеркало сервера). */
   wholesaleRub: number
   /** Вся скидка для покупателя: разница с ценой «до» + оптовая. */
   discountRub: number
@@ -157,14 +198,15 @@ export interface CartTotals {
 }
 
 export function cartTotals(items: CartItem[]): CartTotals {
-  const unitOff = wholesaleUnitDiscounts(items)
+  const lineTotals = wholesaleLineTotals(items)
   let goodsRub = 0
   let subtotalRub = 0
   let wholesaleRub = 0
   for (const i of items) {
+    const listRub = i.priceRub * i.quantity
     goodsRub += (i.compareAtPriceRub ?? i.priceRub) * i.quantity
-    subtotalRub += i.priceRub * i.quantity
-    wholesaleRub += (unitOff.get(i.slug) ?? 0) * i.quantity
+    subtotalRub += listRub
+    wholesaleRub += listRub - (lineTotals.get(i.slug) ?? listRub)
   }
   const totalRub = subtotalRub - wholesaleRub
   return { goodsRub, subtotalRub, wholesaleRub, discountRub: goodsRub - totalRub, totalRub }

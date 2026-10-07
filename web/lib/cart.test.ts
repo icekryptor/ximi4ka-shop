@@ -61,6 +61,16 @@ describe('addToCart', () => {
   })
 })
 
+describe('addToCart categories', () => {
+  it('keeps categories when the same product is added again without them', () => {
+    const withCats = { ...itemA, categories: ['reagents'] }
+    const once = addToCart([], withCats, 1)
+    const twice = addToCart(once, itemA, 2)
+    expect(twice[0].categories).toEqual(['reagents'])
+    expect(twice[0].quantity).toBe(3)
+  })
+})
+
 describe('removeFromCart', () => {
   it('removes by productId', () => {
     const start: CartItem[] = [
@@ -161,6 +171,21 @@ describe('loadCart / saveCart', () => {
     ]
     saveCart(cart)
     expect(loadCart()).toEqual(cart)
+  })
+})
+
+describe('categories field — localStorage', () => {
+  it('restores categories from localStorage and drops invalid values', () => {
+    window.localStorage.setItem(
+      'ximi4ka-shop-cart',
+      JSON.stringify([
+        { ...itemA, quantity: 1, categories: ['reagents', 'equipment'] },
+        { ...itemB, quantity: 1, categories: [1, 2] },
+      ]),
+    )
+    const items = loadCart()
+    expect(items[0].categories).toEqual(['reagents', 'equipment'])
+    expect(items[1].categories).toBeUndefined()
   })
 })
 
@@ -303,11 +328,39 @@ describe('cartTotals', () => {
     expect(t.totalRub).toBe(3099)
   })
 
-  it('applies the wholesale tier across Химичка 3.0 + Электрохимичка', () => {
+  it('counts each kit on its own: Химичка 3.0 and Электрохимичка are not summed', () => {
     const t = cartTotals([kit('himichka-30', 3), kit('elektrohimichka', 2)])
+    expect(t.wholesaleRub).toBe(0)
+    expect(t.totalRub).toBe(5 * 3099)
+  })
+
+  it('applies the tier only to the kit that reached it', () => {
+    const t = cartTotals([kit('himichka-30', 5), kit('elektrohimichka', 4)])
     expect(t.wholesaleRub).toBe(5 * 299)
-    expect(t.discountRub).toBe(5 * 299)
-    expect(t.totalRub).toBe(5 * 3099 - 5 * 299)
+    expect(t.totalRub).toBe(9 * 3099 - 5 * 299)
+  })
+
+  it('applies the percent discount to reagents with known categories', () => {
+    const t = cartTotals([
+      kit('sulfate', 10, { priceRub: 100, categories: ['reagents'] }),
+      kit('soda', 4, { priceRub: 100, categories: ['reagents'] }),
+    ])
+    expect(t.subtotalRub).toBe(1400)
+    expect(t.wholesaleRub).toBe(200)
+    expect(t.totalRub).toBe(1200)
+  })
+
+  it('gives no percent discount while categories are unknown (старая корзина)', () => {
+    const t = cartTotals([kit('sulfate', 10, { priceRub: 100 })])
+    expect(t.wholesaleRub).toBe(0)
+    expect(t.totalRub).toBe(1000)
+  })
+
+  it('prices a tube batch by the table (5 × 29 ₽ → 99 ₽)', () => {
+    const t = cartTotals([kit('probirka', 5, { priceRub: 29, categories: ['equipment'] })])
+    expect(t.subtotalRub).toBe(145)
+    expect(t.wholesaleRub).toBe(46)
+    expect(t.totalRub).toBe(99)
   })
 
   it('adds both discounts and keeps goods − discount = total', () => {
