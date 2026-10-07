@@ -1,14 +1,15 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { SearchResult } from '@ximi4ka-shop/shared'
 import { formatRub } from '@/lib/stockLabel'
 import { loadCart, OPEN_CART_EVENT } from '@/lib/cart'
 import { WholesaleOrder } from './WholesaleOrder'
 
 const mockSearch = vi.fn<(q: string, opts?: unknown) => Promise<SearchResult>>()
+const mockProduct = vi.fn()
 vi.mock('@/lib/api', () => ({
   searchCatalog: (q: string, opts?: unknown) => mockSearch(q, opts),
-  getPublishedProduct: vi.fn(),
+  getPublishedProduct: (slug: string) => mockProduct(slug),
 }))
 
 const tube = {
@@ -37,6 +38,34 @@ const soldOut = {
   stockStatus: 'out_of_stock' as const,
 }
 
+const himichka = {
+  id: 'p-h',
+  slug: 'himichka-30',
+  name: 'Химичка 3.0',
+  priceRub: 3099,
+  image: null,
+  stockStatus: 'in_stock' as const,
+  categories: ['kits'],
+}
+const electro = {
+  id: 'p-e',
+  slug: 'elektrohimichka',
+  name: 'Электрохимичка',
+  priceRub: 3099,
+  image: null,
+  stockStatus: 'in_stock' as const,
+  categories: ['kits'],
+}
+const pairCombo = {
+  id: 'p-pair',
+  slug: 'himichka-i-elektrohimichka',
+  name: 'Химичка и Электрохимичка',
+  priceRub: 5678,
+  stockStatus: 'in_stock',
+  images: [],
+  categorySlugs: ['combo'],
+}
+
 // toHaveTextContent нормализует пробелы в тексте элемента, но не в ожидаемой строке,
 // а Intl ставит неразрывный пробел — приводим ожидаемое к обычному.
 const rub = (value: number) => formatRub(value).replace(/\s/g, ' ')
@@ -54,7 +83,11 @@ async function pick(query: string, name: RegExp) {
 beforeEach(() => {
   window.localStorage.clear()
   mockSearch.mockReset()
-  mockSearch.mockResolvedValue({ products: [tube, reagent, soldOut], posts: [] })
+  mockProduct.mockReset()
+  mockSearch.mockResolvedValue({
+    products: [tube, reagent, soldOut, himichka, electro],
+    posts: [],
+  })
 })
 afterEach(() => {
   cleanup()
@@ -149,5 +182,56 @@ describe('WholesaleOrder', () => {
     await pick('про', /Пробирка/)
     fireEvent.click(screen.getByRole('button', { name: /Убрать Пробирка/ }))
     expect(screen.queryAllByTestId('wholesale-line')).toHaveLength(0)
+  })
+
+  it('после выбора товара фокус возвращается в поле поиска', async () => {
+    render(<WholesaleOrder />)
+    await pick('про', /Пробирка/)
+    expect(document.activeElement).toBe(screen.getByRole('searchbox'))
+  })
+
+  it('предлагает комбо, когда отдельные наборы выходят дороже, и заменяет по кнопке', async () => {
+    mockProduct.mockResolvedValue(pairCombo)
+    render(<WholesaleOrder />)
+    await pick('хи', /Химичка 3\.0/)
+    await pick('эл', /Электрохимичка/)
+    for (const row of screen.getAllByTestId('wholesale-line')) {
+      for (let i = 0; i < 4; i++) {
+        fireEvent.click(within(row).getByRole('button', { name: 'Уменьшить количество' }))
+      }
+    }
+
+    const banner = await screen.findByTestId('combo-suggestion')
+    expect(banner).toHaveTextContent('Химичка и Электрохимичка')
+    expect(banner).toHaveTextContent(rub(520))
+
+    fireEvent.click(within(banner).getByRole('button', { name: 'Заменить на комбо' }))
+
+    const rows = screen.getAllByTestId('wholesale-line')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toHaveTextContent('Химичка и Электрохимичка')
+    expect(screen.getByTestId('wholesale-total')).toHaveTextContent(rub(5678))
+    expect(screen.queryByTestId('combo-suggestion')).toBeNull()
+  })
+
+  it('не предлагает комбо, если наборы с оптовой скидкой дешевле', async () => {
+    mockProduct.mockResolvedValue(pairCombo)
+    render(<WholesaleOrder />)
+    await pick('хи', /Химичка 3\.0/)
+    await pick('эл', /Электрохимичка/)
+    // по 5 шт: 28 000 ₽ против 28 390 ₽ за пять комбо
+
+    await waitFor(() => expect(mockProduct).toHaveBeenCalledWith('himichka-i-elektrohimichka'))
+    expect(screen.queryByTestId('combo-suggestion')).toBeNull()
+  })
+
+  it('без комбо в каталоге (запрос упал) подсказки нет и блок работает', async () => {
+    mockProduct.mockRejectedValue(new Error('404'))
+    render(<WholesaleOrder />)
+    await pick('хи', /Химичка 3\.0/)
+    await pick('эл', /Электрохимичка/)
+    await waitFor(() => expect(mockProduct).toHaveBeenCalled())
+    expect(screen.queryByTestId('combo-suggestion')).toBeNull()
+    expect(screen.getAllByTestId('wholesale-line')).toHaveLength(2)
   })
 })

@@ -1,7 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { SearchProductResult } from '@ximi4ka-shop/shared'
+import { getPublishedProduct } from '@/lib/api'
+import { suggestCombo, type ComboProduct } from '@/lib/comboSuggestion'
+import { KIT_COMBOS } from '@/lib/kitCombos'
 import { openCartDrawer, useCart } from '@/lib/cart'
 import { formatRub } from '@/lib/stockLabel'
 import {
@@ -28,6 +31,37 @@ export function WholesaleOrder() {
   const { add } = useCart()
   const [lines, setLines] = useState<StagedLine[]>([])
   const priced = useMemo(() => priceStaged(lines), [lines])
+  const [offers, setOffers] = useState<ReadonlyMap<string, ComboProduct>>(() => new Map())
+  const requested = useRef(new Set<string>())
+
+  // Комбо подгружаем, когда в списке собрались все наборы, из которых оно
+  // состоит. Не нашли комбо (404) или нет сети — подсказки просто не будет.
+  useEffect(() => {
+    const present = new Set(lines.map((l) => l.slug))
+    for (const def of KIT_COMBOS) {
+      if (requested.current.has(def.slug) || !def.components.every((s) => present.has(s))) continue
+      requested.current.add(def.slug)
+      getPublishedProduct(def.slug)
+        .then((p) =>
+          setOffers((cur) =>
+            new Map(cur).set(def.slug, {
+              productId: p.id,
+              slug: p.slug,
+              name: p.name,
+              priceRub: p.priceRub,
+              image: p.images[0]?.url ?? null,
+              categories: p.categorySlugs ?? [],
+              stockStatus: p.stockStatus,
+            }),
+          ),
+        )
+        .catch(() => {
+          // комбо нет в каталоге или сеть недоступна — остаёмся без подсказки
+        })
+    }
+  }, [lines])
+
+  const suggestion = useMemo(() => suggestCombo(lines, offers), [lines, offers])
 
   const pick = (product: SearchProductResult) =>
     setLines((cur) =>
@@ -150,6 +184,27 @@ export function WholesaleOrder() {
           })}
         </ul>
       )}
+
+      {suggestion ? (
+        <div
+          role="status"
+          data-testid="combo-suggestion"
+          className="flex flex-wrap items-center gap-3 rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-brand)] bg-[var(--color-lj-cream-shade)] p-3 font-lj-body text-sm"
+        >
+          <span className="min-w-[12rem] flex-1">
+            {`Выгоднее комбо «${suggestion.combo.name}»${
+              suggestion.times > 1 ? ` × ${suggestion.times}` : ''
+            }: сэкономите ${formatRub(suggestion.savingsRub)}`}
+          </span>
+          <button
+            type="button"
+            className="lj-btn lj-btn-outline rounded-[4px] px-4 py-2"
+            onClick={() => setLines([...suggestion.nextLines])}
+          >
+            Заменить на комбо
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-2 border-t border-[var(--color-lj-rule)] pt-4">
         <div className={`${SUMMARY_ROW} opacity-70`}>

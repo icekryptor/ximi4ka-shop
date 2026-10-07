@@ -22,6 +22,7 @@ export function WholesaleSearch({ onPick }: Props) {
   const listboxId = useId()
   const optionIdBase = useId()
   const rootRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const [query, setQuery] = useState('')
   const [products, setProducts] = useState<SearchProductResult[]>([])
@@ -74,6 +75,8 @@ export function WholesaleSearch({ onPick }: Props) {
     setProducts([])
     setOpen(false)
     setActiveIndex(-1)
+    // Следующий поиск можно начинать сразу, без клика в поле.
+    inputRef.current?.focus()
   }
 
   const onChange = (value: string) => {
@@ -107,21 +110,29 @@ export function WholesaleSearch({ onPick }: Props) {
 
   return (
     <div ref={rootRef} className="relative w-full">
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setOpen(true)}
-        onKeyDown={onKeyDown}
-        placeholder="Начните вводить название: набор, реактив, пробирка…"
-        aria-label="Найти товар для оптового заказа"
-        aria-autocomplete="list"
-        aria-controls={listboxId}
+      <div
+        role="combobox"
         aria-expanded={showList}
-        aria-activedescendant={showList && activeIndex >= 0 ? optionId(activeIndex) : undefined}
-        autoComplete="off"
-        className="w-full rounded-full border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream)] px-5 py-3.5 font-lj-body text-base text-[var(--color-lj-ink)] outline-none transition-colors placeholder:opacity-55 focus:border-[var(--color-lj-brand)]"
-      />
+        aria-haspopup="listbox"
+        aria-owns={listboxId}
+        aria-controls={listboxId}
+      >
+        <input
+          ref={inputRef}
+          type="search"
+          value={query}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          placeholder="Начните вводить название: набор, реактив, пробирка…"
+          aria-label="Найти товар для оптового заказа"
+          aria-autocomplete="list"
+          aria-controls={listboxId}
+          aria-activedescendant={showList && activeIndex >= 0 ? optionId(activeIndex) : undefined}
+          autoComplete="off"
+          className="w-full rounded-full border border-[var(--color-lj-rule)] bg-[var(--color-lj-cream)] px-5 py-3.5 font-lj-body text-base text-[var(--color-lj-ink)] outline-none transition-colors placeholder:opacity-55 focus:border-[var(--color-lj-brand)]"
+        />
+      </div>
       {loading && hasQuery ? (
         <span role="status" aria-label="Загрузка" className="sr-only">
           Загрузка
