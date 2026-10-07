@@ -18,7 +18,15 @@ const order = (n: number, extra: Partial<AccountOrderSummary> = {}): AccountOrde
   paymentProvider: 'tbank',
   totalRub: 2990,
   itemCount: 2,
-  items: [{ name: 'Набор юного химика', quantity: 2, unitPriceRub: 1495, imageUrl: null }],
+  items: [
+    {
+      name: 'Набор юного химика',
+      quantity: 2,
+      unitPriceRub: 1495,
+      lineTotalRub: 2990,
+      imageUrl: null,
+    },
+  ],
   subtotalRub: 2990,
   discountRub: 0,
   shippingRub: 0,

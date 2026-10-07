@@ -17,8 +17,14 @@ const order = (extra: Partial<AccountOrderSummary> = {}): AccountOrderSummary =>
   totalRub: 3400,
   itemCount: 3,
   items: [
-    { name: 'Набор юного химика', quantity: 2, unitPriceRub: 1500, imageUrl: null },
-    { name: 'Колба', quantity: 1, unitPriceRub: 400, imageUrl: null },
+    {
+      name: 'Набор юного химика',
+      quantity: 2,
+      unitPriceRub: 1500,
+      lineTotalRub: 3000,
+      imageUrl: null,
+    },
+    { name: 'Колба', quantity: 1, unitPriceRub: 400, lineTotalRub: 400, imageUrl: null },
   ],
   subtotalRub: 3400,
   discountRub: 0,

@@ -24,6 +24,8 @@ export interface OrderItem {
   productSnapshot: OrderItemSnapshot
   quantity: number
   unitPriceRub: number
+  /** Сумма строки с оптовой скидкой; null у старых заказов (тогда unitPriceRub × quantity). */
+  lineTotalRub: number | null
 }
 
 export interface DeliveryAddress {
