@@ -15,12 +15,13 @@ import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata, DEFAULT_HOME_TITLE } from '@/lib/metadata'
 import { itemListJsonLd } from '@/lib/jsonLd'
 import { LabSection } from '@/components/ui/LabSection'
+import { WholesaleHomeSection } from '@/components/wholesale/WholesaleHomeSection'
 import { Ticker } from '@/components/ui'
 import { Hero, PreFooterCta, Manifesto, DEFAULT_TESTIMONIALS } from '@/components/marketing'
 import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
 import { HowItWorksStepLJ } from '@/components/marketing/HowItWorksStepLJ'
 import { TestimonialQuoteLJ } from '@/components/marketing/TestimonialQuoteLJ'
-import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
+import { DEFAULT_LOCALE, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
 
@@ -369,6 +370,9 @@ export default async function HomePage({ params }: Props) {
           </div>
         </div>
       </LabSection>
+
+      {/* 5б. Оптом (LAB CREAM) — тот же блок заказа, что на /opt */}
+      <WholesaleHomeSection href={locale === DEFAULT_LOCALE ? '/opt' : `/${locale}/opt`} />
 
       {/* 6. Что говорят родители (LAB CREAM) — v3 LJ lab-citation quotes */}
       <LabSection variant="cream" className="px-6 py-32">
