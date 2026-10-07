@@ -119,6 +119,36 @@ describe('telegramCard', () => {
     )
   })
 
+  it('позиция с ценой партии: «5 шт — 99 ₽», если сумма не делится на количество без остатка', () => {
+    const card = telegramCard({
+      ...order,
+      items: [
+        {
+          productSnapshot: { name: 'Пробирка', sku: 'T-1', priceRub: 29 },
+          quantity: 5,
+          unitPriceRub: 20,
+          lineTotalRub: 99,
+        },
+      ],
+    })
+    expect(card).toContain('— Пробирка · T-1 · 5 шт — 99 ₽')
+  })
+
+  it('позиция без остатка в цене остаётся «N × цена»', () => {
+    const card = telegramCard({
+      ...order,
+      items: [
+        {
+          productSnapshot: { name: 'Реактив', sku: null, priceRub: 100 },
+          quantity: 10,
+          unitPriceRub: 80,
+          lineTotalRub: 800,
+        },
+      ],
+    })
+    expect(card).toContain('— Реактив · 10 × 80 ₽')
+  })
+
   it('бесплатная доставка, курьер, без почты и Telegram, без комментария', () => {
     const card = telegramCard({
       ...order,

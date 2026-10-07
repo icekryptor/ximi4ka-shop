@@ -185,7 +185,16 @@ describe('профиль и заказы', () => {
       orderNumber: newest.orderNumber,
       publicToken: newest.publicToken,
       itemCount: 2,
-      items: [{ name: 'Набор', quantity: 2, unitPriceRub: 1500, imageUrl: '/uploads/kit.webp' }],
+      items: [
+        {
+          name: 'Набор',
+          quantity: 2,
+          unitPriceRub: 1500,
+          // Позиция без line_total_rub (заказ до оптовых партий): цена × количество.
+          lineTotalRub: 3000,
+          imageUrl: '/uploads/kit.webp',
+        },
+      ],
       subtotalRub: 1500,
       discountRub: 0,
       shippingRub: 0,
@@ -260,6 +269,8 @@ describe('профиль и заказы', () => {
         productSnapshot: { name: p.name, sku: null, priceRub: p.priceRub },
         quantity: i + 1,
         unitPriceRub: p.priceRub,
+        // У третьей позиции сумма партии сохранена и не равна цене × количество.
+        lineTotalRub: i === 2 ? 880 : null,
       })
     }
 
@@ -278,7 +289,11 @@ describe('профиль и заказы', () => {
     expect(o.items.find((i: { name: string }) => i.name === 'Товар 3')).toMatchObject({
       quantity: 3,
       unitPriceRub: 300,
+      lineTotalRub: 880,
       imageUrl: null,
+    })
+    expect(o.items.find((i: { name: string }) => i.name === 'Товар 2')).toMatchObject({
+      lineTotalRub: 400,
     })
     expect(o.itemCount).toBe(15)
     expect(o).toMatchObject({
