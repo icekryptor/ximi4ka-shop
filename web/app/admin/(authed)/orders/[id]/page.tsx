@@ -86,7 +86,7 @@ export default async function AdminOrderDetailPage({
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">{item.quantity}</td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {formatRub(item.unitPriceRub * item.quantity)}
+                      {formatRub(item.lineTotalRub ?? item.unitPriceRub * item.quantity)}
                     </td>
                   </tr>
                 ))}

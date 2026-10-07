@@ -144,6 +144,7 @@ export async function listCustomerOrders(
         name: i.productSnapshot.name,
         quantity: i.quantity,
         unitPriceRub: i.unitPriceRub,
+        lineTotalRub: i.lineTotalRub ?? i.unitPriceRub * i.quantity,
         imageUrl: imageOf.get(i.productId) ?? null,
       })),
       subtotalRub: o.subtotalRub,

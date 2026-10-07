@@ -206,6 +206,26 @@ describe('sitemap', () => {
     })
   })
 
+  it('lists /opt as a static page', async () => {
+    vi.mocked(listPublishedProducts).mockResolvedValue({
+      data: [],
+      pagination: { limit: 1000, offset: 0, total: 0 },
+    })
+    vi.mocked(listCategories).mockResolvedValue({
+      data: [],
+      pagination: { limit: 1000, offset: 0, total: 0 },
+    })
+    vi.mocked(listPages).mockResolvedValue({
+      data: [],
+      pagination: { limit: 1000, offset: 0, total: 0 },
+    })
+    vi.mocked(listBlogPosts).mockResolvedValue(emptyBlogResponse())
+
+    const entries = await sitemap()
+
+    expect(entries.map((e) => e.url)).toContain('https://new.ximi4ka.ru/opt')
+  })
+
   it('degrades to an empty-but-valid sitemap when the API is down', async () => {
     vi.mocked(listPublishedProducts).mockRejectedValue(new Error('down'))
     vi.mocked(listCategories).mockRejectedValue(new Error('down'))
@@ -214,12 +234,13 @@ describe('sitemap', () => {
 
     const out = await sitemap()
     const urls = out.map((e) => e.url)
-    // Homepage + catalog + categories + blog landings always ship, even without data.
+    // Homepage + catalog + opt + categories + blog landings always ship, even without data.
     expect(urls).toContain('https://new.ximi4ka.ru/')
     expect(urls).toContain('https://new.ximi4ka.ru/catalog')
+    expect(urls).toContain('https://new.ximi4ka.ru/opt')
     expect(urls).toContain('https://new.ximi4ka.ru/categories')
     expect(urls).toContain('https://new.ximi4ka.ru/blog')
-    expect(out.length).toBe(4)
+    expect(out.length).toBe(5)
   })
 
   it('respects NEXT_PUBLIC_SITE_URL when set', async () => {

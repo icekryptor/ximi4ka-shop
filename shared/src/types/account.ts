@@ -44,6 +44,8 @@ export interface AccountOrderSummary {
     name: string
     quantity: number
     unitPriceRub: number
+    /** Сумма строки (с учётом оптовой скидки). */
+    lineTotalRub: number
     imageUrl: string | null
   }>
   subtotalRub: number

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { OPEN_CART_EVENT, useCart } from '@/lib/cart'
+import { OPEN_CART_EVENT, backfillCartCategories, useCart } from '@/lib/cart'
 import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 import { SHIPPING_RULES } from '@/lib/checkout'
 import { METRIKA_GOALS, reachGoal } from '@/lib/metrika'
@@ -19,6 +19,12 @@ export function CartDrawer() {
   const subtotal = totals.totalRub
   const [open, setOpen] = useState(false)
   const router = useRouter()
+
+  // Корзины старого формата без категорий: докачиваем, чтобы процентная
+  // скидка попала в итог. Дроссель (не более одного запроса на слаг) — в самой функции.
+  useEffect(() => {
+    if (items.some((i) => i.categories === undefined)) void backfillCartCategories()
+  }, [items])
 
   useEffect(() => {
     function onOpen() {

@@ -86,7 +86,7 @@ export class Order {
   @Column({ type: 'integer', name: 'subtotal_rub' })
   subtotalRub!: number
 
-  // Оптовая скидка на наборы; total = subtotal − discount + shipping.
+  // Оптовая скидка (наборы, проценты на реагенты, цены партий); total = subtotal − discount + shipping.
   @Column({ type: 'integer', name: 'discount_rub', default: 0 })
   discountRub!: number
 

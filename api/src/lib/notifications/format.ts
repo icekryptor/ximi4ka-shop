@@ -21,6 +21,8 @@ export interface NotifiableOrder {
     productSnapshot: { name: string; sku: string | null; priceRub: number }
     quantity: number
     unitPriceRub: number
+    /** Сумма строки; нет у заказов до оптовых партий. */
+    lineTotalRub?: number | null
   }[]
 }
 
@@ -112,7 +114,13 @@ function pluralPositions(n: number): string {
 function itemLine(item: NotifiableOrder['items'][number]): string {
   const parts = [item.productSnapshot.name]
   if (item.productSnapshot.sku) parts.push(item.productSnapshot.sku)
-  parts.push(`${item.quantity} × ${rub(item.unitPriceRub)}`)
+  // Цена партии не делится на целые рубли за штуку: тогда честнее назвать сумму.
+  const exact = item.lineTotalRub != null && item.lineTotalRub !== item.unitPriceRub * item.quantity
+  parts.push(
+    exact
+      ? `${item.quantity} шт — ${rub(item.lineTotalRub!)}`
+      : `${item.quantity} × ${rub(item.unitPriceRub)}`,
+  )
   return parts.join(' · ')
 }
 

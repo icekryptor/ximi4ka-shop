@@ -35,6 +35,8 @@ export interface Product {
   looseUnits?: number
   minBox?: ShippingBox | null
   images: ProductImage[]
+  /** Слаги категорий. Есть в ответе карточки товара (`/api/public/products/:slug`). */
+  categorySlugs?: string[]
   createdAt: string
   updatedAt: string
 }

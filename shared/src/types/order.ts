@@ -24,6 +24,8 @@ export interface OrderItem {
   productSnapshot: OrderItemSnapshot
   quantity: number
   unitPriceRub: number
+  /** Сумма строки с оптовой скидкой; null у старых заказов (тогда unitPriceRub × quantity). */
+  lineTotalRub: number | null
 }
 
 export interface DeliveryAddress {
@@ -69,7 +71,7 @@ export interface OrderDto {
   deliveryMethod: string
   /** Товары по обычным ценам. */
   subtotalRub: number
-  /** Оптовая скидка на наборы; totalRub = subtotalRub − discountRub + shippingRub. */
+  /** Оптовая скидка (наборы, проценты на реагенты, цены партий); totalRub = subtotalRub − discountRub + shippingRub. */
   discountRub: number
   shippingRub: number
   totalRub: number

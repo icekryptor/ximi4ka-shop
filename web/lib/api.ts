@@ -184,10 +184,11 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost> {
 // keeps typing.
 export async function searchCatalog(
   q: string,
-  opts: { signal?: AbortSignal } = {},
+  opts: { signal?: AbortSignal; scope?: 'wholesale' } = {},
 ): Promise<SearchResult> {
+  const scope = opts.scope ? `&scope=${opts.scope}` : ''
   const body = await request<DataEnvelope<SearchResult>>(
-    `/api/public/search?q=${encodeURIComponent(q)}`,
+    `/api/public/search?q=${encodeURIComponent(q)}${scope}`,
     { cache: 'no-store', signal: opts.signal },
   )
   return body.data

@@ -34,4 +34,9 @@ export class OrderItem {
 
   @Column({ type: 'integer', name: 'unit_price_rub' })
   unitPriceRub!: number
+
+  // Сумма строки с оптовой скидкой, ₽. NULL у заказов до оптовых партий:
+  // тогда сумма — unitPriceRub × quantity.
+  @Column({ type: 'integer', name: 'line_total_rub', nullable: true })
+  lineTotalRub!: number | null
 }

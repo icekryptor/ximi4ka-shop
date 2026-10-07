@@ -9,7 +9,7 @@ interface Props {
   // images optional: часть вызовов может не иметь картинок под рукой —
   // корзина тогда покажет плейсхолдер-колбу.
   product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus'> &
-    Partial<Pick<Product, 'images' | 'compareAtPriceRub'>>
+    Partial<Pick<Product, 'images' | 'compareAtPriceRub' | 'categorySlugs'>>
   // Сколько единиц добавить за один клик. По умолчанию 1 — существующие
   // вызовы (карточка товара, главная) поведения не меняют. Компактные
   // карточки каталога передают выбранное в степпере количество.
@@ -45,6 +45,8 @@ export function AddToCartButton({ product, quantity = 1, compact = false }: Prop
         priceRub: product.priceRub,
         compareAtPriceRub: product.compareAtPriceRub ?? undefined,
         image: product.images?.[0]?.url,
+        // Категории — для процентной оптовой скидки; без них их докачает backfill.
+        ...(product.categorySlugs ? { categories: product.categorySlugs } : {}),
       },
       // Отбрасываем дробное/нулевое: степпер держит целое ≥ 1, но добавим
       // защиту на случай прямого вызова.
