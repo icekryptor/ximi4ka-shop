@@ -194,4 +194,20 @@ describe('CategoryForm', () => {
     )
     expect(screen.getByText(/Категория с таким slug уже существует/i)).toBeInTheDocument()
   })
+
+  it('снимает фокус с поля «Сортировка» при прокрутке колесом', () => {
+    render(
+      <CategoryForm
+        mode="create"
+        allCategories={[]}
+        onSubmit={async () => undefined}
+        submitting={false}
+      />,
+    )
+    const input = screen.getByLabelText('Сортировка')
+    input.focus()
+    expect(input).toHaveFocus()
+    fireEvent.wheel(input, { deltaY: 100 })
+    expect(input).not.toHaveFocus()
+  })
 })

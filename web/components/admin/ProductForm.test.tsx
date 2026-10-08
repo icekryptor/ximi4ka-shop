@@ -68,4 +68,18 @@ describe('ProductForm', () => {
     )
     expect(screen.getByText(/Товар с таким slug уже существует/i)).toBeInTheDocument()
   })
+
+  // Chrome меняет значение сфокусированного <input type="number"> при прокрутке
+  // колесом над ним: админ вводил 20, тянулся к «Сохранить» и сохранял 17.
+  it.each(['Цена, ₽', 'Старая цена, ₽', 'Сортировка'])(
+    'снимает фокус с числового поля «%s» при прокрутке колесом',
+    (label) => {
+      render(<ProductForm mode="create" onSubmit={async () => undefined} submitting={false} />)
+      const input = screen.getByLabelText(label)
+      input.focus()
+      expect(input).toHaveFocus()
+      fireEvent.wheel(input, { deltaY: 100 })
+      expect(input).not.toHaveFocus()
+    },
+  )
 })

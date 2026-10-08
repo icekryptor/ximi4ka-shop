@@ -474,6 +474,7 @@ export function SettingsForm({ initial }: Props) {
                     type="number"
                     min={1}
                     max={5}
+                    onWheel={(e) => e.currentTarget.blur()}
                     value={t.rating ?? ''}
                     onChange={(e) => {
                       const raw = e.target.value

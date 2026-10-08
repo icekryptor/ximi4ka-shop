@@ -228,6 +228,7 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
               min={0}
               value={priceRub}
               onChange={(e) => setPriceRub(Number(e.target.value))}
+              onWheel={(e) => e.currentTarget.blur()}
               required
               className="input"
             />
@@ -239,6 +240,7 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
               min={0}
               value={compareAt}
               onChange={(e) => setCompareAt(e.target.value === '' ? '' : Number(e.target.value))}
+              onWheel={(e) => e.currentTarget.blur()}
               className="input"
             />
           </Field>
@@ -248,6 +250,7 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
               type="number"
               value={sortOrder}
               onChange={(e) => setSortOrder(Number(e.target.value))}
+              onWheel={(e) => e.currentTarget.blur()}
               className="input"
             />
           </Field>
