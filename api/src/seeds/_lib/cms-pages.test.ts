@@ -127,6 +127,13 @@ describe('data/cms-pages.json', () => {
     expect(oferta).not.toContain('323430000002972')
   })
 
+  it('оператор в политике — Аистов В. А. (решение владельца от 08.10.2026), без следов другого лица', async () => {
+    const policy = pageText((await readCmsPages()).find((p) => p.slug === 'policy')!)
+    expect(policy).toMatch(/предпринимаемые\s+Аистов Василий Андреевич\s+\(далее\s+— Оператор\)/)
+    expect(policy).not.toMatch(/Ксени/)
+    expect(policy).not.toMatch(/Аистова/)
+  })
+
   it('FAQ — блок faq с вопросами и ответами (из него строится FAQPage JSON-LD)', async () => {
     const faq = (await readCmsPages()).find((p) => p.slug === 'faq')!
     const faqBlocks = faq.blocks.filter((b) => b.type === 'faq')
