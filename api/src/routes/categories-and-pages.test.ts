@@ -56,6 +56,14 @@ describe('Category routes', () => {
   })
 
   describe('GET /api/admin/categories', () => {
+    it('accepts limit=200, which the admin pages request', async () => {
+      const res = await request(app).get('/api/admin/categories?limit=200').set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      expect(res.body.pagination.limit).toBe(200)
+      const over = await request(app).get('/api/admin/categories?limit=201').set(authHeaders(auth))
+      expect(over.status).toBe(400)
+    })
+
     it('lists all categories', async () => {
       await request(app)
         .post('/api/admin/categories')

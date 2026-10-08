@@ -1,30 +1,26 @@
-'use client'
-
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
 import Link from 'next/link'
-import { ProductForm } from '@/components/admin/ProductForm'
-import { ApiError, adminCreateProduct, type AdminProductInput } from '@/lib/adminApi'
+import { cookies } from 'next/headers'
+import type { ProductCategory } from '@ximi4ka-shop/shared'
+import type { Paginated } from '@/lib/api'
+import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
+import { ProductCreateClient } from './ProductCreateClient'
 
-export default function NewProductPage() {
-  const router = useRouter()
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<ApiError | null>(null)
+async function fetchAllCategories(): Promise<ProductCategory[]> {
+  const store = await cookies()
+  const cookieHeader = store.toString()
+  const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/categories?limit=200`, {
+    headers: { cookie: cookieHeader },
+    cache: 'no-store',
+  })
+  // Список категорий — удобство формы, а не её основа: при сбое товар остаётся
+  // редактируемым (его категории форма при этом сохраняет как есть).
+  if (!res.ok) return []
+  const body = (await res.json()) as Paginated<ProductCategory>
+  return body.data
+}
 
-  async function handleSubmit(input: AdminProductInput) {
-    setSubmitting(true)
-    setError(null)
-    try {
-      const created = await adminCreateProduct(input)
-      router.push(`/admin/products/${created.id}`)
-      router.refresh()
-    } catch (err) {
-      if (err instanceof ApiError) setError(err)
-      else setError(new ApiError(500, 'network_error', 'Ошибка сети'))
-    } finally {
-      setSubmitting(false)
-    }
-  }
+export default async function NewProductPage() {
+  const allCategories = await fetchAllCategories()
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -34,7 +30,7 @@ export default function NewProductPage() {
           ← К списку
         </Link>
       </div>
-      <ProductForm mode="create" onSubmit={handleSubmit} submitting={submitting} error={error} />
+      <ProductCreateClient allCategories={allCategories} />
     </div>
   )
 }

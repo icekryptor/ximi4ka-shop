@@ -34,6 +34,8 @@ export interface Product {
   shipBoxes?: ShippingBox[]
   looseUnits?: number
   minBox?: ShippingBox | null
+  // Только в ответах админского API (GET/POST/PATCH /api/admin/products).
+  categoryIds?: string[]
   images: ProductImage[]
   /** Слаги категорий. Есть в ответе карточки товара (`/api/public/products/:slug`). */
   categorySlugs?: string[]

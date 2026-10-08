@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import type { Product } from '@ximi4ka-shop/shared'
+import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { ProductForm } from '@/components/admin/ProductForm'
 import { RevisionsPanel } from '@/components/admin/RevisionsPanel'
 import {
@@ -16,9 +16,10 @@ import {
 
 interface Props {
   initial: Product
+  allCategories: ProductCategory[]
 }
 
-export function ProductEditClient({ initial }: Props) {
+export function ProductEditClient({ initial, allCategories }: Props) {
   const router = useRouter()
   const [product, setProduct] = useState<Product>(initial)
   const [submitting, setSubmitting] = useState(false)
@@ -90,6 +91,7 @@ export function ProductEditClient({ initial }: Props) {
       <ProductForm
         mode="edit"
         initialValue={product}
+        allCategories={allCategories}
         onSubmit={handleSubmit}
         submitting={submitting}
         error={error}

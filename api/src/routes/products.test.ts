@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { createApp } from '../app.js'
+import { EntityRevision } from '../entities/EntityRevision.js'
 import { authHeaders, loginAsAdmin, type AdminAuth } from './testUtils.js'
 
 describe('Product routes', () => {
@@ -206,6 +207,224 @@ describe('Product routes', () => {
         .set(authHeaders(auth))
         .send({ name: 'X' })
       expect(res.status).toBe(404)
+    })
+  })
+
+  describe('shipping fields', () => {
+    it('stores weight and boxes on create and returns them from GET /:id', async () => {
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'ship',
+          name: 'Ship',
+          priceRub: 100,
+          weightG: 250,
+          shipBoxes: ['medium', 'small'],
+          looseUnits: 3,
+          minBox: 'medium',
+        })
+      expect(created.status).toBe(201)
+      expect(created.body.data).toMatchObject({
+        weightG: 250,
+        shipBoxes: ['medium', 'small'],
+        looseUnits: 3,
+        minBox: 'medium',
+      })
+      const got = await request(app)
+        .get(`/api/admin/products/${created.body.data.id}`)
+        .set(authHeaders(auth))
+      expect(got.body.data).toMatchObject({ weightG: 250, minBox: 'medium', looseUnits: 3 })
+    })
+
+    it('clears weight and minBox with null on PATCH', async () => {
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'ship2', name: 'S', priceRub: 100, weightG: 250, minBox: 'large' })
+      const res = await request(app)
+        .patch(`/api/admin/products/${created.body.data.id}`)
+        .set(authHeaders(auth))
+        .send({ weightG: null, minBox: null })
+      expect(res.status).toBe(200)
+      expect(res.body.data.weightG).toBeNull()
+      expect(res.body.data.minBox).toBeNull()
+    })
+
+    it('rejects an unknown box', async () => {
+      const res = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'ship3', name: 'S', priceRub: 100, shipBoxes: ['huge'] })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('validation_error')
+    })
+  })
+
+  describe('category assignment', () => {
+    async function makeCategory(slug: string): Promise<string> {
+      const res = await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug, name: slug })
+      expect(res.status).toBe(201)
+      return res.body.data.id as string
+    }
+
+    async function linkedCategoryIds(productId: string): Promise<string[]> {
+      const rows: Array<{ category_id: string }> = await AppDataSource.query(
+        'SELECT category_id FROM product_category_links WHERE product_id = $1',
+        [productId],
+      )
+      return rows.map((r) => r.category_id).sort()
+    }
+
+    it('links categories on create and returns categoryIds', async () => {
+      const a = await makeCategory('cat-a')
+      const b = await makeCategory('cat-b')
+      const res = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'with-cats', name: 'W', priceRub: 100, categoryIds: [a, b] })
+      expect(res.status).toBe(201)
+      expect([...res.body.data.categoryIds].sort()).toEqual([a, b].sort())
+      expect(res.body.data).not.toHaveProperty('categories')
+      expect(await linkedCategoryIds(res.body.data.id)).toEqual([a, b].sort())
+    })
+
+    it('returns categoryIds from GET /:id and an empty list when there are none', async () => {
+      const a = await makeCategory('cat-a')
+      const withCat = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'p1', name: 'P1', priceRub: 100, categoryIds: [a] })
+      const bare = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'p2', name: 'P2', priceRub: 100 })
+      const got1 = await request(app)
+        .get(`/api/admin/products/${withCat.body.data.id}`)
+        .set(authHeaders(auth))
+      const got2 = await request(app)
+        .get(`/api/admin/products/${bare.body.data.id}`)
+        .set(authHeaders(auth))
+      expect(got1.body.data.categoryIds).toEqual([a])
+      expect(got2.body.data.categoryIds).toEqual([])
+    })
+
+    it('replaces links on PATCH, keeps them when categoryIds is omitted, clears with []', async () => {
+      const a = await makeCategory('cat-a')
+      const b = await makeCategory('cat-b')
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'p', name: 'P', priceRub: 100, categoryIds: [a] })
+      const id = created.body.data.id as string
+
+      const replaced = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ categoryIds: [b] })
+      expect(replaced.status).toBe(200)
+      expect(replaced.body.data.categoryIds).toEqual([b])
+      expect(await linkedCategoryIds(id)).toEqual([b])
+
+      const untouched = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ name: 'Renamed' })
+      expect(untouched.body.data.categoryIds).toEqual([b])
+      expect(await linkedCategoryIds(id)).toEqual([b])
+
+      const cleared = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ categoryIds: [] })
+      expect(cleared.body.data.categoryIds).toEqual([])
+      expect(await linkedCategoryIds(id)).toEqual([])
+    })
+
+    it('rejects an unknown category id and leaves the product unchanged', async () => {
+      const a = await makeCategory('cat-a')
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'p', name: 'P', priceRub: 100, categoryIds: [a] })
+      const id = created.body.data.id as string
+      const res = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ name: 'Should not apply', categoryIds: ['00000000-0000-4000-8000-000000000000'] })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('unknown_category')
+      const got = await request(app).get(`/api/admin/products/${id}`).set(authHeaders(auth))
+      expect(got.body.data.name).toBe('P')
+      expect(got.body.data.categoryIds).toEqual([a])
+
+      const onCreate = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'p-new',
+          name: 'N',
+          priceRub: 100,
+          categoryIds: ['00000000-0000-4000-8000-000000000000'],
+        })
+      expect(onCreate.status).toBe(400)
+      const list = await request(app).get('/api/admin/products?q=p-new').set(authHeaders(auth))
+      expect(list.body.data).toHaveLength(0)
+    })
+
+    it('keeps categoryIds in publish and unpublish responses', async () => {
+      const a = await makeCategory('cat-a')
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'p', name: 'P', priceRub: 100, categoryIds: [a] })
+      const id = created.body.data.id as string
+      const pub = await request(app)
+        .post(`/api/admin/products/${id}/publish`)
+        .set(authHeaders(auth))
+      expect(pub.body.data.categoryIds).toEqual([a])
+      expect(pub.body.data).not.toHaveProperty('categories')
+      const unpub = await request(app)
+        .post(`/api/admin/products/${id}/unpublish`)
+        .set(authHeaders(auth))
+      expect(unpub.body.data.categoryIds).toEqual([a])
+      expect(await linkedCategoryIds(id)).toEqual([a])
+    })
+
+    it('rejects a non-uuid category id', async () => {
+      const res = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'p', name: 'P', priceRub: 100, categoryIds: ['not-a-uuid'] })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('validation_error')
+    })
+
+    it('restores category links from a revision', async () => {
+      const a = await makeCategory('cat-a')
+      const b = await makeCategory('cat-b')
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'p', name: 'P', priceRub: 100, categoryIds: [a] })
+      const id = created.body.data.id as string
+      await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ categoryIds: [b] })
+      // The t=0 revision written on create holds the state with [a].
+      const revs = await AppDataSource.getRepository(EntityRevision).find({
+        where: { entityType: 'product', entityId: id },
+        order: { editedAt: 'ASC' },
+      })
+      const restore = await request(app)
+        .post(`/api/admin/revisions/${revs[0].id}/restore`)
+        .set(authHeaders(auth))
+      expect(restore.status).toBe(200)
+      expect(await linkedCategoryIds(id)).toEqual([a])
     })
   })
 
