@@ -207,6 +207,7 @@ export function CategoryForm({
               type="number"
               value={sortOrder}
               onChange={(e) => setSortOrder(Number(e.target.value))}
+              onWheel={(e) => e.currentTarget.blur()}
               className="input"
             />
           </Field>
