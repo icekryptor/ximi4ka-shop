@@ -28,7 +28,7 @@ const SUMMARY_ROW =
  * оптовой скидкой и одним кликом отправить список в обычную корзину. Список
  * живёт в памяти страницы. Цены считает тот же движок, что корзина и сервер.
  */
-export function WholesaleOrder() {
+export function WholesaleOrder({ catalogPerView }: { catalogPerView?: 4 | 6 }) {
   const { add } = useCart()
   const [lines, setLines] = useState<StagedLine[]>([])
   const priced = useMemo(() => priceStaged(lines), [lines])
@@ -113,7 +113,7 @@ export function WholesaleOrder() {
         <span className="h-px flex-1 bg-[var(--color-lj-rule)]" />
       </div>
 
-      <WholesaleCatalog onPick={pick} stagedIds={stagedIds} />
+      <WholesaleCatalog perView={catalogPerView} onPick={pick} stagedIds={stagedIds} />
 
       {lines.length === 0 ? (
         <p className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-65">
