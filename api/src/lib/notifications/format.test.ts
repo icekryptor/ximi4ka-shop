@@ -94,14 +94,63 @@ describe('telegramCard', () => {
   it('карточка нового заказа', () => {
     expect(telegramCard(order)).toBe(
       [
-        '🧪 <b>Новый заказ XM-2026-00042</b> · 25.09 14:10',
-        'Мария Иванова · +7 912 345-67-89 · @maria',
-        'ПВЗ NSK1: Новосибирск, ул. Кривощековская, 15',
-        '— Серная кислота 7% · H2SO4 · 2 × 119 ₽',
-        '— Нитрат серебра 1% · AGNO3 · 1 × 349 ₽',
-        'Товары 587 ₽ · доставка 504 ₽ · итого 1 091 ₽',
+        'Новый заказ XM-2026-00042 · 25.09 14:10 - создан',
+        '',
+        'Клиент:',
+        'Имя: Мария Иванова',
+        'Телефон: +7 912 345-67-89',
+        'Телеграм: @maria',
+        'Адрес: ПВЗ NSK1: Новосибирск, ул. Кривощековская, 15',
         'Комментарий: после 18:00',
-        'Статус: создан',
+        '',
+        'Товары:',
+        'Серная кислота 7% · H2SO4 · 2 × 119 ₽',
+        'Нитрат серебра 1% · AGNO3 · 1 × 349 ₽',
+        '',
+        'Товары 587 ₽ · доставка 504 ₽ · итого 1 091 ₽',
+      ].join('\n'),
+    )
+  })
+
+  it('оплаченный заказ без комментария — как в макете владельца', () => {
+    expect(
+      telegramCard({
+        ...order,
+        status: 'paid',
+        createdAt: new Date('2026-10-08T09:00:00Z'),
+        customerName: 'Xzeaze',
+        customerPhone: '+79130357795',
+        customerTelegram: '@Xzeaze',
+        deliveryAddress: {
+          address: 'Сосновоборск, ул. Ленинского Комсомола, 5',
+          comment: null,
+          deliveryPointCode: 'SNO2',
+        },
+        subtotalRub: 3490,
+        shippingRub: 0,
+        totalRub: 3490,
+        items: [
+          {
+            productSnapshot: { name: 'Химичка ОГЭ', sku: '7OGE26', priceRub: 3490 },
+            quantity: 1,
+            unitPriceRub: 3490,
+          },
+        ],
+      }),
+    ).toBe(
+      [
+        'Новый заказ XM-2026-00042 · 08.10 12:00 - оплачен',
+        '',
+        'Клиент:',
+        'Имя: Xzeaze',
+        'Телефон: +7 913 035-77-95',
+        'Телеграм: @Xzeaze',
+        'Адрес: ПВЗ SNO2: Сосновоборск, ул. Ленинского Комсомола, 5',
+        '',
+        'Товары:',
+        'Химичка ОГЭ · 7OGE26 · 1 × 3 490 ₽',
+        '',
+        'Товары 3 490 ₽ · доставка бесплатно · итого 3 490 ₽',
       ].join('\n'),
     )
   })
@@ -131,7 +180,7 @@ describe('telegramCard', () => {
         },
       ],
     })
-    expect(card).toContain('— Пробирка · T-1 · 5 шт — 99 ₽')
+    expect(card).toContain('Пробирка · T-1 · 5 шт — 99 ₽')
   })
 
   it('позиция без остатка в цене остаётся «N × цена»', () => {
@@ -146,7 +195,7 @@ describe('telegramCard', () => {
         },
       ],
     })
-    expect(card).toContain('— Реактив · 10 × 80 ₽')
+    expect(card).toContain('Реактив · 10 × 80 ₽')
   })
 
   it('бесплатная доставка, курьер, без почты и Telegram, без комментария', () => {
@@ -158,8 +207,9 @@ describe('telegramCard', () => {
       deliveryMethod: 'cdek_courier',
       deliveryAddress: { address: 'Москва, Тверская улица, 1', comment: null },
     })
-    expect(card).toContain('Мария Иванова · +7 912 345-67-89\n')
-    expect(card).toContain('Курьер: Москва, Тверская улица, 1')
+    expect(card).toContain('Телефон: +7 912 345-67-89\nАдрес:')
+    expect(card).not.toContain('Телеграм')
+    expect(card).toContain('Адрес: Курьер: Москва, Тверская улица, 1')
     expect(card).toContain('доставка бесплатно')
     expect(card).not.toContain('Комментарий')
   })
@@ -187,8 +237,8 @@ describe('telegramCard', () => {
     }))
     const card = telegramCard({ ...order, items })
     expect(card.length).toBeLessThanOrEqual(TELEGRAM_TEXT_LIMIT)
-    expect(card).toMatch(/— …и ещё \d+ позици(я|и|й)/)
-    expect(card).toContain('Статус: создан')
+    expect(card).toMatch(/…и ещё \d+ позици(я|и|й)/)
+    expect(card).toContain('итого 1 091 ₽')
   })
 
   it('очень длинные адрес и комментарий из «&» — карточка всё равно в лимите', () => {
@@ -205,7 +255,7 @@ describe('telegramCard', () => {
     expect(card).toContain(`Новый заказ ${order.orderNumber}`)
     expect(card).toContain(`${'&amp;'.repeat(300)}…`)
     expect(card).not.toContain('&amp;'.repeat(301))
-    expect(card).toContain('Статус: создан')
+    expect(card).toContain('итого 1 091 ₽')
   })
 
   it('обрезка не рвёт эмодзи пополам', () => {

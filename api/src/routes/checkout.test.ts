@@ -350,7 +350,7 @@ describe('POST /api/checkout', () => {
     expect(order.customerTelegram).toBe('@maria_ivanova')
   })
 
-  it('ставит «создан» в очередь уведомлений вместе с заказом', async () => {
+  it('ставит «создан» в очередь таблицы вместе с заказом', async () => {
     const p = await seedProduct()
     const res = await request(app)
       .post('/api/checkout')
@@ -362,10 +362,8 @@ describe('POST /api/checkout', () => {
       where: { orderId: order.id },
       order: { channel: 'ASC' },
     })
-    expect(events.map((e) => [e.channel, e.eventKey])).toEqual([
-      ['sheets', 'created'],
-      ['telegram', 'created'],
-    ])
+    // В чат неоплаченный заказ не идёт — только в таблицу.
+    expect(events.map((e) => [e.channel, e.eventKey])).toEqual([['sheets', 'created']])
   })
 
   it('без Telegram — поле пустое', async () => {

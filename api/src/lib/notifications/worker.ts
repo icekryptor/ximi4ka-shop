@@ -5,7 +5,7 @@ import { OrderNotification } from '../../entities/OrderNotification.js'
 import { GoogleSheetsClient, SheetsConfigError } from '../google/sheets.js'
 import { TelegramBot, TelegramConfigError } from '../telegram/bot.js'
 import { sheetRow, telegramCard } from './format.js'
-import { CHANNELS } from './outbox.js'
+import { CHANNELS, TELEGRAM_EVENT } from './outbox.js'
 import { RateLimitError } from './rateLimit.js'
 
 // Доставка очереди order_notifications в Google Таблицу и Telegram. Тик —
@@ -83,11 +83,14 @@ async function deliver(
     return {}
   }
   const bot = channels.telegram!
-  if (row.eventKey !== 'created') {
-    // Статусы в чат больше не ставятся (channelsForEvent). Такая запись могла
+  if (row.eventKey !== TELEGRAM_EVENT) {
+    // В чат ставится только оплата (channelsForEvent). Другая запись могла
     // остаться только от прошлой версии — не отправляем.
-    throw new TelegramConfigError('Смены статуса в Telegram отключены')
+    throw new TelegramConfigError('В Telegram уходят только оплаченные заказы')
   }
+  // Карточку этого заказа прошлая версия уже отправила при создании — второй
+  // раз в чат не пишем, запись просто закрываем.
+  if (order.telegramMessageId !== null) return {}
   const telegramMessageId = await bot.sendMessage(telegramCard(order))
   return { telegramMessageId }
 }
