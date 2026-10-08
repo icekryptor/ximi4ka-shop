@@ -26,7 +26,16 @@ const KIT_SLUGS: ReadonlySet<string> = new Set(WHOLESALE_GROUPS.flatMap((g) => g
 
 type TabState = { status: 'ready'; items: SearchProductResult[] } | { status: 'error' }
 
+// Сколько карточек видно в ряду на десктопе: на главной блок уже (четыре),
+// на /opt — на всю ширину (шесть). Классы статические, чтобы их увидел Tailwind.
+const LG_BASIS = {
+  4: 'lg:basis-[calc((100%-2.25rem)/4)]',
+  6: 'lg:basis-[calc((100%-3.75rem)/6)]',
+} as const
+
 interface Props {
+  /** Карточек в ряду на десктопе (lg+); на планшете — три, на телефоне — полторы. */
+  perView?: keyof typeof LG_BASIS
   onPick: (product: SearchProductResult) => void
   /** id товаров, которые уже в списке заказа: их кнопка неактивна. */
   stagedIds: ReadonlySet<string>
@@ -50,12 +59,12 @@ const ARROW_BTN =
   'inline-flex size-10 items-center justify-center rounded-full border-[0.5px] border-[var(--color-lj-ink)] font-lj-mono text-base leading-none text-[var(--color-lj-ink)] transition-colors hover:bg-[var(--color-lj-rule-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-lj-brand-deep)] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent'
 
 /**
- * Мини-каталог оптового блока: вкладки категорий и карусель из трёх карточек
- * (на телефоне — полторы, чтобы было видно, что лист листается). Свайп —
+ * Мини-каталог оптового блока: вкладки категорий и карусель карточек (на
+ * телефоне — полторы, чтобы было видно, что лист листается). Свайп —
  * нативный (scroll-snap), стрелки — для мыши. «В заказ» кладёт товар в тот же
  * список, что и выбор из поиска.
  */
-export function WholesaleCatalog({ onPick, stagedIds }: Props) {
+export function WholesaleCatalog({ perView = 4, onPick, stagedIds }: Props) {
   const baseId = useId()
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const trackRef = useRef<HTMLUListElement>(null)
@@ -210,14 +219,14 @@ export function WholesaleCatalog({ onPick, stagedIds }: Props) {
         id={panelId}
         aria-labelledby={tabId(active)}
         aria-busy={!state}
-        className="min-h-[17rem] lg:min-h-[8rem]"
+        className="min-h-[17rem]"
       >
         {!state ? (
           <div className="flex gap-3" aria-hidden="true">
-            {[0, 1, 2].map((i) => (
+            {[0, 1, 2, 3, 4, 5].slice(0, perView).map((i) => (
               <div
                 key={i}
-                className="h-40 basis-[72%] animate-pulse rounded-[var(--radius-lj-bright-sm)] bg-[var(--color-lj-rule-soft)] sm:basis-[calc((100%-1.5rem)/3)]"
+                className={`h-40 shrink-0 basis-[72%] animate-pulse rounded-[var(--radius-lj-bright-sm)] bg-[var(--color-lj-rule-soft)] sm:basis-[calc((100%-1.5rem)/3)] ${LG_BASIS[perView]}`}
               />
             ))}
           </div>
@@ -256,9 +265,9 @@ export function WholesaleCatalog({ onPick, stagedIds }: Props) {
                 return (
                   <li
                     key={p.id}
-                    className="flex shrink-0 basis-[72%] snap-start flex-col gap-3 rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] bg-white p-3 sm:basis-[calc((100%-1.5rem)/3)] lg:flex-row"
+                    className={`flex shrink-0 basis-[72%] snap-start flex-col gap-3 rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] bg-white p-3 sm:basis-[calc((100%-1.5rem)/3)] ${LG_BASIS[perView]}`}
                   >
-                    <span className="flex aspect-[16/9] items-center justify-center overflow-hidden lg:aspect-square lg:size-24 lg:shrink-0 rounded-[var(--radius-lj-bright-sm)] bg-[var(--color-lj-cream)]">
+                    <span className="flex aspect-[16/9] items-center justify-center overflow-hidden rounded-[var(--radius-lj-bright-sm)] bg-[var(--color-lj-cream)]">
                       {p.image ? (
                         // Plain <img>: картинки лежат на разных CDN, которых нет в белом
                         // списке next/image (то же решение, что в подсказках поиска).
