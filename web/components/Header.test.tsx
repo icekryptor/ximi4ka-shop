@@ -94,7 +94,7 @@ describe('Header v3', () => {
     expect(svg.getAttribute('class')).not.toMatch(/(^|\s)max-w-full(\s|$)/)
   })
 
-  it('renders all 5 primary nav links with correct hrefs', () => {
+  it('renders all 6 primary nav links with correct hrefs', () => {
     render(<Header />)
     const mainNav = screen.getByRole('navigation', { name: 'Основная навигация' })
     expect(within(mainNav).getByRole('link', { name: 'Каталог' })).toHaveAttribute(
@@ -110,6 +110,17 @@ describe('Header v3', () => {
     expect(within(mainNav).getByRole('link', { name: 'Контакты' })).toHaveAttribute(
       'href',
       '/kontakty',
+    )
+    expect(within(mainNav).getByRole('link', { name: 'Оптом' })).toHaveAttribute('href', '/opt')
+  })
+
+  it('marks Оптом active on /opt', () => {
+    mockPathname.mockReturnValue('/opt')
+    render(<Header />)
+    const mainNav = screen.getByRole('navigation', { name: 'Основная навигация' })
+    expect(within(mainNav).getByRole('link', { name: 'Оптом' })).toHaveAttribute(
+      'aria-current',
+      'page',
     )
   })
 

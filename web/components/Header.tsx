@@ -22,6 +22,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: '/catalog', label: 'Каталог', desc: 'найти набор', match: ['/categories', '/product'] },
+  { href: '/opt', label: 'Оптом', desc: 'скидки для школ и магазинов' },
   { href: '/blog', label: 'Блог', desc: 'записи из лаборатории' },
   { href: '/o-nas', label: 'О нас', desc: 'наша лаборатория' },
   { href: '/dostavka', label: 'Доставка', desc: 'сроки и тарифы' },

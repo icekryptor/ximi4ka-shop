@@ -10,6 +10,7 @@ const ROW_OT: ColophonItem[] = ['Химичка', 'с 2023', 'Москва', '16
 const ROW_SVYAZ: ColophonItem[] = ['telegram', 'whatsapp', 'phone', 'email']
 const ROW_STRANITSY: ColophonItem[] = [
   'каталог',
+  { label: 'оптом', href: '/opt' },
   'о нас',
   { label: 'доставка', href: '/delivery' },
   { label: 'оплата', href: '/payment' },
