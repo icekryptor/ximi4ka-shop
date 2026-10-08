@@ -191,7 +191,7 @@ export const config = {
   // (robots/sitemap/yml/turbo/llms). Everything else is public,
   // localizable, and potentially redirect-targeted.
   matcher: [
-    '/((?!_next|api|admin|fonts|img/|uploads|amp|v3-preview-e|v3-preview-d|v3-preview-c|v3-preview-b|v3-preview|favicon\\.ico|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml|blog/rss\\.xml|yandex_[0-9a-f]+\\.html).*)',
+    '/((?!_next|api|admin|fonts|img/|uploads|amp|v3-preview-e|v3-preview-d|v3-preview-c|v3-preview-b|v3-preview|favicon\\.ico|icon\\.png|apple-icon\\.png|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml|blog/rss\\.xml|yandex_[0-9a-f]+\\.html).*)',
   ],
 }
 

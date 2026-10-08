@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { NextRequest } from 'next/server'
-import { middleware, matchRedirect, __resetCache } from './middleware'
+import { middleware, matchRedirect, config, __resetCache } from './middleware'
 
 // Light-weight unit tests for the edge middleware. We exercise the
 // exported function directly with a NextRequest; the Next runtime isn't
@@ -429,5 +429,19 @@ describe('matchRedirect (tproduct-id fallback)', () => {
     expect(matchRedirect(items, '/tproduct/notanumber-slug')).toBeUndefined()
     expect(matchRedirect(items, '/blog/tproduct/423044036992-x')).toBeUndefined()
     expect(matchRedirect(items, '/tproduct/999999999999-unknown')).toBeUndefined()
+  })
+})
+
+describe('middleware matcher', () => {
+  // Next отдаёт иконки из app/ по корневым путям. Если matcher их захватит,
+  // middleware перепишет /icon.png на /ru/icon.png и браузер получит 404.
+  const matcher = new RegExp(`^${config.matcher[0]}$`)
+
+  it.each(['/favicon.ico', '/icon.png', '/apple-icon.png'])('does not intercept %s', (path) => {
+    expect(matcher.test(path)).toBe(false)
+  })
+
+  it('still intercepts regular pages', () => {
+    expect(matcher.test('/catalog')).toBe(true)
   })
 })
