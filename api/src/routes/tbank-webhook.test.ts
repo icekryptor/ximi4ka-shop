@@ -87,8 +87,13 @@ describe('POST /api/webhooks/tbank', () => {
 
     const events = await AppDataSource.getRepository(OrderNotification).find({
       where: { orderId: order.id },
+      order: { channel: 'ASC' },
     })
-    expect(events.map((e) => e.eventKey)).toEqual(['status:paid'])
+    // Оплата — в таблицу и в рабочий чат.
+    expect(events.map((e) => [e.channel, e.eventKey])).toEqual([
+      ['sheets', 'status:paid'],
+      ['telegram', 'status:paid'],
+    ])
   })
 
   it('is idempotent: a repeated notification does not duplicate history', async () => {

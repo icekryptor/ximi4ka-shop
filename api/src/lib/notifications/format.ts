@@ -155,8 +155,6 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
 }
 
 export function telegramCard(order: NotifiableOrder): string {
-  const contacts = [clip(order.customerName, CARD_NAME_LIMIT), formatPhone(order.customerPhone)]
-  if (order.customerTelegram) contacts.push(order.customerTelegram)
   const { deliveryPointCode } = order.deliveryAddress
   const address = clip(order.deliveryAddress.address, CARD_TEXT_LIMIT)
   const comment = order.deliveryAddress.comment
@@ -168,30 +166,33 @@ export function telegramCard(order: NotifiableOrder): string {
   const shipping =
     order.shippingRub === 0 ? 'доставка бесплатно' : `доставка ${rub(order.shippingRub)}`
 
-  const head = [
-    `🧪 <b>Новый заказ ${escapeHtml(order.orderNumber)}</b> · ${formatShortDateTime(order.createdAt)}`,
-    escapeHtml(contacts.join(' · ')),
-    escapeHtml(where),
+  const title = `Новый заказ ${escapeHtml(order.orderNumber)} · ${formatShortDateTime(order.createdAt)} - ${STATUS_LABELS[order.status]}`
+  const client = [
+    'Клиент:',
+    `Имя: ${escapeHtml(clip(order.customerName, CARD_NAME_LIMIT))}`,
+    `Телефон: ${escapeHtml(formatPhone(order.customerPhone))}`,
   ]
+  if (order.customerTelegram) client.push(`Телеграм: ${escapeHtml(order.customerTelegram)}`)
+  client.push(`Адрес: ${escapeHtml(where)}`)
+  if (comment) client.push(`Комментарий: ${escapeHtml(comment)}`)
+
   const goods = [`Товары ${rub(order.subtotalRub)}`]
   if (order.discountRub > 0) goods.push(`оптовая скидка −${rub(order.discountRub)}`)
-  const tail = [`${goods.join(' · ')} · ${shipping} · итого ${rub(order.totalRub)}`]
-  if (comment) tail.push(`Комментарий: ${escapeHtml(comment)}`)
-  tail.push(`Статус: ${STATUS_LABELS[order.status]}`)
+  const totals = `${goods.join(' · ')} · ${shipping} · итого ${rub(order.totalRub)}`
 
   // Позиции добавляем, пока влезает в лимит, оставляя место на хвост и на
   // строку «…и ещё N позиций».
   const reserve = 40
-  let length = [...head, ...tail].join('\n').length + reserve
+  let length = [title, ...client, 'Товары:', totals].join('\n').length + 4 + reserve
   const lines: string[] = []
   for (const item of order.items) {
-    const line = `— ${escapeHtml(itemLine(item))}`
+    const line = escapeHtml(itemLine(item))
     if (length + line.length + 1 > TELEGRAM_TEXT_LIMIT) break
     lines.push(line)
     length += line.length + 1
   }
   const hidden = order.items.length - lines.length
-  if (hidden > 0) lines.push(`— …и ещё ${hidden} ${pluralPositions(hidden)}`)
+  if (hidden > 0) lines.push(`…и ещё ${hidden} ${pluralPositions(hidden)}`)
 
-  return [...head, ...lines, ...tail].join('\n')
+  return [title, client.join('\n'), ['Товары:', ...lines].join('\n'), totals].join('\n\n')
 }

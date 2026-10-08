@@ -156,8 +156,13 @@ describe('reconcilePendingOrders', () => {
 
     const events = await AppDataSource.getRepository(OrderNotification).find({
       where: { orderId: stale.id },
+      order: { channel: 'ASC' },
     })
-    expect(events.map((e) => e.eventKey)).toEqual(['status:paid'])
+    // Оплата — в таблицу и в рабочий чат.
+    expect(events.map((e) => [e.channel, e.eventKey])).toEqual([
+      ['sheets', 'status:paid'],
+      ['telegram', 'status:paid'],
+    ])
   })
 
   it('skips fresh orders, orders without external id, and non-pending orders', async () => {

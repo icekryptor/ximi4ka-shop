@@ -60,27 +60,35 @@ describe('outbox', () => {
   const shipments = (orderId: string) =>
     AppDataSource.getRepository(CdekShipment).findBy({ orderId })
 
-  it('новый заказ — в оба канала', async () => {
+  it('созданный заказ — только в таблицу: в чат неоплаченные не идут', async () => {
     const order = await seedOrder()
     await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'created'))
     expect((await rows(order.id)).map((r) => [r.channel, r.eventKey])).toEqual([
       ['sheets', 'created'],
-      ['telegram', 'created'],
     ])
   })
 
-  it('смена статуса — только в таблицу: ответы в чате мешают складу', async () => {
+  it('оплата — в таблицу и в чат', async () => {
     const order = await seedOrder()
     await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'status:paid'))
     expect((await rows(order.id)).map((r) => [r.channel, r.eventKey])).toEqual([
       ['sheets', 'status:paid'],
+      ['telegram', 'status:paid'],
+    ])
+  })
+
+  it('прочие смены статуса — только в таблицу: ответы в чате мешают складу', async () => {
+    const order = await seedOrder()
+    await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'status:shipped'))
+    expect((await rows(order.id)).map((r) => [r.channel, r.eventKey])).toEqual([
+      ['sheets', 'status:shipped'],
     ])
   })
 
   it('повторная постановка не дублирует записи', async () => {
     const order = await seedOrder()
-    await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'created'))
-    await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'created'))
+    await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'status:paid'))
+    await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'status:paid'))
     expect(await rows(order.id)).toHaveLength(2)
   })
 
@@ -88,7 +96,7 @@ describe('outbox', () => {
     const order = await seedOrder()
     await expect(
       AppDataSource.transaction(async (em) => {
-        await enqueueOrderEvent(em, order.id, 'created')
+        await enqueueOrderEvent(em, order.id, 'status:paid')
         throw new Error('boom')
       }),
     ).rejects.toThrow('boom')
@@ -101,7 +109,10 @@ describe('outbox', () => {
     await saveOrderWithStatusEvent(order, 'pending')
     const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
     expect(saved.status).toBe('paid')
-    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid'])
+    expect((await rows(order.id)).map((r) => [r.channel, r.eventKey])).toEqual([
+      ['sheets', 'status:paid'],
+      ['telegram', 'status:paid'],
+    ])
   })
 
   it('без смены статуса событие не ставится, привязка платежа сохраняется', async () => {
@@ -136,7 +147,7 @@ describe('outbox', () => {
     expect(saved.status).toBe('paid')
     expect(saved.paidAt).toEqual(paidAt)
     expect(saved.statusHistory).toEqual(stale.statusHistory)
-    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid'])
+    expect((await rows(order.id)).map((r) => r.eventKey)).toEqual(['status:paid', 'status:paid'])
   })
 
   it('оплата заказа СДЭК ставит его в очередь создания в СДЭК', async () => {

@@ -8,11 +8,17 @@ import { enqueueCdekShipment } from '../cdek/queue.js'
 // Куда сообщаем о каждом событии заказа.
 export const CHANNELS: NotificationChannel[] = ['sheets', 'telegram']
 
-// Куда уходит событие. Карточка нового заказа — в таблицу и в чат; смены
-// статуса — только в таблицу: ответы на карточку заспамливали рабочий чат и
-// мешали складу (решение владельца, docs/superpowers/specs/2026-09-25-cdek-auto-orders-design.md §6).
+// Единственное событие, которое попадает в Telegram.
+export const TELEGRAM_EVENT: OrderEventKey = 'status:paid'
+
+// Куда уходит событие. В рабочий чат — только карточка оплаченного заказа:
+// созданные, но не оплаченные заказы склад не интересуют, их видно в админке
+// и в таблице. Остальные смены статуса — только в таблицу: ответы на карточку
+// заспамливали чат и мешали складу (решение владельца,
+// docs/superpowers/specs/2026-09-25-cdek-auto-orders-design.md §6; про
+// «только после оплаты» — 08.10.2026).
 export function channelsForEvent(eventKey: OrderEventKey): NotificationChannel[] {
-  return eventKey === 'created' ? CHANNELS : ['sheets']
+  return eventKey === TELEGRAM_EVENT ? CHANNELS : ['sheets']
 }
 
 // pending — стартовое состояние, отдельным событием не считается: о нём
