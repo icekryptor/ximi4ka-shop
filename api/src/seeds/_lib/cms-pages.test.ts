@@ -129,7 +129,9 @@ describe('data/cms-pages.json', () => {
 
   it('оператор в политике — Аистов В. А. (решение владельца от 08.10.2026), без следов другого лица', async () => {
     const policy = pageText((await readCmsPages()).find((p) => p.slug === 'policy')!)
-    expect(policy).toMatch(/предпринимаемые\s+Аистов Василий Андреевич\s+\(далее\s+— Оператор\)/)
+    expect(policy).toMatch(
+      /предпринимаемые\s+Аистов Василий Андреевич,\s+ИНН 431401950080\s+\(далее\s+— Оператор\)/,
+    )
     expect(policy).not.toMatch(/Ксени/)
     expect(policy).not.toMatch(/Аистова/)
   })
