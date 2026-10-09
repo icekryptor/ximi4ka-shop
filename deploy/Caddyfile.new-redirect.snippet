@@ -1,0 +1,30 @@
+# Шаг 5 переключения апекса (docs/seo/apex-switch-plan-2026-10.md).
+# ЗАМЕНЯЕТ существующий блок new.ximi4ka.ru в
+# /opt/supabase-src/docker/volumes/proxy/caddy/Caddyfile (старый блок удалить,
+# не дублировать: два блока с одним адресом Caddy не примет).
+#
+# Зачем: robots.txt лежит в БД и общий для обоих хостов. Как только в нём
+# снимается Disallow (шаг 7), new.ximi4ka.ru стал бы полным дублем апекса.
+# Поэтому весь new.ximi4ka.ru уходит на апекс 301-м.
+#
+# Исключения — вебхуки: /api/webhooks/* (Т-Касса) и /api/telegram/* (бот входа
+# в кабинет, вебхук зарегистрирован на new.ximi4ka.ru/api/telegram/login-webhook).
+# POST по 301 ни платёжная система, ни Telegram не повторяют, и уведомления об
+# оплате и коды входа пропали бы, пока у них записан старый адрес. Эти пути
+# остаются проксируемыми. Убрать handle можно, когда в кабинете Т-Кассы адрес на
+# апексе и пройден тестовый платёж, а вебхук бота перерегистрирован
+# (telegram-set-webhook, см. docs/seo/apex-switch-plan-2026-10.md, шаг 6).
+#
+# Порядок: caddy validate, затем caddy reload (команды как в
+# Caddyfile.apex.snippet).
+new.ximi4ka.ru {
+    handle /api/webhooks/* /api/telegram/* {
+        reverse_proxy ximishop-api:3001 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+    handle {
+        redir https://ximi4ka.ru{uri} permanent
+    }
+    header -server
+}
