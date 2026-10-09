@@ -31,8 +31,17 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     id: '00000000-0000-0000-0000-000000000001',
     orderNumber: 'XM-2026-00001',
     totalRub: 3450,
+    shippingRub: 450,
     customerPhone: '+79001234567',
     customerEmail: 'buyer@example.com',
+    items: [
+      {
+        quantity: 2,
+        unitPriceRub: 1500,
+        lineTotalRub: 3000,
+        productSnapshot: { name: 'Набор «Химичка»', sku: null, priceRub: 1500 },
+      },
+    ],
     ...overrides,
   } as Order
 }
@@ -136,6 +145,73 @@ describe('TBankProvider.createPayment', () => {
     expect(sent.FailURL).toBe('https://shop.test/fail')
   })
 
+  describe('Receipt (54-ФЗ)', () => {
+    async function sentBody(
+      cfg: Partial<ConstructorParameters<typeof TBankProvider>[0]> = {},
+      order: Order = makeOrder(),
+    ): Promise<{ sent: Record<string, unknown> | null; result: unknown }> {
+      const fetchMock = mockFetchOnce({ Success: true, PaymentId: 1, PaymentURL: 'https://pay/1' })
+      const provider = new TBankProvider({ ...CFG, fetch: fetchMock, ...cfg })
+      const result = await provider.createPayment(order)
+      const call = fetchMock.mock.calls[0] as unknown as [URL, RequestInit] | undefined
+      return { sent: call ? JSON.parse(call[1].body as string) : null, result }
+    }
+
+    it('sends a Receipt whose lines add up to Amount, outside the Token', async () => {
+      const { sent } = await sentBody()
+      const receipt = sent?.Receipt as {
+        Email?: string
+        Taxation: string
+        Items: Array<{ Amount: number; Tax: string }>
+      }
+      expect(receipt.Email).toBe('buyer@example.com')
+      expect(receipt.Taxation).toBe('usn_income')
+      expect(receipt.Items.every((i) => i.Tax === 'none')).toBe(true)
+      expect(receipt.Items.reduce((sum, i) => sum + i.Amount, 0)).toBe(sent?.Amount)
+      // Receipt вложенный — в подпись не входит, подпись остаётся верной.
+      expect(
+        verifyToken(sent as Record<string, unknown>, CFG.password, sent?.Token as string),
+      ).toBe(true)
+    })
+
+    it('reads taxation and VAT from the environment', async () => {
+      vi.stubEnv('TBANK_TAXATION', 'osn')
+      vi.stubEnv('TBANK_RECEIPT_TAX', 'vat22')
+      const { sent } = await sentBody()
+      const receipt = sent?.Receipt as { Taxation: string; Items: Array<{ Tax: string }> }
+      expect(receipt.Taxation).toBe('osn')
+      expect(receipt.Items.every((i) => i.Tax === 'vat22')).toBe(true)
+    })
+
+    it('leaves the Receipt out when TBANK_SEND_RECEIPT is off', async () => {
+      vi.stubEnv('TBANK_SEND_RECEIPT', 'false')
+      const { sent, result } = await sentBody()
+      expect(sent).not.toBeNull()
+      expect(sent).not.toHaveProperty('Receipt')
+      expect(result).not.toBeNull()
+    })
+
+    it('does not call Init when TBANK_TAXATION is invalid', async () => {
+      vi.stubEnv('TBANK_TAXATION', 'usn')
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      const { sent, result } = await sentBody()
+      expect(sent).toBeNull()
+      expect(result).toBeNull()
+      spy.mockRestore()
+    })
+
+    it('does not call Init and returns null when the Receipt cannot be built', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      const { sent, result } = await sentBody({}, makeOrder({ items: [] }))
+      expect(sent).toBeNull()
+      expect(result).toBeNull()
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringMatching(/чек не собран для XM-2026-00001 — Init не отправлен/),
+      )
+      spy.mockRestore()
+    })
+  })
+
   it('returns null when Init responds Success=false', async () => {
     const fetchMock = mockFetchOnce({ Success: false, ErrorCode: '9999', Message: 'nope' })
     const provider = new TBankProvider({ ...CFG, fetch: fetchMock })
@@ -151,7 +227,10 @@ describe('TBankProvider.createPayment', () => {
     }
 
     // Возвращает единственную строку лога и ключи тела, реально ушедшего в банк.
-    async function rejectedLog(body: unknown): Promise<{ line: string; sentKeys: string[] }> {
+    async function rejectedLog(
+      body: unknown,
+      order: Order = makeOrder({ publicToken: 'a1b2c3d4' }),
+    ): Promise<{ line: string; sentKeys: string[] }> {
       const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
       try {
         const fetchMock = mockFetchOnce(body)
@@ -161,7 +240,7 @@ describe('TBankProvider.createPayment', () => {
           notificationUrl: 'https://shop.test/api/webhooks/tbank',
           fetch: fetchMock,
         })
-        expect(await provider.createPayment(makeOrder({ publicToken: 'a1b2c3d4' }))).toBeNull()
+        expect(await provider.createPayment(order)).toBeNull()
         expect(spy).toHaveBeenCalledTimes(1)
         const [, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit]
         return {
@@ -233,6 +312,20 @@ describe('TBankProvider.createPayment', () => {
       for (const secret of ['a1b2c3d4', '+79001234567', 'buyer@example.com', 'secret-password']) {
         expect(line).not.toContain(secret)
       }
+      expect(line).toContain('[redacted]')
+    })
+
+    it('masks the normalised phone that went into the Receipt', async () => {
+      const { line } = await rejectedLog(
+        {
+          Success: false,
+          ErrorCode: '309',
+          Message: 'Неверные параметры.',
+          Details: 'Receipt.Phone +79001234567 / 79001234567 неверен',
+        },
+        makeOrder({ customerEmail: '', customerPhone: '8 (900) 123-45-67' }),
+      )
+      expect(line).not.toContain('79001234567')
       expect(line).toContain('[redacted]')
     })
 

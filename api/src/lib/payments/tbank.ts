@@ -1,6 +1,12 @@
 import type { Order } from '../../entities/Order.js'
 import { generateToken, verifyToken } from './token.js'
 import { tbankFetch } from './tbankTransport.js'
+import {
+  buildReceipt,
+  parseReceiptConfig,
+  type ReceiptConfig,
+  type TBankReceipt,
+} from './receipt.js'
 import type { CreatePaymentResult, PaymentEvent, PaymentProvider, PaymentStatus } from './types.js'
 
 // Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring.
@@ -82,6 +88,10 @@ export interface TBankConfig {
    * СДЭК; successUrl/failUrl тогда не используются.
    */
   returnOrigin?: string
+  /** Слать ли Receipt (чек по 54-ФЗ). По умолчанию да; TBANK_SEND_RECEIPT=false выключает. */
+  sendReceipt?: boolean
+  /** СНО и ставка НДС для чека (TBANK_TAXATION, TBANK_RECEIPT_TAX). */
+  receipt?: ReceiptConfig
   /**
    * По умолчанию — tbankFetch (доверяет корню Минцифры только для запросов
    * к Т-Банку). Параметр — точка расширения для тестов.
@@ -110,7 +120,7 @@ interface TBankGetStateResponse {
 
 export class TBankProvider implements PaymentProvider {
   readonly name = 'tbank' as const
-  private readonly cfg: TBankConfig
+  private readonly cfg: TBankConfig & { sendReceipt: boolean }
 
   constructor(cfg: Partial<TBankConfig> = {}) {
     const apiUrl = cfg.apiUrl ?? process.env.TBANK_API_URL ?? TBANK_DEFAULT_API_URL
@@ -124,6 +134,12 @@ export class TBankProvider implements PaymentProvider {
       successUrl: cfg.successUrl ?? process.env.TBANK_SUCCESS_URL,
       failUrl: cfg.failUrl ?? process.env.TBANK_FAIL_URL,
       returnOrigin: (cfg.returnOrigin ?? process.env.WEB_ORIGIN ?? '').replace(/\/+$/, ''),
+      sendReceipt:
+        cfg.sendReceipt ??
+        !['false', '0', 'off', 'no'].includes(
+          (process.env.TBANK_SEND_RECEIPT ?? '').trim().toLowerCase(),
+        ),
+      receipt: cfg.receipt,
       // По умолчанию — tbankFetch: доверяет корню Минцифры только для
       // запросов к Т-Банку, а не глобально (см. tbankTransport.ts).
       fetch: cfg.fetch ?? tbankFetch,
@@ -171,6 +187,21 @@ export class TBankProvider implements PaymentProvider {
           ...(order.customerEmail ? { Email: order.customerEmail } : {}),
         },
       }
+      // Терминал с онлайн-кассой требует чек; не собрался — Init не шлём
+      // (catch ниже вернёт null и заказ уйдёт на ручное оформление).
+      if (this.cfg.sendReceipt) {
+        try {
+          // СНО и НДС читаются здесь: неверное значение в env даёт отказ с
+          // логом и ручное оформление, а не 500 в чекауте.
+          params.Receipt = buildReceipt(order, this.cfg.receipt ?? parseReceiptConfig(process.env))
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : String(err)
+          console.error(
+            `tbank: чек не собран для ${order.orderNumber} — Init не отправлен: ${reason}`,
+          )
+          return null
+        }
+      }
       if (this.cfg.notificationUrl) params.NotificationURL = this.cfg.notificationUrl
       if (this.cfg.returnOrigin) {
         const page = `${this.cfg.returnOrigin}/order/${encodeURIComponent(order.orderNumber)}`
@@ -189,12 +220,17 @@ export class TBankProvider implements PaymentProvider {
         // params — только имена отправленных полей: по ним видно, чего не
         // хватало или что лишнее. Значения (телефон, почта, секрет заказа,
         // подпись) в лог не попадают.
+        const receipt = params.Receipt as TBankReceipt | undefined
         const sent = Object.keys(params).concat(['TerminalKey', 'Token']).join(',')
         const secrets = [
           order.publicToken,
           order.publicToken ? encodeURIComponent(order.publicToken) : null,
           order.customerPhone,
           order.customerEmail,
+          // Контакт, который реально ушёл в чек (телефон там нормализован).
+          receipt?.Phone,
+          receipt?.Phone?.replace(/^\+/, ''),
+          receipt?.Email,
           this.cfg.password,
         ]
         const code = formatBankText(body.ErrorCode, secrets)
