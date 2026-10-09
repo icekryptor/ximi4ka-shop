@@ -533,6 +533,65 @@ describe('/checkout page', () => {
     expect(loadCart()).toEqual([])
   })
 
+  it('пока идёт переход на оплату, вместо «Корзина пуста» — «Переходим к оплате»', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okCheckoutResponse('XM-2026-00043', 'https://securepay.tinkoff.ru/pay/1')),
+    )
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await fillValidForm()
+
+    submit()
+
+    await vi.waitFor(() => expect(mockRedirectTo).toHaveBeenCalled())
+    // Корзина уже очищена, но браузер ещё не ушёл на шлюз: пустую корзину не мигаем.
+    expect(screen.queryByText(/корзина пуста/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/переходим к оплате/i)
+  })
+
+  it('без онлайн-оплаты, пока открывается страница заказа, пустую корзину тоже не мигаем', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okCheckoutResponse()),
+    )
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await fillValidForm()
+
+    submit()
+
+    await vi.waitFor(() => expect(mockPush).toHaveBeenCalled())
+    expect(screen.queryByText(/корзина пуста/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/заказ оформлен/i)
+  })
+
+  it('возврат кнопкой «Назад» со шлюза (bfcache) не оставляет страницу в состоянии перехода', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okCheckoutResponse('XM-2026-00043', 'https://securepay.tinkoff.ru/pay/1')),
+    )
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await fillValidForm()
+    submit()
+    await vi.waitFor(() => expect(mockRedirectTo).toHaveBeenCalled())
+
+    // Обычный pageshow (не из bfcache) состояние не трогает.
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false }))
+    })
+    expect(screen.getByRole('status')).toHaveTextContent(/переходим к оплате/i)
+
+    // Браузер вернул страницу из bfcache: заказ уже оформлен, корзина пуста.
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+    })
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByText(/корзина пуста/i)).toBeInTheDocument()
+  })
+
   it('shows the server message on 409 (availability changed)', async () => {
     const fetchMock = vi.fn(
       async () =>
