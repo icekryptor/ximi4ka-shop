@@ -114,13 +114,14 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
       ogImage: ogImage || null,
       canonicalUrl: canonicalUrl.trim() || null,
       noindex,
+      images: images.map((img) => ({ url: img.url, alt: img.alt.trim() })),
     }
 
     // Build the translations blob. EN fields go under `translations.en`;
     // we only include them if they're non-empty (keeps the JSON clean and
-    // avoids falsely marking incomplete locales as translated). Gallery
-    // images still ride in the top-level translations map for now — a
-    // dedicated product_images endpoint is a future concern.
+    // avoids falsely marking incomplete locales as translated). Галерея
+    // уходит отдельным полем `images` (таблица product_images, её читает
+    // витрина), а не в translations.
     const enBlock: Record<string, unknown> = {}
     if (enName.trim()) enBlock.name = enName.trim()
     if (enMetaTitle.trim()) enBlock.metaTitle = enMetaTitle.trim()
@@ -135,9 +136,9 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
       // Clear stale EN data if the admin emptied every field.
       delete nextTranslations.en
     }
-    if (images.length > 0) {
-      nextTranslations.gallery = images
-    }
+    // Устаревшая копия галереи из старой формы: витрина её не читает, а
+    // оставленная, она расходилась бы с настоящими фото.
+    delete nextTranslations.gallery
     if (Object.keys(nextTranslations).length > 0) {
       input.translations = nextTranslations
     }

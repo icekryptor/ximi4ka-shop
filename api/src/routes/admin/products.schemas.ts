@@ -3,6 +3,13 @@ import { TranslationsSchema } from './i18n.js'
 
 export const ShippingBoxSchema = z.enum(['small', 'medium', 'elektro', 'large'])
 
+// Галерея товара. Приходит целиком: непустой массив заменяет прежние фото,
+// пустой — очищает, отсутствие поля — не трогает. Порядок = порядок в массиве.
+export const ProductImageInputSchema = z.object({
+  url: z.string().trim().min(1).max(500),
+  alt: z.string().max(255).default(''),
+})
+
 export const CreateProductSchema = z.object({
   slug: z
     .string()
@@ -22,6 +29,7 @@ export const CreateProductSchema = z.object({
   ogImage: z.string().max(500).nullable().optional(),
   canonicalUrl: z.string().max(500).nullable().optional(),
   noindex: z.boolean().default(false),
+  images: z.array(ProductImageInputSchema).max(50).optional(),
   translations: TranslationsSchema.default({}),
   // Доставка СДЭК — см. api/src/lib/shipping/pack.ts.
   weightG: z.number().int().positive().max(50_000).nullable().optional(),
