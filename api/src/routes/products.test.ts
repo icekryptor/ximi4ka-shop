@@ -209,6 +209,85 @@ describe('Product routes', () => {
     })
   })
 
+  describe('product images (admin gallery)', () => {
+    async function createPublished(slug: string, images?: unknown) {
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug, name: 'Kit', priceRub: 100, ...(images ? { images } : {}) })
+      const id = created.body.data.id as string
+      await request(app).post(`/api/admin/products/${id}/publish`).set(authHeaders(auth)).send()
+      return id
+    }
+
+    it('PATCH с images заменяет галерею, и витрина отдаёт новые фото, а не старые', async () => {
+      const id = await createPublished('img-replace', [{ url: '/uploads/old.jpg', alt: 'старое' }])
+
+      const res = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({
+          images: [
+            { url: '/uploads/new-1.webp', alt: 'первое' },
+            { url: '/uploads/new-2.webp', alt: 'второе' },
+          ],
+        })
+      expect(res.status).toBe(200)
+      expect(res.body.data.images.map((i: { url: string }) => i.url)).toEqual([
+        '/uploads/new-1.webp',
+        '/uploads/new-2.webp',
+      ])
+
+      const pub = await request(app).get('/api/public/products/img-replace')
+      expect(pub.body.data.images.map((i: { url: string }) => i.url)).toEqual([
+        '/uploads/new-1.webp',
+        '/uploads/new-2.webp',
+      ])
+    })
+
+    it('PATCH без images оставляет галерею как есть', async () => {
+      const id = await createPublished('img-keep', [{ url: '/uploads/keep.jpg', alt: '' }])
+      await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ name: 'Renamed' })
+      const pub = await request(app).get('/api/public/products/img-keep')
+      expect(pub.body.data.images.map((i: { url: string }) => i.url)).toEqual(['/uploads/keep.jpg'])
+    })
+
+    it('PATCH с пустым images очищает галерею', async () => {
+      const id = await createPublished('img-clear', [{ url: '/uploads/x.jpg', alt: '' }])
+      await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ images: [] })
+      const pub = await request(app).get('/api/public/products/img-clear')
+      expect(pub.body.data.images).toEqual([])
+    })
+
+    it('GET /api/admin/products/:id отдаёт галерею по порядку', async () => {
+      const id = await createPublished('img-admin-get', [
+        { url: '/uploads/a.jpg', alt: 'a' },
+        { url: '/uploads/b.jpg', alt: 'b' },
+      ])
+      const res = await request(app).get(`/api/admin/products/${id}`).set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      expect(res.body.data.images.map((i: { url: string }) => i.url)).toEqual([
+        '/uploads/a.jpg',
+        '/uploads/b.jpg',
+      ])
+    })
+
+    it('отклоняет images с пустым url', async () => {
+      const id = await createPublished('img-bad')
+      const res = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ images: [{ url: '', alt: '' }] })
+      expect(res.status).toBe(400)
+    })
+  })
+
   describe('publish / unpublish', () => {
     it('publishes and unpublishes', async () => {
       const {

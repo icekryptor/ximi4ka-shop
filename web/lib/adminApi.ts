@@ -60,6 +60,8 @@ export interface AdminProductInput {
   ogImage?: string | null
   canonicalUrl?: string | null
   noindex?: boolean
+  /** Галерея целиком: массив заменяет фото, пустой очищает, без поля — без изменений. */
+  images?: Array<{ url: string; alt: string }>
   translations?: Record<string, unknown>
 }
 

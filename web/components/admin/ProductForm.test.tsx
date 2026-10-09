@@ -51,6 +51,35 @@ describe('ProductForm', () => {
     })
   })
 
+  it('отправляет галерею в поле images, а не в translations.gallery', async () => {
+    const onSubmit = vi.fn<(input: AdminProductInput) => Promise<void>>(async () => undefined)
+    const initialValue = {
+      id: 'p1',
+      slug: 'oge',
+      name: 'ОГЭ',
+      priceRub: 100,
+      stockStatus: 'in_stock',
+      sortOrder: 0,
+      longDescriptionBlocks: [],
+      noindex: false,
+      translations: { gallery: [{ url: '/stale.jpg', alt: '' }] },
+      images: [{ id: 'i1', productId: 'p1', url: '/uploads/a.webp', alt: 'А', sortOrder: 0 }],
+    } as unknown as Parameters<typeof ProductForm>[0]['initialValue']
+    render(
+      <ProductForm
+        mode="edit"
+        initialValue={initialValue}
+        onSubmit={onSubmit}
+        submitting={false}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: /Сохранить/ }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    const input = onSubmit.mock.calls[0][0]
+    expect(input.images).toEqual([{ url: '/uploads/a.webp', alt: 'А' }])
+    expect(input.translations?.gallery).toBeUndefined()
+  })
+
   it('surfaces 409 slug_conflict error', () => {
     const apiErr = {
       status: 409,
