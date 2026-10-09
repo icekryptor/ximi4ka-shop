@@ -21,6 +21,7 @@ import { Hero, PreFooterCta, Manifesto, DEFAULT_TESTIMONIALS } from '@/component
 import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
 import { HowItWorksStepLJ } from '@/components/marketing/HowItWorksStepLJ'
 import { TestimonialQuoteLJ } from '@/components/marketing/TestimonialQuoteLJ'
+import { buildPromoSlides, OGE_PRODUCT_SLUG } from '@/lib/promoSlides'
 import { DEFAULT_LOCALE, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -161,9 +162,8 @@ export default async function HomePage({ params }: Props) {
   const locale: Locale = rawLocale
   const { page, products, settings, categories } = await fetchHome()
 
-  // Текст hero зашит в код по макету Figma «Главная — 1440» (17:129). Если
-  // его снова понадобится менять из CMS, верните pickField() здесь и
-  // передайте значения в title/subtitle/lead у Hero.
+  // Слайды hero зашиты в код (web/lib/promoSlides.ts): это акционные плашки,
+  // а не CMS-контент.
 
   const blocks = (pickField<unknown[]>(
     page as unknown as Record<string, unknown>,
@@ -203,6 +203,14 @@ export default async function HomePage({ params }: Props) {
     }),
   )
 
+  // Фото набора ОГЭ для второго слайда. Нет продукта или фото — слайд рисует
+  // иллюстрацию-заглушку, главная при этом не падает.
+  const ogeProduct = await getPublishedProduct(OGE_PRODUCT_SLUG).catch(() => null)
+  const ogeImage = ogeProduct?.images[0]
+  const promoSlides = buildPromoSlides(
+    ogeImage ? { imageUrl: ogeImage.url, alt: 'Набор «Химичка ОГЭ»' } : null,
+  )
+
   return (
     <>
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
@@ -211,32 +219,8 @@ export default async function HomePage({ params }: Props) {
           скруглённый низ фиолетового hero ложится на белый фон. */}
       <Ticker items={FACTS_TICKER} surface="ink" />
 
-      {/* 1. Hero — фиолетовый, по макету Figma (17:129) */}
-      <Hero
-        title="ХИМИЧКА"
-        subtitle="Наборы для опытов"
-        lead="3 набора: от реакций меди до электролиза. Внутри реагенты, лабораторная посуда и протоколы к каждому опыту. Ребёнок проводит их своими руками — то, что в учебнике осталось картинкой на видео."
-        primaryCta={{ label: 'Открыть каталог', href: '/catalog' }}
-        secondaryCta={{ label: 'Что мы делаем', href: '#manifesto' }}
-        slides={flagships
-          // Слайдер флагманов (v3.5). Берём все флагманы с DB-фото; каждый
-          // слайд — реальный продукт с ценой из БД, ссылкой и CTA «В корзину».
-          // Без фото слайд не показываем; при <1 валидном слайде Hero скрывает
-          // панель и разворачивает заголовок на всю ширину.
-          .filter((f) => f.dbProduct && f.dbProduct.images.length > 0)
-          .map((f) => {
-            const p = f.dbProduct!
-            return {
-              productId: p.id,
-              slug: p.slug,
-              name: p.name,
-              priceRub: p.priceRub,
-              imageUrl: p.images[0].url,
-              alt: p.name,
-              href: `/product/${p.slug}`,
-            }
-          })}
-      />
+      {/* 1. Hero — промо-слайдер на фиолетовом фоне, по макету Figma (17:129) */}
+      <Hero title="ХИМИЧКА" subtitle="Наборы для опытов" slides={promoSlides} />
 
       {/* 2. v3 Catalog — asymmetric 3-card row (LAB CREAM) */}
       <section className="bg-[var(--color-lj-cream)] px-6 py-32 relative">
