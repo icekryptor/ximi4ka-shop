@@ -53,6 +53,22 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<CheckoutFormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Заказ создан, браузер уходит на шлюз или на страницу заказа. Корзина к этому
+  // моменту уже очищена, и без отдельного состояния на секунду-две мелькало бы
+  // «Корзина пуста». payment — идём на оплату, order — открываем страницу заказа.
+  const [placed, setPlaced] = useState<'payment' | 'order' | null>(null)
+  // Кнопка «Назад» со шлюза возвращает страницу из bfcache вместе с её
+  // состоянием: сбрасываем «переходим», корзина при этом честно пуста.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return
+      setPlaced(null)
+      // Ключ идемпотентности уже сброшен: новая отправка создаст новый заказ.
+      setSubmitting(false)
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [])
 
   // Город, способ, пункт или адрес курьера и цены — в блоке доставки (спека §5).
   const delivery = useCdekDelivery(items)
@@ -164,6 +180,7 @@ export default function CheckoutPage() {
           quantity: i.quantity,
         })),
       )
+      setPlaced(result.paymentUrl ? 'payment' : 'order')
       clear()
       if (result.paymentUrl) {
         redirectTo(result.paymentUrl)
@@ -204,6 +221,12 @@ export default function CheckoutPage() {
 
         {!hydrated ? (
           <div className="min-h-[40vh]" />
+        ) : placed ? (
+          <p role="status" className="text-xl text-[var(--color-lj-ink)] opacity-70">
+            {placed === 'payment'
+              ? 'Заказ оформлен. Переходим к оплате…'
+              : 'Заказ оформлен. Открываем страницу заказа…'}
+          </p>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-start gap-6">
             <p className="text-xl text-[var(--color-lj-ink)] opacity-70">Корзина пуста</p>
