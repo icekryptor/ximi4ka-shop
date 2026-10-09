@@ -18,7 +18,10 @@
 # Порядок: caddy validate, затем caddy reload (команды как в
 # Caddyfile.apex.snippet).
 new.ximi4ka.ru {
-    handle /api/webhooks/* /api/telegram/* {
+    # Два пути: в строке handle путь-шорткат принимает только один, поэтому
+    # именованный matcher.
+    @hooks path /api/webhooks/* /api/telegram/*
+    handle @hooks {
         reverse_proxy ximishop-api:3001 {
             header_up X-Real-IP {remote_host}
         }
