@@ -142,6 +142,112 @@ describe('TBankProvider.createPayment', () => {
     expect(await provider.createPayment(makeOrder())).toBeNull()
   })
 
+  describe('Init rejection log', () => {
+    const rejected = {
+      Success: false,
+      ErrorCode: '309',
+      Message: 'Неверные параметры.',
+      Details: 'Поле Phone имеет неверный формат',
+    }
+
+    // Возвращает единственную строку лога и ключи тела, реально ушедшего в банк.
+    async function rejectedLog(body: unknown): Promise<{ line: string; sentKeys: string[] }> {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      try {
+        const fetchMock = mockFetchOnce(body)
+        const provider = new TBankProvider({
+          ...CFG,
+          returnOrigin: 'https://shop.test',
+          notificationUrl: 'https://shop.test/api/webhooks/tbank',
+          fetch: fetchMock,
+        })
+        expect(await provider.createPayment(makeOrder({ publicToken: 'a1b2c3d4' }))).toBeNull()
+        expect(spy).toHaveBeenCalledTimes(1)
+        const [, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit]
+        return {
+          line: spy.mock.calls[0].join(' '),
+          sentKeys: Object.keys(JSON.parse(init.body as string) as Record<string, unknown>),
+        }
+      } finally {
+        spy.mockRestore()
+      }
+    }
+
+    it('shows the bank Details so the failing parameter can be named', async () => {
+      const { line } = await rejectedLog(rejected)
+      expect(line).toContain('ErrorCode=309')
+      expect(line).toContain('Неверные параметры.')
+      expect(line).toContain('Details=Поле Phone имеет неверный формат')
+    })
+
+    it('lists exactly the parameter names that were sent, never their values', async () => {
+      const { line, sentKeys } = await rejectedLog(rejected)
+      const logged = /params=(\S+)/.exec(line)?.[1].split(',') ?? []
+      expect([...logged].sort()).toEqual([...sentKeys].sort())
+      // Ни пароль терминала, ни подпись, ни секрет заказа, ни данные покупателя.
+      expect(line).not.toContain('a1b2c3d4')
+      expect(line).not.toContain('+79001234567')
+      expect(line).not.toContain('buyer@example.com')
+      expect(line).not.toMatch(/[0-9a-f]{64}/)
+    })
+
+    it('keeps one line and caps Details at 300 characters', async () => {
+      const { line } = await rejectedLog({
+        ...rejected,
+        Details: `первая\nвторая\r\n${'x'.repeat(1000)}`,
+      })
+      expect(line).not.toMatch(/[\r\n]/)
+      const details = /Details=(.*) params=/.exec(line)?.[1]
+      expect(details).toHaveLength(300)
+      expect(details?.startsWith('первая вторая x')).toBe(true)
+    })
+
+    it('shows a blank Details as a dash', async () => {
+      const { line } = await rejectedLog({ ...rejected, Details: '  \n ' })
+      expect(line).toContain('Details=- ')
+    })
+
+    it('strips control characters and bidi overrides from every bank text', async () => {
+      const { line } = await rejectedLog({
+        Success: false,
+        ErrorCode: '3\x1b[31m09',
+        Message: 'a\x1b[31mb\u0085c\u202ed',
+        Details: 'x\x00y\x07z',
+      })
+      expect(line).toContain('ErrorCode=3 [31m09')
+      expect(line).toContain('Message=a [31mb c d')
+      expect(line).toContain('Details=x y z')
+      // eslint-disable-next-line no-control-regex
+      expect(line).not.toMatch(/[\x00-\x08\x0b-\x1f\x7f-\x9f\u202e]/)
+    })
+
+    it('masks our own secrets when the bank quotes them back in the text', async () => {
+      const { line } = await rejectedLog({
+        Success: false,
+        ErrorCode: '309',
+        Message: 'Неверные параметры.',
+        Details:
+          'SuccessURL https://shop.test/order/XM-2026-00001#t=a1b2c3d4 телефон +79001234567 почта buyer@example.com пароль secret-password',
+      })
+      expect(line).toContain('Details=SuccessURL https://shop.test/order/XM-2026-00001#t=')
+      for (const secret of ['a1b2c3d4', '+79001234567', 'buyer@example.com', 'secret-password']) {
+        expect(line).not.toContain(secret)
+      }
+      expect(line).toContain('[redacted]')
+    })
+
+    it('still logs a response without Details', async () => {
+      const { line } = await rejectedLog({ Success: false, ErrorCode: '9999', Message: 'nope' })
+      expect(line).toContain('ErrorCode=9999')
+      expect(line).toContain('Details=-')
+    })
+
+    it('ignores a non-string Details', async () => {
+      const { line } = await rejectedLog({ ...rejected, Details: { a: 1 } })
+      expect(line).toContain('Details=-')
+    })
+  })
+
   it('returns null on network failure', async () => {
     const fetchMock = vi.fn(async () => {
       throw new Error('ECONNREFUSED')

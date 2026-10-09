@@ -22,6 +22,30 @@ function logTbankError(message: string, err: unknown): void {
   }
 }
 
+// Тексты из ответа банка (ErrorCode, Message, Details) попадают в лог. Details —
+// пояснение, какой параметр не прошёл (для ErrorCode вроде 309 «Неверные
+// параметры» одного Message мало). Это чужой текст, поэтому перед записью:
+//   * вычёркиваем наши значения, если банк процитировал их в пояснении
+//     (секрет заказа из адреса возврата, телефон, почта, пароль терминала);
+//   * убираем управляющие и bidi-символы и схлопываем пробелы — лог остаётся
+//     одной строкой и не рисует escape-последовательности;
+//   * режем до MAX_BANK_TEXT_LENGTH — лог не растёт от чужого ответа.
+const MAX_BANK_TEXT_LENGTH = 300
+
+function formatBankText(value: unknown, secrets: Array<string | null | undefined> = []): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return '-'
+  let text = String(value)
+  for (const secret of secrets) {
+    if (secret && secret.length >= 4) text = text.split(secret).join('[redacted]')
+  }
+  const line = text
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_BANK_TEXT_LENGTH)
+  return line.length > 0 ? line : '-'
+}
+
 // Provider payment statuses → our order-status domain.
 //   AUTHORIZED — money reserved on the card (one-stage payments confirm
 //   automatically, so treat as paid); CONFIRMED — written off.
@@ -69,6 +93,7 @@ interface TBankInitResponse {
   Success?: boolean
   ErrorCode?: string
   Message?: string
+  Details?: string
   PaymentId?: string | number
   PaymentURL?: string
   Status?: string
@@ -161,8 +186,22 @@ export class TBankProvider implements PaymentProvider {
 
       const body = await this.post<TBankInitResponse>('Init', params)
       if (!body.Success || body.PaymentId == null || !body.PaymentURL) {
+        // params — только имена отправленных полей: по ним видно, чего не
+        // хватало или что лишнее. Значения (телефон, почта, секрет заказа,
+        // подпись) в лог не попадают.
+        const sent = Object.keys(params).concat(['TerminalKey', 'Token']).join(',')
+        const secrets = [
+          order.publicToken,
+          order.publicToken ? encodeURIComponent(order.publicToken) : null,
+          order.customerPhone,
+          order.customerEmail,
+          this.cfg.password,
+        ]
+        const code = formatBankText(body.ErrorCode, secrets)
+        const message = formatBankText(body.Message, secrets)
+        const details = formatBankText(body.Details, secrets)
         console.error(
-          `tbank: Init rejected for ${order.orderNumber}: ErrorCode=${body.ErrorCode} Message=${body.Message}`,
+          `tbank: Init rejected for ${order.orderNumber}: ErrorCode=${code} Message=${message} Details=${details} params=${sent}`,
         )
         return null
       }
