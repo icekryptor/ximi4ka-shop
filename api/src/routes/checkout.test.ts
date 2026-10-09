@@ -509,6 +509,70 @@ describe('POST /api/checkout', () => {
     ) as Record<string, unknown>
     expect(sent.Amount).toBe(235000) // (2000 + 350 доставка) ₽ → копейки
     expect(sent.OrderId).toBe(order.orderNumber)
+
+    // Чек по 54-ФЗ: товар и доставка, сумма позиций = Amount.
+    const receipt = sent.Receipt as {
+      Taxation: string
+      Items: Array<{ Name: string; Amount: number; PaymentObject: string }>
+    }
+    expect(receipt.Taxation).toBe('usn_income')
+    expect(receipt.Items.map((i) => i.PaymentObject)).toEqual(['commodity', 'service'])
+    expect(receipt.Items.reduce((sum, i) => sum + i.Amount, 0)).toBe(sent.Amount)
+  })
+
+  it('sends a Receipt that adds up to Amount for a discounted order with an uneven batch', async () => {
+    vi.stubEnv('PAYMENT_PROVIDER', 'tbank')
+    vi.stubEnv('TBANK_TERMINAL_KEY', 'TestTerminal')
+    vi.stubEnv('TBANK_PASSWORD', 'secret')
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        Success: true,
+        PaymentId: 7,
+        PaymentURL: 'https://securepay.tinkoff.ru/pay/7',
+      }),
+    }))
+    tbankFetchMock.mockImplementation(fetchMock)
+
+    // 21 пробирка по ценам партии = 313 ₽ (31300 коп. на 21 не делится) и
+    // 10 реактивов со скидкой 20% = 800 ₽.
+    const tube = await seedProduct({ slug: 'probirka', priceRub: 29, sku: 'T-9' })
+    await seedCategory('equipment', [tube])
+    const reagent = await seedProduct({ slug: 'copper-sulfate', priceRub: 100, sku: 'CU-9' })
+    await seedCategory('reagents', [reagent])
+
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(
+        checkoutBody([
+          { productId: tube.id, quantity: 21 },
+          { productId: reagent.id, quantity: 10 },
+        ]),
+      )
+
+    expect(res.status).toBe(201)
+    expect(res.body.data.paymentUrl).toBe('https://securepay.tinkoff.ru/pay/7')
+    const sent = JSON.parse(
+      (fetchMock.mock.calls[0] as unknown as [URL, RequestInit])[1].body as string,
+    ) as {
+      Amount: number
+      Receipt: { Items: Array<{ Price: number; Quantity: number; Amount: number }> }
+    }
+
+    const { Items } = sent.Receipt
+    expect(Items.reduce((sum, i) => sum + i.Amount, 0)).toBe(sent.Amount)
+    for (const line of Items) expect(line.Price * line.Quantity).toBe(line.Amount)
+    // Пробирки: 31300 коп. = 20 × 1490 + 1 × 1500, в чеке по-прежнему 21 штука.
+    expect(Items).toContainEqual(
+      expect.objectContaining({ Price: 1490, Quantity: 20, Amount: 29800 }),
+    )
+    expect(Items).toContainEqual(
+      expect.objectContaining({ Price: 1500, Quantity: 1, Amount: 1500 }),
+    )
+    expect(Items).toContainEqual(
+      expect.objectContaining({ Price: 8000, Quantity: 10, Amount: 80000 }),
+    )
   })
 
   it('keeps the order pending when tbank Init fails', async () => {

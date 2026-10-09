@@ -147,7 +147,8 @@ checkoutRouter.post('/', async (req, res, next) => {
           }),
         )
         const itemRepo = em.getRepository(OrderItem)
-        await itemRepo.save(
+        // items нужны провайдеру оплаты: из них собирается чек.
+        created.items = await itemRepo.save(
           lines.map(({ product: p, quantity, unitPriceRub, lineTotalRub }) =>
             itemRepo.create({
               orderId: created.id,
