@@ -23,7 +23,7 @@ async function readJson<T>(file: string): Promise<T> {
   return JSON.parse(await readFile(path.join(DATA_DIR, file), 'utf-8')) as T
 }
 
-// Названия 10 приоритетных карточек (слаги из каталога).
+// Слаги карточек с развёрнутым SEO-описанием: 10 приоритетных и набор для ОГЭ.
 const PRIORITY_SLUGS = [
   'sernaya-kislota',
   'azotnaya-kislota-10',
@@ -35,6 +35,7 @@ const PRIORITY_SLUGS = [
   'fenolftalein',
   'himichka-30',
   'nabor-dlya-elektroliza',
+  'bolshoi-nabor-dlya-oge',
 ]
 
 // Формулировки, которых в SEO-текстах быть не должно: обещания, которых мы не
@@ -143,7 +144,7 @@ describe('data/seo-product-texts.json', () => {
     }
   })
 
-  it('10 приоритетных карточек: описание 300–500 слов (heading + paragraph) и FAQ из 3–5 вопросов', async () => {
+  it('11 карточек с описанием: описание 300–500 слов (heading + paragraph) и FAQ из 3–5 вопросов', async () => {
     const entries = await readJson<SeoProductText[]>('seo-product-texts.json')
     const withLong = entries.filter((e) => e.longDescription !== undefined)
     expect(withLong.map((e) => e.slug).sort()).toEqual([...PRIORITY_SLUGS].sort())
