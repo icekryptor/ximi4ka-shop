@@ -27,6 +27,7 @@ export const ORDER_STATUS_BADGE_CLASSES: Record<OrderStatus, string> = {
 export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
   manual: 'Вручную',
   tbank: 'Т-Касса',
+  ycp: 'Яндекс',
 }
 
 export const DELIVERY_METHOD_LABELS: Record<string, string> = {
@@ -38,6 +39,7 @@ export const HISTORY_ACTOR_LABELS: Record<string, string> = {
   tbank: 'Т-Касса',
   admin: 'Менеджер',
   reconcile: 'Сверка платежей',
+  ycp: 'Яндекс',
 }
 
 export function formatDateTime(iso: string | null | undefined): string {

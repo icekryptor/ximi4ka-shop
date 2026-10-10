@@ -4,6 +4,7 @@ export type {
   OrderItemSnapshot,
   OrderStatus,
   OrderStatusHistoryEntry,
+  OrderSource,
   PaymentProvider,
   DeliveryAddress,
   DeliveryMethod,

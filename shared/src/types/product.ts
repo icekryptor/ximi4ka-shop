@@ -34,6 +34,8 @@ export interface Product {
   shipBoxes?: ShippingBox[]
   looseUnits?: number
   minBox?: ShippingBox | null
+  /** Кнопка «Купить в 1 клик» в Яндексе (YCP). API отдаёт всегда. */
+  ycpEnabled?: boolean
   images: ProductImage[]
   /** Слаги категорий. Есть в ответе карточки товара (`/api/public/products/:slug`). */
   categorySlugs?: string[]
