@@ -61,6 +61,19 @@ describe('buildReceipt', () => {
     expect(receipt.Items.reduce((sum, i) => sum + i.Amount, 0)).toBe(3450 * 100)
   })
 
+  it('leaves the free gift line out of the receipt and still sums to the order total', () => {
+    const gift = item({
+      isGift: true,
+      quantity: 1,
+      unitPriceRub: 0,
+      lineTotalRub: 0,
+      productSnapshot: { name: 'Йодат калия', sku: 'KIO3', priceRub: 249 },
+    })
+    const receipt = buildReceipt(order({ items: [item(), gift] }), CFG)
+    expect(receipt.Items.map((i) => i.Name)).toEqual(['Набор «Химичка»', 'Доставка'])
+    expect(receipt.Items.reduce((sum, i) => sum + i.Amount, 0)).toBe(3450 * 100)
+  })
+
   it('uses the configured taxation and VAT rate', () => {
     const receipt = buildReceipt(order(), { taxation: 'osn', tax: 'vat22' })
     expect(receipt.Taxation).toBe('osn')

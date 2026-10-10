@@ -4,12 +4,14 @@ import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { Customer } from '../entities/Customer.js'
+import type { Product } from '../entities/Product.js'
 import { getCdekClient } from '../lib/cdek/index.js'
 import { isKnownDeliveryPoint } from '../lib/cdek/locations.js'
 import { enqueueOrderEvent } from '../lib/notifications/outbox.js'
 import { getPaymentProvider } from '../lib/payments/index.js'
+import { loadGift } from '../lib/gift.js'
 import { loadCart } from '../lib/shipping/cart.js'
-import { packCart } from '../lib/shipping/pack.js'
+import { packCart, type PackLine } from '../lib/shipping/pack.js'
 import { deliveryConfigFromEnv, quoteDelivery } from '../lib/shipping/quote.js'
 import { nextOrderNumber } from '../lib/orderNumber.js'
 import { findCustomerSession } from '../lib/account/session.js'
@@ -26,6 +28,26 @@ function isUniqueViolation(err: unknown): boolean {
     'code' in err &&
     (err as { code?: string }).code === '23505'
   )
+}
+
+// Вес подарка в упаковку: тот же товар уже в корзине — прибавляем штуку к его
+// позиции, чтобы productId в местах не двоился.
+function withGiftUnit(packLines: PackLine[], gift: Product): PackLine[] {
+  const same = packLines.find((l) => l.productId === gift.id)
+  if (same) {
+    return packLines.map((l) => (l === same ? { ...l, quantity: l.quantity + 1 } : l))
+  }
+  return [
+    ...packLines,
+    {
+      productId: gift.id,
+      quantity: 1,
+      weightG: gift.weightG,
+      shipBoxes: gift.shipBoxes ?? [],
+      looseUnits: gift.looseUnits ?? 1,
+      minBox: gift.minBox,
+    },
+  ]
 }
 
 function checkoutResponse(order: Order): { data: CheckoutResponse } {
@@ -73,16 +95,23 @@ checkoutRouter.post('/', async (req, res, next) => {
       }
     }
 
-    const { lines, subtotalRub, discountRub, packLines } = await loadCart(parsed.items)
+    const cart = await loadCart(parsed.items)
+    const { lines, subtotalRub, discountRub } = cart
     const { delivery } = parsed
 
-    const packages = packCart(packLines)
+    // Подарок едет в посылке, поэтому в местах для СДЭК он есть; на сумму заказа
+    // и порог бесплатной доставки он не влияет (строка за 0 ₽). Цену доставки
+    // покупателю считаем по местам без подарка: ту же цену он видел в чекауте
+    // до выбора «Оформить» (превью не знает про подарок).
+    const gift = await loadGift(parsed.giftProductId, subtotalRub - discountRub)
+    const quotePackages = packCart(cart.packLines)
+    const packages = gift ? packCart(withGiftUnit(cart.packLines, gift)) : quotePackages
 
     // Цену доставки считает только сервер: сумма, которую показал виджет, —
     // подсказка для интерфейса, клиенту не доверяем.
     // Порог бесплатной доставки — по сумме, которую платят за товары.
     const quote = await quoteDelivery(
-      { destination: delivery, subtotalRub: subtotalRub - discountRub, packages },
+      { destination: delivery, subtotalRub: subtotalRub - discountRub, packages: quotePackages },
       { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
     )
     const shippingRub = quote.customerPriceRub
@@ -163,6 +192,21 @@ checkoutRouter.post('/', async (req, res, next) => {
             }),
           ),
         )
+        if (gift) {
+          created.items.push(
+            await itemRepo.save(
+              itemRepo.create({
+                orderId: created.id,
+                productId: gift.id,
+                productSnapshot: { name: gift.name, sku: gift.sku, priceRub: gift.priceRub },
+                quantity: 1,
+                unitPriceRub: 0,
+                lineTotalRub: 0,
+                isGift: true,
+              }),
+            ),
+          )
+        }
         await enqueueOrderEvent(em, created.id, 'created')
         if (session) {
           const c = session.customer

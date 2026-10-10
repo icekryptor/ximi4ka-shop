@@ -36,6 +36,30 @@ const order = (extra: Partial<AccountOrderSummary> = {}): AccountOrderSummary =>
 })
 
 describe('OrderDetails', () => {
+  it('подарок: вместо «0 ₽» подпись «подарок»', () => {
+    render(
+      <OrderDetails
+        order={order({
+          items: [
+            { name: 'Набор', quantity: 1, unitPriceRub: 3000, lineTotalRub: 3000, imageUrl: null },
+            {
+              name: 'Йодат калия',
+              quantity: 1,
+              unitPriceRub: 0,
+              lineTotalRub: 0,
+              imageUrl: null,
+              isGift: true,
+            },
+          ],
+        })}
+      />,
+    )
+
+    const giftRow = screen.getByText(/Йодат калия/).closest('li')!
+    expect(giftRow).toHaveTextContent(/подарок/i)
+    expect(giftRow).not.toHaveTextContent('0 ₽')
+  })
+
   it('все позиции: название × количество и цена строки', () => {
     render(<OrderDetails order={order()} />)
     expect(screen.getByText('Набор юного химика × 2')).toBeInTheDocument()

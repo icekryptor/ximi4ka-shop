@@ -77,7 +77,12 @@ export default async function AdminOrderDetailPage({
               <tbody>
                 {order.items.map((item) => (
                   <tr key={item.id} className="border-t border-brand-border">
-                    <td className="px-4 py-3">{item.productSnapshot.name}</td>
+                    <td className="px-4 py-3">
+                      {item.productSnapshot.name}
+                      {item.isGift && (
+                        <span className="ml-2 text-brand-text-secondary">🎁 подарок</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-brand-text-secondary font-mono text-xs">
                       {item.productSnapshot.sku ?? '—'}
                     </td>

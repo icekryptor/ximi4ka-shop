@@ -48,6 +48,9 @@ export const CheckoutSchema = z.object({
     )
     .min(1)
     .max(50),
+  // Подарок на выбор; условия (порог, список реактивов, наличие) проверяет loadGift.
+  // Битое значение — это «без подарка»: подарок не должен срывать заказ.
+  giftProductId: z.string().uuid().optional().catch(undefined),
   customer: z.object({
     name: z.string().trim().min(1).max(255),
     phone: z.string().trim().min(5).max(64),

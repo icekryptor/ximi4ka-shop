@@ -39,4 +39,8 @@ export class OrderItem {
   // тогда сумма — unitPriceRub × quantity.
   @Column({ type: 'integer', name: 'line_total_rub', nullable: true })
   lineTotalRub!: number | null
+
+  // Подарок к заказу: строка за 0 ₽, в чек оплаты не попадает.
+  @Column({ type: 'boolean', name: 'is_gift', default: false })
+  isGift!: boolean
 }
