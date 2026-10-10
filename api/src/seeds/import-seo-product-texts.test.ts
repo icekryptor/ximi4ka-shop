@@ -38,6 +38,51 @@ const PRIORITY_SLUGS = [
   'bolshoi-nabor-dlya-oge',
 ]
 
+// Карточки без описания в каталоге: краткий осторожный текст без фактов о
+// фасовке, концентрации и комплектации (их в данных нет). Первым блоком идёт
+// вводный абзац: именно его берёт YML-фид для <description>.
+const SHORT_SLUGS = [
+  'zazhim-dlya-probirok',
+  'probirka',
+  'mernii-stakanchik',
+  'portativnii-razogrevatel',
+  'laboratornie-ochki',
+  'gidrosulfat-natriya',
+  'himichka-metodichka',
+  'elektrometodichka',
+  'tablitsa-mendeleeva-i-rastvorimosti',
+  'sulfit-natriya',
+  'tri-kisloti',
+  'bromid-natriya',
+  'rastvor-ammiaka',
+  'tiosulfat-natriya',
+  'indikator-metiloranzh',
+  'karbonat-kaliya',
+  'gidroksid-kaltsiya',
+  'hlorid-kaltsiya-rastvor',
+  'geksatsianoferrat-kaliya-iii',
+  'alyuminii-granuli',
+  'oksid-magniya',
+  'oksid-medi',
+  'perekis-vodoroda',
+  'oksid-kremniya',
+]
+
+// Реактивы из SHORT_SLUGS: в тексте обязательны очки, перчатки и взрослые.
+const SHORT_REAGENT_SLUGS = SHORT_SLUGS.filter(
+  (s) =>
+    ![
+      'zazhim-dlya-probirok',
+      'probirka',
+      'mernii-stakanchik',
+      'portativnii-razogrevatel',
+      'laboratornie-ochki',
+      'himichka-metodichka',
+      'elektrometodichka',
+      'tablitsa-mendeleeva-i-rastvorimosti',
+    ].includes(s),
+)
+
 // Формулировки, которых в SEO-текстах быть не должно: обещания, которых мы не
 // можем подтвердить данными товара.
 const FORBIDDEN: Array<[string, RegExp]> = [
@@ -144,10 +189,61 @@ describe('data/seo-product-texts.json', () => {
     }
   })
 
-  it('11 карточек с описанием: описание 300–500 слов (heading + paragraph) и FAQ из 3–5 вопросов', async () => {
+  it('описание есть только у приоритетных карточек и у 24 карточек без текста в каталоге', async () => {
     const entries = await readJson<SeoProductText[]>('seo-product-texts.json')
     const withLong = entries.filter((e) => e.longDescription !== undefined)
-    expect(withLong.map((e) => e.slug).sort()).toEqual([...PRIORITY_SLUGS].sort())
+    expect(withLong.map((e) => e.slug).sort()).toEqual([...PRIORITY_SLUGS, ...SHORT_SLUGS].sort())
+  })
+
+  it('24 краткие карточки: 80–250 слов, вводный абзац первым блоком, заголовки, без FAQ', async () => {
+    const entries = await readJson<SeoProductText[]>('seo-product-texts.json')
+    const bySlug = new Map(entries.map((e) => [e.slug, e]))
+
+    for (const slug of SHORT_SLUGS) {
+      const e = bySlug.get(slug)!
+      const blocks = e.longDescription ?? []
+      expect(
+        blocks.every((b) => b.type === 'heading' || b.type === 'paragraph'),
+        slug,
+      ).toBe(true)
+      // YML-фид берёт первый блок описания: заголовок там дал бы <description>Что это такое</description>.
+      expect(blocks[0]?.type, `${slug}: первым должен идти абзац`).toBe('paragraph')
+      expect(
+        blocks.some((b) => b.type === 'heading'),
+        `${slug}: нет заголовков`,
+      ).toBe(true)
+      const intro = blocks[0].text
+      expect(
+        intro.length,
+        `${slug}: вводный абзац ${intro.length} символов`,
+      ).toBeGreaterThanOrEqual(80)
+      expect(intro.length, `${slug}: вводный абзац ${intro.length} символов`).toBeLessThanOrEqual(
+        350,
+      )
+      const count = words(blocks.map((b) => b.text).join(' '))
+      expect(count, `${slug}: ${count} слов`).toBeGreaterThanOrEqual(80)
+      expect(count, `${slug}: ${count} слов`).toBeLessThanOrEqual(250)
+      expect(e.faq, slug).toBeUndefined()
+    }
+  })
+
+  it('реактивы из кратких карточек упоминают защитные очки, перчатки и взрослых', async () => {
+    const entries = await readJson<SeoProductText[]>('seo-product-texts.json')
+    for (const slug of SHORT_REAGENT_SLUGS) {
+      const text = (entries.find((e) => e.slug === slug)?.longDescription ?? [])
+        .map((b) => b.text)
+        .join(' ')
+        .toLowerCase()
+      expect(text, slug).toContain('очк')
+      expect(text, slug).toContain('перчатк')
+      expect(text, slug).toContain('взросл')
+    }
+  })
+
+  it('11 приоритетных карточек: описание 300–500 слов (heading + paragraph) и FAQ из 3–5 вопросов', async () => {
+    const entries = await readJson<SeoProductText[]>('seo-product-texts.json')
+    const withLong = entries.filter((e) => PRIORITY_SLUGS.includes(e.slug))
+    expect(withLong).toHaveLength(PRIORITY_SLUGS.length)
 
     for (const e of withLong) {
       const blocks = e.longDescription!
