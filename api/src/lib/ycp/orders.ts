@@ -265,16 +265,19 @@ export async function markYcpOrderPlaced(
 
 // Отправка в СДЭК начата: заказ уже ушёл в СДЭК или мог уйти (POST был).
 // Очередь queued без попытки отправки ещё не начата — обработчик отменённый
-// заказ не отправит (lib/cdek/worker.ts, PAID_STATUSES).
+// заказ не отправит (lib/cdek/worker.ts, PAID_STATUSES). Но queued с attempts > 0
+// и без uuid — «мог уйти»: прошлый POST мог дойти до СДЭК, а ответ потеряться
+// (таймаут, 5xx; та же неоднозначность описана в lib/cdek/worker.ts).
 export function isShipmentStarted(
-  s: Pick<CdekShipment, 'state' | 'cdekUuid' | 'submittedAt'> | null,
+  s: Pick<CdekShipment, 'state' | 'cdekUuid' | 'submittedAt' | 'attempts'> | null,
 ): boolean {
   if (!s) return false
   return (
     s.state === 'registering' ||
     s.state === 'created' ||
     s.cdekUuid !== null ||
-    s.submittedAt !== null
+    s.submittedAt !== null ||
+    (s.state === 'queued' && s.attempts > 0)
   )
 }
 

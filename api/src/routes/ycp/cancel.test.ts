@@ -113,6 +113,19 @@ describe('отмены из Яндекса', () => {
       expect(await alerts(order.id)).toHaveLength(0)
     })
 
+    it('очередь после неудачной попытки без uuid — POST мог дойти до СДЭК: сигнал, один на повторы', async () => {
+      const order = await paidOrder('sess-o6')
+      await AppDataSource.getRepository(CdekShipment).update(
+        { orderId: order.id },
+        { state: 'queued', attempts: 1, cdekUuid: null, submittedAt: null },
+      )
+      const url = '/api/v1/order/cancel?order_id=ya-sess-o6'
+      await request(app).post(url).set(ycpAuth)
+      await request(app).post(url).set(ycpAuth)
+      expect((await reload(order.id)).status).toBe('cancelled')
+      expect(await alerts(order.id)).toHaveLength(1)
+    })
+
     it('заказ уже отправлен (shipped) — отменён с сигналом', async () => {
       const order = await paidOrder('sess-o4')
       await AppDataSource.getRepository(Order).update(order.id, { status: 'shipped' })
