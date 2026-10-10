@@ -145,6 +145,29 @@ describe('processDueNotifications', () => {
     expect((await row(order.id, 'sheets', 'status:paid')).attempts).toBe(1)
   })
 
+  it('сигнал менеджеру по заказу из Яндекса — отдельное сообщение в чат, без таблицы', async () => {
+    const order = await seedOrder({
+      source: 'ycp',
+      paymentProvider: 'ycp',
+      externalOrderId: 'ya-order-1',
+      telegramMessageId: 777,
+    })
+    await enqueue(order.id, 'ycp:on_delivery', minutesAgo(1))
+    const channels = fakeChannels()
+
+    const result = await processDueNotifications(channels, { now: NOW })
+
+    expect(result).toEqual({ sent: 1, retried: 0, failed: 0 })
+    expect(channels.sheets.upsertOrderRow).not.toHaveBeenCalled()
+    const [text, replyTo] = channels.telegram.sendMessage.mock.calls[0]
+    expect(text).toContain(order.orderNumber)
+    expect(text).toContain('оплатой при получении')
+    expect(replyTo).toBeUndefined()
+    // Карточка заказа уже была — сигнал её id не перезаписывает.
+    const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
+    expect(saved.telegramMessageId).toBe(777)
+  })
+
   it('оплата заказа, чья карточка уже ушла при создании (прошлая версия), — второй не шлём', async () => {
     const order = await seedOrder({ status: 'paid', telegramMessageId: 501 })
     await enqueue(order.id, 'status:paid', minutesAgo(1))

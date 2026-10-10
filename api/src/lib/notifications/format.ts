@@ -1,4 +1,4 @@
-import type { DeliveryAddress, OrderStatus } from '@ximi4ka-shop/shared'
+import type { DeliveryAddress, OrderEventKey, OrderStatus } from '@ximi4ka-shop/shared'
 
 // Что показываем людям в таблице и в чате. Чистые функции без сети — вся
 // логика вида уведомлений тестируется здесь.
@@ -203,4 +203,26 @@ export function telegramCard(order: NotifiableOrder): string {
   if (hidden > 0) lines.push(`…и ещё ${hidden} ${pluralPositions(hidden)}`)
 
   return [title, client.join('\n'), ['Товары:', ...lines].join('\n'), totals].join('\n\n')
+}
+
+export type ManagerAlertOrder = Pick<
+  NotifiableOrder,
+  'orderNumber' | 'customerName' | 'customerPhone' | 'totalRub'
+> & { externalOrderId: string | null }
+
+// Сигнал менеджеру по заказу из Яндекса: что случилось и что сделать руками.
+export function managerAlertText(order: ManagerAlertOrder, eventKey: OrderEventKey): string {
+  const reason =
+    eventKey === 'ycp:on_delivery'
+      ? 'Яндекс прислал заказ с оплатой при получении. Такие заказы не поддерживаются: заказ не оплачен и в СДЭК не отправлен. Свяжитесь с покупателем.'
+      : 'Яндекс отменил заказ, а отправка в СДЭК уже создана. Отмените её в СДЭК вручную и проверьте возврат денег покупателю.'
+  return [
+    `<b>Внимание: заказ ${escapeHtml(order.orderNumber)} из Яндекса</b>`,
+    escapeHtml(reason),
+    `Покупатель: ${escapeHtml(order.customerName)}, ${escapeHtml(order.customerPhone)}`,
+    `Сумма: ${rub(order.totalRub)}`,
+    order.externalOrderId ? `Заказ в Яндексе: ${escapeHtml(order.externalOrderId)}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
 }

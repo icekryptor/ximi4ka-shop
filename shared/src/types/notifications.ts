@@ -7,6 +7,10 @@ export type OrderEventKey =
   | 'status:shipped'
   | 'status:cancelled'
   | 'status:failed'
+  // Сигналы менеджеру по заказам из Яндекса (YCP): оплата при получении и
+  // отмена заказа, уже отправленного в СДЭК.
+  | 'ycp:on_delivery'
+  | 'ycp:cancel_after_ship'
 
 export interface OrderNotificationDto {
   channel: NotificationChannel

@@ -17,7 +17,19 @@ export const TELEGRAM_EVENT: OrderEventKey = 'status:paid'
 // заспамливали чат и мешали складу (решение владельца,
 // docs/superpowers/specs/2026-09-25-cdek-auto-orders-design.md §6; про
 // «только после оплаты» — 08.10.2026).
+// Сигналы менеджеру — отдельные сообщения в рабочий чат, не карточка заказа
+// и не строка таблицы (заказы из Яндекса, docs/superpowers/specs/2026-10-11-ycp-integration-design.md).
+export const MANAGER_ALERT_EVENTS: readonly OrderEventKey[] = [
+  'ycp:on_delivery',
+  'ycp:cancel_after_ship',
+]
+
+export function isManagerAlert(eventKey: OrderEventKey): boolean {
+  return MANAGER_ALERT_EVENTS.includes(eventKey)
+}
+
 export function channelsForEvent(eventKey: OrderEventKey): NotificationChannel[] {
+  if (isManagerAlert(eventKey)) return ['telegram']
   return eventKey === TELEGRAM_EVENT ? CHANNELS : ['sheets']
 }
 
