@@ -85,4 +85,13 @@ describe('withDeadline', () => {
     await expect(limited.post('/y', {})).rejects.toBeInstanceOf(DeadlineError)
     expect(Date.now() - started).toBeLessThan(500)
   })
+
+  it('после срока вызов клиента не уходит вовсе', async () => {
+    const cdek = { get: vi.fn(async () => 'ok'), post: vi.fn(async () => 'ok') }
+    const limited = withDeadline(cdek as never, 0)
+    await expect(limited.get('/x')).rejects.toBeInstanceOf(DeadlineError)
+    await expect(limited.post('/y', {})).rejects.toBeInstanceOf(DeadlineError)
+    expect(cdek.get).not.toHaveBeenCalled()
+    expect(cdek.post).not.toHaveBeenCalled()
+  })
 })

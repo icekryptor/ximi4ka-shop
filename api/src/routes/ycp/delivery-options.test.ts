@@ -192,6 +192,33 @@ describe('POST /api/v1/checkout/delivery/options', () => {
     expect(res.body.options[0]).toMatchObject({ id: 'pvz-136-44', cost: 350 })
   })
 
+  it('курьер: подсказка города съела срок — запасная ставка, вызов калькулятора не уходит и необработанных отказов нет', async () => {
+    vi.stubEnv('YCP_CDEK_TIMEOUT_MS', '50')
+    const p = await seedYcpProduct()
+    // Подсказка города зависает дольше общего срока, калькулятор потом отвечал бы отказом.
+    const get = vi.fn(() => new Promise(() => undefined))
+    const post = vi.fn(
+      () => new Promise((_, reject) => setTimeout(() => reject(new Error('СДЭК лежит')), 100)),
+    )
+    setCdekClientForTests({ get, post, raw: vi.fn() } as never)
+    const unhandled = vi.fn()
+    process.on('unhandledRejection', unhandled)
+    try {
+      const res = await request(app)
+        .post(URL)
+        .set(ycpAuth)
+        .send({ items: [{ id: p.id, quantity: 1 }], delivery_target: courierTarget })
+      expect(res.status).toBe(200)
+      expect(res.body.options[0]).toMatchObject({ id: 'courier-137-0', cost: 500 })
+      // Даём позднему отказу, если бы вызов ушёл, дойти до обработчика.
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      expect(post).not.toHaveBeenCalled()
+      expect(unhandled).not.toHaveBeenCalled()
+    } finally {
+      process.off('unhandledRejection', unhandled)
+    }
+  })
+
   it('ни одного доступного товара — 400', async () => {
     const res = await request(app)
       .post(URL)

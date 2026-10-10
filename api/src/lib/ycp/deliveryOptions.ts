@@ -21,25 +21,46 @@ export class DeadlineError extends Error {
   }
 }
 
-function race<T>(promise: Promise<T>, deadlineAt: number): Promise<T> {
-  const left = deadlineAt - Date.now()
-  if (left <= 0) return Promise.reject(new DeadlineError())
+interface Deadline {
+  at: number
+  // Срок вышел: по часам или потому, что уже сработал таймер одного из вызовов
+  // (таймер может прийти на миллисекунду раньше, чем Date.now() дойдёт до срока).
+  fired: boolean
+}
+
+const isExpired = (d: Deadline) => d.fired || d.at - Date.now() <= 0
+
+function race<T>(promise: Promise<T>, deadline: Deadline): Promise<T> {
+  // Запрос уже ушёл: если он упадёт после срока, отказ не должен остаться
+  // необработанным — иначе Node завершит процесс API.
+  promise.catch(() => undefined)
+  const left = deadline.at - Date.now()
+  if (isExpired(deadline)) return Promise.reject(new DeadlineError())
   let timer: NodeJS.Timeout | undefined
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new DeadlineError()), left)
+    timer = setTimeout(() => {
+      deadline.fired = true
+      reject(new DeadlineError())
+    }, left)
   })
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
 }
 
 // Общий срок на все вызовы СДЭК одного запроса: подсказка города и калькулятор
 // вместе укладываются в него. Клиент СДЭК сам ждёт до 10 секунд — без обёртки
-// калькулятор съел бы весь лимит Яндекса в 5 секунд.
+// калькулятор съел бы весь лимит Яндекса в 5 секунд. Когда срок уже вышел,
+// вызов в СДЭК не отправляем вовсе.
 export function withDeadline(cdek: Cdek, ms: number): Cdek {
-  const deadlineAt = Date.now() + ms
+  const deadline: Deadline = { at: Date.now() + ms, fired: false }
   return {
     get: <T = unknown>(path: string, query?: Parameters<CdekClient['get']>[1]) =>
-      race(cdek.get<T>(path, query), deadlineAt),
-    post: <T = unknown>(path: string, body: unknown) => race(cdek.post<T>(path, body), deadlineAt),
+      isExpired(deadline)
+        ? Promise.reject(new DeadlineError())
+        : race(cdek.get<T>(path, query), deadline),
+    post: <T = unknown>(path: string, body: unknown) =>
+      isExpired(deadline)
+        ? Promise.reject(new DeadlineError())
+        : race(cdek.post<T>(path, body), deadline),
   }
 }
 
