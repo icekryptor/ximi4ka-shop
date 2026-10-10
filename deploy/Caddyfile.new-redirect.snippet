@@ -15,12 +15,22 @@
 # апексе и пройден тестовый платёж, а вебхук бота перерегистрирован
 # (telegram-set-webhook, см. docs/seo/apex-switch-plan-2026-10.md, шаг 6).
 #
+# Третье исключение — обмен кода ximi4ka ID (единый вход магазина и learn,
+# docs/superpowers/specs/2026-09-29-ximi4ka-id-sso-design.md):
+# POST /api/account/sso/token. Его шлёт сервер learn, не браузер, и адрес он
+# берёт из своей переменной XIMI4KA_SSO_URL (по умолчанию https://new.ximi4ka.ru).
+# По 301 POST превращается в GET, обмен кода падает, и вход на learn через
+# ximi4ka ID перестаёт работать. Редирект самого /api/account/sso/authorize
+# браузер переживает, поэтому он в исключения не входит. Убрать путь можно,
+# когда XIMI4KA_SSO_URL у learn указывает на https://ximi4ka.ru и вход
+# проверен (docs/seo/apex-switch-plan-2026-10.md, шаги 4 и 5).
+#
 # Порядок: caddy validate, затем caddy reload (команды как в
 # Caddyfile.apex.snippet).
 new.ximi4ka.ru {
-    # Два пути: в строке handle путь-шорткат принимает только один, поэтому
+    # Три пути: в строке handle путь-шорткат принимает только один, поэтому
     # именованный matcher.
-    @hooks path /api/webhooks/* /api/telegram/*
+    @hooks path /api/webhooks/* /api/telegram/* /api/account/sso/token
     handle @hooks {
         reverse_proxy ximishop-api:3001 {
             header_up X-Real-IP {remote_host}
