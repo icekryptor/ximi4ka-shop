@@ -42,3 +42,11 @@ export interface Product {
   createdAt: string
   updatedAt: string
 }
+
+/** Вес и габариты одной штуки в упаковке (packCart на одну штуку). */
+export interface ProductShippingUnit {
+  weightG: number
+  lengthCm: number
+  widthCm: number
+  heightCm: number
+}

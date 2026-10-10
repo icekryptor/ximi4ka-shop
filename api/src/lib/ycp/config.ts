@@ -28,3 +28,11 @@ export function ycpWarehouseFromEnv(env: NodeJS.ProcessEnv = process.env): YcpWa
   if (!id || !title || !address || !phone) return null
   return { id, title, address, phone }
 }
+
+// Остаток — константа (спека YCP, «Остатки»): реального учёта и резерва нет.
+export const YCP_IN_STOCK_QUANTITY = 99
+
+// Адрес витрины для ссылок на товар и картинки в ответах Яндексу.
+export function ycpSiteOrigin(env: NodeJS.ProcessEnv = process.env): string {
+  return (env.WEB_ORIGIN?.trim() || 'http://localhost:3000').replace(/\/+$/, '')
+}

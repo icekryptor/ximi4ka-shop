@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { requireYcpToken } from './auth.js'
+import { ycpBasketRouter } from './basket.js'
 import { ycpWarehousesRouter } from './warehouses.js'
 
 // Методы, которые Яндекс вызывает у магазина (docs/ycp/ycp-openapi-0.0.14.json,
@@ -9,6 +10,7 @@ export function createYcpRouter(): Router {
   const router = Router()
   router.use(requireYcpToken)
   router.use('/warehouses', ycpWarehousesRouter)
+  router.use('/checkout/basket', ycpBasketRouter)
   router.use((_req, res) => {
     res.status(404).json({ error: 'Not found' })
   })
