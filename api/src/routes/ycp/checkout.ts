@@ -2,10 +2,10 @@ import { Router } from 'express'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { ycpWarehouseFromEnv } from '../../lib/ycp/config.js'
-import { createYcpOrder, inventoryConflict } from '../../lib/ycp/orders.js'
+import { createYcpOrder, inventoryConflict, markYcpOrderPlaced } from '../../lib/ycp/orders.js'
 import { loadYcpLines } from '../../lib/ycp/pricing.js'
-import { YcpError, ycpBadRequest, ycpConflict } from './errors.js'
-import { CreateCheckoutSchema } from './schemas.js'
+import { YcpError, ycpBadRequest, ycpConflict, ycpNotFound } from './errors.js'
+import { CheckoutPlacedSchema, CreateCheckoutSchema } from './schemas.js'
 
 export const ycpCheckoutRouter: Router = Router()
 
@@ -37,6 +37,28 @@ ycpCheckoutRouter.post('/', async (req, res, next) => {
     )
     if ('existing' in result) throw sessionConflict(result.existing)
     res.status(201).json({ order_number: result.created.orderNumber })
+  } catch (err) {
+    next(err)
+  }
+})
+
+ycpCheckoutRouter.post('/placed', async (req, res, next) => {
+  try {
+    const body = CheckoutPlacedSchema.parse({
+      ...req.query,
+      ...(typeof req.body === 'object' && req.body !== null ? req.body : {}),
+    })
+    const outcome = await markYcpOrderPlaced({
+      sessionId: body.session_id,
+      orderId: body.order_id,
+      paymentMethod: body.payment_method,
+      onlinePaymentMethod: body.online_payment_method ?? null,
+      acquiringId: body.acquiring_id ?? null,
+    })
+    if (outcome === 'not_found') throw ycpNotFound('Order not found')
+    if (outcome === 'cancelled') throw ycpConflict('Order already cancelled')
+    if (outcome === 'on_delivery') throw ycpConflict('Payment on delivery is not supported')
+    res.status(200).end()
   } catch (err) {
     next(err)
   }

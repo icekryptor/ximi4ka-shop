@@ -112,3 +112,14 @@ export const CreateCheckoutSchema = z.object({
       ),
     ),
 })
+
+// Тело — контракт; query-параметры устарели, но обязательны по схеме, поэтому
+// принимаем оба источника (тело важнее).
+export const CheckoutPlacedSchema = z.object({
+  session_id: z.string().trim().min(1).max(64),
+  order_id: z.string().trim().min(1).max(64),
+  order_number: z.coerce.number().int().optional(),
+  payment_method: z.enum(['online', 'on_delivery']),
+  online_payment_method: z.enum(['card', 'sbp', 'split', 'split_sbp']).optional(),
+  acquiring_id: z.string().trim().max(255).optional(),
+})

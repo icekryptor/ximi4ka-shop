@@ -56,31 +56,40 @@ export async function enqueueOrderEvent(
     .execute()
 }
 
-// Сохраняет смену статуса заказа и, если статус изменился, ставит событие и,
-// при оплате, заказ в очередь СДЭК — в одной транзакции. Для вебхука
-// Т-Кассы, сверки и ручной смены статуса в админке. Пишем только колонки,
-// которые эти вызовы меняют (status, paid_at, status_history и привязку
-// платежа из вебхука), а не всю сущность: save() записал бы и устаревший
+// Пишет смену статуса заказа и, если статус изменился, ставит событие и, при
+// оплате, заказ в очередь СДЭК — внутри переданной транзакции. Пишем только
+// колонки, которые эти вызовы меняют (status, paid_at, status_history и
+// привязку платежа), а не всю сущность: save() записал бы и устаревший
 // telegram_message_id из памяти поверх id карточки, который обработчик
 // очереди успел сохранить, пока шли сетевые вызовы.
+export async function writeOrderStatusEvent(
+  em: EntityManager,
+  order: Order,
+  previousStatus: OrderStatus,
+): Promise<void> {
+  await em.update(Order, order.id, {
+    status: order.status,
+    paidAt: order.paidAt,
+    statusHistory: order.statusHistory,
+    // Привязку платежа никто не снимает — null из памяти не пишем.
+    ...(order.paymentIntentId ? { paymentIntentId: order.paymentIntentId } : {}),
+  })
+  const key = order.status === previousStatus ? null : statusEventKey(order.status)
+  if (key) await enqueueOrderEvent(em, order.id, key)
+  // Оплаченный заказ — в очередь создания в СДЭК, той же транзакцией.
+  if (order.status === 'paid' && previousStatus !== 'paid') {
+    await enqueueCdekShipment(em, order)
+  }
+}
+
+// То же в своей транзакции — для вебхука Т-Кассы, сверки и ручной смены
+// статуса в админке.
 export async function saveOrderWithStatusEvent(
   order: Order,
   previousStatus: OrderStatus,
 ): Promise<Order> {
   return AppDataSource.transaction(async (em) => {
-    await em.update(Order, order.id, {
-      status: order.status,
-      paidAt: order.paidAt,
-      statusHistory: order.statusHistory,
-      // Привязку платежа никто не снимает — null из памяти не пишем.
-      ...(order.paymentIntentId ? { paymentIntentId: order.paymentIntentId } : {}),
-    })
-    const key = order.status === previousStatus ? null : statusEventKey(order.status)
-    if (key) await enqueueOrderEvent(em, order.id, key)
-    // Оплаченный заказ — в очередь создания в СДЭК, той же транзакцией.
-    if (order.status === 'paid' && previousStatus !== 'paid') {
-      await enqueueCdekShipment(em, order)
-    }
+    await writeOrderStatusEvent(em, order, previousStatus)
     return order
   })
 }

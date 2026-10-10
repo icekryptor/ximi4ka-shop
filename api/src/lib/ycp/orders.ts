@@ -1,9 +1,11 @@
+import type { EntityManager, FindOptionsWhere } from 'typeorm'
+import type { OrderStatus } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Customer } from '../../entities/Customer.js'
 import { Order } from '../../entities/Order.js'
 import { OrderItem } from '../../entities/OrderItem.js'
 import { normalizeEmail } from '../account/emailCodes.js'
-import { enqueueOrderEvent } from '../notifications/outbox.js'
+import { enqueueOrderEvent, writeOrderStatusEvent } from '../notifications/outbox.js'
 import { nextOrderNumber } from '../orderNumber.js'
 import { isUniqueViolation } from '../pgErrors.js'
 import { packCart } from '../shipping/pack.js'
@@ -192,4 +194,70 @@ export async function createYcpOrder(
     if (!existing) throw err
     return { existing }
   }
+}
+
+// Заказ под блокировкой строки (SELECT … FOR UPDATE): два одновременных вызова
+// Яндекса для одного заказа выполняются по очереди, и второй видит уже
+// изменённый статус — событие и отправка в СДЭК не двоятся.
+export async function withLockedOrder<T>(
+  where: FindOptionsWhere<Order>,
+  fn: (em: EntityManager, order: Order | null) => Promise<T>,
+): Promise<T> {
+  return AppDataSource.transaction(async (em) => {
+    const order = await em
+      .getRepository(Order)
+      .findOne({ where, lock: { mode: 'pessimistic_write' } })
+    return fn(em, order)
+  })
+}
+
+export function appendYcpHistory(order: Order, to: OrderStatus, now: Date, comment: string): void {
+  order.statusHistory = [
+    ...(order.statusHistory ?? []),
+    { from: order.status, to, at: now.toISOString(), by: 'ycp', comment },
+  ]
+  order.status = to
+}
+
+export type YcpPlacedOutcome = 'paid' | 'already_paid' | 'on_delivery' | 'cancelled' | 'not_found'
+
+export interface YcpPlacedInput {
+  sessionId: string
+  orderId: string
+  paymentMethod: 'online' | 'on_delivery'
+  onlinePaymentMethod: string | null
+  acquiringId: string | null
+}
+
+// Яндекс сообщил, что заказ оформлен (спека YCP, POST /checkout/placed).
+// online — деньги уже у Яндекса: paid тем же путём, что вебхук Т-Кассы
+// (событие, карточка в чат, очередь СДЭК). on_delivery не поддерживаем:
+// заказ остаётся неоплаченным, менеджеру — сигнал.
+export async function markYcpOrderPlaced(
+  input: YcpPlacedInput,
+  now: Date = new Date(),
+): Promise<YcpPlacedOutcome> {
+  return withLockedOrder({ externalSessionId: input.sessionId }, async (em, order) => {
+    if (!order) return 'not_found'
+    if (order.status === 'cancelled') return 'cancelled'
+    if (order.status === 'paid' || order.status === 'shipped') return 'already_paid'
+    await em.update(Order, order.id, { externalOrderId: input.orderId })
+    if (input.paymentMethod === 'on_delivery') {
+      await enqueueOrderEvent(em, order.id, 'ycp:on_delivery')
+      return 'on_delivery'
+    }
+    const previous = order.status
+    order.paidAt = order.paidAt ?? now
+    order.paymentIntentId = input.acquiringId ?? order.paymentIntentId
+    appendYcpHistory(
+      order,
+      'paid',
+      now,
+      input.onlinePaymentMethod
+        ? `Оплата в Яндексе: ${input.onlinePaymentMethod}`
+        : 'Оплата в Яндексе',
+    )
+    await writeOrderStatusEvent(em, order, previous)
+    return 'paid'
+  })
 }

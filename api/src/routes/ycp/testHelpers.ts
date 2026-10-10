@@ -1,4 +1,7 @@
+import request from 'supertest'
+import type { Express } from 'express'
 import { AppDataSource } from '../../config/dataSource.js'
+import { Order } from '../../entities/Order.js'
 import { Product } from '../../entities/Product.js'
 import { ProductCategory } from '../../entities/ProductCategory.js'
 import type { PickupPointEntry } from '../../lib/ycp/pickupPoints.js'
@@ -102,4 +105,30 @@ export function makePickupEntry(code = 'MSK1', cityCode = 44): PickupPointEntry 
       display_service_type: 'cdek',
     },
   }
+}
+
+// Заказ из Яндекса через настоящий POST /api/v1/checkout — для тестов placed и
+// отмен. Окружение YCP тест подменяет сам до вызова.
+export async function createYcpCheckout(app: Express, sessionId: string): Promise<Order> {
+  const product = await seedYcpProduct()
+  const res = await request(app)
+    .post('/api/v1/checkout')
+    .set(ycpAuth)
+    .send(
+      ycpCheckoutBody(
+        [
+          {
+            id: product.id,
+            quantity: 1,
+            regular_price: product.priceRub,
+            final_price: product.priceRub,
+          },
+        ],
+        { session_id: sessionId },
+      ),
+    )
+  if (res.status !== 201) {
+    throw new Error(`createYcpCheckout: ${res.status} ${JSON.stringify(res.body)}`)
+  }
+  return AppDataSource.getRepository(Order).findOneByOrFail({ externalSessionId: sessionId })
 }
