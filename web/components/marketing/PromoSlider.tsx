@@ -1,9 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import type { PromoSlide } from '@/lib/promoSlides'
+import type { CSSProperties } from 'react'
+import { GridOverlay } from '@/components/ui/GridOverlay'
+import { slideTitle, type PromoSlide } from '@/lib/promoSlides'
 import { PromoSlideArt } from './PromoSlideArt'
 
 interface Props {
@@ -12,15 +14,21 @@ interface Props {
   autoPlayMs?: number
 }
 
-const CTA_CLASS = 'lj-btn lj-btn-white px-7 py-4 max-sm:w-full'
+const CTA_CLASS = 'lj-btn lj-btn-white rounded-[4px] px-7 py-4 max-sm:w-full'
 
 /**
- * Промо-слайдер первого экрана. Все слайды лежат в одной ячейке сетки,
- * поэтому высота блока задаётся самым высоким и при переключении ничего не
- * прыгает; неактивные скрыты (opacity + visibility + inert), но остаются в
- * DOM — их текст виден поисковикам. Управление: стрелки ‹ ›, точки, свайп,
- * клавиши ← →. Автопрокрутка встаёт на паузу при наведении и фокусе и
- * отключается при prefers-reduced-motion.
+ * Промо-слайдер первого экрана: три баннера из Figma («баннеры», 1440×760).
+ *
+ * От xl (1280px) баннер — масштабируемая копия макета: все размеры считаются
+ * от `--u` = 1/1440 ширины баннера, поэтому пропорции совпадают с Figma на
+ * любой ширине. Уже — карточка: текст, под ним правая часть иллюстрации
+ * (там `--u` = 1/900 ширины, а `--ox` сдвигает макет на 560px влево).
+ *
+ * Все слайды лежат в одной ячейке сетки — высота задаётся самым высоким и
+ * при переключении ничего не прыгает. Неактивные скрыты (opacity + visibility
+ * + inert), но остаются в DOM — их текст виден поисковикам. Управление:
+ * стрелки ‹ ›, точки, свайп, клавиши ← →. Автопрокрутка встаёт на паузу при
+ * наведении и фокусе и отключается при prefers-reduced-motion.
  */
 export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
   const [index, setIndex] = useState(0)
@@ -44,9 +52,11 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
 
   useEffect(() => {
     if (reduced || paused || count < 2 || autoPlayMs <= 0) return
+    // index в зависимостях: ручное переключение начинает отсчёт заново, и слайд
+    // не перескакивает сразу после клика.
     const id = window.setInterval(next, autoPlayMs)
     return () => window.clearInterval(id)
-  }, [reduced, paused, count, autoPlayMs, next])
+  }, [reduced, paused, count, autoPlayMs, next, index])
 
   if (count === 0) return null
 
@@ -71,7 +81,7 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
 
   return (
     <div
-      className="flex flex-col gap-12"
+      className="[container-type:inline-size]"
       role="group"
       aria-roledescription="карусель"
       aria-label="Акции и новости"
@@ -83,7 +93,7 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
       onFocusCapture={() => setPaused(true)}
       onBlurCapture={() => setPaused(false)}
     >
-      <div className="grid">
+      <div className="grid overflow-hidden rounded-t-[clamp(2.5rem,8vw,6.25rem)] rounded-b-[clamp(3.75rem,12vw,9.375rem)] text-[var(--color-lj-on-bright)] [--ox:560] [--u:calc(100cqw/900)] xl:rounded-b-[calc(var(--u)*150)] xl:rounded-t-[calc(var(--u)*100)] xl:[--ox:0] xl:[--u:calc(100cqw/1440)]">
         {slides.map((slide, i) => {
           const active = i === index
           return (
@@ -94,22 +104,41 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
               aria-label={`${i + 1} из ${count}`}
               aria-hidden={!active}
               inert={!active}
-              className={`col-start-1 row-start-1 transition-[opacity,visibility] motion-reduce:transition-none lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-16 ${
+              // Уходящий слайд остаётся под входящим, пока тот проявляется, —
+              // иначе посреди перехода просвечивает фон страницы.
+              className={`relative col-start-1 row-start-1 flex flex-col px-6 pb-24 pt-14 motion-reduce:transition-none xl:block xl:aspect-[1440/760] xl:p-0 ${
                 active
-                  ? 'visible opacity-100 duration-500 delay-200'
-                  : 'invisible opacity-0 duration-200'
+                  ? 'visible z-[2] opacity-100 transition-opacity duration-500'
+                  : 'invisible z-[1] opacity-0 transition-[opacity,visibility] delay-500 duration-0'
               }`}
+              style={{ background: slide.background }}
             >
-              <div className="flex max-w-[42.75rem] flex-col items-start gap-[30px]">
-                <span className="rounded-full border border-[var(--color-lj-on-bright)] px-4 py-1.5 font-lj-mazzard text-[0.8125rem] font-[500] uppercase leading-none tracking-[0.08em]">
-                  {slide.eyebrow}
-                </span>
-                <h2 className="font-lj-mazzard text-[clamp(2.5rem,5.6vw,5.25rem)] font-[800] italic leading-[0.92] tracking-[-0.03em] [overflow-wrap:anywhere]">
-                  {slide.title}
+              <GridOverlay surface="bright" />
+
+              <div
+                className="relative z-[2] flex flex-col items-start gap-[30px] xl:absolute xl:left-[calc(var(--u)*80)] xl:top-1/2 xl:w-[calc(var(--u)*680)] xl:-translate-y-1/2 xl:gap-[calc(var(--u)*30)]"
+                style={
+                  slide.leadWidth ? ({ '--lead-w': slide.leadWidth } as CSSProperties) : undefined
+                }
+              >
+                <h2 className="font-lj-mazzard text-[clamp(2.25rem,9vw,4.5rem)] font-light italic leading-[1.1] tracking-[-0.045em] xl:whitespace-nowrap xl:text-[length:calc(var(--u)*72)]">
+                  {slide.titleLines.map((line, n) => (
+                    <Fragment key={line}>
+                      {n > 0 && (
+                        <>
+                          {' '}
+                          <br />
+                        </>
+                      )}
+                      {line}
+                    </Fragment>
+                  ))}
                 </h2>
-                <p className="max-w-[32rem] text-[1.125rem] leading-[1.375] lg:text-[1.25rem]">
-                  {slide.lead}
-                </p>
+                <div className="font-lj-mono text-[1.125rem] leading-[1.375] xl:w-[calc(var(--u)*var(--lead-w,680))] xl:text-[length:calc(var(--u)*20)] xl:leading-[calc(var(--u)*27.5)]">
+                  {slide.leadLines.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
                 <div className="max-sm:w-full">
                   {slide.cta.external ? (
                     <a
@@ -130,56 +159,56 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
                 </div>
               </div>
 
-              <div className="hidden lg:block">
-                <PromoSlideArt slide={slide} priority={i === 0} />
+              <div className="relative z-[1] mx-auto mt-10 aspect-[900/760] w-full max-w-[640px] xl:absolute xl:inset-0 xl:mt-0 xl:aspect-auto xl:max-w-none">
+                <PromoSlideArt visual={slide.visual} />
               </div>
             </div>
           )
         })}
-      </div>
 
-      {count > 1 && (
-        <div className="flex items-center gap-5">
-          <button
-            type="button"
-            onClick={prev}
-            aria-label="Предыдущий слайд"
-            className="-mx-2 inline-flex h-8 items-center px-2 text-xl leading-none transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-white"
-          >
-            ‹
-          </button>
-          <span
-            aria-live="polite"
-            aria-atomic="true"
-            className="font-lj-mazzard text-[0.875rem] font-[700] leading-[1.18]"
-          >
-            {index + 1} / {count}
-          </span>
-          <div className="flex items-center gap-2" role="tablist" aria-label="Выбор слайда">
-            {slides.map((s, i) => (
-              <button
-                key={s.id}
-                type="button"
-                role="tab"
-                aria-selected={i === index}
-                aria-label={`Слайд ${i + 1}: ${s.title}`}
-                onClick={() => setIndex(i)}
-                className={`rounded-[4px] bg-[var(--color-lj-on-bright)] transition-all duration-300 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                  i === index ? 'h-1.5 w-[18px]' : 'size-[5px] hover:opacity-80'
-                }`}
-              />
-            ))}
+        {count > 1 && (
+          <div className="relative z-[3] col-start-1 row-start-1 flex items-center gap-5 self-end justify-self-start px-6 pb-8 xl:pb-[calc(var(--u)*48)] xl:pl-[calc(var(--u)*80)]">
+            <button
+              type="button"
+              onClick={prev}
+              aria-label="Предыдущий слайд"
+              className="-mx-2 inline-flex h-8 items-center px-2 text-xl leading-none transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-white"
+            >
+              ‹
+            </button>
+            <span
+              aria-live="polite"
+              aria-atomic="true"
+              className="font-lj-mazzard text-[0.875rem] font-[700] leading-[1.18]"
+            >
+              {index + 1} / {count}
+            </span>
+            <div className="flex items-center gap-2" role="tablist" aria-label="Выбор слайда">
+              {slides.map((s, i) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={i === index}
+                  aria-label={`Слайд ${i + 1}: ${slideTitle(s)}`}
+                  onClick={() => setIndex(i)}
+                  className={`rounded-[4px] bg-[var(--color-lj-on-bright)] transition-all duration-300 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                    i === index ? 'h-1.5 w-[18px]' : 'size-[5px] hover:opacity-80'
+                  }`}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={next}
+              aria-label="Следующий слайд"
+              className="-mx-2 inline-flex h-8 items-center px-2 text-xl leading-none transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-white"
+            >
+              ›
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={next}
-            aria-label="Следующий слайд"
-            className="-mx-2 inline-flex h-8 items-center px-2 text-xl leading-none transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-white"
-          >
-            ›
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

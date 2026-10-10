@@ -33,59 +33,91 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-const SLIDES = buildPromoSlides({ imageUrl: '/img/oge.jpg', alt: 'Химичка ОГЭ' })
+const SLIDES = buildPromoSlides()
 
 describe('<PromoSlider>', () => {
   it('renders all three slides, only the first one exposed to assistive tech', () => {
     render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
     // Неактивные слайды в DOM (текст для индексации), но aria-hidden.
-    expect(screen.getByRole('heading', { name: 'Реактив в подарок' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Химичка ОГЭ' })).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Химичка ОГЭ', hidden: true })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Реактив в подарок за заказ от 3000 руб' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Новый набор: Химичка ОГЭ' })).toBeNull()
+    expect(
+      screen.getByRole('heading', { name: 'Новый набор: Химичка ОГЭ', hidden: true }),
+    ).toBeInTheDocument()
     expect(screen.getByText('1 / 3')).toBeInTheDocument()
   })
 
   it('shows the gift slide copy and CTA to the catalog', () => {
     render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
-    expect(screen.getByText(/реактив в подарок — на ваш выбор/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Выбрать набор/ })).toHaveAttribute('href', '/catalog')
+    expect(screen.getByText(/любой реактив на выбор за заказ от 3000 рублей/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /В каталог/ })).toHaveAttribute('href', '/catalog')
   })
 
   it('advances with the arrow and wraps around in both directions', () => {
     render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
     fireEvent.click(screen.getByRole('button', { name: 'Следующий слайд' }))
-    expect(screen.getByRole('heading', { name: 'Химичка ОГЭ' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Новый набор: Химичка ОГЭ' })).toBeInTheDocument()
     expect(screen.getByText('2 / 3')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Смотреть набор/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Подробнее/ })).toHaveAttribute(
       'href',
       '/product/bolshoi-nabor-dlya-oge',
     )
     fireEvent.click(screen.getByRole('button', { name: 'Предыдущий слайд' }))
     fireEvent.click(screen.getByRole('button', { name: 'Предыдущий слайд' }))
-    expect(screen.getByRole('heading', { name: 'learn.ximi4ka.ru' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Наша обучающая платформа' })).toBeInTheDocument()
     expect(screen.getByText('3 / 3')).toBeInTheDocument()
   })
 
   it('jumps to a slide via the dots', () => {
     render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
     fireEvent.click(screen.getByRole('tab', { name: /Слайд 3/ }))
-    expect(screen.getByRole('heading', { name: 'learn.ximi4ka.ru' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Наша обучающая платформа' })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /Слайд 3/ })).toHaveAttribute('aria-selected', 'true')
   })
 
   it('opens the learn platform in a new tab safely', () => {
     render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
     fireEvent.click(screen.getByRole('tab', { name: /Слайд 3/ }))
-    const link = screen.getByRole('link', { name: /Открыть платформу/ })
+    const link = screen.getByRole('link', { name: /Подробнее/ })
     expect(link).toHaveAttribute('href', 'https://learn.ximi4ka.ru')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link.getAttribute('rel')).toContain('noopener')
   })
 
-  it('shows the product photo on the ОГЭ slide', () => {
-    render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+  it('draws the banner illustrations from /img/promo, hidden from assistive tech', () => {
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    const srcs = Array.from(container.querySelectorAll('img[src*="/img/promo/"]')).map((img) =>
+      img.getAttribute('src'),
+    )
+    expect(srcs).toEqual(
+      expect.arrayContaining([
+        '/img/promo/gift-box.webp',
+        '/img/promo/oge-box.webp',
+        '/img/promo/learn-tablet-1.webp',
+      ]),
+    )
+    container.querySelectorAll('img[src*="/img/promo/"]').forEach((img) => {
+      expect(img.closest('[aria-hidden="true"]')).not.toBeNull()
+    })
+  })
+
+  it('restarts the autoplay countdown after a manual switch', () => {
+    vi.useFakeTimers()
+    render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      vi.advanceTimersByTime(900)
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Следующий слайд' }))
-    expect(screen.getByRole('img', { name: 'Химичка ОГЭ' })).toHaveAttribute('src', '/img/oge.jpg')
+    act(() => {
+      vi.advanceTimersByTime(900)
+    })
+    expect(screen.getByText('2 / 3')).toBeInTheDocument()
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
+    expect(screen.getByText('3 / 3')).toBeInTheDocument()
   })
 
   it('reacts to ArrowRight / ArrowLeft on the carousel', () => {
