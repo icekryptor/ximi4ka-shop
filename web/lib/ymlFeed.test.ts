@@ -561,6 +561,39 @@ describe('generateYmlXml — фолбэк описания из longDescriptionB
     ).toBe('Настоящее описание')
   })
 
+  it('пропускает блоки из одних заголовков: в описание попадает первый абзац, а не заголовок', () => {
+    expect(
+      descOf({
+        longDescriptionBlocks: [
+          { type: 'paragraph', html: '<h2>Что это такое</h2>' },
+          { type: 'paragraph', html: '<p>Раствор фенолфталеина для опытов.</p>' },
+          { type: 'paragraph', html: '<h2>Меры предосторожности</h2>' },
+        ],
+      }),
+    ).toBe('Раствор фенолфталеина для опытов.')
+  })
+
+  it('заголовок внутри блока с абзацем в описание не попадает', () => {
+    expect(
+      descOf({
+        longDescriptionBlocks: [
+          { type: 'paragraph', html: '<h2>Что это такое</h2><p>Раствор для опытов.</p>' },
+        ],
+      }),
+    ).toBe('Раствор для опытов.')
+  })
+
+  it('если после заголовков текста нет, описания нет', () => {
+    expect(
+      descOf({
+        longDescriptionBlocks: [
+          { type: 'paragraph', html: '<h2>Что это такое</h2>' },
+          { type: 'paragraph', html: '<h3>Для каких опытов</h3>' },
+        ],
+      }),
+    ).toBeUndefined()
+  })
+
   it('без осмысленных блоков описания нет', () => {
     expect(
       descOf({

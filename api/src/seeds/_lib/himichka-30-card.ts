@@ -7,23 +7,15 @@
 import type { DataSource } from 'typeorm'
 import type { Block } from '@ximi4ka-shop/shared'
 import { Product } from '../../entities/Product.js'
-import { escapeHtml, formulaHtml } from './oge-card.js'
+import {
+  characteristicsBlock as renderCharacteristics,
+  compositionBlock as renderComposition,
+  type ReagentGroup,
+} from './card-html.js'
 
 export const HIMICHKA_30_SLUG = 'himichka-30'
 
-interface Item {
-  formula: string
-  name: string
-}
-
-interface Group {
-  title: string
-  items: Item[]
-  // true — индикаторы: в счёт реактивов не входят.
-  indicator?: boolean
-}
-
-export const HIMICHKA_30_COMPOSITION: Group[] = [
+export const HIMICHKA_30_COMPOSITION: ReagentGroup[] = [
   {
     title: 'Кислота и щёлочь, по 65 мл',
     items: [
@@ -88,40 +80,21 @@ export const HIMICHKA_30_REAGENTS_COUNT = HIMICHKA_30_COMPOSITION.filter(
 const COMPOSITION_HEADING_RE = /<h3[^>]*>\s*Состав\s*<\/h3>/i
 const CHARACTERISTICS_HEADING_RE = /<h3[^>]*>\s*Характеристики\s*<\/h3>/i
 
-const list = (items: string[]): string =>
-  `<ul>${items.map((e) => `<li>${escapeHtml(e)}</li>`).join('')}</ul>`
-
 export function compositionBlock(): Block {
-  const groups = HIMICHKA_30_COMPOSITION.map((g) => {
-    const items = g.items
-      .map((r) => {
-        const head = r.formula ? `<strong>${formulaHtml(r.formula)}</strong> — ` : ''
-        return `<li>${head}${escapeHtml(r.name)}</li>`
-      })
-      .join('')
-    return `<p><strong>${escapeHtml(g.title)}</strong></p><ul>${items}</ul>`
-  }).join('')
-  return {
-    type: 'paragraph',
-    html:
-      `<h3>Состав</h3>${groups}` +
-      `<p><strong>Оборудование</strong></p>${list(HIMICHKA_30_EQUIPMENT)}` +
-      `<p><strong>Печатная продукция</strong></p>${list(HIMICHKA_30_PRINTED)}`,
-  }
+  return renderComposition(HIMICHKA_30_COMPOSITION, [
+    { title: 'Оборудование', items: HIMICHKA_30_EQUIPMENT },
+    { title: 'Печатная продукция', items: HIMICHKA_30_PRINTED },
+  ])
 }
 
 export function characteristicsBlock(): Block {
-  const rows: Array<[string, string]> = [
+  return renderCharacteristics([
     ['Реактивов в наборе', String(HIMICHKA_30_REAGENTS_COUNT)],
     ['Индикаторов', '1 (фенолфталеин)'],
     ['Пробирки', '6 шт.'],
     ['Размер упаковки', '40 × 24 × 7 см'],
     ['Вес', '1 кг'],
-  ]
-  const items = rows
-    .map(([k, v]) => `<li><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</li>`)
-    .join('')
-  return { type: 'paragraph', html: `<h3>Характеристики</h3><ul>${items}</ul>` }
+  ])
 }
 
 const htmlOf = (b: unknown): string => (b as { html?: string } | null)?.html ?? ''

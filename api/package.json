@@ -25,6 +25,7 @@
     "import:seo-article-refresh": "tsx src/seeds/import-seo-article-refresh.ts",
     "apply:oge-card": "tsx src/seeds/apply-oge-card.ts",
     "apply:himichka-30-composition": "tsx src/seeds/apply-himichka-30-composition.ts",
+    "apply:electro-card": "tsx src/seeds/apply-electro-card.ts",
     "audit:images": "tsx src/scripts/audit-images.ts",
     "migrate:tilda-images": "tsx src/scripts/migrate-tilda-images.ts",
     "import:tilda-shipping": "tsx src/seeds/import-tilda-shipping.ts",

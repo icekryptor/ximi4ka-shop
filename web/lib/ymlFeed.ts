@@ -77,8 +77,10 @@ function isServiceHeading(text: string): boolean {
   return SERVICE_HEADINGS.has(text.replace(/[\s:.]+$/, '').toLowerCase())
 }
 
-// Текст абзаца для описания или '' — если блок не текстовый, пустой или
-// относится к служебному разделу («Состав», «Характеристики»).
+// Текст абзаца для описания или '' — если блок не текстовый, пустой, состоит
+// из одних заголовков или относится к служебному разделу («Состав»,
+// «Характеристики»). Заголовки в описание не попадают: заголовок раздела
+// («Что это такое») не описывает товар.
 function paragraphText(block: unknown): string {
   if (typeof block !== 'object' || block === null) return ''
   const { type, html } = block as { type?: string; html?: unknown }
@@ -86,7 +88,7 @@ function paragraphText(block: unknown): string {
   for (const heading of html.matchAll(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi)) {
     if (isServiceHeading(htmlToPlaintext(heading[1]))) return ''
   }
-  const text = htmlToPlaintext(html)
+  const text = htmlToPlaintext(html.replace(/<h([1-6])[^>]*>[\s\S]*?<\/h\1>/gi, ' '))
   return isServiceHeading(text) ? '' : text
 }
 
