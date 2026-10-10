@@ -58,6 +58,8 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<CheckoutFormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Ловушка для ботов: людям поле не видно, формы-спамеры заполняют всё подряд.
+  const [trap, setTrap] = useState('')
   // Заказ создан, браузер уходит на шлюз или на страницу заказа. Корзина к этому
   // моменту уже очищена, и без отдельного состояния на секунду-две мелькало бы
   // «Корзина пуста». payment — идём на оплату, order — открываем страницу заказа.
@@ -166,6 +168,7 @@ export default function CheckoutPage() {
         ...destination,
         ...(comment !== '' ? { comment } : {}),
       },
+      ...(trap !== '' ? { hp_check: trap } : {}),
     }
 
     setSubmitting(true)
@@ -200,7 +203,16 @@ export default function CheckoutPage() {
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.code === 'delivery_point_unknown') {
+        if (err.code === 'bot_suspected') {
+          // Скорее всего автозаполнение тронуло скрытое поле: чистим его, иначе
+          // повтор снова упрётся в отказ. Текст сервера уже начинается с «Не удалось…».
+          setTrap('')
+          setServerError(`${err.message}.`)
+        } else if (err.code === 'rate_limited') {
+          setServerError(
+            'Слишком много попыток оформить заказ. Подождите несколько минут и попробуйте снова.',
+          )
+        } else if (err.code === 'delivery_point_unknown') {
           // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
           // «Пункт получения», выбор сброшен, список города грузится заново.
           delivery.rejectPoint(err.message)
@@ -250,6 +262,24 @@ export default function CheckoutPage() {
             noValidate
             className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 items-start"
           >
+            {/* Ловушка для ботов: вынесена за экран и не берёт фокус. Менеджеры паролей
+                autocomplete="off" игнорируют, поэтому у поля нейтральное имя и data-атрибуты
+                1Password, LastPass, Bitwarden, Dashlane. */}
+            <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+              <input
+                type="text"
+                name="hp_check"
+                tabIndex={-1}
+                autoComplete="off"
+                data-1p-ignore
+                data-lpignore="true"
+                data-bwignore
+                data-form-type="other"
+                value={trap}
+                onChange={(e) => setTrap(e.target.value)}
+              />
+            </div>
+
             {/* ---- Левая колонка: данные покупателя и доставка ---- */}
             <div className="flex flex-col gap-8">
               {signedIn === false && (
