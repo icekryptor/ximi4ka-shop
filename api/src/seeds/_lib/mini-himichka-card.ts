@@ -10,20 +10,9 @@ import type { DataSource } from 'typeorm'
 import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 import type { Block } from '@ximi4ka-shop/shared'
 import { Product } from '../../entities/Product.js'
+import { characteristicsBlock, compositionBlock, type ReagentGroup } from './card-html.js'
 
 export const MINI_SLUG = 'mini-himichka'
-
-interface Reagent {
-  formula: string
-  name: string
-}
-
-interface ReagentGroup {
-  title: string
-  items: Reagent[]
-  // true — индикатор: в число «реактивов» он не входит (как у карточки ОГЭ).
-  indicator?: boolean
-}
 
 export const MINI_COMPOSITION: ReagentGroup[] = [
   {
@@ -84,53 +73,21 @@ export const MINI_REAGENTS_COUNT = MINI_COMPOSITION.filter((g) => !g.indicator).
 const CONTENTS_RE = /<h3[^>]*>\s*Состав\s*<\/h3>/i
 const CHARACTERISTICS_RE = /<h3[^>]*>\s*Характеристики\s*<\/h3>/i
 
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-// Цифры после буквы или «)» — индексы: Al2(SO4)3 → Al<sub>2</sub>(SO<sub>4</sub>)<sub>3</sub>.
-function formulaHtml(formula: string): string {
-  return escapeHtml(formula).replace(/(?<=[A-Za-z)])(\d+)/g, '<sub>$1</sub>')
-}
-
-function compositionBlock(): Block {
-  const groups = MINI_COMPOSITION.map((g) => {
-    const items = g.items
-      .map((r) => {
-        const head = r.formula ? `<strong>${formulaHtml(r.formula)}</strong> — ` : ''
-        return `<li>${head}${escapeHtml(r.name)}</li>`
-      })
-      .join('')
-    return `<p><strong>${escapeHtml(g.title)}</strong></p><ul>${items}</ul>`
-  }).join('')
-  const list = (title: string, items: string[]) =>
-    `<p><strong>${title}</strong></p><ul>${items.map((e) => `<li>${escapeHtml(e)}</li>`).join('')}</ul>`
-  return {
-    type: 'paragraph',
-    html:
-      `<h3>Состав</h3>${groups}` +
-      list('Оборудование', MINI_EQUIPMENT) +
-      list('Печатная продукция', MINI_PRINTED),
-  }
-}
-
-function characteristicsBlock(): Block {
-  const rows: Array<[string, string]> = [
-    ['Реактивов в наборе', String(MINI_REAGENTS_COUNT)],
-    ['Индикаторов', '1 (фенолфталеин)'],
-    ['Пробирки', '2 шт.'],
-    ['Методичка', 'только электронная версия'],
-    ['Размер упаковки', '17 × 15 × 12 см'],
-    ['Вес', '1 кг'],
-  ]
-  const items = rows
-    .map(([k, v]) => `<li><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</li>`)
-    .join('')
-  return { type: 'paragraph', html: `<h3>Характеристики</h3><ul>${items}</ul>` }
-}
-
 export function buildMiniHimichkaBlocks(): Block[] {
-  return [compositionBlock(), characteristicsBlock()]
+  return [
+    compositionBlock(MINI_COMPOSITION, [
+      { title: 'Оборудование', items: MINI_EQUIPMENT },
+      { title: 'Печатная продукция', items: MINI_PRINTED },
+    ]),
+    characteristicsBlock([
+      ['Реактивов в наборе', String(MINI_REAGENTS_COUNT)],
+      ['Индикаторов', '1 (фенолфталеин)'],
+      ['Пробирки', '2 шт.'],
+      ['Методичка', 'только электронная версия'],
+      ['Размер упаковки', '17 × 15 × 12 см'],
+      ['Вес', '1 кг'],
+    ]),
+  ]
 }
 
 function isContentsOrCharacteristics(block: unknown): boolean {
