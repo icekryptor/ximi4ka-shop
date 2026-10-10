@@ -61,6 +61,37 @@ export interface OrderStatusHistoryEntry {
   comment?: string
 }
 
+// --- атрибуция заказа ---
+
+/**
+ * Одно касание: откуда посетитель пришёл на сайт. Всё берётся из адресной
+ * строки и referrer браузера и приходит от клиента, поэтому это подсказка для
+ * анализа рекламы, а не доказательство: подделать может кто угодно.
+ */
+export interface AttributionTouch {
+  /** Когда зафиксировано (ISO). */
+  at: string
+  /** Страница входа: путь без параметров. */
+  landing: string
+  /** Откуда пришёл: адрес без параметров; нет — прямой заход. */
+  referrer?: string
+  /** Метка клика Яндекс Директа. */
+  yclid?: string
+  /** Метка перехода из органической выдачи Яндекса. */
+  ysclid?: string
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
+  utm_term?: string
+  utm_content?: string
+}
+
+/** Первое касание (канал) и последнее рекламное (метки для конверсий). */
+export interface OrderAttribution {
+  first?: AttributionTouch
+  last?: AttributionTouch
+}
+
 export interface OrderDto {
   id: string
   orderNumber: string
@@ -82,6 +113,11 @@ export interface OrderDto {
   paymentUrl: string | null
   statusHistory: OrderStatusHistoryEntry[]
   items: OrderItem[]
+  /** Откуда пришёл покупатель; null — заказ оформлен до появления атрибуции или без неё. */
+  attribution?: OrderAttribution | null
+  /** Адрес и браузер покупателя при оформлении (только для админки). */
+  clientIp?: string | null
+  clientUserAgent?: string | null
   notifications?: OrderNotificationDto[]
   // Заказ в СДЭК (только в деталях админки).
   cdekShipment?: CdekShipmentDto | null
@@ -105,6 +141,8 @@ export interface CheckoutRequest {
   delivery: DeliveryDestination & { comment?: string }
   /** Ловушка для ботов: скрытое поле формы. Люди его не видят, поэтому живой клиент не шлёт его вовсе. */
   hp_check?: string
+  /** Откуда пришёл покупатель (метки из URL и referrer); необязательно, кривое значение сервер отбрасывает. */
+  attribution?: OrderAttribution
 }
 
 export interface CheckoutResponse {

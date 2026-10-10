@@ -58,6 +58,18 @@ function withoutSecret<T extends Order>(order: T): Omit<T, 'publicToken'> {
   return rest
 }
 
+// В списке адрес, браузер и источник заказа не нужны (они в карточке), а
+// редактору, которому заказы не по роли, их показывать тем более незачем.
+function toListItem(order: Order) {
+  const {
+    clientIp: _ip,
+    clientUserAgent: _ua,
+    attribution: _attribution,
+    ...rest
+  } = withoutSecret(order)
+  return rest
+}
+
 adminOrdersRouter.get('/', async (req, res, next) => {
   try {
     const { limit, offset, status } = OrdersListQuerySchema.parse(req.query)
@@ -68,7 +80,7 @@ adminOrdersRouter.get('/', async (req, res, next) => {
       skip: offset,
       take: limit,
     })
-    res.json({ data: items.map(withoutSecret), pagination: { limit, offset, total } })
+    res.json({ data: items.map(toListItem), pagination: { limit, offset, total } })
   } catch (err) {
     next(err)
   }
