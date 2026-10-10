@@ -1,6 +1,7 @@
 import type { EntityManager, FindOptionsWhere } from 'typeorm'
 import type { OrderStatus } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
+import { CdekShipment } from '../../entities/CdekShipment.js'
 import { Customer } from '../../entities/Customer.js'
 import { Order } from '../../entities/Order.js'
 import { OrderItem } from '../../entities/OrderItem.js'
@@ -259,5 +260,56 @@ export async function markYcpOrderPlaced(
     )
     await writeOrderStatusEvent(em, order, previous)
     return 'paid'
+  })
+}
+
+// Отправка в СДЭК начата: заказ уже ушёл в СДЭК или мог уйти (POST был).
+// Очередь queued без попытки отправки ещё не начата — обработчик отменённый
+// заказ не отправит (lib/cdek/worker.ts, PAID_STATUSES).
+export function isShipmentStarted(
+  s: Pick<CdekShipment, 'state' | 'cdekUuid' | 'submittedAt'> | null,
+): boolean {
+  if (!s) return false
+  return (
+    s.state === 'registering' ||
+    s.state === 'created' ||
+    s.cdekUuid !== null ||
+    s.submittedAt !== null
+  )
+}
+
+// Сессия не завершена (час прошёл или покупатель вернулся в корзину). Резерва
+// нет — снимать нечего; оплаченный заказ не трогаем.
+export async function cancelYcpSession(
+  sessionId: string,
+  now: Date = new Date(),
+): Promise<'not_found' | 'cancelled' | 'unchanged'> {
+  return withLockedOrder({ externalSessionId: sessionId }, async (em, order) => {
+    if (!order) return 'not_found'
+    if (order.status !== 'pending') return 'unchanged'
+    const previous = order.status
+    appendYcpHistory(order, 'cancelled', now, 'Сессия оформления в Яндексе отменена')
+    await writeOrderStatusEvent(em, order, previous)
+    return 'cancelled'
+  })
+}
+
+// Яндекс отменил оформленный заказ. Отменяем в базе всегда; если отправка в
+// СДЭК начата или заказ отправлен — менеджеру сигнал: отмена в СДЭК и возврат
+// денег — руками (автовозврата нет, порядок возврата у Яндекса не описан).
+export async function cancelYcpOrder(
+  externalOrderId: string,
+  now: Date = new Date(),
+): Promise<'not_found' | 'cancelled' | 'cancelled_after_ship' | 'unchanged'> {
+  return withLockedOrder({ externalOrderId }, async (em, order) => {
+    if (!order) return 'not_found'
+    if (order.status === 'cancelled') return 'unchanged'
+    const shipment = await em.getRepository(CdekShipment).findOneBy({ orderId: order.id })
+    const shipped = order.status === 'shipped' || isShipmentStarted(shipment)
+    const previous = order.status
+    appendYcpHistory(order, 'cancelled', now, 'Заказ отменён в Яндексе')
+    await writeOrderStatusEvent(em, order, previous)
+    if (shipped) await enqueueOrderEvent(em, order.id, 'ycp:cancel_after_ship')
+    return shipped ? 'cancelled_after_ship' : 'cancelled'
   })
 }

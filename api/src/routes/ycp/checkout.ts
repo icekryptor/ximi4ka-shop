@@ -2,10 +2,15 @@ import { Router } from 'express'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { ycpWarehouseFromEnv } from '../../lib/ycp/config.js'
-import { createYcpOrder, inventoryConflict, markYcpOrderPlaced } from '../../lib/ycp/orders.js'
+import {
+  cancelYcpSession,
+  createYcpOrder,
+  inventoryConflict,
+  markYcpOrderPlaced,
+} from '../../lib/ycp/orders.js'
 import { loadYcpLines } from '../../lib/ycp/pricing.js'
 import { YcpError, ycpBadRequest, ycpConflict, ycpNotFound } from './errors.js'
-import { CheckoutPlacedSchema, CreateCheckoutSchema } from './schemas.js'
+import { CheckoutPlacedSchema, CreateCheckoutSchema, SessionQuerySchema } from './schemas.js'
 
 export const ycpCheckoutRouter: Router = Router()
 
@@ -58,6 +63,16 @@ ycpCheckoutRouter.post('/placed', async (req, res, next) => {
     if (outcome === 'not_found') throw ycpNotFound('Order not found')
     if (outcome === 'cancelled') throw ycpConflict('Order already cancelled')
     if (outcome === 'on_delivery') throw ycpConflict('Payment on delivery is not supported')
+    res.status(200).end()
+  } catch (err) {
+    next(err)
+  }
+})
+
+ycpCheckoutRouter.post('/cancel', async (req, res, next) => {
+  try {
+    const { session_id } = SessionQuerySchema.parse(req.query)
+    if ((await cancelYcpSession(session_id)) === 'not_found') throw ycpNotFound('Session not found')
     res.status(200).end()
   } catch (err) {
     next(err)

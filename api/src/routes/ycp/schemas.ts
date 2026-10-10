@@ -123,3 +123,6 @@ export const CheckoutPlacedSchema = z.object({
   online_payment_method: z.enum(['card', 'sbp', 'split', 'split_sbp']).optional(),
   acquiring_id: z.string().trim().max(255).optional(),
 })
+
+export const SessionQuerySchema = z.object({ session_id: z.string().trim().min(1).max(64) })
+export const OrderQuerySchema = z.object({ order_id: z.string().trim().min(1).max(64) })
