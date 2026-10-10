@@ -36,3 +36,12 @@ export const YCP_IN_STOCK_QUANTITY = 99
 export function ycpSiteOrigin(env: NodeJS.ProcessEnv = process.env): string {
   return (env.WEB_ORIGIN?.trim() || 'http://localhost:3000').replace(/\/+$/, '')
 }
+
+// Общий срок на вызовы СДЭК в /checkout/delivery/options: ответ Яндексу — до
+// 5 секунд, запас на базу и сеть. Больше 4000 не принимаем.
+export const YCP_CDEK_TIMEOUT_MS_DEFAULT = 3500
+
+export function ycpCdekTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
+  const n = Number(env.YCP_CDEK_TIMEOUT_MS)
+  return Number.isFinite(n) && n > 0 && n <= 4000 ? n : YCP_CDEK_TIMEOUT_MS_DEFAULT
+}

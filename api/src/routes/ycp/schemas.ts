@@ -26,3 +26,47 @@ export const BasketCheckSchema = z.object({
   locality: z.string().max(255).optional(),
   is_health_check: z.boolean().optional(),
 })
+
+const optionalText = (max: number) => z.string().trim().max(max).optional()
+
+export const AddressSchema = z.object({
+  locality: optionalText(255),
+  address: optionalText(1000),
+  apartment: optionalText(64),
+  entrance: optionalText(64),
+  floor: optionalText(64),
+  intercom: optionalText(64),
+  pickup_point_id: optionalText(32),
+})
+
+export type YcpAddress = z.infer<typeof AddressSchema>
+
+// Поля адреса в схеме Яндекса все необязательны, но по описанию для ПВЗ нужен
+// pickup_point_id, а для курьера и самовывоза — locality и address. Без них
+// калькулятор СДЭК получил бы поладреса.
+export function checkAddressFor(
+  method: string,
+  address: YcpAddress,
+  report: (path: string[], message: string) => void,
+): void {
+  if (method === 'pickup_point') {
+    if (!address.pickup_point_id) {
+      report(['address', 'pickup_point_id'], 'pickup_point_id is required for pickup_point')
+    }
+    return
+  }
+  if (!address.locality || !address.address) {
+    report(['address'], 'locality and address are required')
+  }
+}
+
+export const DeliveryOptionsSchema = z.object({
+  items: z.array(ItemRefSchema).min(1).max(100),
+  delivery_target: z
+    .object({ delivery_method: z.enum(['pickup_point', 'courier']), address: AddressSchema })
+    .superRefine((v, ctx) =>
+      checkAddressFor(v.delivery_method, v.address, (path, message) =>
+        ctx.addIssue({ code: 'custom', path, message }),
+      ),
+    ),
+})
