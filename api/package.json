@@ -23,6 +23,7 @@
     "import:seo-category-texts": "tsx src/seeds/import-seo-category-texts.ts",
     "import:seo-landings": "tsx src/seeds/import-seo-landings.ts",
     "import:seo-article-refresh": "tsx src/seeds/import-seo-article-refresh.ts",
+    "apply:oge-card": "tsx src/seeds/apply-oge-card.ts",
     "audit:images": "tsx src/scripts/audit-images.ts",
     "migrate:tilda-images": "tsx src/scripts/migrate-tilda-images.ts",
     "import:tilda-shipping": "tsx src/seeds/import-tilda-shipping.ts",
