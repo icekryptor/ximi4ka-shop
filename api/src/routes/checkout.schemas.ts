@@ -61,7 +61,7 @@ const requiredClipped = (max: number) => clipped(max).refine((s) => s !== '')
 
 const AttributionTouchSchema = z
   .object({
-    at: requiredClipped(40),
+    at: requiredClipped(40).refine((s) => Number.isFinite(Date.parse(s))),
     landing: requiredClipped(300),
     referrer: optionalClipped(300),
     yclid: optionalClipped(100),

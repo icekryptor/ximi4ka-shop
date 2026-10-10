@@ -1,5 +1,5 @@
 import 'reflect-metadata'
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { createApp } from '../app.js'
@@ -63,12 +63,14 @@ describe('атрибуция заказа', () => {
 
   beforeAll(async () => {
     if (!AppDataSource.isInitialized) await AppDataSource.initialize()
-    app = createApp()
   })
   afterAll(async () => {
     if (AppDataSource.isInitialized) await AppDataSource.destroy()
   })
   beforeEach(async () => {
+    // Свежее приложение на каждый тест: лимит заказов считается в его памяти,
+    // а тестов с заказом в этом файле больше 20.
+    app = createApp()
     await AppDataSource.query(
       'TRUNCATE orders, order_items, products, product_categories RESTART IDENTITY CASCADE',
     )
@@ -85,6 +87,10 @@ describe('атрибуция заказа', () => {
       orderNumber: res.body.data.orderNumber,
     })
   }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
 
   it('сохраняет первое и последнее касание в заказе', async () => {
     const order = await placeOrder({ attribution: { first: FIRST, last: LAST } })
@@ -157,6 +163,29 @@ describe('атрибуция заказа', () => {
     const order = await placeOrder({ attribution })
 
     expect(order.attribution).toBeNull()
+  })
+
+  it('дата касания «не дата» — касание отбрасывается целиком', async () => {
+    const order = await placeOrder({
+      attribution: { first: { ...FIRST, at: 'не дата' }, last: LAST },
+    })
+
+    expect(order.attribution).toEqual({ last: LAST })
+  })
+
+  it('отброшенную атрибуцию логирует (без значений), принятую — нет', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const attributionWarnings = () =>
+      warn.mock.calls.filter((call) => String(call[0]).includes('атрибуция'))
+
+    await placeOrder({ attribution: 'мусор с секретом' })
+    expect(attributionWarnings()).toHaveLength(1)
+    expect(JSON.stringify(attributionWarnings()[0])).not.toContain('секрет')
+
+    warn.mockClear()
+    await placeOrder({ attribution: { last: LAST } })
+    await placeOrder()
+    expect(attributionWarnings()).toHaveLength(0)
   })
 
   it('одно кривое касание не губит второе', async () => {

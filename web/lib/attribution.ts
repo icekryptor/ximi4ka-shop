@@ -4,14 +4,18 @@ import type { AttributionTouch, OrderAttribution } from '@ximi4ka-shop/shared'
 // касание (метки из адреса и внешний referrer) в localStorage на 30 дней, а
 // при оформлении заказа отправляем вместе с ним:
 //  - first — самое первое касание (канал);
-//  - last — последний заход с метками (yclid, ysclid, utm_*), по нему сверяем
-//    рекламу и отправляем конверсии.
+//  - last — последний рекламный заход (yclid или utm_*), по нему сверяем рекламу
+//    и отправляем конверсии. Органический ysclid в касание записывается, но
+//    last не заменяет: иначе он затёр бы yclid, нужный для конверсии.
 // Всё это подсказки для анализа рекламы: клиент может прислать что угодно.
 
 export const ATTRIBUTION_STORAGE_KEY = 'ximi4ka-attribution'
 export const ATTRIBUTION_TTL_MS = 30 * 24 * 60 * 60 * 1000
 
 const OWN_DOMAIN = 'ximi4ka.ru'
+// Касание с датой дальше этого допуска в будущем (часы устройства убежали)
+// свежим не считаем, иначе оно прожило бы дольше 30 дней.
+const FUTURE_TOLERANCE_MS = 24 * 60 * 60 * 1000
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as const
 
 export interface VisitInput {
@@ -55,7 +59,7 @@ function isOwnHost(host: string, ownHost: string): boolean {
   return h === ownHost.toLowerCase() || h === OWN_DOMAIN || h.endsWith(`.${OWN_DOMAIN}`)
 }
 
-/** Касание по текущему заходу; tagged — есть метки yclid, ysclid или utm_*. */
+/** Касание по текущему заходу; tagged — есть рекламные метки (yclid или utm_*). */
 export function readTouch(input: VisitInput): { touch: AttributionTouch; tagged: boolean } {
   const page = parseUrl(input.href)
   const params = page?.searchParams
@@ -80,7 +84,7 @@ export function readTouch(input: VisitInput): { touch: AttributionTouch; tagged:
     const value = clip(params?.get(key), 200)
     if (value) touch[key] = value
   }
-  if (touch.yclid || touch.ysclid || UTM_KEYS.some((key) => touch[key])) tagged = true
+  if (touch.yclid || UTM_KEYS.some((key) => touch[key])) tagged = true
 
   return { touch, tagged }
 }
@@ -88,7 +92,8 @@ export function readTouch(input: VisitInput): { touch: AttributionTouch; tagged:
 function isFresh(touch: unknown, now: Date): touch is AttributionTouch {
   if (typeof touch !== 'object' || touch === null) return false
   const at = Date.parse((touch as { at?: unknown }).at as string)
-  return Number.isFinite(at) && now.getTime() - at <= ATTRIBUTION_TTL_MS
+  const age = now.getTime() - at
+  return Number.isFinite(at) && age <= ATTRIBUTION_TTL_MS && age >= -FUTURE_TOLERANCE_MS
 }
 
 /** Сохранённая атрибуция без протухших касаний; undefined — нечего отправлять. */
@@ -114,8 +119,10 @@ export function recordVisit(storage: Storage | null, input: VisitInput): void {
   try {
     const current = loadAttribution(storage, input.now) ?? {}
     const { touch, tagged } = readTouch(input)
+    // Первое касание протухло раньше последнего: последнее становится и первым,
+    // иначе «первое» оказалось бы новее «последнего».
     const next: OrderAttribution = {
-      first: current.first ?? touch,
+      first: current.first ?? current.last ?? touch,
       ...(tagged ? { last: touch } : current.last ? { last: current.last } : {}),
     }
     storage.setItem(ATTRIBUTION_STORAGE_KEY, JSON.stringify(next))

@@ -35,10 +35,10 @@ describe('readTouch', () => {
     })
   })
 
-  it('ysclid — метка органического перехода из Яндекса, тоже размеченное касание', () => {
+  it('ysclid — метка органического перехода: записывается, но касание не рекламное', () => {
     const { touch, tagged } = readTouch(visit('https://new.ximi4ka.ru/?ysclid=lx1'))
 
-    expect(tagged).toBe(true)
+    expect(tagged).toBe(false)
     expect(touch.ysclid).toBe('lx1')
   })
 
@@ -137,6 +137,40 @@ describe('recordVisit / loadAttribution', () => {
     const result = loadAttribution(window.localStorage, t2)
     expect(result?.first).toMatchObject({ landing: '/a', referrer: 'https://yandex.ru/' })
     expect(result?.last).toMatchObject({ landing: '/b', yclid: '1', utm_source: 'yandex' })
+  })
+
+  it('органический заход с ysclid не затирает рекламный yclid в last', () => {
+    recordVisit(window.localStorage, visit('https://new.ximi4ka.ru/ad?yclid=111'))
+    const t1 = new Date(T0.getTime() + DAY)
+    recordVisit(window.localStorage, visit('https://new.ximi4ka.ru/organic?ysclid=lx1', '', t1))
+
+    const result = loadAttribution(window.localStorage, t1)
+    expect(result?.last?.yclid).toBe('111')
+    expect(result?.first?.landing).toBe('/ad')
+  })
+
+  it('протухло первое касание, а последнее живо: последнее становится и первым', () => {
+    recordVisit(window.localStorage, visit('https://new.ximi4ka.ru/direct'))
+    const t20 = new Date(T0.getTime() + 20 * DAY)
+    recordVisit(window.localStorage, visit('https://new.ximi4ka.ru/ad?yclid=20', '', t20))
+    const t35 = new Date(T0.getTime() + 35 * DAY)
+    recordVisit(window.localStorage, visit('https://new.ximi4ka.ru/direct2', '', t35))
+
+    const result = loadAttribution(window.localStorage, t35)
+    expect(result?.last?.yclid).toBe('20')
+    expect(result?.first?.at).toBe(t20.toISOString())
+    expect(result?.first?.landing).toBe('/ad')
+  })
+
+  it('касание с датой далеко в будущем (сбитые часы) не считается свежим', () => {
+    window.localStorage.setItem(
+      ATTRIBUTION_STORAGE_KEY,
+      JSON.stringify({
+        first: { at: new Date(T0.getTime() + 2 * DAY).toISOString(), landing: '/future' },
+      }),
+    )
+
+    expect(loadAttribution(window.localStorage, T0)).toBeUndefined()
   })
 
   it('новый размеченный заход заменяет последнее касание', () => {

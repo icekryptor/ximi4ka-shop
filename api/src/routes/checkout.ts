@@ -88,6 +88,12 @@ checkoutRouter.post('/', async (req, res, next) => {
     }
 
     const parsed = CheckoutSchema.parse(req.body)
+    // Атрибуцию схема молча отбрасывает, чтобы заказ не срывался; в лог — чтобы
+    // расхождение форматов витрины и сервера не осталось незамеченным (без значений).
+    const sentAttribution = (req.body as { attribution?: unknown } | undefined)?.attribution
+    if (sentAttribution !== undefined && sentAttribution !== null && !parsed.attribution) {
+      console.warn('checkout: атрибуция отброшена из-за формата')
+    }
     const idempotencyKey = req.header('Idempotency-Key')?.trim() || null
 
     const orderRepo = AppDataSource.getRepository(Order)
