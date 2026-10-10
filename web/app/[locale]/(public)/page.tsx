@@ -21,7 +21,7 @@ import { Hero, PreFooterCta, Manifesto, DEFAULT_TESTIMONIALS } from '@/component
 import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
 import { HowItWorksStepLJ } from '@/components/marketing/HowItWorksStepLJ'
 import { TestimonialQuoteLJ } from '@/components/marketing/TestimonialQuoteLJ'
-import { buildPromoSlides, OGE_PRODUCT_SLUG } from '@/lib/promoSlides'
+import { buildPromoSlides } from '@/lib/promoSlides'
 import { DEFAULT_LOCALE, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -203,23 +203,16 @@ export default async function HomePage({ params }: Props) {
     }),
   )
 
-  // Фото набора ОГЭ для второго слайда. Нет продукта или фото — слайд рисует
-  // иллюстрацию-заглушку, главная при этом не падает.
-  const ogeProduct = await getPublishedProduct(OGE_PRODUCT_SLUG).catch(() => null)
-  const ogeImage = ogeProduct?.images[0]
-  const promoSlides = buildPromoSlides(
-    ogeImage ? { imageUrl: ogeImage.url, alt: 'Набор «Химичка ОГЭ»' } : null,
-  )
+  const promoSlides = buildPromoSlides()
 
   return (
     <>
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
 
-      {/* Маркиз-тикер фактов — чёрный и над hero, как в макете (17:234):
-          скруглённый низ фиолетового hero ложится на белый фон. */}
+      {/* Маркиз-тикер фактов — чёрный и над hero, как в макете (17:234). */}
       <Ticker items={FACTS_TICKER} surface="ink" />
 
-      {/* 1. Hero — промо-слайдер на фиолетовом фоне, по макету Figma (17:129) */}
+      {/* 1. Hero — промо-слайдер из трёх баннеров, по макету Figma (баннеры, 144:4627…) */}
       <Hero title="ХИМИЧКА" subtitle="Наборы для опытов" slides={promoSlides} />
 
       {/* 2. v3 Catalog — asymmetric 3-card row (LAB CREAM) */}

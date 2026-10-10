@@ -29,7 +29,7 @@ beforeEach(() => {
 const BASE = {
   title: 'ХИМИЧКА',
   subtitle: 'Наборы для опытов',
-  slides: buildPromoSlides(null),
+  slides: buildPromoSlides(),
 }
 
 describe('<Hero> — промо-слайдер первого экрана', () => {
@@ -42,20 +42,20 @@ describe('<Hero> — промо-слайдер первого экрана', () 
 
   it('shows the gift promo first, titled with an <h2>', () => {
     render(<Hero {...BASE} />)
-    expect(screen.getByRole('heading', { level: 2, name: 'Реактив в подарок' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Реактив в подарок за заказ от 3000 руб' }),
+    ).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Акции и новости' })).toBeInTheDocument()
   })
 
-  it('is a solid purple section with rounded bottom corners', () => {
+  it('keeps a 20px gap around the banner, including under the ticker', () => {
     const { container } = render(<Hero {...BASE} />)
     const section = container.querySelector('section')!
-    expect(section.className).toContain('bg-[var(--color-lj-bright-start)]')
-    expect(section.className).toContain('rounded-b-')
-    expect(section.className).toContain('text-[var(--color-lj-on-bright)]')
+    expect(section.className).toContain('p-5')
   })
 
   it('uses the white button from the Button atom for the slide CTA', () => {
     render(<Hero {...BASE} />)
-    expect(screen.getByRole('link', { name: /Выбрать набор/ }).className).toContain('lj-btn-white')
+    expect(screen.getByRole('link', { name: /В каталог/ }).className).toContain('lj-btn-white')
   })
 })

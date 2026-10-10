@@ -249,7 +249,13 @@ export default async function ProductPage({ params }: Props) {
           и колонка 560 с зазором 40; на узких экранах — стопкой. */}
       <LabSection variant="cream" className="px-6 pt-12 pb-20">
         <div className="max-w-[1260px] mx-auto grid gap-10 lg:grid-cols-[minmax(0,660fr)_minmax(0,560fr)] lg:items-start">
-          <ProductHeroImage images={galleryImages} alt={name} sku={product.sku ?? product.slug} />
+          {/* Галерея едет за читателем, пока справа листается длинное SEO-описание:
+              иначе под картинкой остаётся пустая колонка. Только с lg — на
+              мобильных блоки идут стопкой. LabSection на overflow-clip (не
+              hidden), иначе sticky не работает. */}
+          <div className="lg:sticky lg:top-[calc(var(--lj-header-height)+1.5rem)]">
+            <ProductHeroImage images={galleryImages} alt={name} sku={product.sku ?? product.slug} />
+          </div>
 
           <div className="flex flex-col gap-10 min-w-0">
             <div className="flex flex-col gap-5">
