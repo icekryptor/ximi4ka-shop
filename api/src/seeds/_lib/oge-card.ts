@@ -1,0 +1,321 @@
+// Карточка «Химичка ОГЭ» (slug bolshoi-nabor-dlya-oge): актуальные фото и
+// подробное описание. Данные — из присланных владельцем фото коробки и списка
+// состава; цифры «29 реактивов» и «110+ реакций» — с самой коробки.
+//
+// В отличие от import-seo-*, это ЗАМЕНА, а не заполнение пустого: в проде у
+// карточки лежат старые рендеры с Tilda в product_images (витрина читает их,
+// а не translations.gallery) и сломанный блок «Реактивы в наборе:» без списка.
+import type { DataSource } from 'typeorm'
+import type { Block } from '@ximi4ka-shop/shared'
+import { Product } from '../../entities/Product.js'
+import { ProductImage } from '../../entities/ProductImage.js'
+
+export const OGE_SLUG = 'bolshoi-nabor-dlya-oge'
+
+// Файлы уже загружены владельцем через админку (docker-том ximishop-uploads).
+export const OGE_IMAGES: ReadonlyArray<{ url: string; alt: string }> = [
+  { url: '/uploads/2026/10/oge-884ee340.png', alt: 'Набор Химичка ОГЭ: зелёная коробка' },
+  {
+    url: '/uploads/2026/10/oge2-a09e7fc1.png',
+    alt: 'Набор Химичка ОГЭ: открытая коробка с флаконами реактивов, методичка',
+  },
+]
+
+interface Reagent {
+  formula: string
+  name: string
+}
+
+interface ReagentGroup {
+  title: string
+  items: Reagent[]
+  // true — индикаторы: в «29 реактивов» с коробки они не входят.
+  indicator?: boolean
+}
+
+export const OGE_COMPOSITION: ReagentGroup[] = [
+  {
+    title: 'Растворы, по 35 мл',
+    items: [
+      { formula: 'AgNO3', name: 'раствор нитрата серебра 1%' },
+      { formula: 'Al2(SO4)3', name: 'раствор сульфата алюминия 5%' },
+      { formula: 'BaCl2', name: 'раствор хлорида бария 3%' },
+      { formula: 'NaBr', name: 'раствор бромида натрия 5%' },
+      { formula: 'CuSO4', name: 'раствор сульфата меди 5%' },
+      { formula: 'FeSO4', name: 'раствор сульфата железа (II) 5%' },
+      { formula: 'FeCl3', name: 'раствор хлорида железа (III) 5%' },
+      { formula: 'NaHCO3', name: 'раствор гидрокарбоната натрия 5%' },
+      { formula: 'CaCl2', name: 'раствор хлорида кальция 5%' },
+      { formula: 'MgCl2', name: 'раствор хлорида магния 7%' },
+      { formula: 'NH4Cl', name: 'раствор хлорида аммония 7%' },
+      { formula: 'KI', name: 'раствор иодида калия 5%' },
+      { formula: 'K2CO3', name: 'раствор карбоната калия 5%' },
+      { formula: 'K3PO4', name: 'раствор фосфата калия 5%' },
+      { formula: 'Ca(OH)2', name: 'раствор гидроксида кальция 10% (суспензия)' },
+      { formula: 'ZnSO4', name: 'раствор сульфата цинка 5%' },
+      { formula: 'H2O2', name: 'раствор перекиси водорода 5%' },
+      { formula: 'NH3', name: 'раствор аммиака 10%' },
+    ],
+  },
+  {
+    title: 'Щёлочь и кислоты, по 65 мл',
+    items: [
+      { formula: 'NaOH', name: 'гидроксид натрия 7%' },
+      { formula: 'H2SO4', name: 'серная кислота 7%' },
+      { formula: 'HCl', name: 'соляная кислота 10%' },
+    ],
+  },
+  {
+    title: 'Металлы',
+    items: [
+      { formula: 'Zn', name: 'цинк в гранулах, 3 г' },
+      { formula: 'Fe', name: 'железо, 3 г' },
+      { formula: 'Al', name: 'алюминий в гранулах, 3 г' },
+      { formula: 'Cu', name: 'медь, 3 г' },
+    ],
+  },
+  {
+    title: 'Оксиды',
+    items: [
+      { formula: 'Al2O3', name: 'оксид алюминия, 4 г' },
+      { formula: 'MgO', name: 'оксид магния, 1 г' },
+      { formula: 'CuO', name: 'оксид меди, 1 г' },
+      { formula: 'SiO2', name: 'оксид кремния, 1 г' },
+    ],
+  },
+  {
+    title: 'Индикаторы',
+    indicator: true,
+    items: [
+      { formula: '', name: 'метилоранж, 0,1% спиртовый раствор' },
+      { formula: '', name: 'фенолфталеин, 1% спиртовый раствор' },
+    ],
+  },
+]
+
+export const OGE_EQUIPMENT: string[] = [
+  'штатив для пробирок, 1 шт.',
+  'пробирки 140×12 мм, медицинское стекло, 5 шт.',
+  'шпатель-ложечка, 1 шт.',
+  'ёршик для чистки пробирок, 1 шт.',
+  'перчатки, 1 пара',
+  'бумажная методичка',
+]
+
+export const OGE_REAGENTS_COUNT = OGE_COMPOSITION.filter((g) => !g.indicator).reduce(
+  (n, g) => n + g.items.length,
+  0,
+)
+
+export const OGE_SHORT_DESCRIPTION =
+  'Набор для подготовки к экспериментальной части ОГЭ по химии: 29 реактивов и 2 индикатора, ' +
+  'лабораторное оборудование, методичка на 110+ реакций и месяц доступа к модулю ОГЭ на ' +
+  'учебной платформе.'
+
+export const OGE_META_DESCRIPTION =
+  'Набор для экспериментальной части ОГЭ по химии: 29 реактивов, 2 индикатора, оборудование, ' +
+  'методичка на 110+ реакций и доступ к модулю ОГЭ на платформе.'
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+// Цифры после буквы или «)» — индексы: Al2(SO4)3 → Al<sub>2</sub>(SO<sub>4</sub>)<sub>3</sub>.
+function formulaHtml(formula: string): string {
+  return escapeHtml(formula).replace(/(?<=[A-Za-z)])(\d+)/g, '<sub>$1</sub>')
+}
+
+const h2 = (text: string): Block => ({ type: 'paragraph', html: `<h2>${escapeHtml(text)}</h2>` })
+const p = (text: string): Block => ({ type: 'paragraph', html: `<p>${escapeHtml(text)}</p>` })
+
+function compositionBlock(): Block {
+  const groups = OGE_COMPOSITION.map((g) => {
+    const items = g.items
+      .map((r) => {
+        const head = r.formula ? `<strong>${formulaHtml(r.formula)}</strong> — ` : ''
+        return `<li>${head}${escapeHtml(r.name)}</li>`
+      })
+      .join('')
+    return `<p><strong>${escapeHtml(g.title)}</strong></p><ul>${items}</ul>`
+  }).join('')
+  const equipment = OGE_EQUIPMENT.map((e) => `<li>${escapeHtml(e)}</li>`).join('')
+  return {
+    type: 'paragraph',
+    html: `<h3>Состав</h3>${groups}` + `<p><strong>Оборудование</strong></p><ul>${equipment}</ul>`,
+  }
+}
+
+function characteristicsBlock(): Block {
+  const rows: Array<[string, string]> = [
+    ['Назначение', 'подготовка к экспериментальной части ОГЭ по химии'],
+    ['Реактивов в наборе', String(OGE_REAGENTS_COUNT)],
+    ['Индикаторов', '2 (метилоранж, фенолфталеин)'],
+    ['Реакций в методичке', '110+'],
+    ['Пробирки', '5 шт., 140×12 мм, медицинское стекло'],
+    ['Доступ к платформе', '1 месяц, модуль ОГЭ'],
+  ]
+  const items = rows
+    .map(([k, v]) => `<li><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</li>`)
+    .join('')
+  return { type: 'paragraph', html: `<h3>Характеристики</h3><ul>${items}</ul>` }
+}
+
+export function buildOgeLongDescription(): Block[] {
+  return [
+    h2('Для чего этот набор'),
+    p(
+      '«Химичка ОГЭ» — набор для подготовки к экспериментальной части экзамена по химии. ' +
+        'Он нужен, чтобы дома отработать то, что на экзамене придётся делать руками: отбирать ' +
+        'растворы, смешивать их в пробирках, замечать признаки реакций и записывать наблюдения. ' +
+        'В коробке 29 реактивов, 2 индикатора, лабораторное оборудование и методичка на 110+ реакций.',
+    ),
+    h2('Что проверяют в практической части ОГЭ'),
+    p(
+      'По методическим рекомендациям ФИПИ на 2026 год, с 2025 года практическая часть состоит из ' +
+        'одного задания, №23. В условии названы два вещества в пронумерованных пробирках и дан ' +
+        'перечень из трёх реактивов. Из них нужно выбрать два, провести с ними реакции и ' +
+        'определить, в какой пробирке какое вещество. Ход опыта записывают в таблицу, к ней ' +
+        'добавляют молекулярные, полные и сокращённые ионные уравнения реакций и делают вывод. ' +
+        'Формат экзамена со временем уточняют, поэтому актуальные документы стоит смотреть на ' +
+        'сайте ФИПИ.',
+    ),
+    h2('Что внутри коробки'),
+    p(
+      'Флаконы с растворами и сухими реактивами: соли, кислоты, щёлочь, металлы, оксиды, ' +
+        'перекись водорода, аммиак и два индикатора. Для опытов в комплекте штатив, пять ' +
+        'пробирок, шпатель-ложечка, ёршик для мытья и перчатки. В крышку вложено письмо с ' +
+        'QR-кодом на электронную методичку. Полный перечень с концентрациями и объёмами — во ' +
+        'вкладке «Состав».',
+    ),
+    h2('Методичка и учебная платформа'),
+    p(
+      'В бумажной методичке больше 110 реакций с объяснениями: что смешивать, что должно ' +
+        'получиться и как это записать. К набору прилагается месяц доступа к модулю ОГЭ на ' +
+        'учебной платформе «Химички», где теория объясняется отдельно, а упражнения помогают ' +
+        'закрепить пройденное.',
+    ),
+    h2('Как набор помогает готовиться'),
+    p(
+      'Знание уравнений на бумаге не заменяет опыта работы с пробирками: на экзамене нужно ' +
+        'самостоятельно взять пробу, добавить реактив и записать, что получилось. С набором эти ' +
+        'действия можно повторять дома в удобное время, сравнивать наблюдения с теорией и ' +
+        'привыкать оформлять результат так, как этого требует задание. Набор дополняет ' +
+        'подготовку по учебнику и занятия с учителем или репетитором, но не заменяет их и не ' +
+        'обещает результата на экзамене.',
+    ),
+    h2('Какой набор выбрать'),
+    p(
+      'Если цель именно экспериментальная часть ОГЭ, подойдёт этот набор. Если нужен более ' +
+        'широкий набор для школьника 10–18 лет, посмотрите Химичка 3.0 «161 в 1»: он подходит ' +
+        'для подготовки к ОГЭ и ЕГЭ, но специально под практическую часть ОГЭ собран отдельный ' +
+        'набор.',
+    ),
+    h2('Меры предосторожности'),
+    p(
+      'Работайте с реактивами вместе со взрослыми, в защитных очках (в комплект они не входят) ' +
+        'и перчатках, на ровной поверхности. В наборе есть кислоты, щёлочь и раствор аммиака: ' +
+        'не пробуйте вещества на вкус, не смешивайте их произвольно, вымойте руки и посуду ' +
+        'после опытов. Храните реактивы в месте, недоступном для детей. На экзамене за грубое ' +
+        'нарушение правил техники безопасности участника могут отстранить от опытов, поэтому ' +
+        'аккуратную работу полезно отрабатывать заранее.',
+    ),
+    compositionBlock(),
+    characteristicsBlock(),
+    h2('Частые вопросы о наборе для ОГЭ'),
+    {
+      type: 'faq',
+      items: [
+        {
+          question: 'Подходит ли набор для экспериментальной части ОГЭ по химии?',
+          answer:
+            'Он предназначен для подготовки к этой части экзамена: на нём можно отрабатывать ' +
+            'практические действия, которые требуются в задании 23. Набор дополняет учебник и ' +
+            'занятия, но не заменяет их.',
+        },
+        {
+          question: 'Сколько реактивов в наборе?',
+          answer:
+            '29 реактивов и 2 индикатора (метилоранж и фенолфталеин). Полный список с ' +
+            'концентрациями и объёмами — во вкладке «Состав».',
+        },
+        {
+          question: 'Что ещё входит в набор, кроме реактивов?',
+          answer:
+            'Штатив для пробирок, 5 пробирок 140×12 мм, шпатель-ложечка, ёршик, перчатки и ' +
+            'бумажная методичка. Защитные очки в комплект не входят.',
+        },
+        {
+          question: 'Есть ли методичка и доступ к платформе?',
+          answer:
+            'Да: бумажная методичка на 110+ реакций, QR-код на электронную методичку в письме ' +
+            'внутри коробки и месяц доступа к модулю ОГЭ на учебной платформе.',
+        },
+        {
+          question: 'Можно ли заниматься самостоятельно?',
+          answer:
+            'Опыты с реактивами проводят вместе со взрослыми, в защитных очках и перчатках, по ' +
+            'методичке.',
+        },
+      ],
+    },
+  ]
+}
+
+export interface OgeCardReport {
+  productId: string
+  dryRun: boolean
+  // Значения до замены — сохраните вывод: по нему делается откат.
+  before: {
+    shortDescription: string | null
+    metaDescription: string | null
+    longDescriptionBlocks: unknown[]
+    images: Array<{ url: string; alt: string; sortOrder: number }>
+  }
+}
+
+// Заменяет фото и описание карточки. Идемпотентно: повторный запуск даёт то же
+// состояние. Одна транзакция — витрина не увидит карточку без фото.
+export async function applyOgeCard(
+  dataSource: DataSource,
+  options: { dryRun?: boolean } = {},
+): Promise<OgeCardReport> {
+  const dryRun = options.dryRun === true
+  return dataSource.transaction(async (em) => {
+    const product = await em.findOne(Product, {
+      where: { slug: OGE_SLUG },
+      relations: { images: true },
+    })
+    if (!product) throw new Error(`Товар ${OGE_SLUG} не найден в БД`)
+
+    const report: OgeCardReport = {
+      productId: product.id,
+      dryRun,
+      before: {
+        shortDescription: product.shortDescription,
+        metaDescription: product.metaDescription,
+        longDescriptionBlocks: product.longDescriptionBlocks,
+        images: [...product.images]
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((i) => ({ url: i.url, alt: i.alt, sortOrder: i.sortOrder })),
+      },
+    }
+    if (dryRun) return report
+
+    await em.update(Product, product.id, {
+      shortDescription: OGE_SHORT_DESCRIPTION,
+      metaDescription: OGE_META_DESCRIPTION,
+      longDescriptionBlocks: buildOgeLongDescription(),
+    })
+    await em.delete(ProductImage, { productId: product.id })
+    await em.insert(
+      ProductImage,
+      OGE_IMAGES.map((img, i) => ({
+        productId: product.id,
+        url: img.url,
+        alt: img.alt,
+        sortOrder: i + 1,
+      })),
+    )
+    return report
+  })
+}
