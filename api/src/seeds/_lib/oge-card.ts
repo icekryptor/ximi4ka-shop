@@ -9,6 +9,13 @@ import type { DataSource } from 'typeorm'
 import type { Block } from '@ximi4ka-shop/shared'
 import { Product } from '../../entities/Product.js'
 import { ProductImage } from '../../entities/ProductImage.js'
+import {
+  characteristicsBlock as renderCharacteristics,
+  compositionBlock as renderComposition,
+  h2,
+  p,
+  type ReagentGroup,
+} from './card-html.js'
 
 export const OGE_SLUG = 'bolshoi-nabor-dlya-oge'
 
@@ -20,18 +27,6 @@ export const OGE_IMAGES: ReadonlyArray<{ url: string; alt: string }> = [
     alt: 'Набор Химичка ОГЭ: открытая коробка с флаконами реактивов, методичка',
   },
 ]
-
-interface Reagent {
-  formula: string
-  name: string
-}
-
-interface ReagentGroup {
-  title: string
-  items: Reagent[]
-  // true — индикаторы: в «29 реактивов» с коробки они не входят.
-  indicator?: boolean
-}
 
 export const OGE_COMPOSITION: ReagentGroup[] = [
   {
@@ -116,48 +111,19 @@ export const OGE_META_DESCRIPTION =
   'Набор для экспериментальной части ОГЭ по химии: 29 реактивов, 2 индикатора, оборудование, ' +
   'методичка на 110+ реакций и доступ к модулю ОГЭ на платформе.'
 
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-}
-
-// Цифры после буквы или «)» — индексы: Al2(SO4)3 → Al<sub>2</sub>(SO<sub>4</sub>)<sub>3</sub>.
-function formulaHtml(formula: string): string {
-  return escapeHtml(formula).replace(/(?<=[A-Za-z)])(\d+)/g, '<sub>$1</sub>')
-}
-
-const h2 = (text: string): Block => ({ type: 'paragraph', html: `<h2>${escapeHtml(text)}</h2>` })
-const p = (text: string): Block => ({ type: 'paragraph', html: `<p>${escapeHtml(text)}</p>` })
-
 function compositionBlock(): Block {
-  const groups = OGE_COMPOSITION.map((g) => {
-    const items = g.items
-      .map((r) => {
-        const head = r.formula ? `<strong>${formulaHtml(r.formula)}</strong> — ` : ''
-        return `<li>${head}${escapeHtml(r.name)}</li>`
-      })
-      .join('')
-    return `<p><strong>${escapeHtml(g.title)}</strong></p><ul>${items}</ul>`
-  }).join('')
-  const equipment = OGE_EQUIPMENT.map((e) => `<li>${escapeHtml(e)}</li>`).join('')
-  return {
-    type: 'paragraph',
-    html: `<h3>Состав</h3>${groups}` + `<p><strong>Оборудование</strong></p><ul>${equipment}</ul>`,
-  }
+  return renderComposition(OGE_COMPOSITION, [{ title: 'Оборудование', items: OGE_EQUIPMENT }])
 }
 
 function characteristicsBlock(): Block {
-  const rows: Array<[string, string]> = [
+  return renderCharacteristics([
     ['Назначение', 'подготовка к экспериментальной части ОГЭ по химии'],
     ['Реактивов в наборе', String(OGE_REAGENTS_COUNT)],
     ['Индикаторов', '2 (метилоранж, фенолфталеин)'],
     ['Реакций в методичке', '110+'],
     ['Пробирки', '5 шт., 140×12 мм, медицинское стекло'],
     ['Доступ к платформе', '1 месяц, модуль ОГЭ'],
-  ]
-  const items = rows
-    .map(([k, v]) => `<li><strong>${escapeHtml(k)}:</strong> ${escapeHtml(v)}</li>`)
-    .join('')
-  return { type: 'paragraph', html: `<h3>Характеристики</h3><ul>${items}</ul>` }
+  ])
 }
 
 export function buildOgeLongDescription(): Block[] {
