@@ -5,8 +5,6 @@ import { MATERIAL_LEAD_SOURCES } from '@ximi4ka-shop/shared/types/materialLead'
 import { AppDataSource } from '../../config/dataSource.js'
 import { MaterialLead } from '../../entities/MaterialLead.js'
 import { appendMaterialLeadToSheet } from '../../lib/materialLeadSheet.js'
-import { escapeHtml } from '../../lib/notifications/format.js'
-import { TelegramBot } from '../../lib/telegram/bot.js'
 import { normalizeTelegramHandle } from '../../lib/telegramHandle.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 
@@ -49,28 +47,12 @@ const MaterialLeadSchema = z.object({
   consent: z.literal(true, { error: 'Нужно согласие с политикой конфиденциальности' }),
 })
 
-function leadMessage(lead: MaterialLead): string {
-  const lines = [
-    'Новая заявка на материалы',
-    `Имя: ${escapeHtml(lead.name)}`,
-    `Телефон: ${escapeHtml(lead.phone)}`,
-  ]
-  if (lead.telegram) lines.push(`Телеграм: ${escapeHtml(lead.telegram)}`)
-  lines.push(`Откуда узнал: ${escapeHtml(lead.source)}`)
-  return lines.join('\n')
-}
-
-// Заявка уже в базе — сбой Telegram или Google не должен её терять или пугать
-// посетителя; каналы независимы, один упавший не мешает другому.
-async function notifyLead(lead: MaterialLead): Promise<void> {
-  const warn = (what: string) => (err: unknown) =>
-    console.warn(`material-leads: ${what} не ушло —`, (err as Error).message)
-  await Promise.all([
-    Promise.resolve()
-      .then(() => TelegramBot.fromEnv()?.sendMessage(leadMessage(lead)))
-      .catch(warn('уведомление в Telegram')),
-    appendMaterialLeadToSheet(lead).catch(warn('добавление в таблицу')),
-  ])
+// Заявка уже в базе — сбой Google не должен её терять или пугать посетителя.
+// В рабочий Telegram-чат заявки не идут (там заказы): они только в таблице.
+async function syncLead(lead: MaterialLead): Promise<void> {
+  await appendMaterialLeadToSheet(lead).catch((err: unknown) =>
+    console.warn('material-leads: добавление в таблицу не ушло —', (err as Error).message),
+  )
 }
 
 // Фабрика, а не константа: у каждого createApp() свои счётчики ограничителя,
@@ -79,8 +61,8 @@ export function createMaterialLeadsRouter({
   notifyPerHour = 60,
 }: { notifyPerHour?: number } = {}): Router {
   const router = Router()
-  // Общий предел уведомлений на всех посетителей: поток поддельных заявок не должен
-  // завалить рабочий чат (там же заказы) и таблицу. Заявка сохраняется в любом случае.
+  // Общий предел записей в таблицу на всех посетителей: поток поддельных заявок не должен
+  // её завалить. Заявка сохраняется в базе в любом случае.
   let windowStart = 0
   let sent = 0
   const takeNotifySlot = (): boolean => {
@@ -104,8 +86,9 @@ export function createMaterialLeadsRouter({
       }
       const repo = AppDataSource.getRepository(MaterialLead)
       const lead = await repo.save(repo.create(input))
-      if (takeNotifySlot()) void notifyLead(lead)
-      else console.warn('material-leads: лимит уведомлений в час исчерпан, заявка только в базе')
+      if (takeNotifySlot()) void syncLead(lead)
+      else
+        console.warn('material-leads: лимит записей в таблицу в час исчерпан, заявка только в базе')
       res.status(201).json({ data: { id: lead.id } })
     } catch (err) {
       next(err)
