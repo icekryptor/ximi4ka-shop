@@ -1,6 +1,7 @@
 import { AppDataSource } from '../../config/dataSource.js'
 import { Product } from '../../entities/Product.js'
 import { ProductCategory } from '../../entities/ProductCategory.js'
+import type { PickupPointEntry } from '../../lib/ycp/pickupPoints.js'
 
 // Общие данные тестов YCP. Не *.test.ts: файл импортируют тесты, сам он тестов
 // не содержит (как routes/testUtils.ts). vitest сюда не импортируем — подмену
@@ -83,5 +84,22 @@ export function ycpCheckoutBody(
       ycp_delivery_option_id: 'pvz-136-44',
     },
     ...overrides,
+  }
+}
+
+export function makePickupEntry(code = 'MSK1', cityCode = 44): PickupPointEntry {
+  return {
+    cityCode,
+    point: {
+      id: code,
+      name: `Пункт ${code}`,
+      address: 'Москва, ул. Тестовая, 1',
+      is_cash_available: true,
+      is_card_available: true,
+      working_hours: { mon: '10:00-20:00' },
+      coordinates: { lat: 55.75, lon: 37.62 },
+      time_zone: 3,
+      display_service_type: 'cdek',
+    },
   }
 }

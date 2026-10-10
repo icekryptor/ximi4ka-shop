@@ -5,6 +5,7 @@ import { AppDataSource } from './config/dataSource.js'
 import { startReconciliationJob } from './lib/payments/reconcile.js'
 import { startNotificationWorker } from './lib/notifications/worker.js'
 import { startCdekShipmentWorker } from './lib/cdek/worker.js'
+import { startPickupPointsJob } from './lib/ycp/pickupPoints.js'
 import { startLoginBotPolling } from './lib/telegram/loginPoller.js'
 
 const logger = pino()
@@ -34,6 +35,12 @@ async function bootstrap() {
   // Заказы в СДЭК после оплаты. No-op, пока CDEK_ORDERS_ENABLED не true.
   if (startCdekShipmentWorker()) {
     logger.info('cdek shipments worker started')
+  }
+
+  // Пункты выдачи СДЭК по всей России для YCP: снимок из базы, затем свежий
+  // список и обновление раз в 12 часов. No-op без YCP_API_TOKEN.
+  if (startPickupPointsJob()) {
+    logger.info('ycp pickup points job started')
   }
 
   // Бот входа в кабинет забирает update сам. No-op без TELEGRAM_LOGIN_POLLING=1.
