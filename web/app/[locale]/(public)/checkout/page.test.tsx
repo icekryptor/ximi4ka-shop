@@ -361,6 +361,117 @@ describe('/checkout page', () => {
     expect(loadCart()).toEqual([])
   })
 
+  describe('ловушка для ботов', () => {
+    function trapInput(): HTMLInputElement {
+      const input = document.querySelector<HTMLInputElement>('input[name="hp_check"]')
+      if (!input) throw new Error('нет поля hp_check')
+      return input
+    }
+
+    it('поле спрятано от людей, из табуляции и автозаполнения', () => {
+      seedCart(seed)
+      render(<CheckoutPage />)
+
+      const input = trapInput()
+      expect(input.tabIndex).toBe(-1)
+      expect(input.autocomplete).toBe('off')
+      // Менеджеры паролей не смотрят на autocomplete: просим их обойти поле.
+      expect(input.getAttribute('data-1p-ignore')).not.toBeNull()
+      expect(input.getAttribute('data-lpignore')).toBe('true')
+      expect(input.getAttribute('data-bwignore')).not.toBeNull()
+      expect(input.closest('[aria-hidden="true"]')).not.toBeNull()
+      expect(input.value).toBe('')
+    })
+
+    it('пустое поле в заказ не попадает', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string)).not.toHaveProperty('hp_check')
+    })
+
+    it('заполненное ботом поле уходит на сервер', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+      fireEvent.change(trapInput(), { target: { value: 'http://spam.example' } })
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string).hp_check).toBe('http://spam.example')
+    })
+  })
+
+  describe('отказ сервера по ловушке и лимиту', () => {
+    function errorResponse(status: number, code: string, message: string) {
+      return new Response(JSON.stringify({ error: { code, message } }), { status })
+    }
+
+    it('bot_suspected: поле очищается, текст без дубля, повтор уходит без ловушки', async () => {
+      mapMock.available = false
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          errorResponse(
+            400,
+            'bot_suspected',
+            'Не удалось оформить заказ. Проверьте данные и попробуйте ещё раз',
+          ),
+        )
+        .mockResolvedValueOnce(okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+      const input = document.querySelector<HTMLInputElement>('input[name="hp_check"]')!
+      fireEvent.change(input, { target: { value: 'автозаполнение' } })
+
+      submit()
+
+      const alert = await screen.findByText(/проверьте данные и попробуйте ещё раз/i)
+      expect(alert.textContent).toBe(
+        'Не удалось оформить заказ. Проверьте данные и попробуйте ещё раз.',
+      )
+      expect(input.value).toBe('')
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+      const [, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string)).not.toHaveProperty('hp_check')
+    })
+
+    it('rate_limited: понятный текст вместо «Слишком много запросов»', async () => {
+      mapMock.available = false
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => errorResponse(429, 'rate_limited', 'Слишком много запросов')),
+      )
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+
+      submit()
+
+      expect(
+        await screen.findByText(/слишком много попыток оформить заказ.*подождите несколько минут/i),
+      ).toBeInTheDocument()
+    })
+  })
+
   it('курьер: свои поля, адрес «город, улица, кв.» и индекс', async () => {
     const fetchMock = vi.fn(async () => okCheckoutResponse())
     vi.stubGlobal('fetch', fetchMock)

@@ -68,6 +68,25 @@ function checkoutResponse(order: Order): { data: CheckoutResponse } {
 // by the first successful attempt.
 checkoutRouter.post('/', async (req, res, next) => {
   try {
+    // Ловушка для ботов: поле скрыто от людей, а формы-спамеры заполняют всё
+    // подряд. Живой покупатель его не увидит и не заполнит. Непустым считаем
+    // любое значение, не только строку: бот может прислать и число, и массив.
+    // Лимит частоты на этот маршрут стоит в app.ts (guard).
+    const trap = (req.body as { hp_check?: unknown } | undefined)?.hp_check
+    const trapFilled =
+      trap !== undefined && trap !== null && !(typeof trap === 'string' && trap.trim() === '')
+    if (trapFilled) {
+      // В лог — чтобы видеть и атаки, и ложные срабатывания автозаполнения.
+      console.warn('checkout: ловушка для ботов заполнена', {
+        ip: req.ip,
+        userAgent: (req.headers['user-agent'] ?? '').slice(0, 200),
+      })
+      throw badRequest(
+        'bot_suspected',
+        'Не удалось оформить заказ. Проверьте данные и попробуйте ещё раз',
+      )
+    }
+
     const parsed = CheckoutSchema.parse(req.body)
     const idempotencyKey = req.header('Idempotency-Key')?.trim() || null
 

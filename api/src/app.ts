@@ -1,4 +1,4 @@
-import express, { type Express } from 'express'
+import express, { type Express, type RequestHandler, type Router } from 'express'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import { publicProductsRouter } from './routes/public/products.js'
@@ -27,8 +27,28 @@ import { publicShippingRouter } from './routes/public/shipping.js'
 import { cdekWidgetRouter } from './routes/public/cdek-widget.js'
 import { cdekLocationsRouter } from './routes/public/cdek-locations.js'
 import { errorHandler } from './routes/errors.js'
+import { rateLimit } from './routes/middleware/rateLimit.js'
 import { UPLOADS_DIR } from './lib/storage/index.js'
 import { getLoginPollerHealth } from './lib/telegram/loginPoller.js'
+
+// Лимит из env (число запросов на окно); пусто, мусор и значения выше потолка —
+// по умолчанию, чтобы опечатка в app.env не отключила защиту молча. Читаем в
+// момент createApp, а не при импорте: тесты задают свои значения.
+const MAX_ENV_LIMIT = 1000
+function envLimit(name: string, fallback: number): number {
+  const n = Number(process.env[name])
+  return Number.isInteger(n) && n > 0 && n <= MAX_ENV_LIMIT ? n : fallback
+}
+
+// Лимитер вешаем на тот же префикс через Router, а не отдельным app.post с
+// полным путём: app.use срезает префикс вместе со слешем, и `/api/auth//login`
+// доходит до роутера, минуя app.post('/api/auth/login'). Через Router
+// пути сопоставляются по тем же правилам, что у настоящего обработчика.
+function guard(path: string, limiter: RequestHandler): Router {
+  const router = express.Router()
+  router.post(path, limiter)
+  return router
+}
 
 export function createApp(): Express {
   const app = express()
@@ -68,9 +88,24 @@ export function createApp(): Express {
     })
   })
 
+  // Вход в админку: argon2 жрёт CPU, а пароль можно перебирать. Лимит на IP
+  // ставим до роутера, только на сам логин (me/logout его не касаются).
+  app.use(
+    '/api/auth',
+    guard(
+      '/login',
+      rateLimit({ limit: envLimit('LOGIN_RATE_LIMIT', 10), windowMs: 15 * 60 * 1000 }),
+    ),
+  )
   app.use('/api/auth', authRouter)
   app.use('/api/account', createAccountRouter())
   app.use('/api/telegram', createTelegramWebhookRouter())
+  // Заказ анонимный и создаёт платёж в Т-Кассе: без лимита его можно засыпать
+  // фейковыми заказами. 20 в час с IP хватает школе или офису за одним NAT.
+  app.use(
+    '/api/checkout',
+    guard('/', rateLimit({ limit: envLimit('CHECKOUT_RATE_LIMIT', 20), windowMs: 60 * 60 * 1000 })),
+  )
   app.use('/api/checkout', checkoutRouter)
   app.use('/api/webhooks/tbank', tbankWebhookRouter)
   app.use('/api/public/orders', publicOrdersRouter)

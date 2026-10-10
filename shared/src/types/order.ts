@@ -103,6 +103,8 @@ export interface CheckoutRequest {
   customer: { name: string; phone: string; email?: string; telegram?: string }
   // Куда везём — из виджета СДЭК (см. DeliveryDestination) + комментарий.
   delivery: DeliveryDestination & { comment?: string }
+  /** Ловушка для ботов: скрытое поле формы. Люди его не видят, поэтому живой клиент не шлёт его вовсе. */
+  hp_check?: string
 }
 
 export interface CheckoutResponse {
