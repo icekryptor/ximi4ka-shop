@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CheckoutRequest } from '@ximi4ka-shop/shared'
 import { getMeOrNull } from '@/lib/accountApi'
+import { loadAttribution, safeLocalStorage } from '@/lib/attribution'
 import { useCart } from '@/lib/cart'
 import { giftRemainingRub, saveGiftChoice, useGiftChoice } from '@/lib/gift'
 import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
@@ -155,6 +156,7 @@ export default function CheckoutPage() {
     const email = fields.email.trim()
     const telegram = normalizeTelegramHandle(fields.telegram)
     const comment = fields.comment.trim()
+    const attribution = loadAttribution(safeLocalStorage(), new Date())
     const payload: CheckoutRequest = {
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       ...(gift ? { giftProductId: gift.productId } : {}),
@@ -169,6 +171,7 @@ export default function CheckoutPage() {
         ...(comment !== '' ? { comment } : {}),
       },
       ...(trap !== '' ? { hp_check: trap } : {}),
+      ...(attribution ? { attribution } : {}),
     }
 
     setSubmitting(true)

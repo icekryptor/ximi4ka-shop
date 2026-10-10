@@ -415,6 +415,55 @@ describe('/checkout page', () => {
     })
   })
 
+  describe('атрибуция заказа', () => {
+    afterEach(() => {
+      window.localStorage.removeItem('ximi4ka-attribution')
+    })
+
+    it('сохранённые касания уходят вместе с заказом', async () => {
+      mapMock.available = false
+      const touch = {
+        at: new Date().toISOString(),
+        landing: '/product/kit',
+        yclid: '555',
+        utm_source: 'yandex',
+      }
+      window.localStorage.setItem(
+        'ximi4ka-attribution',
+        JSON.stringify({ first: { at: touch.at, landing: '/' }, last: touch }),
+      )
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string).attribution).toEqual({
+        first: { at: touch.at, landing: '/' },
+        last: touch,
+      })
+    })
+
+    it('без сохранённых касаний поле attribution не отправляется', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string)).not.toHaveProperty('attribution')
+    })
+  })
+
   describe('отказ сервера по ловушке и лимиту', () => {
     function errorResponse(status: number, code: string, message: string) {
       return new Response(JSON.stringify({ error: { code, message } }), { status })

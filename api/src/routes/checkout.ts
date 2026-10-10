@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import type { CheckoutResponse } from '@ximi4ka-shop/shared'
+import type { CheckoutResponse, OrderAttribution } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
@@ -191,6 +191,9 @@ checkoutRouter.post('/', async (req, res, next) => {
             totalRub,
             paymentProvider: provider.name,
             idempotencyKey,
+            attribution: (parsed.attribution as OrderAttribution | undefined) ?? null,
+            clientIp: req.ip?.replace(/^::ffff:/, '').slice(0, 45) || null,
+            clientUserAgent: (req.headers['user-agent'] ?? '').slice(0, 500) || null,
             statusHistory: [],
           }),
         )
