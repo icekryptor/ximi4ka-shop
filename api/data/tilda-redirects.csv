@@ -19,8 +19,8 @@ from_path,to_path,status_code
 /policy2,/policy,301
 /oferta2,/oferta,301
 /collab_old,/collab,301
-/thanksxim,/success,301
-/thanksxim2,/success,301
+/thanksxim,/get_materials/thanks,301
+/thanksxim2,/get_materials/thanks,301
 /catalog/equipment/tproduct/172936691332-shtativ-dlya-probirok-6-gnezd,/product/shtativ-dlya-probirok-6-gnezd,301
 /catalog/equipment/tproduct/213940255642-ershik-dlya-probirok,/product/ershik-dlya-probirok,301
 /catalog/equipment/tproduct/238229300092-zazhim-dlya-probirok,/product/zazhim-dlya-probirok,301

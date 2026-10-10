@@ -10,6 +10,7 @@ import { adminPagesRouter } from './routes/admin/pages.js'
 import { publicBlogRouter } from './routes/public/blog.js'
 import { adminBlogRouter } from './routes/admin/blog.js'
 import { publicSearchRouter } from './routes/public/search.js'
+import { createMaterialLeadsRouter } from './routes/public/materialLeads.js'
 import { mediaRouter } from './routes/admin/media.js'
 import { adminRedirectsRouter } from './routes/admin/redirects.js'
 import { publicRedirectsRouter } from './routes/public/redirects.js'
@@ -72,6 +73,7 @@ export function createApp(): Express {
   app.use('/api/account', createAccountRouter())
   app.use('/api/telegram', createTelegramWebhookRouter())
   app.use('/api/checkout', checkoutRouter)
+  app.use('/api/public/material-leads', createMaterialLeadsRouter())
   app.use('/api/webhooks/tbank', tbankWebhookRouter)
   app.use('/api/public/orders', publicOrdersRouter)
   app.use('/api/admin/orders', adminOrdersRouter)

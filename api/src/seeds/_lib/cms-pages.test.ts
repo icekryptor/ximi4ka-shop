@@ -19,7 +19,7 @@ const REDIRECTS_CSV_PATH = path.resolve(
 const NON_CMS_PREFIXES = ['/categories/', '/product/', '/blog/']
 const SEEDED_ELSEWHERE = new Set(['/o-nas'])
 // /success и /fail — Next-роуты (платёжный флоу), не CMS.
-const NEXT_ROUTES = new Set(['/success', '/fail'])
+const NEXT_ROUTES = new Set(['/success', '/fail', '/get_materials/thanks'])
 
 const textOf = (html: string) =>
   sanitizeHtml(html)

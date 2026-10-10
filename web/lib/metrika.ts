@@ -13,6 +13,7 @@ export const METRIKA_GOALS = {
   beginCheckout: 'begin_checkout',
   purchase: 'purchase',
   openCart: 'open_cart',
+  materialLead: 'material_lead',
 } as const
 
 export interface MetrikaProduct {
