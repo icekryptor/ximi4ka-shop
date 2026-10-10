@@ -22,7 +22,7 @@ describe('данные карточки «Химичка 3.0»', () => {
     expect(HIMICHKA_30_REAGENTS_COUNT).toBe(17)
     const all = HIMICHKA_30_COMPOSITION.reduce((n, g) => n + g.items.length, 0)
     expect(all).toBe(18)
-    expect(HIMICHKA_30_EQUIPMENT).toHaveLength(8)
+    expect(HIMICHKA_30_EQUIPMENT).toHaveLength(9)
     expect(HIMICHKA_30_PRINTED).toHaveLength(3)
   })
 
@@ -30,7 +30,7 @@ describe('данные карточки «Химичка 3.0»', () => {
     const block = compositionBlock()
     expect(isBlock(block)).toBe(true)
     expect(html(block)).toMatch(/<h3[^>]*>\s*Состав\s*<\/h3>/i)
-    expect((html(block).match(/<li>/g) ?? []).length).toBe(18 + 8 + 3)
+    expect((html(block).match(/<li>/g) ?? []).length).toBe(18 + 9 + 3)
   })
 
   it('формулы получают индексы', () => {
