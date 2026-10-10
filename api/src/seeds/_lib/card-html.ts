@@ -1,4 +1,4 @@
-// Общие кирпичики HTML для карточек наборов (oge-card, electro-card): витрина
+// Общие кирпичики HTML для карточек наборов (oge-card, electro-card, mini-himichka-card, himichka-30-card): витрина
 // читает блоки «Состав» и «Характеристики» по этим форматам.
 import type { Block } from '@ximi4ka-shop/shared'
 

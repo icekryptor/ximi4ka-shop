@@ -4,6 +4,7 @@ import type {
   CdekCityPoints,
   CheckoutRequest,
   CheckoutResponse,
+  MaterialLeadRequest,
   DeliveryQuote,
   QuoteDestination,
   ShippingPackage,
@@ -235,6 +236,15 @@ export async function submitCheckout(
     method: 'POST',
     credentials: 'include',
     headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(payload),
+  })
+  return body.data
+}
+
+/** Заявка на обучающие материалы со страницы /get_materials. */
+export async function submitMaterialLead(payload: MaterialLeadRequest): Promise<{ id: string }> {
+  const body = await request<DataEnvelope<{ id: string }>>(`/api/public/material-leads`, {
+    method: 'POST',
     body: JSON.stringify(payload),
   })
   return body.data

@@ -39,8 +39,8 @@
 
 - `/policy` и `/oferta` — цели редиректов `/policy2` и `/oferta2` из
   `tilda-redirects.csv`; пока страницы не созданы, эти редиректы ведут в 404.
-  То же для `/collab` (← `/collab_old`) и `/success` (← `/thanksxim`,
-  `/thanksxim2`).
+  То же для `/collab` (← `/collab_old`). `/thanksxim` и `/thanksxim2` ведут на
+  `/get_materials/thanks` (кодовая страница формы `/get_materials`).
 - `/xim3_inst`, `/mx_inst`, `/electroxim` — страницы «инструкции к набору»:
   текста мало, основной контент — ссылки на PDF/видео; сверить вложения
   при переносе.

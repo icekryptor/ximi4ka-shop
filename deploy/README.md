@@ -308,6 +308,24 @@ Sitemap: https://ximi4ka.ru/sitemap.xml
 5. id таблицы — часть адреса между `/d/` и `/edit` → `GOOGLE_SHEETS_ID`.
    Лист — `Заказы` (иначе задать `GOOGLE_SHEETS_TAB`).
 
+**Заявки со страницы `/get_materials`** (QR-коды на наборах) дописываются в
+таблицу «Покупатели набора» — тем же сервисным аккаунтом. В рабочий Telegram-чат
+эти заявки не идут:
+
+1. Дать почте сервисного аккаунта доступ «Редактор» и к этой таблице.
+2. В `app.env`: `MATERIALS_SHEETS_ID` (id таблицы), `MATERIALS_SHEETS_TAB`
+   (`Лист1`), `MATERIALS_SHEETS_START_ROW` (`6256` — выше эту строку не трогаем).
+3. Пустой `MATERIALS_SHEETS_ID` — в таблицу не пишем, заявки остаются в базе.
+
+Заявка сначала сохраняется в базе (`material_leads`) и только потом уходит в
+таблицу; у ушедших заполнено `sheet_synced_at`. Не дошедшие (нет доступа, сбой
+Google) видны запросом:
+
+```bash
+docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
+  -c "SELECT created_at, name, phone, telegram, source FROM material_leads WHERE sheet_synced_at IS NULL ORDER BY created_at;"
+```
+
 **Если не доходит:** карточка заказа в админке → «Уведомления»: там видна
 причина. Исправить настройку → «Отправить ещё раз».
 

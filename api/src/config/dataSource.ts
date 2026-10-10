@@ -22,6 +22,7 @@ import { SsoAuthCode } from '../entities/SsoAuthCode.js'
 import { CustomerAlias } from '../entities/CustomerAlias.js'
 import { EntityRevision } from '../entities/EntityRevision.js'
 import { Redirect } from '../entities/Redirect.js'
+import { MaterialLead } from '../entities/MaterialLead.js'
 import { Media } from '../entities/Media.js'
 import { SiteSettings } from '../entities/SiteSettings.js'
 
@@ -106,6 +107,7 @@ export const AppDataSource = new DataSource({
     CustomerAlias,
     EntityRevision,
     Redirect,
+    MaterialLead,
     Media,
     SiteSettings,
   ],
