@@ -145,6 +145,7 @@ export async function listCustomerOrders(
         quantity: i.quantity,
         unitPriceRub: i.unitPriceRub,
         lineTotalRub: i.lineTotalRub ?? i.unitPriceRub * i.quantity,
+        isGift: i.isGift,
         imageUrl: imageOf.get(i.productId) ?? null,
       })),
       subtotalRub: o.subtotalRub,

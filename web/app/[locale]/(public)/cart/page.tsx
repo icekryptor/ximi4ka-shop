@@ -7,6 +7,7 @@ import { QuantityStepperLJ } from '@/components/product/QuantityStepperLJ'
 import { formatRub } from '@/lib/stockLabel'
 import { pluralizeRu } from '@/lib/i18n'
 import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
+import { GiftBanner } from '@/components/cart/GiftBanner'
 
 export default function CartPage() {
   const { items, setQty, remove, totals, itemCount } = useCart()
@@ -85,6 +86,10 @@ export default function CartPage() {
                 </li>
               ))}
             </ul>
+
+            <div className="mb-8 empty:hidden">
+              <GiftBanner totalRub={totals.totalRub} />
+            </div>
 
             <div className="flex flex-col gap-3 mb-8 max-w-md ml-auto">
               <CartSummaryRows totals={totals} itemCount={itemCount} />

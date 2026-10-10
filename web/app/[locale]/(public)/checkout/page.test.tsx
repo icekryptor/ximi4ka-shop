@@ -8,6 +8,7 @@ import type {
   QuoteDestination,
 } from '@ximi4ka-shop/shared'
 import CheckoutPage from './page'
+import { loadGiftChoice, saveGiftChoice } from '@/lib/gift'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
 import { reportPurchaseOnce, setMetrikaCounterId } from '@/lib/metrika'
 
@@ -276,6 +277,56 @@ describe('/checkout page', () => {
     })
     expect(screen.getByTestId('summary-shipping')).toHaveTextContent('390')
     expect(screen.getByTestId('summary-total')).toHaveTextContent('2 390')
+  })
+
+  describe('подарок', () => {
+    const GIFT = {
+      productId: '5b0a1c2d-1111-4222-8333-444455556666',
+      slug: 'iodat-kaliya',
+      name: 'Йодат калия',
+    }
+    // 3000 ₽ за товары — подарок открыт.
+    const big: CartItem[] = [{ ...seed[0]!, priceRub: 1500 }]
+
+    it('выбранный подарок уходит в заказ и показан в составе заказа', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(big)
+      act(() => saveGiftChoice(GIFT))
+      render(<CheckoutPage />)
+
+      const line = screen.getByTestId('summary-gift')
+      expect(line).toHaveTextContent('Йодат калия')
+      expect(line).toHaveTextContent(/подарок/i)
+
+      await fillValidForm()
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string).giftProductId).toBe(GIFT.productId)
+      await vi.waitFor(() => expect(mockPush).toHaveBeenCalled())
+      expect(loadGiftChoice()).toBeNull()
+    })
+
+    it('если сумма ниже порога, подарок не показывается и не отправляется', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      act(() => saveGiftChoice(GIFT))
+      render(<CheckoutPage />)
+
+      expect(screen.queryByTestId('summary-gift')).not.toBeInTheDocument()
+
+      await fillValidForm()
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string)).not.toHaveProperty('giftProductId')
+    })
   })
 
   it('полный путь без карты: город → пункт из списка → заказ', async () => {

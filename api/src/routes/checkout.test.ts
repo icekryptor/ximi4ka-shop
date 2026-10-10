@@ -658,6 +658,174 @@ describe('POST /api/checkout', () => {
     expect(res.status).toBe(201)
     expect(get).not.toHaveBeenCalled()
   })
+  describe('подарок: реактив на выбор от 3000 ₽', () => {
+    const GIFT_SLUGS = ['azotnaya-kislota-10', 'solyanaya-kislota', 'iodat-kaliya']
+
+    async function seedGift(overrides: Partial<Product> = {}): Promise<Product> {
+      return seedProduct({ slug: 'iodat-kaliya', name: 'Йодат калия', priceRub: 249, ...overrides })
+    }
+
+    async function placeOrder(giftProductId: string | undefined, items: Product[], qty = 1) {
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({
+          ...checkoutBody(items.map((p) => ({ productId: p.id, quantity: qty }))),
+          ...(giftProductId === undefined ? {} : { giftProductId }),
+        })
+      const order =
+        res.status === 201
+          ? await AppDataSource.getRepository(Order).findOneOrFail({
+              where: { orderNumber: res.body.data.orderNumber },
+              relations: { items: true },
+            })
+          : null
+      return { res, order }
+    }
+
+    it.each(GIFT_SLUGS)(
+      'кладёт в заказ подарок %s строкой за 0 ₽ и не меняет итог',
+      async (slug) => {
+        const kit = await seedProduct({ priceRub: 3000 })
+        const gift = await seedGift({ slug, priceRub: 199 })
+
+        const { res, order } = await placeOrder(gift.id, [kit])
+
+        expect(res.status).toBe(201)
+        expect(order!.subtotalRub).toBe(3000)
+        expect(order!.discountRub).toBe(0)
+        expect(order!.totalRub).toBe(3000 + order!.shippingRub)
+        expect(order!.items).toHaveLength(2)
+        const giftItem = order!.items.find((i) => i.productId === gift.id)!
+        expect(giftItem.isGift).toBe(true)
+        expect(giftItem.quantity).toBe(1)
+        expect(giftItem.unitPriceRub).toBe(0)
+        expect(giftItem.lineTotalRub).toBe(0)
+        expect(giftItem.productSnapshot.priceRub).toBe(199)
+        expect(order!.items.find((i) => i.productId === kit.id)!.isGift).toBe(false)
+      },
+    )
+
+    it('без подарка в запросе строк с isGift нет', async () => {
+      const kit = await seedProduct({ priceRub: 3000 })
+      await seedGift()
+
+      const { order } = await placeOrder(undefined, [kit])
+
+      expect(order!.items.some((i) => i.isGift)).toBe(false)
+    })
+
+    it('не даёт подарок, если на товары меньше 3000 ₽', async () => {
+      const kit = await seedProduct({ priceRub: 2999 })
+      const gift = await seedGift()
+
+      const { res, order } = await placeOrder(gift.id, [kit])
+
+      expect(res.status).toBe(201)
+      expect(order!.items).toHaveLength(1)
+      expect(order!.items[0].isGift).toBe(false)
+    })
+
+    it('порог считается после оптовой скидки', async () => {
+      const reagent = await seedProduct({ slug: 'copper-sulfate', priceRub: 300, sku: 'CU-1' })
+      await seedCategory('reagents', [reagent])
+      const gift = await seedGift()
+
+      // 10 шт по 300 ₽ = 3000 ₽, но −20% даёт 2400 ₽.
+      const { res, order } = await placeOrder(gift.id, [reagent], 10)
+
+      expect(res.status).toBe(201)
+      expect(order!.subtotalRub).toBe(3000)
+      expect(order!.discountRub).toBe(600)
+      expect(order!.items.some((i) => i.isGift)).toBe(false)
+    })
+
+    it('не даёт товар вне списка подарков, даже если он дешёвый', async () => {
+      const kit = await seedProduct({ priceRub: 3000 })
+      const other = await seedProduct({ slug: 'soda', priceRub: 50, sku: 'NA-1' })
+
+      const { res, order } = await placeOrder(other.id, [kit])
+
+      expect(res.status).toBe(201)
+      expect(order!.items.some((i) => i.isGift)).toBe(false)
+      expect(order!.items.some((i) => i.productId === other.id)).toBe(false)
+    })
+
+    it('закончившийся подарок не блокирует заказ — подарок просто не добавляется', async () => {
+      const kit = await seedProduct({ priceRub: 3000 })
+      const gift = await seedGift({ stockStatus: 'out_of_stock' })
+
+      const { res, order } = await placeOrder(gift.id, [kit])
+
+      expect(res.status).toBe(201)
+      expect(order!.items.some((i) => i.isGift)).toBe(false)
+    })
+
+    it('неопубликованный подарок не добавляется', async () => {
+      const kit = await seedProduct({ priceRub: 3000 })
+      const gift = await seedGift({ isPublished: false })
+
+      const { res, order } = await placeOrder(gift.id, [kit])
+
+      expect(res.status).toBe(201)
+      expect(order!.items.some((i) => i.isGift)).toBe(false)
+    })
+
+    it('тот же реактив в корзине и в подарок — две отдельные строки, платная не меняется', async () => {
+      const kit = await seedProduct({ priceRub: 2900 })
+      const gift = await seedGift({ slug: 'solyanaya-kislota', priceRub: 199 })
+
+      const { res, order } = await placeOrder(gift.id, [kit, gift])
+
+      expect(res.status).toBe(201)
+      expect(order!.subtotalRub).toBe(2900 + 199)
+      const lines = order!.items.filter((i) => i.productId === gift.id)
+      expect(lines).toHaveLength(2)
+      expect(lines.find((i) => i.isGift)!.lineTotalRub).toBe(0)
+      expect(lines.find((i) => !i.isGift)!.lineTotalRub).toBe(199)
+    })
+
+    it('вес подарка не попадает в расчёт доставки для покупателя, но едет в местах для СДЭК', async () => {
+      const post = vi.fn().mockResolvedValue({ total_sum: 413 })
+      setCdekClientForTests({ post, get: vi.fn(), raw: vi.fn() })
+      const kit = await seedProduct({ priceRub: 3000, weightG: 500 })
+      const gift = await seedGift({ weightG: 100 })
+
+      const { res, order } = await placeOrder(gift.id, [kit])
+
+      expect(res.status).toBe(201)
+      // Превью в чекауте считает без подарка — заказ не должен выйти дороже.
+      const [, calc] = post.mock.calls[0]
+      expect(calc.packages).toEqual([{ weight: 530, length: 10, width: 10, height: 4 }])
+      const sent = order!.deliveryAddress.packages!.flatMap((p) => p.items.map((i) => i.productId))
+      expect(sent).toEqual(expect.arrayContaining([kit.id, gift.id]))
+    })
+
+    it('если реактив в корзине и в подарок, в местах для СДЭК это одна позиция на все штуки', async () => {
+      setCdekClientForTests({
+        post: vi.fn().mockResolvedValue({ total_sum: 413 }),
+        get: vi.fn(),
+        raw: vi.fn(),
+      })
+      const kit = await seedProduct({ priceRub: 2900, weightG: 500 })
+      const gift = await seedGift({ slug: 'solyanaya-kislota', priceRub: 199, weightG: 100 })
+
+      const { order } = await placeOrder(gift.id, [kit, gift])
+
+      const lines = order!.deliveryAddress.packages!.flatMap((p) => p.items)
+      expect(lines.filter((l) => l.productId === gift.id)).toEqual([
+        { productId: gift.id, quantity: 2 },
+      ])
+    })
+
+    it('giftProductId не uuid — заказ принимается без подарка, а не падает', async () => {
+      const kit = await seedProduct({ priceRub: 3000 })
+
+      const { res, order } = await placeOrder('iodat-kaliya', [kit])
+
+      expect(res.status).toBe(201)
+      expect(order!.items.some((i) => i.isGift)).toBe(false)
+    })
+  })
 })
 
 describe('checkout и личный кабинет', () => {

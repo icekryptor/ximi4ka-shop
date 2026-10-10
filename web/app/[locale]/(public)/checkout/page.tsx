@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import type { CheckoutRequest } from '@ximi4ka-shop/shared'
 import { getMeOrNull } from '@/lib/accountApi'
 import { useCart } from '@/lib/cart'
+import { giftRemainingRub, saveGiftChoice, useGiftChoice } from '@/lib/gift'
 import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 import { ApiError, quoteShipping, submitCheckout, type ShippingQuoteResponse } from '@/lib/api'
 import { formatRub } from '@/lib/stockLabel'
@@ -36,6 +37,10 @@ const INITIAL_FIELDS: CheckoutFormFields = {
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, totals, itemCount, clear } = useCart()
+  const [giftChoice] = useGiftChoice()
+  // Подарок открыт от порога; сервер перепроверяет, здесь — чтобы не слать и не
+  // показывать выбор, оставшийся от большей корзины.
+  const gift = giftChoice && giftRemainingRub(totals.totalRub) === 0 ? giftChoice : null
   const [hydrated, setHydrated] = useState(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setHydrated(true), [])
@@ -150,6 +155,7 @@ export default function CheckoutPage() {
     const comment = fields.comment.trim()
     const payload: CheckoutRequest = {
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      ...(gift ? { giftProductId: gift.productId } : {}),
       customer: {
         name: fields.name.trim(),
         phone: `+${phoneDigits(fields.phone)}`,
@@ -182,6 +188,7 @@ export default function CheckoutPage() {
       )
       setPlaced(result.paymentUrl ? 'payment' : 'order')
       clear()
+      saveGiftChoice(null)
       if (result.paymentUrl) {
         redirectTo(result.paymentUrl)
       } else {
@@ -361,6 +368,23 @@ export default function CheckoutPage() {
                     </span>
                   </li>
                 ))}
+                {gift && (
+                  <li
+                    data-testid="summary-gift"
+                    className="flex items-baseline justify-between gap-4 py-3 border-b border-[var(--color-lj-rule)]"
+                  >
+                    <span className="font-lj-body text-base text-[var(--color-lj-ink)] min-w-0 truncate">
+                      {gift.name}
+                      <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] opacity-60">
+                        {' '}
+                        × 1
+                      </span>
+                    </span>
+                    <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)] font-[700] whitespace-nowrap">
+                      🎁 подарок
+                    </span>
+                  </li>
+                )}
               </ul>
 
               <div className="flex flex-col gap-2">

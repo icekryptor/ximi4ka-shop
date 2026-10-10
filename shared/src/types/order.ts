@@ -26,6 +26,8 @@ export interface OrderItem {
   unitPriceRub: number
   /** Сумма строки с оптовой скидкой; null у старых заказов (тогда unitPriceRub × quantity). */
   lineTotalRub: number | null
+  /** Подарок к заказу: строка за 0 ₽, в чек оплаты не входит. */
+  isGift?: boolean
 }
 
 export interface DeliveryAddress {
@@ -96,6 +98,8 @@ export interface OrderDto {
 
 export interface CheckoutRequest {
   items: Array<{ productId: string; quantity: number }>
+  /** Подарок на выбор (реактив из списка); сервер проверяет порог, наличие и список. */
+  giftProductId?: string
   customer: { name: string; phone: string; email?: string; telegram?: string }
   // Куда везём — из виджета СДЭК (см. DeliveryDestination) + комментарий.
   delivery: DeliveryDestination & { comment?: string }

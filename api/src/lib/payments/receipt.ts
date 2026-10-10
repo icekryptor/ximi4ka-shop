@@ -95,32 +95,42 @@ export function buildReceipt(order: Order, config: ReceiptConfig): TBankReceipt 
     throw new Error(`receipt: у заказа ${order.orderNumber} нет загруженных items`)
   }
 
-  const items: ReceiptItem[] = order.items.flatMap((line) => {
-    const name = cut(line.productSnapshot.name)
-    const totalKop = (line.lineTotalRub ?? line.unitPriceRub * line.quantity) * 100
-    const base = { Name: name, Tax: config.tax, PaymentMethod: 'full_payment' as const }
-    const object = 'commodity' as const
-    const price = Math.floor(totalKop / line.quantity)
-    if (price * line.quantity === totalKop) {
+  // Подарок покупатель не оплачивает: нулевую позицию банк не принимает, а
+  // сумма чека от неё не меняется.
+  const items: ReceiptItem[] = order.items
+    .filter((line) => !line.isGift)
+    .flatMap((line) => {
+      const name = cut(line.productSnapshot.name)
+      const totalKop = (line.lineTotalRub ?? line.unitPriceRub * line.quantity) * 100
+      const base = { Name: name, Tax: config.tax, PaymentMethod: 'full_payment' as const }
+      const object = 'commodity' as const
+      const price = Math.floor(totalKop / line.quantity)
+      if (price * line.quantity === totalKop) {
+        return [
+          {
+            ...base,
+            Price: price,
+            Quantity: line.quantity,
+            Amount: totalKop,
+            PaymentObject: object,
+          },
+        ]
+      }
+      // Цена партии не делится на целые копейки за штуку (313 ₽ за 21 пробирку).
+      // Две строки: N−1 штук по округлённой цене и одна штука на остаток —
+      // количество в чеке верное, а Price × Quantity = Amount в каждой строке.
+      const head = price * (line.quantity - 1)
       return [
-        { ...base, Price: price, Quantity: line.quantity, Amount: totalKop, PaymentObject: object },
+        { ...base, Price: price, Quantity: line.quantity - 1, Amount: head, PaymentObject: object },
+        {
+          ...base,
+          Price: totalKop - head,
+          Quantity: 1,
+          Amount: totalKop - head,
+          PaymentObject: object,
+        },
       ]
-    }
-    // Цена партии не делится на целые копейки за штуку (313 ₽ за 21 пробирку).
-    // Две строки: N−1 штук по округлённой цене и одна штука на остаток —
-    // количество в чеке верное, а Price × Quantity = Amount в каждой строке.
-    const head = price * (line.quantity - 1)
-    return [
-      { ...base, Price: price, Quantity: line.quantity - 1, Amount: head, PaymentObject: object },
-      {
-        ...base,
-        Price: totalKop - head,
-        Quantity: 1,
-        Amount: totalKop - head,
-        PaymentObject: object,
-      },
-    ]
-  })
+    })
 
   if (order.shippingRub > 0) {
     const shippingKop = order.shippingRub * 100
