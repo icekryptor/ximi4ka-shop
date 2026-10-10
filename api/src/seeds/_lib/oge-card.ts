@@ -116,12 +116,12 @@ export const OGE_META_DESCRIPTION =
   'Набор для экспериментальной части ОГЭ по химии: 29 реактивов, 2 индикатора, оборудование, ' +
   'методичка на 110+ реакций и доступ к модулю ОГЭ на платформе.'
 
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
 // Цифры после буквы или «)» — индексы: Al2(SO4)3 → Al<sub>2</sub>(SO<sub>4</sub>)<sub>3</sub>.
-function formulaHtml(formula: string): string {
+export function formulaHtml(formula: string): string {
   return escapeHtml(formula).replace(/(?<=[A-Za-z)])(\d+)/g, '<sub>$1</sub>')
 }
 
