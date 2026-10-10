@@ -70,3 +70,45 @@ export const DeliveryOptionsSchema = z.object({
       ),
     ),
 })
+
+const PricedItemSchema = ItemRefSchema.extend({
+  regular_price: z.number().int().min(0),
+  final_price: z.number().int().min(0),
+})
+
+const IntervalSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  time: z.string().max(16).optional(),
+})
+
+export const CreateCheckoutSchema = z.object({
+  session_id: z.string().trim().min(1).max(64),
+  warehouse_id: z.string().trim().min(1).max(64),
+  items: z.array(PricedItemSchema).min(1).max(100),
+  customer: z.object({
+    full_name: z.string().trim().min(1).max(255),
+    phone: z.string().trim().min(5).max(64),
+    email: z.string().trim().email().max(255),
+  }),
+  delivery: z
+    .object({
+      delivery_method: z.enum(['courier', 'pickup_point', 'self_pickup']),
+      service_type: z.string().trim().max(32),
+      service_display_name: optionalText(255),
+      price: z.number().min(0).max(1_000_000),
+      address: AddressSchema,
+      // time_zone обязателен по схеме, но в примерах Яндекса его нет.
+      delivery_date_interval: z.object({
+        start_interval: IntervalSchema,
+        end_interval: IntervalSchema,
+        time_zone: z.number().int().optional(),
+      }),
+      ycp_delivery_option_id: optionalText(64),
+      delivery_notes: optionalText(1000),
+    })
+    .superRefine((v, ctx) =>
+      checkAddressFor(v.delivery_method, v.address, (path, message) =>
+        ctx.addIssue({ code: 'custom', path, message }),
+      ),
+    ),
+})

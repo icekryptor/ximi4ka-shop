@@ -14,21 +14,13 @@ import { loadCart } from '../lib/shipping/cart.js'
 import { packCart, type PackLine } from '../lib/shipping/pack.js'
 import { deliveryConfigFromEnv, quoteDelivery } from '../lib/shipping/quote.js'
 import { nextOrderNumber } from '../lib/orderNumber.js'
+import { isUniqueViolation } from '../lib/pgErrors.js'
 import { findCustomerSession } from '../lib/account/session.js'
 import { normalizeEmail } from '../lib/account/emailCodes.js'
 import { badRequest } from './errors.js'
 import { CheckoutSchema } from './checkout.schemas.js'
 
 export const checkoutRouter: Router = Router()
-
-function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code?: string }).code === '23505'
-  )
-}
 
 // Вес подарка в упаковку: тот же товар уже в корзине — прибавляем штуку к его
 // позиции, чтобы productId в местах не двоился.
