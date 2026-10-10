@@ -20,7 +20,7 @@ export function LabSection({ variant, className = '', children, style, ...rest }
 
   return (
     <section
-      className={`relative overflow-hidden ${palette} ${className}`.trim()}
+      className={`relative overflow-clip ${palette} ${className}`.trim()}
       style={mergedStyle}
       {...rest}
     >
