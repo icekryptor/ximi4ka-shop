@@ -24,9 +24,21 @@ export interface VisitInput {
   now: Date
 }
 
+// Управляющие символы и одинокие суррогаты (эмодзи, разрезанный обрезкой)
+// Postgres в jsonb не принимает: заказ упал бы с 500, а у покупателя с такой
+// меткой в localStorage — все 30 дней. Режем по кодовым точкам, а не по UTF-16.
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+function cleanText(value: string, max: number): string {
+  const clean = value
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(LONE_SURROGATE, '')
+    .trim()
+  return Array.from(clean).slice(0, max).join('').trim()
+}
+
 function clip(value: string | null | undefined, max: number): string | undefined {
-  const trimmed = value?.trim().slice(0, max)
-  return trimmed ? trimmed : undefined
+  const cleaned = value ? cleanText(value, max) : ''
+  return cleaned ? cleaned : undefined
 }
 
 function parseUrl(raw: string): URL | null {

@@ -41,6 +41,12 @@ describe('<OrderAttribution>', () => {
     expect(screen.getByText('Mozilla/5.0 (Test)')).toBeInTheDocument()
   })
 
+  it('предупреждает, что метки прислал браузер покупателя и они не проверены', () => {
+    render(<OrderAttribution attribution={{ last: LAST }} clientIp={null} clientUserAgent={null} />)
+
+    expect(screen.getByText(/метки прислал браузер покупателя/i)).toBeInTheDocument()
+  })
+
   it('без referrer пишет «прямой заход»', () => {
     render(
       <OrderAttribution

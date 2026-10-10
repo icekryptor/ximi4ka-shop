@@ -82,6 +82,23 @@ describe('readTouch', () => {
     expect(touch.utm_medium).toHaveLength(200)
   })
 
+  it('нулевой и прочие управляющие символы в метках вырезаются', () => {
+    const { touch } = readTouch(
+      visit('https://new.ximi4ka.ru/?utm_source=a%00b&utm_term=%0A%09x%7F'),
+    )
+
+    expect(touch.utm_source).toBe('ab')
+    expect(touch.utm_term).toBe('x')
+  })
+
+  it('обрезка не разрезает эмодзи пополам', () => {
+    const { touch } = readTouch(
+      visit(`https://new.ximi4ka.ru/?utm_campaign=${'x'.repeat(199)}%F0%9F%98%80%F0%9F%98%80`),
+    )
+
+    expect(touch.utm_campaign).toBe('x'.repeat(199) + '😀')
+  })
+
   it('битый адрес и битый referrer не роняют разбор', () => {
     const { touch } = readTouch(visit('не адрес', 'тоже не адрес'))
 

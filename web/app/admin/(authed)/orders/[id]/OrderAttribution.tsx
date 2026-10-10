@@ -58,6 +58,11 @@ export function OrderAttribution({
     <section className="bg-white rounded-2xl border border-brand-border p-4 text-sm">
       <h2 className="text-lg font-semibold text-brand-text">Источник</h2>
       {!hasAny && <p className="mt-3 text-brand-text-secondary">Источник не определён</p>}
+      {(attribution?.first || attribution?.last) && (
+        <p className="mt-1 text-xs text-brand-text-secondary">
+          Метки прислал браузер покупателя, они не проверены. IP и браузер зафиксировал сервер.
+        </p>
+      )}
       {attribution?.first && (
         <div className="mt-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-text-secondary">

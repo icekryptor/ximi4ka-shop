@@ -165,6 +165,41 @@ describe('атрибуция заказа', () => {
     expect(order.attribution).toEqual({ last: LAST })
   })
 
+  it('нулевой символ и обрезанный эмодзи в метках не роняют заказ (Postgres не принимает их в jsonb)', async () => {
+    const order = await placeOrder({
+      attribution: {
+        last: {
+          ...LAST,
+          utm_source: 'a\u0000b',
+          utm_campaign: 'x'.repeat(199) + '😀😀',
+          utm_term: 'abc\ud83d',
+          utm_content: 'ряд\n\tстрок\u007f',
+        },
+      },
+    })
+
+    const last = order.attribution?.last
+    expect(last?.utm_source).toBe('ab')
+    expect(last?.utm_campaign).toBe('x'.repeat(199) + '😀')
+    expect(last?.utm_term).toBe('abc')
+    expect(last?.utm_content).toBe('рядстрок')
+  })
+
+  it('список заказов в админке не отдаёт IP, браузер и источник, карточка отдаёт', async () => {
+    const order = await placeOrder({ attribution: { first: FIRST } })
+    const auth = await loginAsAdmin(app)
+
+    const list = await request(app).get('/api/admin/orders').set(authHeaders(auth))
+
+    expect(list.status).toBe(200)
+    const row = list.body.data.find((o: { id: string }) => o.id === order.id)
+    expect(row).toBeDefined()
+    expect(row).not.toHaveProperty('clientIp')
+    expect(row).not.toHaveProperty('clientUserAgent')
+    expect(row).not.toHaveProperty('attribution')
+    expect(row).not.toHaveProperty('publicToken')
+  })
+
   it('админка видит источник, IP и браузер заказа', async () => {
     const order = await placeOrder({ attribution: { first: FIRST, last: LAST } })
     const auth = await loginAsAdmin(app)

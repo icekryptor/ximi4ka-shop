@@ -39,7 +39,19 @@ export const QuoteDestinationSchema = z.discriminatedUnion('method', [
 // Атрибуция приходит от клиента и ничему не обязана соответствовать: строки
 // режем по длине, пустые выкидываем, а всё кривое молча отбрасываем. Заказ
 // из-за неё сорваться не должен (как и из-за подарка).
-const clipped = (max: number) => z.string().transform((s) => s.trim().slice(0, max))
+// Управляющие символы и одинокие суррогаты (эмодзи, разрезанный обрезкой)
+// Postgres в jsonb не принимает: заказ упал бы с 500, а у покупателя с такой
+// меткой в localStorage — все 30 дней. Режем по кодовым точкам, а не по UTF-16.
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+function cleanText(value: string, max: number): string {
+  const clean = value
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(LONE_SURROGATE, '')
+    .trim()
+  return Array.from(clean).slice(0, max).join('').trim()
+}
+
+const clipped = (max: number) => z.string().transform((s) => cleanText(s, max))
 const optionalClipped = (max: number) =>
   clipped(max)
     .optional()
