@@ -1,0 +1,2387 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Yandex Commercial Protocol",
+    "description": "API для интеграции с Yandex Commercial Protocol (YCP) — протоколом оформления заказов на сервисах Яндекса.\n\nМетоды API реализуются на стороне интернет-магазина. С их помощью Яндекс получает актуальные данные о товарах, ценах, остатках и доставке — и оформляет заказы покупателя в системе магазина.\n\n## Требования к серверу\n\nСервер интернет-магазина должен отвечать на запрос не дольше 5 секунд.\n\n## Авторизация\n\nЯндекс отправляет каждый запрос с токеном в заголовке `Authorization`. Укажите этот токен в личном кабинете YCP, в котором вы проходили регистрацию, — так магазин сможет проверить, что запрос пришел от Яндекса.\n```\nAuthorization: Bearer YOUR_TOKEN\n```\n\n## Как проходит оформление заказа\n\n### Проверка корзины\n\nПокупатель переходит к оформлению заказа, меняет регион или произошел конфликт при создании сессии оформления заказа. Яндекс вызывает метод **/checkout/basket/check**, чтобы получить актуальные цены и остатки. Если вы передаете доставку Яндексу, укажите в ответе остатки по каждому складу — так будет понятно, с какого склада отгружать товар.\n\n### Расчет доставки\n\nПокупатель выбирает адрес доставки. Яндекс рассчитывает варианты доставки: либо через API служб доставки, либо через ваш метод **/checkout/delivery/options** — зависит от настроек интеграции.\n\n### Создание сессии оформления заказа\n\nПокупатель переходит к оплате. Яндекс вызывает метод **/checkout** и передает информацию о заказе: состав корзины, данные покупателя и выбранный вариант доставки. На этом шаге еще раз проверьте цены и зарезервируйте товары в своей системе.\n\n### Завершение оформления\n\nДальше возможны два сценария:\n\n- Покупатель не завершил оформление — Яндекс вызовет метод **/checkout/cancel**. Это происходит, если прошел час с момента создания сессии оформления заказа или покупатель вернулся к редактированию корзины.\n- Заказ оформлен — Яндекс вызовет метод **/checkout/placed**.\n\nЧтобы товары продавались по верной цене, следите за актуальностью остатков, сроков и стоимости доставки — проверяйте их при вызове метода **/checkout**.\n",
+    "version": "0.0.14"
+  },
+  "servers": [{ "url": "api/v1" }],
+  "paths": {
+    "/warehouses": {
+      "get": {
+        "summary": "Получить список складов и магазинов для самовывоза",
+        "description": "Обязательный метод.\n\nВозвращает список складов и точек самовывоза магазина.\n\nМетод поддерживает пагинацию. Порядок складов в ответе определяет магазин.\n",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "description": "Максимальное количество складов в ответе",
+            "schema": { "type": "integer" },
+            "example": 1000
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": true,
+            "description": "Количество складов, которые нужно пропустить в выборке",
+            "schema": { "type": "integer" },
+            "example": 0
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список складов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["warehouses", "total_count"],
+                  "properties": {
+                    "warehouses": {
+                      "type": "array",
+                      "description": "Список складов и точек самовывоза магазина",
+                      "items": { "$ref": "#/components/schemas/Warehouse" }
+                    },
+                    "total_count": {
+                      "type": "integer",
+                      "description": "Общее количество складов магазина",
+                      "example": 10
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "warehouses": [
+                        {
+                          "id": "1",
+                          "title": "Основной склад",
+                          "address": "Москва, улица Примерная, 1",
+                          "phone": "+7 (495) 123-45-67",
+                          "self_pickup_options": {
+                            "enabled": true,
+                            "schedule": {
+                              "restrictions": [
+                                {
+                                  "day": 1,
+                                  "time_from": "10:00",
+                                  "time_to": "22:00",
+                                  "time_zone": 3
+                                }
+                              ]
+                            }
+                          },
+                          "ycp_delivery_options": { "enabled": true }
+                        }
+                      ],
+                      "total_count": 10
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Unauthorized" }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Failed to process request" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout/basket/check": {
+      "post": {
+        "summary": "Проверить текущую корзину",
+        "description": "Обязательный метод.\n\nПроверяет наличие товаров на складах и возвращает актуальные цены.\n\nВ запросе передаются:\n\n- список товаров;\n- регион;\n- параметры:\n  - `is_health_check` — признак фоновой проверки работоспособности интернет-магазина. Такие проверки Яндекс отправляет не чаще одного раза в 10 секунд. Если параметр равен `true`, не меняйте ответ — ни HTTP-код, ни тело ответа;\n  - `offers_id_from_merchant_center` — определяет, какие ID товаров передаются в запросе. При первом переходе покупателя к оформлению заказа Яндекс передает offerID из фида, при повторных запросах — ID товара из ответа на этот метод. Если параметр равен `true`, передаются ID из фида, если `false` — ID товара.\n\nВ ответе для каждого товара передаются:\n\n- ID товара;\n- актуальные цены (`regular_price`, `final_price`);\n- наличие на складах (`available_quantity`) — количество товара, которое покупатель может купить прямо сейчас;\n- изображение товара;\n- URL страницы товара;\n- габариты и вес;\n- характеристики товара (список может быть пустым);\n- варианты товара (список может быть пустым; каждый вариант содержит тот же набор полей, что и основной товар).\n\nЕсли интернет-магазин сам рассчитывает доставку, в ответе достаточно передать только склад — используйте ID складов из метода **/warehouses**.\n\nТребования к характеристикам и вариантам товара:\n\n- Значение `display_type` определяет, какой объект передается в `properties`: цвет или текст.\n- У характеристик, которые нужно сгруппировать, должен совпадать код (`code`). Так Яндекс сможет показать варианты товара с разными значениями характеристики.\n- Набор вариантов товара должен быть постоянным: если в ответе для товара #1 указаны варианты #2 и #3, то при запросе товара #3 в списке должны быть варианты #1 и #2.\n\nПример заполнения характеристик и вариантов товара:\n```json\n{\n  \"id\": \"50\",\n  // все поля товара\n  \"characteristics\": [\n    {\n      \"display_type\": \"text\",\n      \"code\": \"SIZES_CLOTHES\",\n      \"name\": \"Размер\",\n      \"properties\": {\n        \"value\": \"XXL\"\n      }\n    }\n  ],\n  \"variations\": [\n    {\n      \"id\": \"51\",\n      // все поля товара\n      \"characteristics\": [\n        {\n          \"display_type\": \"text\",\n          \"code\": \"SIZES_CLOTHES\",\n          \"name\": \"Размер\",\n          \"properties\": {\n            \"value\": \"M\"\n          }\n        }\n      ]\n    }\n  ]\n}\n```\nТовар № 50 с размером XXL имеет альтернативный вариант с размером M — у них общая характеристика с кодом `SIZES_CLOTHES`.\n",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/BasketCheckRequest" },
+              "examples": { "basic": { "value": { "items": [{ "id": "50", "quantity": 2 }] } } }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Результат проверки корзины",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["items"],
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "description": "Список товаров с актуальными ценами и остатками",
+                      "items": { "$ref": "#/components/schemas/BasketItem" }
+                    }
+                  }
+                },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "items": [
+                        {
+                          "id": "50",
+                          "name": "Товар 1",
+                          "regular_price": 1999,
+                          "final_price": 1999,
+                          "img": "https://example.com/image.jpg",
+                          "url": "https://example.com/product/50",
+                          "warehouses": [{ "id": "1", "available_quantity": 10 }],
+                          "dimensions": { "width": 100, "height": 200, "depth": 50, "weight": 500 },
+                          "characteristics": [
+                            {
+                              "display_type": "text",
+                              "code": "SIZES_CLOTHES",
+                              "name": "Размер",
+                              "properties": { "value": "XXL" }
+                            },
+                            {
+                              "display_type": "color",
+                              "code": "COLOR_REF",
+                              "name": "Цвет",
+                              "properties": { "value": "Черный", "hex": "#000000" }
+                            }
+                          ],
+                          "variations": [
+                            {
+                              "id": "51",
+                              "name": "Товар 1",
+                              "regular_price": 2000,
+                              "final_price": 2000,
+                              "img": "https://example.com/image1.jpg",
+                              "url": "https://example.com/product/51",
+                              "warehouses": [{ "id": "1", "available_quantity": 10 }],
+                              "dimensions": {
+                                "width": 100,
+                                "height": 200,
+                                "depth": 50,
+                                "weight": 500
+                              },
+                              "characteristics": [
+                                {
+                                  "display_type": "text",
+                                  "code": "SIZES_CLOTHES",
+                                  "name": "Размер",
+                                  "properties": { "value": "M" }
+                                },
+                                {
+                                  "display_type": "color",
+                                  "code": "COLOR_REF",
+                                  "name": "Цвет",
+                                  "properties": { "value": "Черный", "hex": "#000000" }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Invalid request format: required fields are missing" }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Unauthorized" }
+              }
+            }
+          },
+          "404": {
+            "description": "Товары не найдены",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Failed to process request" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout": {
+      "post": {
+        "summary": "Создать сессию оформления заказа",
+        "description": "Обязательный метод.\n\nСоздает сессию оформления заказа. При обработке запроса рекомендуем:\n\n- финально проверить наличие товаров и актуальность цен;\n- зарезервировать товары на складе;\n- создать пользователя по email или телефону либо найти существующего.\n",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateCheckoutRequest" },
+              "examples": {
+                "courier": {
+                  "summary": "Доставка курьером",
+                  "description": "Пример создания сессии оформления заказа с доставкой курьером",
+                  "value": {
+                    "session_id": "019c18f6-cb3c-7f31-9395-53925a6b0e28",
+                    "warehouse_id": "1",
+                    "items": [
+                      { "id": "50", "quantity": 2, "regular_price": 1999, "final_price": 1999 }
+                    ],
+                    "customer": {
+                      "full_name": "Иван Иванов",
+                      "phone": "+79991234567",
+                      "email": "ivan@example.com"
+                    },
+                    "delivery": {
+                      "delivery_method": "courier",
+                      "service_type": "yandex_delivery",
+                      "service_display_name": "Яндекс.Доставка",
+                      "price": 100,
+                      "address": {
+                        "locality": "Москва",
+                        "address": "ул. Тестовая, д. 1",
+                        "apartment": "10",
+                        "entrance": "2",
+                        "floor": "3",
+                        "intercom": "1234"
+                      },
+                      "delivery_date_interval": {
+                        "start_interval": { "date": "2025-04-16" },
+                        "end_interval": { "date": "2025-04-17" }
+                      }
+                    }
+                  }
+                },
+                "pickup": {
+                  "summary": "Доставка в пункт выдачи заказов",
+                  "description": "Пример создания сессии оформления заказа с доставкой в пункт выдачи заказов",
+                  "value": {
+                    "session_id": "018c18f6-cb3c-7f31-9395-53925a6b0e28",
+                    "warehouse_id": "1",
+                    "items": [
+                      { "id": "50", "quantity": 1, "regular_price": 1999, "final_price": 1999 }
+                    ],
+                    "customer": {
+                      "full_name": "Петр Петров",
+                      "phone": "+79997654321",
+                      "email": "petr@example.com"
+                    },
+                    "delivery": {
+                      "delivery_method": "pickup_point",
+                      "service_type": "yandex_delivery",
+                      "service_display_name": "Яндекс.Доставка",
+                      "price": 100,
+                      "address": {
+                        "pickup_point_id": "PP_12345",
+                        "locality": "Москва",
+                        "address": "ул. Тестовая, д. 1"
+                      },
+                      "delivery_date_interval": {
+                        "start_interval": { "date": "2025-04-15", "time": "10:00:00" },
+                        "end_interval": { "date": "2025-04-15", "time": "14:00:00" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Сессия оформления заказа успешно создана",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateCheckoutResponse" }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Invalid request format: required fields are missing" }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Unauthorized" }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт (сессия уже существует или изменились цены/наличие)",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/CreateCheckoutSessionConflictResponse" }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Failed to process request" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout/placed": {
+      "post": {
+        "summary": "Уведомить об оформлении заказа",
+        "description": "Обязательный метод.\n\nЯндекс вызывает этот метод, когда покупатель оформил заказ.\n\nПо значению параметра payment_method можно понять, оплачен ли заказ онлайн.\n",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "description": "ID сессии оформления заказа",
+            "schema": { "type": "string" },
+            "example": "019c18f6-cb3c-7f31-9395-53925a6b0e28",
+            "deprecated": true
+          },
+          {
+            "name": "order_id",
+            "in": "query",
+            "required": true,
+            "description": "ID заказа",
+            "schema": { "type": "string" },
+            "example": "01996fd7-9a16-44aa-89ae-25cab68e0790",
+            "deprecated": true
+          },
+          {
+            "name": "payment_method",
+            "in": "query",
+            "required": true,
+            "description": "Способ оплаты: online — заказ уже оплачен, on_delivery — заказ будет оплачен при получении",
+            "schema": { "type": "string", "enum": ["on_delivery", "online"] },
+            "deprecated": true
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CheckoutPlacedRequest" },
+              "examples": {
+                "online": {
+                  "value": {
+                    "session_id": "019c18f6-cb3c-7f31-9395-53925a6b0e28",
+                    "order_id": "01996fd7-9a16-44aa-89ae-25cab68e0790",
+                    "order_number": 1234,
+                    "payment_method": "online",
+                    "online_payment_method": "split",
+                    "acquiring_id": "019b56d1-89a5-7a78-849f-4e8b174d0c77"
+                  }
+                },
+                "on_delivery": {
+                  "value": {
+                    "session_id": "019c18f6-cb3c-7f31-9395-53925a6b0e28",
+                    "order_id": "01996fd7-9a16-44aa-89ae-25cab68e0790",
+                    "order_number": 1234,
+                    "payment_method": "on_delivery"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Заказ успешно оформлен" },
+          "400": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Invalid request format: required fields are missing" }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Unauthorized" }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "409": {
+            "description": "Заказ уже отменен",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Failed to process request" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout/cancel": {
+      "post": {
+        "summary": "Отменить сессию оформления заказа",
+        "description": "Обязательный метод.\n\nЯндекс вызывает этот метод, если оформление заказа не было завершено: прошел час с момента создания сессии или покупатель вернулся к редактированию корзины.\n",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "query",
+            "required": true,
+            "description": "ID сессии оформления заказа",
+            "schema": { "type": "string" },
+            "example": "019c18f6-cb3c-7f31-9395-53925a6b0e28"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Сессия успешно отменена" },
+          "400": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Invalid request format: required fields are missing" }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Unauthorized" }
+              }
+            }
+          },
+          "404": {
+            "description": "Сессия не найдена",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Failed to process request" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order/delivered": {
+      "post": {
+        "summary": "Отметить заказ как доставленный",
+        "description": "Обязательный метод, если доставкой управляет Яндекс.\n\nЯндекс вызывает этот метод после доставки заказа покупателю. В запросе передаются данные о выкупленных товарах — если покупатель выкупил только часть товаров, только они и будут в списке.\n",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "query",
+            "required": true,
+            "description": "ID заказа",
+            "schema": { "type": "string" },
+            "example": "01996fd7-9a16-44aa-89ae-25cab68e0790"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/MarkAsDeliveredRequest" },
+              "example": { "purchased_items": [{ "id": "50", "quantity": 2 }] }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Заказ успешно отмечен как доставленный" },
+          "400": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Invalid request format: required fields are missing" }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Unauthorized" }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ или товар не найден",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "409": {
+            "description": "Заказ уже отменен",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Failed to process request" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order/cancel": {
+      "post": {
+        "summary": "Отменить заказ",
+        "description": "Обязательный метод.\n\nЯндекс вызывает этот метод, чтобы отменить заказ после его оформления.\n",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "query",
+            "required": true,
+            "description": "ID заказа",
+            "schema": { "type": "string" },
+            "example": "01996fd7-9a16-44aa-89ae-25cab68e0790"
+          }
+        ],
+        "responses": {
+          "200": { "description": "Заказ успешно отменен" },
+          "400": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Invalid request format: required fields are missing" }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Unauthorized" }
+              }
+            }
+          },
+          "404": {
+            "description": "Заказ не найден",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Failed to process request" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout/delivery/pickup_points": {
+      "get": {
+        "summary": "Получить список пунктов выдачи заказов",
+        "description": "Обязательный метод, если доставкой управляете вы сами и вы поддерживаете доставку до пунктов выдачи заказов.\n\nВозвращает список пунктов выдачи заказов, доступных в вашем магазине.\n\nПорядок пунктов выдачи при пагинации определяет магазин.\n",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": true,
+            "description": "Максимальное количество пунктов выдачи заказов в ответе",
+            "schema": { "type": "integer" },
+            "example": 1000
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": true,
+            "description": "Количество пунктов выдачи заказов, которые нужно пропустить в выборке",
+            "schema": { "type": "integer" },
+            "example": 0
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список пунктов выдачи",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GetPickupPointsResponse" },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "pickup_points": [
+                        {
+                          "id": "PP001",
+                          "name": "Пункт выдачи заказов на Примерной 10",
+                          "address": "Москва, улица Примерная, 10",
+                          "has_fitting": true,
+                          "is_cash_available": true,
+                          "is_card_available": true,
+                          "working_hours": {
+                            "mon": "09:00–21:00",
+                            "tue": "09:00–21:00",
+                            "wed": "09:00–21:00",
+                            "thu": "09:00–21:00",
+                            "fri": "09:00–21:00",
+                            "sat": "10:00–18:00",
+                            "sun": "10:00–18:00"
+                          },
+                          "time_zone": 3,
+                          "coordinates": { "lat": 55.751244, "lon": 37.618423 },
+                          "description": "Вход с торца здания, рядом с вывеской 'Магазин'"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Unauthorized" }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Failed to process request" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/checkout/delivery/options": {
+      "post": {
+        "summary": "Рассчитать варианты доставки",
+        "description": "Обязательный метод, если вы сами управляете доставкой.\n\nРассчитывает доступные варианты доставки для товаров из корзины\nс учетом выбранного адреса или пункта выдачи заказов.\n\nВ ответе возвращается список вариантов доставки:\n- дата доставки;\n- временной интервал (если применимо);\n- стоимость для покупателя.\n",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/GetDeliveryOptionsRequest" },
+              "examples": {
+                "courier": {
+                  "summary": "Варианты доставки курьером",
+                  "description": "Пример получения вариантов доставки курьером",
+                  "value": {
+                    "items": [{ "id": "50", "quantity": 2 }],
+                    "delivery_target": {
+                      "delivery_method": "courier",
+                      "address": { "locality": "Москва", "address": "улица Примерная, 10" }
+                    }
+                  }
+                },
+                "pickup": {
+                  "summary": "Варианты доставки в пункт выдачи заказов",
+                  "description": "Пример получения вариантов доставки в пункт выдачи заказов",
+                  "value": {
+                    "items": [{ "id": "50", "quantity": 2 }],
+                    "delivery_target": {
+                      "delivery_method": "pickup_point",
+                      "address": { "pickup_point_id": "PP_12345" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Список вариантов доставки",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/GetDeliveryOptionsResponse" },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "options": [
+                        {
+                          "delivery_date_interval": {
+                            "start_interval": { "date": "2025-04-15", "time": "10:00:00" },
+                            "end_interval": { "date": "2025-04-15", "time": "14:00:00" }
+                          },
+                          "cost": 300,
+                          "id": "option-12345"
+                        },
+                        {
+                          "delivery_date_interval": {
+                            "start_interval": { "date": "2025-04-16" },
+                            "end_interval": { "date": "2025-04-17" }
+                          },
+                          "cost": 200,
+                          "id": "option-12346"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Invalid request format: required fields are missing" }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Unauthorized" }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Failed to process request" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/order": {
+      "get": {
+        "summary": "Получить информацию о доставке заказа",
+        "description": "Обязательный метод, если у вас подключена доставка по YCP.\n\nВозвращает историю статусов доставки заказа, информацию о товарах и ссылку для отслеживания посылки, если она есть.\n",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "query",
+            "required": true,
+            "description": "ID заказа",
+            "schema": { "type": "string" },
+            "example": "01996fd7-9a16-44aa-89ae-25cab68e0790"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Информация о заказе",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Order" },
+                "examples": {
+                  "success": {
+                    "value": {
+                      "items": [{ "id": "50", "quantity": 2, "refused_count": 0 }],
+                      "delivery_statuses": [{ "status": "in_progress", "timestamp": 1767243600 }],
+                      "tracking_url": "https://tracking.com/1234567890"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Неверный формат запроса",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Invalid request format: required fields are missing" }
+              }
+            }
+          },
+          "401": {
+            "description": "Не авторизован",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Unauthorized" }
+              }
+            }
+          },
+          "500": {
+            "description": "Внутренняя ошибка сервера",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" },
+                "example": { "error": "Failed to process request" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Bearer токен для авторизации. Токен настраивается в админ-панели модуля.\nФормат: `Bearer YOUR_TOKEN`.\n"
+      }
+    },
+    "schemas": {
+      "Address": {
+        "type": "object",
+        "description": "Обязательные поля: locality (регион) и address (адрес доставки) — для способов доставки courier (курьером) и self_pickup (самовывоз), pickup_point_id (ID пункта выдачи заказов) — для способа доставки pickup_point (в пункт выдачи заказов)",
+        "properties": {
+          "locality": { "type": "string", "description": "Регион", "example": "Москва" },
+          "address": {
+            "type": "string",
+            "description": "Полный адрес доставки после региона (улица, дом, корпус, строение)",
+            "example": "улица Примерная, 10с2"
+          },
+          "apartment": { "type": "string", "description": "Квартира", "example": "10" },
+          "entrance": { "type": "string", "description": "Подъезд", "example": "2" },
+          "floor": { "type": "string", "description": "Этаж", "example": "3" },
+          "intercom": { "type": "string", "description": "Домофон", "example": "10" },
+          "pickup_point_id": {
+            "type": "string",
+            "description": "ID пункта выдачи заказов (для способа доставки pickup_point)",
+            "example": "PP_12345"
+          }
+        },
+        "example": {
+          "locality": "Москва",
+          "address": "улица Примерная, 10с2",
+          "apartment": "10",
+          "entrance": "2",
+          "floor": "3",
+          "intercom": "10"
+        }
+      },
+      "DeliveryTarget": {
+        "type": "object",
+        "required": ["delivery_method", "address"],
+        "description": "Способ доставки и адрес (или пункт выдачи заказов), для которого рассчитываются варианты доставки",
+        "properties": {
+          "delivery_method": {
+            "type": "string",
+            "enum": ["pickup_point", "courier"],
+            "description": "Способ доставки: courier — курьером, pickup_point — в пункт выдачи заказов",
+            "example": "courier"
+          },
+          "address": { "$ref": "#/components/schemas/Address" }
+        },
+        "example": {
+          "delivery_method": "courier",
+          "address": { "locality": "Москва", "address": "улица Примерная, 10с2" }
+        }
+      },
+      "DeliveryStatus": {
+        "type": "object",
+        "description": "Статус доставки заказа",
+        "required": ["status", "timestamp"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "new",
+              "processing",
+              "in_progress",
+              "arrived_to_pickup_point",
+              "delivered",
+              "cancelled"
+            ],
+            "description": "Статус доставки, processing означает, что заказ находится в сборке, delivered означает, что доставка завершена",
+            "example": "in_progress"
+          },
+          "timestamp": {
+            "type": "integer",
+            "format": "uint32",
+            "description": "Временная метка статуса доставки UNIX",
+            "example": 1767232800
+          }
+        },
+        "example": { "status": "in_progress", "timestamp": 1767232800 }
+      },
+      "OrderItem": {
+        "type": "object",
+        "description": "Товар в заказе",
+        "required": ["id", "quantity", "refused_count"],
+        "properties": {
+          "id": { "type": "string", "description": "ID товара", "example": "50" },
+          "quantity": { "type": "integer", "description": "Количество", "example": 3 },
+          "refused_count": {
+            "type": "integer",
+            "description": "Количество отмененных товаров — значение меньше или равно **quantity**",
+            "example": 1
+          }
+        },
+        "example": { "id": "50", "quantity": 3, "refused_count": 1 }
+      },
+      "Order": {
+        "type": "object",
+        "description": "Информация о заказе",
+        "required": ["items", "delivery_statuses"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "Список товаров в заказе",
+            "items": { "$ref": "#/components/schemas/OrderItem" },
+            "example": [
+              { "id": "50", "quantity": 3, "refused_count": 1 },
+              { "id": "51", "quantity": 1, "refused_count": 0 }
+            ]
+          },
+          "delivery_statuses": {
+            "type": "array",
+            "description": "История статусов доставки, статус **new** обязателен для истории",
+            "items": { "$ref": "#/components/schemas/DeliveryStatus" },
+            "example": [
+              { "status": "new", "timestamp": 1767222800 },
+              { "status": "processing", "timestamp": 1767232800 },
+              { "status": "in_progress", "timestamp": 1767243600 },
+              { "status": "arrived_to_pickup_point", "timestamp": 1767252800 },
+              { "status": "delivered", "timestamp": 1767262800 }
+            ]
+          },
+          "tracking_url": {
+            "type": "string",
+            "description": "URL для отслеживания посылки",
+            "example": "https://tracking.com/1234567890"
+          }
+        }
+      },
+      "DeliveryOptionsItem": {
+        "type": "object",
+        "description": "Товар, для которого рассчитываются варианты доставки",
+        "required": ["id", "quantity"],
+        "properties": {
+          "id": { "type": "string", "description": "ID товара", "example": "50" },
+          "quantity": {
+            "type": "integer",
+            "description": "Количество товара, для которого рассчитываются варианты доставки",
+            "example": 2
+          }
+        }
+      },
+      "GetDeliveryOptionsRequest": {
+        "type": "object",
+        "description": "Запрос вариантов доставки",
+        "required": ["items", "delivery_target"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "Список товаров из корзины",
+            "items": { "$ref": "#/components/schemas/DeliveryOptionsItem" },
+            "example": [
+              { "id": "50", "quantity": 2 },
+              { "id": "51", "quantity": 1 }
+            ]
+          },
+          "delivery_target": { "$ref": "#/components/schemas/DeliveryTarget" }
+        },
+        "example": {
+          "items": [
+            { "id": "50", "quantity": 2 },
+            { "id": "51", "quantity": 1 }
+          ],
+          "delivery_target": {
+            "delivery_method": "courier",
+            "address": { "locality": "Москва", "address": "улица Примерная, 10с2" }
+          }
+        }
+      },
+      "DeliveryInterval": {
+        "type": "object",
+        "description": "Дата и время доставки",
+        "required": ["date"],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "description": "Дата доставки",
+            "example": "2025-04-16"
+          },
+          "time": {
+            "type": "string",
+            "format": "time",
+            "description": "Время доставки",
+            "example": "10:00:00"
+          }
+        },
+        "example": { "date": "2025-04-16", "time": "10:00:00" }
+      },
+      "DeliveryDateInterval": {
+        "type": "object",
+        "description": "Интервал дат доставки",
+        "required": ["start_interval", "end_interval", "time_zone"],
+        "properties": {
+          "start_interval": {
+            "$ref": "#/components/schemas/DeliveryInterval",
+            "description": "Начало интервала доставки"
+          },
+          "end_interval": {
+            "$ref": "#/components/schemas/DeliveryInterval",
+            "description": "Конец интервала доставки"
+          },
+          "time_zone": {
+            "type": "integer",
+            "description": "Часовой пояс — смещение в часах от UTC",
+            "example": 3
+          }
+        },
+        "example": {
+          "start_interval": { "date": "2025-04-16", "time": "10:00:00" },
+          "end_interval": { "date": "2025-04-16", "time": "14:00:00" },
+          "time_zone": 3
+        }
+      },
+      "DeliveryOption": {
+        "type": "object",
+        "description": "Вариант доставки",
+        "required": ["delivery_date_interval", "cost"],
+        "properties": {
+          "delivery_date_interval": {
+            "$ref": "#/components/schemas/DeliveryDateInterval",
+            "description": "Интервал дат доставки"
+          },
+          "cost": {
+            "type": "number",
+            "format": "float",
+            "description": "Стоимость доставки для покупателя",
+            "example": 300
+          },
+          "id": {
+            "type": "string",
+            "description": "ID варианта доставки — передается в метод /checkout при оформлении заказа, если покупатель выберет этот вариант",
+            "example": "option-12345"
+          }
+        },
+        "example": {
+          "delivery_date_interval": {
+            "start_interval": { "date": "2025-04-16", "time": "10:00:00" },
+            "end_interval": { "date": "2025-04-16", "time": "14:00:00" },
+            "time_zone": 3
+          },
+          "cost": 300,
+          "id": "option-12345"
+        }
+      },
+      "GetDeliveryOptionsResponse": {
+        "type": "object",
+        "description": "Список рассчитанных вариантов доставки",
+        "required": ["delivery_options"],
+        "properties": {
+          "delivery_options": {
+            "type": "array",
+            "description": "Список доступных вариантов доставки",
+            "items": { "$ref": "#/components/schemas/DeliveryOption" },
+            "example": [
+              {
+                "delivery_date_interval": {
+                  "start_interval": { "date": "2025-04-16", "time": "10:00:00" },
+                  "end_interval": { "date": "2025-04-16", "time": "14:00:00" },
+                  "time_zone": 3
+                },
+                "cost": 300,
+                "id": "option-12345"
+              },
+              {
+                "delivery_date_interval": {
+                  "start_interval": { "date": "2025-04-17" },
+                  "end_interval": { "date": "2025-04-18" },
+                  "time_zone": 3
+                },
+                "cost": 200,
+                "id": "option-12346"
+              }
+            ]
+          }
+        },
+        "example": {
+          "delivery_options": [
+            {
+              "delivery_date_interval": {
+                "start_interval": { "date": "2025-04-16", "time": "10:00:00" },
+                "end_interval": { "date": "2025-04-16", "time": "14:00:00" },
+                "time_zone": 3
+              },
+              "cost": 300,
+              "id": "option-12345"
+            },
+            {
+              "delivery_date_interval": {
+                "start_interval": { "date": "2025-04-17" },
+                "end_interval": { "date": "2025-04-18" },
+                "time_zone": 3
+              },
+              "cost": 200,
+              "id": "option-12346"
+            }
+          ]
+        }
+      },
+      "Warehouse": {
+        "type": "object",
+        "description": "Склад или точка самовывоза магазина",
+        "required": ["id", "title", "address", "phone"],
+        "properties": {
+          "id": { "type": "string", "description": "ID склада", "example": "1" },
+          "title": {
+            "type": "string",
+            "description": "Название склада",
+            "example": "Основной склад"
+          },
+          "address": {
+            "type": "string",
+            "description": "Полный адрес склада",
+            "example": "Москва, улица Примерная, 1"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Телефон склада",
+            "example": "+7 (495) 123-45-67"
+          },
+          "description": {
+            "type": "string",
+            "description": "Описание склада",
+            "example": "Главный склад компании"
+          },
+          "self_pickup_options": {
+            "description": "Если enabled = true, заполните график работы в поле schedule.\nЕсли enabled = false, склад недоступен для самовывоза — поле schedule передавать не нужно.\n",
+            "$ref": "#/components/schemas/WarehouseSelfPickupOptions",
+            "example": {
+              "enabled": true,
+              "schedule": {
+                "restrictions": [
+                  { "day": 1, "time_from": "10:00", "time_to": "22:00", "time_zone": 3 }
+                ]
+              }
+            }
+          },
+          "ycp_delivery_options": {
+            "description": "Доставка по YCP включена для склада, если доставка по протоколу YCP включена в разделе «Склады и логистика» настроек и выполняется одно из условий:\n  - enabled = true;\n  - поле не передано.\n",
+            "$ref": "#/components/schemas/WarehouseYCPDeliveryOptions",
+            "example": { "enabled": true }
+          }
+        },
+        "example": {
+          "id": "1",
+          "title": "Основной склад",
+          "address": "Москва, улица Примерная, 1",
+          "phone": "+7 (495) 123-45-67",
+          "description": "Главный склад компании",
+          "self_pickup_options": {
+            "enabled": true,
+            "schedule": {
+              "restrictions": [
+                { "day": 1, "time_from": "10:00", "time_to": "22:00", "time_zone": 3 }
+              ]
+            }
+          },
+          "ycp_delivery_options": { "enabled": true }
+        }
+      },
+      "WarehouseSelfPickupOptions": {
+        "type": "object",
+        "description": "Настройки самовывоза для склада",
+        "required": ["enabled"],
+        "properties": {
+          "enabled": { "type": "boolean", "description": "Доступен ли самовывоз со склада" },
+          "schedule": {
+            "$ref": "#/components/schemas/WarehouseSelfPickupSchedule",
+            "description": "График самовывоза (рабочие дни и часы), поле обязательно, если самовывоз для склада включен"
+          }
+        }
+      },
+      "WarehouseYCPDeliveryOptions": {
+        "type": "object",
+        "description": "Настройки доставки по YCP для склада",
+        "required": ["enabled"],
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "Включена ли доставка по YCP для склада",
+            "example": true
+          }
+        }
+      },
+      "WarehouseSelfPickupSchedule": {
+        "type": "object",
+        "description": "График самовывоза",
+        "required": ["restrictions"],
+        "properties": {
+          "restrictions": {
+            "type": "array",
+            "description": "Интервалы работы по дням недели.\n\nДля круглосуточной работы допустимые значения: time_from=\"00:00\" и time_to=\"23:59\".\n",
+            "minItems": 1,
+            "items": { "$ref": "#/components/schemas/WarehouseSelfPickupScheduleRestriction" }
+          }
+        }
+      },
+      "WarehouseSelfPickupScheduleRestriction": {
+        "type": "object",
+        "description": "Интервал работы склада в конкретный день недели",
+        "required": ["day", "time_from", "time_to", "time_zone"],
+        "properties": {
+          "day": {
+            "type": "integer",
+            "description": "Номер дня недели (1=понедельник, …, 7=воскресенье)",
+            "minimum": 1,
+            "maximum": 7,
+            "example": 1
+          },
+          "time_from": {
+            "type": "string",
+            "description": "Начало интервала рабочего времени в формате HH:mm",
+            "example": "10:00"
+          },
+          "time_to": {
+            "type": "string",
+            "description": "Конец интервала рабочего времени в формате HH:mm",
+            "example": "22:00"
+          },
+          "time_zone": {
+            "type": "integer",
+            "description": "Часовой пояс в виде смещения в часах относительно UTC (например, 3 для UTC+3)",
+            "example": 3
+          }
+        }
+      },
+      "BasketItem": {
+        "type": "object",
+        "description": "Товар из корзины",
+        "required": [
+          "id",
+          "name",
+          "regular_price",
+          "final_price",
+          "warehouses",
+          "dimensions",
+          "characteristics",
+          "variations"
+        ],
+        "properties": {
+          "id": { "type": "string", "description": "ID товара", "example": "50" },
+          "name": {
+            "type": "string",
+            "description": "Название товара",
+            "example": "Футболка хлопковая"
+          },
+          "regular_price": { "type": "integer", "description": "Цена без скидки", "example": 1999 },
+          "final_price": {
+            "type": "integer",
+            "description": "Цена с учетом скидки",
+            "example": 1799
+          },
+          "vat": {
+            "type": "integer",
+            "description": "Ставка НДС в процентах. Значение по умолчанию — 22%",
+            "example": 22
+          },
+          "img": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL изображения товара",
+            "example": "https://example.com/image.jpg"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL страницы товара",
+            "example": "https://example.com/product/50"
+          },
+          "warehouses": {
+            "type": "array",
+            "description": "Наличие на складах",
+            "items": {
+              "type": "object",
+              "required": ["id", "available_quantity"],
+              "properties": {
+                "id": { "type": "string", "description": "ID склада", "example": "1" },
+                "available_quantity": {
+                  "type": "integer",
+                  "description": "Доступное количество товара на складе",
+                  "example": 10
+                }
+              }
+            },
+            "example": [
+              { "id": "1", "available_quantity": 10 },
+              { "id": "2", "available_quantity": 5 }
+            ]
+          },
+          "dimensions": {
+            "type": "object",
+            "description": "Габариты и вес товара",
+            "properties": {
+              "width": { "type": "integer", "description": "Ширина (мм)", "example": 100 },
+              "height": { "type": "integer", "description": "Высота (мм)", "example": 200 },
+              "depth": { "type": "integer", "description": "Глубина (мм)", "example": 50 },
+              "weight": { "type": "integer", "description": "Вес (г)", "example": 500 }
+            },
+            "example": { "width": 100, "height": 200, "depth": 50, "weight": 500 }
+          },
+          "characteristics": {
+            "type": "array",
+            "description": "Характеристики товара",
+            "items": { "$ref": "#/components/schemas/Characteristic" },
+            "example": [
+              {
+                "display_type": "text",
+                "code": "SIZES_CLOTHES",
+                "name": "Размер",
+                "properties": { "value": "XXL" }
+              },
+              {
+                "display_type": "color",
+                "code": "COLOR_REF",
+                "name": "Цвет",
+                "properties": { "value": "Черный", "hex": "#000000" }
+              }
+            ]
+          },
+          "variations": {
+            "type": "array",
+            "description": "Варианты товара",
+            "items": { "$ref": "#/components/schemas/BasketItemVariation" },
+            "example": [
+              {
+                "id": "51",
+                "name": "Футболка хлопковая",
+                "regular_price": 1999,
+                "final_price": 1799,
+                "img": "https://example.com/image1.jpg",
+                "url": "https://example.com/product/51",
+                "warehouses": [{ "id": "1", "available_quantity": 5 }],
+                "dimensions": { "width": 100, "height": 200, "depth": 50, "weight": 500 },
+                "characteristics": [
+                  {
+                    "display_type": "text",
+                    "code": "SIZES_CLOTHES",
+                    "name": "Размер",
+                    "properties": { "value": "M" }
+                  },
+                  {
+                    "display_type": "color",
+                    "code": "COLOR_REF",
+                    "name": "Цвет",
+                    "properties": { "value": "Черный", "hex": "#000000" }
+                  }
+                ]
+              },
+              {
+                "id": "52",
+                "name": "Футболка хлопковая",
+                "regular_price": 1999,
+                "final_price": 1799,
+                "img": "https://example.com/image2.jpg",
+                "url": "https://example.com/product/52",
+                "warehouses": [{ "id": "1", "available_quantity": 3 }],
+                "dimensions": { "width": 100, "height": 200, "depth": 50, "weight": 500 },
+                "characteristics": [
+                  {
+                    "display_type": "text",
+                    "code": "SIZES_CLOTHES",
+                    "name": "Размер",
+                    "properties": { "value": "S" }
+                  },
+                  {
+                    "display_type": "color",
+                    "code": "COLOR_REF",
+                    "name": "Цвет",
+                    "properties": { "value": "Белый", "hex": "#FFFFFF" }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "example": {
+          "id": "50",
+          "name": "Футболка хлопковая",
+          "regular_price": 1999,
+          "final_price": 1799,
+          "img": "https://example.com/image.jpg",
+          "url": "https://example.com/product/50",
+          "warehouses": [
+            { "id": "1", "available_quantity": 10 },
+            { "id": "2", "available_quantity": 5 }
+          ],
+          "dimensions": { "width": 100, "height": 200, "depth": 50, "weight": 500 },
+          "characteristics": [
+            {
+              "display_type": "text",
+              "code": "SIZES_CLOTHES",
+              "name": "Размер",
+              "properties": { "value": "XXL" }
+            },
+            {
+              "display_type": "color",
+              "code": "COLOR_REF",
+              "name": "Цвет",
+              "properties": { "value": "Черный", "hex": "#000000" }
+            }
+          ],
+          "variations": [
+            {
+              "id": "51",
+              "name": "Футболка хлопковая",
+              "regular_price": 1999,
+              "final_price": 1799,
+              "img": "https://example.com/image1.jpg",
+              "url": "https://example.com/product/51",
+              "warehouses": [{ "id": "1", "available_quantity": 5 }],
+              "dimensions": { "width": 100, "height": 200, "depth": 50, "weight": 500 },
+              "characteristics": [
+                {
+                  "display_type": "text",
+                  "code": "SIZES_CLOTHES",
+                  "name": "Размер",
+                  "properties": { "value": "M" }
+                },
+                {
+                  "display_type": "color",
+                  "code": "COLOR_REF",
+                  "name": "Цвет",
+                  "properties": { "value": "Черный", "hex": "#000000" }
+                }
+              ]
+            },
+            {
+              "id": "52",
+              "name": "Футболка хлопковая",
+              "regular_price": 1999,
+              "final_price": 1799,
+              "img": "https://example.com/image2.jpg",
+              "url": "https://example.com/product/52",
+              "warehouses": [{ "id": "1", "available_quantity": 3 }],
+              "dimensions": { "width": 100, "height": 200, "depth": 50, "weight": 500 },
+              "characteristics": [
+                {
+                  "display_type": "text",
+                  "code": "SIZES_CLOTHES",
+                  "name": "Размер",
+                  "properties": { "value": "S" }
+                },
+                {
+                  "display_type": "color",
+                  "code": "COLOR_REF",
+                  "name": "Цвет",
+                  "properties": { "value": "Белый", "hex": "#FFFFFF" }
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "BasketItemVariation": {
+        "type": "object",
+        "description": "Альтернативный вариант товара (например, другой размер)",
+        "required": [
+          "id",
+          "name",
+          "regular_price",
+          "final_price",
+          "warehouses",
+          "dimensions",
+          "characteristics"
+        ],
+        "properties": {
+          "id": { "type": "string", "description": "ID товара", "example": "51" },
+          "name": {
+            "type": "string",
+            "description": "Название товара",
+            "example": "Футболка хлопковая"
+          },
+          "regular_price": { "type": "integer", "description": "Цена без скидки", "example": 1999 },
+          "final_price": {
+            "type": "integer",
+            "description": "Цена с учетом скидки",
+            "example": 1799
+          },
+          "vat": {
+            "type": "integer",
+            "description": "Ставка НДС в процентах. Значение по умолчанию — 22%",
+            "example": 22
+          },
+          "img": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL изображения товара",
+            "example": "https://example.com/image1.jpg"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL страницы товара",
+            "example": "https://example.com/product/51"
+          },
+          "warehouses": {
+            "type": "array",
+            "description": "Наличие на складах",
+            "items": {
+              "type": "object",
+              "required": ["id", "available_quantity"],
+              "properties": {
+                "id": { "type": "string", "description": "ID склада", "example": "1" },
+                "available_quantity": {
+                  "type": "integer",
+                  "description": "Доступное количество товара на складе",
+                  "example": 10
+                }
+              }
+            },
+            "example": [
+              { "id": "1", "available_quantity": 10 },
+              { "id": "2", "available_quantity": 5 }
+            ]
+          },
+          "dimensions": {
+            "type": "object",
+            "description": "Габариты и вес товара",
+            "properties": {
+              "width": { "type": "integer", "description": "Ширина (мм)", "example": 100 },
+              "height": { "type": "integer", "description": "Высота (мм)", "example": 200 },
+              "depth": { "type": "integer", "description": "Глубина (мм)", "example": 50 },
+              "weight": { "type": "integer", "description": "Вес (г)", "example": 500 }
+            },
+            "example": { "width": 100, "height": 200, "depth": 50, "weight": 500 }
+          },
+          "characteristics": {
+            "type": "array",
+            "description": "Характеристики товара",
+            "items": { "$ref": "#/components/schemas/Characteristic" },
+            "example": [
+              {
+                "display_type": "text",
+                "code": "SIZES_CLOTHES",
+                "name": "Размер",
+                "properties": { "value": "M" }
+              },
+              {
+                "display_type": "color",
+                "code": "COLOR_REF",
+                "name": "Цвет",
+                "properties": { "value": "Черный", "hex": "#000000" }
+              }
+            ]
+          }
+        },
+        "example": {
+          "id": "51",
+          "name": "Футболка хлопковая",
+          "regular_price": 1999,
+          "final_price": 1799,
+          "img": "https://example.com/image1.jpg",
+          "url": "https://example.com/product/51",
+          "warehouses": [
+            { "id": "1", "available_quantity": 10 },
+            { "id": "2", "available_quantity": 5 }
+          ],
+          "dimensions": { "width": 100, "height": 200, "depth": 50, "weight": 500 },
+          "characteristics": [
+            {
+              "display_type": "text",
+              "code": "SIZES_CLOTHES",
+              "name": "Размер",
+              "properties": { "value": "M" }
+            },
+            {
+              "display_type": "color",
+              "code": "COLOR_REF",
+              "name": "Цвет",
+              "properties": { "value": "Черный", "hex": "#000000" }
+            }
+          ]
+        }
+      },
+      "Characteristic": {
+        "type": "object",
+        "description": "Характеристика товара",
+        "required": ["display_type", "code", "name", "properties"],
+        "properties": {
+          "display_type": {
+            "type": "string",
+            "enum": ["color", "text"],
+            "description": "Тип характеристики: color — цвет, text — текст",
+            "example": "text"
+          },
+          "code": {
+            "type": "string",
+            "description": "Код характеристики. У характеристик, которые нужно сгруппировать, код совпадает",
+            "example": "SIZES_CLOTHES"
+          },
+          "name": {
+            "type": "string",
+            "description": "Название характеристики",
+            "example": "Размер"
+          },
+          "properties": {
+            "oneOf": [
+              { "$ref": "#/components/schemas/CharacteristicColor" },
+              { "$ref": "#/components/schemas/CharacteristicText" }
+            ]
+          }
+        },
+        "example": {
+          "display_type": "text",
+          "code": "SIZES_CLOTHES",
+          "name": "Размер",
+          "properties": { "value": "XXL" }
+        }
+      },
+      "CharacteristicColor": {
+        "type": "object",
+        "description": "Значение характеристики типа «цвет»",
+        "required": ["value", "hex"],
+        "properties": {
+          "value": { "type": "string", "description": "Название цвета", "example": "Черный" },
+          "hex": { "type": "string", "description": "Цветовой код (hex)", "example": "#000000" }
+        },
+        "example": { "value": "Черный", "hex": "#000000" }
+      },
+      "CharacteristicText": {
+        "type": "object",
+        "description": "Значение текстовой характеристики (например, размер)",
+        "required": ["value"],
+        "properties": {
+          "value": { "type": "string", "description": "Значение характеристики", "example": "XXL" }
+        },
+        "example": { "value": "XXL" }
+      },
+      "CheckoutPlacedRequest": {
+        "type": "object",
+        "description": "Данные об оформленном заказе",
+        "required": ["session_id", "order_id", "order_number", "payment_method"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "ID сессии оформления заказа",
+            "example": "019c18f6-cb3c-7f31-9395-53925a6b0e28"
+          },
+          "order_id": {
+            "type": "string",
+            "description": "ID заказа",
+            "example": "01996fd7-9a16-44aa-89ae-25cab68e0790"
+          },
+          "order_number": {
+            "type": "integer",
+            "description": "Номер заказа в системе YCP.\nУникален в рамках всех заказов, оформленных в этом магазине через YCP.\n",
+            "example": 1234
+          },
+          "payment_method": {
+            "type": "string",
+            "enum": ["online", "on_delivery"],
+            "description": "Способ оплаты: online — заказ уже оплачен, on_delivery — заказ будет оплачен при получении",
+            "example": "online"
+          },
+          "online_payment_method": {
+            "type": "string",
+            "enum": ["card", "sbp", "split", "split_sbp"],
+            "description": "Способ онлайн-оплаты: card — банковской картой, sbp — через СБП, split — частями, split_sbp — частями через СБП",
+            "example": "split"
+          },
+          "acquiring_id": {
+            "type": "string",
+            "description": "ID транзакции оплаты. Передается, если payment_method имеет значение online.\n",
+            "example": "019b56d1-89a5-7a78-849f-4e8b174d0c77"
+          }
+        },
+        "example": {
+          "session_id": "019c18f6-cb3c-7f31-9395-53925a6b0e28",
+          "order_id": "01996fd7-9a16-44aa-89ae-25cab68e0790",
+          "order_number": 1234,
+          "payment_method": "online",
+          "online_payment_method": "split"
+        }
+      },
+      "ActualInventoryItem": {
+        "type": "object",
+        "description": "Актуальные данные о наличии и ценах товара",
+        "required": ["id", "warehouses", "regular_price", "final_price"],
+        "properties": {
+          "id": { "type": "string", "description": "ID товара", "example": "50" },
+          "regular_price": {
+            "type": "integer",
+            "description": "Цена товара без скидки",
+            "example": 2000
+          },
+          "final_price": {
+            "type": "integer",
+            "description": "Цена товара с учетом скидки",
+            "example": 1900
+          },
+          "warehouses": {
+            "type": "array",
+            "description": "Наличие товара на складах",
+            "items": {
+              "type": "object",
+              "required": ["id", "available_quantity"],
+              "properties": {
+                "id": { "type": "string", "description": "ID склада", "example": "1" },
+                "available_quantity": {
+                  "type": "integer",
+                  "description": "Доступное количество товара на складе",
+                  "example": 5
+                }
+              }
+            }
+          }
+        }
+      },
+      "ActualInventory": {
+        "type": "object",
+        "description": "Актуальные данные о наличии и ценах",
+        "required": ["items"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "Список товаров с актуальными данными",
+            "items": { "$ref": "#/components/schemas/ActualInventoryItem" }
+          }
+        }
+      },
+      "CreateCheckoutSessionConflictResponse": {
+        "type": "object",
+        "description": "Ответ при конфликте — сессия уже существует или изменились цены и наличие товаров",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Причина конфликта",
+            "example": "Цены изменились или товары закончились"
+          },
+          "actual_inventory": {
+            "$ref": "#/components/schemas/ActualInventory",
+            "description": "Актуальные данные о наличии и ценах товаров"
+          },
+          "checkout_canceled": {
+            "type": "boolean",
+            "description": "Была ли сессия оформления заказа уже отменена"
+          }
+        },
+        "example": {
+          "error": "Цены изменились или товары закончились",
+          "actual_inventory": {
+            "items": [
+              {
+                "id": "50",
+                "warehouses": [
+                  { "id": "1", "available_quantity": 5, "regular_price": 2000, "final_price": 1900 }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "CreateCheckoutResponse": {
+        "type": "object",
+        "description": "Ответ при успешном создании сессии оформления заказа",
+        "properties": {
+          "order_number": {
+            "type": "string",
+            "description": "Номер заказа в системе магазина, который будет показан покупателю.\nЕсли не передан — YCP использует собственный порядковый номер заказа.\n",
+            "example": "order1234"
+          }
+        }
+      },
+      "Item": {
+        "type": "object",
+        "description": "Товар в заказе",
+        "required": ["id", "quantity", "regular_price", "final_price"],
+        "properties": {
+          "id": { "type": "string", "description": "ID товара", "example": "50" },
+          "quantity": { "type": "integer", "description": "Количество товара", "example": 2 },
+          "regular_price": {
+            "type": "integer",
+            "description": "Цена товара без скидки",
+            "example": 1999
+          },
+          "final_price": {
+            "type": "integer",
+            "description": "Цена товара с учетом скидки",
+            "example": 1799
+          }
+        },
+        "example": { "id": "50", "quantity": 2, "regular_price": 1999, "final_price": 1799 }
+      },
+      "CreateCheckoutRequest": {
+        "type": "object",
+        "description": "Запрос на создание сессии оформления заказа",
+        "required": ["session_id", "items", "warehouse_id", "customer", "delivery"],
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "description": "ID сессии оформления заказа",
+            "example": "019c18f6-cb3c-7f31-9395-53925a6b0e28"
+          },
+          "warehouse_id": {
+            "type": "string",
+            "description": "ID склада, с которого отгружается заказ",
+            "example": "1"
+          },
+          "items": {
+            "type": "array",
+            "description": "Список товаров в заказе",
+            "items": { "$ref": "#/components/schemas/Item" },
+            "example": [
+              { "id": "50", "quantity": 2, "regular_price": 1999, "final_price": 1799 },
+              { "id": "51", "quantity": 1, "regular_price": 2499, "final_price": 2499 }
+            ]
+          },
+          "customer": {
+            "$ref": "#/components/schemas/Customer",
+            "description": "Данные покупателя"
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/DeliveryInfo",
+            "description": "Информация о доставке"
+          }
+        },
+        "example": {
+          "session_id": "019c18f6-cb3c-7f31-9395-53925a6b0e28",
+          "warehouse_id": "1",
+          "items": [
+            { "id": "50", "quantity": 2, "regular_price": 1999, "final_price": 1799 },
+            { "id": "51", "quantity": 1, "regular_price": 2499, "final_price": 2499 }
+          ],
+          "customer": {
+            "full_name": "Иван Иванов",
+            "phone": "+79991234567",
+            "email": "ivan@example.com"
+          },
+          "delivery": {
+            "delivery_method": "courier",
+            "service_type": "yandex_delivery",
+            "service_display_name": "Яндекс.Доставка",
+            "price": 100,
+            "address": { "locality": "Москва", "address": "ул. Тестовая, д. 1" },
+            "delivery_date_interval": {
+              "start_interval": { "date": "2025-04-16" },
+              "end_interval": { "date": "2025-04-17" },
+              "time_zone": 3
+            }
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "description": "Данные покупателя",
+        "required": ["full_name", "phone", "email"],
+        "properties": {
+          "full_name": {
+            "type": "string",
+            "description": "Полное имя покупателя",
+            "example": "Иван Иванов"
+          },
+          "phone": {
+            "type": "string",
+            "description": "Телефон покупателя",
+            "example": "+79991234567"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "Email покупателя",
+            "example": "ivan@example.com"
+          }
+        },
+        "example": {
+          "full_name": "Иван Иванов",
+          "phone": "+79991234567",
+          "email": "ivan@example.com"
+        }
+      },
+      "DeliveryInfo": {
+        "type": "object",
+        "description": "Информация о доставке",
+        "required": [
+          "delivery_method",
+          "service_type",
+          "price",
+          "address",
+          "delivery_date_interval"
+        ],
+        "properties": {
+          "delivery_method": {
+            "type": "string",
+            "enum": ["courier", "pickup_point", "self_pickup"],
+            "description": "Способ доставки: courier — курьером, pickup_point — в пункт выдачи заказов, self_pickup — самовывоз",
+            "example": "courier"
+          },
+          "service_type": {
+            "type": "string",
+            "enum": [
+              "yandex_delivery",
+              "cdek",
+              "pecom",
+              "russian_post",
+              "dalli",
+              "self_pickup",
+              "merchant_ship",
+              "ycp"
+            ],
+            "description": "Служба доставки: yandex_delivery — Яндекс Доставка, cdek — СДЭК, pecom — ПЭК, russian_post — Почта России, dalli — Dalli, self_pickup — самовывоз, merchant_ship — доставка магазина, ycp — YCP",
+            "example": "yandex_delivery"
+          },
+          "service_display_name": {
+            "type": "string",
+            "description": "Название службы доставки, которое видит покупатель",
+            "example": "Яндекс.Доставка"
+          },
+          "price": {
+            "type": "number",
+            "format": "float",
+            "description": "Стоимость доставки для покупателя",
+            "example": 100
+          },
+          "address": { "$ref": "#/components/schemas/Address" },
+          "delivery_date_interval": {
+            "$ref": "#/components/schemas/DeliveryDateInterval",
+            "description": "Интервал дат доставки"
+          },
+          "ycp_delivery_option_id": {
+            "type": "string",
+            "description": "ID варианта доставки, полученный через метод /checkout/delivery/options, передается, если для доставки заказа используется этот вариант",
+            "example": "option-12345"
+          },
+          "delivery_notes": {
+            "type": "string",
+            "description": "Комментарий покупателя для курьера"
+          }
+        },
+        "example": {
+          "delivery_method": "courier",
+          "service_type": "yandex_delivery",
+          "service_display_name": "Яндекс.Доставка",
+          "price": 100,
+          "address": { "locality": "Москва", "address": "ул. Тестовая, д. 1" },
+          "delivery_date_interval": {
+            "start_interval": { "date": "2025-04-16" },
+            "end_interval": { "date": "2025-04-17" },
+            "time_zone": 3
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "description": "Сообщение об ошибке",
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Сообщение об ошибке",
+            "example": "Произошла ошибка"
+          }
+        },
+        "example": { "error": "Произошла ошибка" }
+      },
+      "WorkingHours": {
+        "type": "object",
+        "description": "Время работы пункта выдачи заказов по дням недели.\n\nДля круглосуточной работы передайте \"00:00-23:59\".\n\nЕсли пункт выдачи заказов не работает в какой-то день недели, не передавайте поле с временем работы за этот день.\n",
+        "properties": {
+          "mon": {
+            "type": "string",
+            "description": "Время работы в понедельник",
+            "example": "09:00-21:00"
+          },
+          "tue": {
+            "type": "string",
+            "description": "Время работы во вторник",
+            "example": "09:00-21:00"
+          },
+          "wed": {
+            "type": "string",
+            "description": "Время работы в среду",
+            "example": "09:00-21:00"
+          },
+          "thu": {
+            "type": "string",
+            "description": "Время работы в четверг",
+            "example": "09:00-21:00"
+          },
+          "fri": {
+            "type": "string",
+            "description": "Время работы в пятницу",
+            "example": "09:00-21:00"
+          },
+          "sat": {
+            "type": "string",
+            "description": "Время работы в субботу",
+            "example": "10:00-18:00"
+          },
+          "sun": {
+            "type": "string",
+            "description": "Время работы в воскресенье",
+            "example": "10:00-18:00"
+          }
+        },
+        "example": {
+          "mon": "09:00-21:00",
+          "tue": "09:00-21:00",
+          "wed": "09:00-21:00",
+          "thu": "09:00-21:00",
+          "fri": "09:00-21:00",
+          "sat": "10:00-18:00",
+          "sun": "10:00-18:00"
+        }
+      },
+      "Coordinates": {
+        "type": "object",
+        "description": "Координаты пункта выдачи заказов",
+        "required": ["lat", "lon"],
+        "properties": {
+          "lat": {
+            "type": "number",
+            "format": "float",
+            "description": "Широта",
+            "example": 55.755814
+          },
+          "lon": {
+            "type": "number",
+            "format": "float",
+            "description": "Долгота",
+            "example": 37.617635
+          }
+        },
+        "example": { "lat": 55.755814, "lon": 37.617635 }
+      },
+      "PickupPointServiceType": {
+        "type": "string",
+        "enum": [
+          "yandex_delivery",
+          "cdek",
+          "dalli",
+          "russian_post",
+          "pecom",
+          "ozon",
+          "ycp_delivery",
+          "5post",
+          "yandex_market"
+        ],
+        "description": "Служба доставки: yandex_delivery — Яндекс Доставка, cdek — СДЭК, dalli — Dalli, russian_post — Почта России, pecom — ПЭК, ozon — Ozon, ycp_delivery — YCP, 5post — 5Post, yandex_market — Яндекс Маркет"
+      },
+      "PickupPoint": {
+        "type": "object",
+        "description": "Пункт выдачи заказов",
+        "required": [
+          "id",
+          "name",
+          "address",
+          "is_cash_available",
+          "is_card_available",
+          "working_hours",
+          "coordinates",
+          "time_zone"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Уникальный ID пункта выдачи заказов",
+            "example": "PP001"
+          },
+          "name": {
+            "type": "string",
+            "description": "Название пункта выдачи заказов",
+            "example": "Пункт выдачи заказов на Примерной 10"
+          },
+          "address": {
+            "type": "string",
+            "description": "Полный адрес пункта выдачи заказов",
+            "example": "Москва, улица Примерная, 10"
+          },
+          "has_fitting": {
+            "type": "boolean",
+            "description": "Есть ли возможность примерки в пункте выдачи заказов",
+            "example": true
+          },
+          "is_cash_available": {
+            "type": "boolean",
+            "description": "Есть ли возможность оплаты наличными в пункте выдачи заказов",
+            "example": true
+          },
+          "is_card_available": {
+            "type": "boolean",
+            "description": "Есть ли возможность оплаты картой в пункте выдачи заказов",
+            "example": true
+          },
+          "working_hours": {
+            "$ref": "#/components/schemas/WorkingHours",
+            "description": "Время работы пункта выдачи заказов по дням недели."
+          },
+          "coordinates": {
+            "$ref": "#/components/schemas/Coordinates",
+            "description": "Координаты пункта выдачи заказов"
+          },
+          "time_zone": {
+            "type": "integer",
+            "description": "Часовой пояс пункта выдачи заказов — смещение в часах от UTC",
+            "example": 3
+          },
+          "description": {
+            "type": "string",
+            "description": "Как добраться до пункта выдачи заказов и другая дополнительная информация",
+            "example": "Вход с торца здания, рядом с вывеской 'Магазин'"
+          },
+          "display_service_type": {
+            "$ref": "#/components/schemas/PickupPointServiceType",
+            "description": "Служба доставки, которая будет показана покупателю для этого пункта выдачи заказов."
+          }
+        },
+        "example": {
+          "id": "PP001",
+          "name": "Пункт выдачи заказов на Примерной 10",
+          "address": "Москва, улица Примерная, 10",
+          "has_fitting": true,
+          "is_cash_available": true,
+          "is_card_available": true,
+          "working_hours": {
+            "mon": "09:00-21:00",
+            "tue": "09:00-21:00",
+            "wed": "09:00-21:00",
+            "thu": "09:00-21:00",
+            "fri": "09:00-21:00",
+            "sat": "10:00-18:00",
+            "sun": "10:00-18:00"
+          },
+          "coordinates": { "lat": 55.755814, "lon": 37.617635 },
+          "time_zone": 3,
+          "description": "Вход с торца здания, рядом с вывеской 'Магазин'",
+          "display_service_type": "yandex_delivery"
+        }
+      },
+      "GetPickupPointsResponse": {
+        "type": "object",
+        "description": "Список пунктов выдачи заказов",
+        "required": ["pickup_points", "total_count"],
+        "properties": {
+          "pickup_points": {
+            "type": "array",
+            "description": "Список пунктов выдачи заказов",
+            "items": { "$ref": "#/components/schemas/PickupPoint" },
+            "example": [
+              {
+                "id": "PP001",
+                "name": "Пункт выдачи заказов на Примерной 10",
+                "address": "Москва, улица Примерная, 10",
+                "has_fitting": true,
+                "is_cash_available": true,
+                "is_card_available": true,
+                "coordinates": { "lat": 55.755814, "lon": 37.617635 },
+                "time_zone": 3
+              },
+              {
+                "id": "PP002",
+                "name": "Пункт выдачи заказов на Центральной 5",
+                "address": "Москва, улица Центральная, 5",
+                "has_fitting": false,
+                "is_cash_available": false,
+                "is_card_available": true,
+                "coordinates": { "lat": 55.76, "lon": 37.62 },
+                "time_zone": 3
+              }
+            ]
+          },
+          "total_count": {
+            "type": "integer",
+            "description": "Общее количество пунктов выдачи заказов",
+            "example": 42
+          }
+        },
+        "example": {
+          "pickup_points": [
+            {
+              "id": "PP001",
+              "name": "Пункт выдачи заказов на Примерной 10",
+              "address": "Москва, улица Примерная, 10",
+              "has_fitting": true,
+              "is_cash_available": true,
+              "is_card_available": true,
+              "coordinates": { "lat": 55.755814, "lon": 37.617635 },
+              "time_zone": 3
+            },
+            {
+              "id": "PP002",
+              "name": "Пункт выдачи заказов на Центральной 5",
+              "address": "Москва, улица Центральная, 5",
+              "has_fitting": false,
+              "is_cash_available": false,
+              "is_card_available": true,
+              "coordinates": { "lat": 55.76, "lon": 37.62 },
+              "time_zone": 3
+            }
+          ],
+          "total_count": 42
+        }
+      },
+      "BasketCheckItemRequest": {
+        "type": "object",
+        "description": "Товар, наличие которого нужно проверить",
+        "required": ["id", "quantity"],
+        "properties": {
+          "id": { "type": "string", "description": "ID товара", "example": "50" },
+          "quantity": {
+            "type": "integer",
+            "description": "Количество товара, наличие которого нужно проверить",
+            "example": 2
+          }
+        },
+        "example": { "id": "50", "quantity": 2 }
+      },
+      "BasketCheckRequest": {
+        "type": "object",
+        "description": "Запрос проверки корзины",
+        "required": ["items", "offers_id_from_merchant_center", "locality", "is_health_check"],
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "Список товаров для проверки",
+            "items": { "$ref": "#/components/schemas/BasketCheckItemRequest" },
+            "example": [{ "id": "50", "quantity": 2 }]
+          },
+          "offers_id_from_merchant_center": {
+            "type": "boolean",
+            "description": "Передаются ли в списке items ID товаров из фида: если значение true — передаются ID из фида, если false — ID товара",
+            "example": true
+          },
+          "locality": {
+            "type": "string",
+            "description": "Регион покупателя.\n\nВ ответе можно передавать региональные цены и остатки — только по складам соответствующего региона.\n",
+            "example": "Москва"
+          },
+          "is_health_check": {
+            "type": "boolean",
+            "description": "Выполняется ли запрос в рамках фоновой проверки доступности интеграции, а не при реальном запросе покупателя. Если параметр равен true, не меняйте ответ — ни HTTP-код, ни тело ответа",
+            "example": false
+          }
+        },
+        "example": {
+          "items": [{ "id": "50", "quantity": 2 }],
+          "offers_id_from_merchant_center": true,
+          "locality": "Москва",
+          "is_health_check": false
+        }
+      },
+      "MarkAsDeliveredRequest": {
+        "type": "object",
+        "description": "Данные о доставленном заказе",
+        "required": ["purchased_items"],
+        "properties": {
+          "purchased_items": {
+            "type": "array",
+            "description": "Список фактически доставленных товаров",
+            "items": { "$ref": "#/components/schemas/PurchasedItem" },
+            "example": [{ "id": "50", "quantity": 2 }]
+          }
+        },
+        "example": { "purchased_items": [{ "id": "50", "quantity": 2 }] }
+      },
+      "PurchasedItem": {
+        "type": "object",
+        "description": "Выкупленный товар",
+        "required": ["id", "quantity"],
+        "properties": {
+          "id": { "type": "string", "description": "ID товара", "example": "50" },
+          "quantity": { "type": "integer", "description": "Количество", "example": 2 }
+        },
+        "example": { "id": "50", "quantity": 2 }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Неверный формат запроса",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "error": "Invalid request format: required fields are missing" }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Не авторизован",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "error": "Unauthorized" }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Внутренняя ошибка сервера",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/Error" },
+            "example": { "error": "Failed to process request" }
+          }
+        }
+      }
+    }
+  }
+}
