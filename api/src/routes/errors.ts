@@ -12,6 +12,10 @@ export class ApiError extends Error {
   }
 }
 
+export function forbidden(code: string, message: string): ApiError {
+  return new ApiError(403, code, message)
+}
+
 export function notFound(code: string, message: string): ApiError {
   return new ApiError(404, code, message)
 }

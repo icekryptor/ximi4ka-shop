@@ -1,3 +1,4 @@
+import { AdminOnly } from '@/components/admin/AdminOnly'
 import { cookies } from 'next/headers'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import type { SiteSettings } from '@/lib/adminApi'
@@ -20,7 +21,16 @@ async function fetchSettings(): Promise<SiteSettings> {
   return body.data
 }
 
+// Настройки сайта — только admin (см. orders/page.tsx про проверку внутри страницы).
 export default async function AdminSettingsPage() {
+  return (
+    <AdminOnly>
+      <SettingsContent />
+    </AdminOnly>
+  )
+}
+
+async function SettingsContent() {
   const settings = await fetchSettings()
   return (
     <div className="max-w-3xl mx-auto space-y-6">

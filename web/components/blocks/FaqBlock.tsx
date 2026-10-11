@@ -1,5 +1,6 @@
 import type { FaqBlock as FaqBlockType } from '@ximi4ka-shop/shared'
 import { FaqAccordion } from '@/components/ui/FaqAccordion'
+import { JsonLd } from '@/components/seo/JsonLd'
 
 interface Props {
   block: FaqBlockType
@@ -27,10 +28,7 @@ export function FaqBlock({ block }: Props) {
   return (
     <div data-block="faq" className="max-w-[var(--max-lj-narrow)] mx-auto">
       <FaqAccordion items={items} />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      <JsonLd data={jsonLd} />
     </div>
   )
 }

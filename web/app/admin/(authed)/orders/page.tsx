@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AdminOnly } from '@/components/admin/AdminOnly'
 import { cookies } from 'next/headers'
 import type { OrderStatus } from '@ximi4ka-shop/shared'
 import type { Paginated } from '@/lib/api'
@@ -61,11 +62,19 @@ function listHref(status: OrderStatus | undefined, offset: number): string {
   return `/admin/orders${params.toString() ? `?${params.toString()}` : ''}`
 }
 
-export default async function AdminOrdersPage({
-  searchParams,
-}: {
-  searchParams?: Promise<SearchParams>
-}) {
+// Заказы (персональные данные покупателей) — только admin. Проверка внутри
+// страницы, а не в layout: в Next страница и layout рендерятся параллельно, и
+// layout не остановил бы запрос данных. Внутренний компонент выполняется,
+// только если AdminOnly его вернул.
+export default async function AdminOrdersPage(props: Parameters<typeof OrdersContent>[0]) {
+  return (
+    <AdminOnly>
+      <OrdersContent {...props} />
+    </AdminOnly>
+  )
+}
+
+async function OrdersContent({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const params = (await searchParams) ?? {}
   const status = isOrderStatus(params.status) ? params.status : undefined
   const offset = Number(params.offset ?? 0) || 0
