@@ -6,6 +6,7 @@ import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import { OrderStatusActions } from './OrderStatusActions'
 import { OrderNotifications } from './OrderNotifications'
 import { CdekShipmentPanel } from './CdekShipmentPanel'
+import { OrderAttribution } from './OrderAttribution'
 import {
   DELIVERY_METHOD_LABELS,
   HISTORY_ACTOR_LABELS,
@@ -209,6 +210,13 @@ export default async function AdminOrderDetailPage({
               </div>
             </dl>
           </section>
+
+          {/* Источник */}
+          <OrderAttribution
+            attribution={order.attribution}
+            clientIp={order.clientIp}
+            clientUserAgent={order.clientUserAgent}
+          />
 
           {/* Доставка */}
           <section className="bg-white rounded-2xl border border-brand-border p-4 text-sm">

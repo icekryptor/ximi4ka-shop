@@ -8,8 +8,8 @@ import type { MigrationInterface, QueryRunner } from 'typeorm'
 // IF NOT EXISTS — потому что deploy.sh сначала переключает контейнеры и только
 // потом гоняет миграции: колонки заранее добавляет владелец тем же SQL
 // (docs/ycp/RUNBOOK.md), а миграция при деплое проходит как no-op.
-export class AddYcpFields1790790000000 implements MigrationInterface {
-  name = 'AddYcpFields1790790000000'
+export class AddYcpFields1790800000000 implements MigrationInterface {
+  name = 'AddYcpFields1790800000000'
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(

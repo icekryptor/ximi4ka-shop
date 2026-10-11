@@ -10,6 +10,8 @@ export type {
   DeliveryMethod,
   CheckoutRequest,
   CheckoutResponse,
+  AttributionTouch,
+  OrderAttribution,
   PublicOrderShipment,
   PublicOrderStatus,
 } from './types/order.js'

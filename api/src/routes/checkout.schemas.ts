@@ -36,6 +36,57 @@ export const QuoteDestinationSchema = z.discriminatedUnion('method', [
   CourierDeliverySchema,
 ])
 
+// Атрибуция приходит от клиента и ничему не обязана соответствовать: строки
+// режем по длине, пустые выкидываем, а всё кривое молча отбрасываем. Заказ
+// из-за неё сорваться не должен (как и из-за подарка).
+// Управляющие символы и одинокие суррогаты (эмодзи, разрезанный обрезкой)
+// Postgres в jsonb не принимает: заказ упал бы с 500, а у покупателя с такой
+// меткой в localStorage — все 30 дней. Режем по кодовым точкам, а не по UTF-16.
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+function cleanText(value: string, max: number): string {
+  const clean = value
+    .replace(/[\u0000-\u001F\u007F]/g, '')
+    .replace(LONE_SURROGATE, '')
+    .trim()
+  return Array.from(clean).slice(0, max).join('').trim()
+}
+
+const clipped = (max: number) => z.string().transform((s) => cleanText(s, max))
+const optionalClipped = (max: number) =>
+  clipped(max)
+    .optional()
+    .catch(undefined)
+    .transform((v) => (v === '' ? undefined : v))
+const requiredClipped = (max: number) => clipped(max).refine((s) => s !== '')
+
+const AttributionTouchSchema = z
+  .object({
+    at: requiredClipped(40).refine((s) => Number.isFinite(Date.parse(s))),
+    landing: requiredClipped(300),
+    referrer: optionalClipped(300),
+    yclid: optionalClipped(100),
+    ysclid: optionalClipped(100),
+    utm_source: optionalClipped(200),
+    utm_medium: optionalClipped(200),
+    utm_campaign: optionalClipped(200),
+    utm_term: optionalClipped(200),
+    utm_content: optionalClipped(200),
+  })
+  .transform((touch) =>
+    Object.fromEntries(Object.entries(touch).filter(([, v]) => v !== undefined)),
+  )
+  .optional()
+  .catch(undefined)
+
+const AttributionSchema = z
+  .object({ first: AttributionTouchSchema, last: AttributionTouchSchema })
+  .transform(({ first, last }) => {
+    if (!first && !last) return undefined
+    return { ...(first ? { first } : {}), ...(last ? { last } : {}) }
+  })
+  .optional()
+  .catch(undefined)
+
 // Client prices are never trusted — the schema deliberately has no price
 // fields; the route recomputes everything from the products table.
 export const CheckoutSchema = z.object({
@@ -71,6 +122,7 @@ export const CheckoutSchema = z.object({
       }),
   }),
   delivery: DeliverySchema,
+  attribution: AttributionSchema,
 })
 
 export type CheckoutInput = z.infer<typeof CheckoutSchema>

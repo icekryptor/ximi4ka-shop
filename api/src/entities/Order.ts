@@ -15,6 +15,7 @@ import type {
   OrderStatusHistoryEntry,
   PaymentProvider,
   DeliveryAddress,
+  OrderAttribution,
 } from '@ximi4ka-shop/shared'
 
 @Entity({ name: 'orders' })
@@ -124,6 +125,18 @@ export class Order {
   // order_id заказа в Яндексе из /checkout/placed; по нему приходит /order/cancel.
   @Column({ type: 'varchar', length: 64, name: 'external_order_id', nullable: true })
   externalOrderId!: string | null
+
+  // Откуда пришёл покупатель (метки из URL и referrer; присылает витрина, это
+  // подсказка для анализа рекламы). null — заказ без атрибуции.
+  @Column({ type: 'jsonb', name: 'attribution', nullable: true })
+  attribution!: OrderAttribution | null
+
+  // Адрес и браузер при оформлении: берёт сервер, не клиент. IPv6 — до 45 знаков.
+  @Column({ type: 'varchar', length: 45, name: 'client_ip', nullable: true })
+  clientIp!: string | null
+
+  @Column({ type: 'varchar', length: 500, name: 'client_user_agent', nullable: true })
+  clientUserAgent!: string | null
 
   // Status transition timeline: webhook, reconcile job and manual admin
   // changes append entries here. Rendered in the admin order detail page.

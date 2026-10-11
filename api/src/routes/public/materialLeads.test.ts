@@ -74,22 +74,12 @@ describe('POST /api/public/material-leads', () => {
     expect(row.telegram).toBeNull()
   })
 
-  it('sends an escaped notification to the Telegram chat', async () => {
-    await request(createApp())
-      .post('/api/public/material-leads')
-      .send({ ...valid, name: '<b>Мария</b> & Ко' })
-    expect(sendMessage).toHaveBeenCalledTimes(1)
-    const html = sendMessage.mock.calls[0][0]
-    expect(html).toContain('&lt;b&gt;Мария&lt;/b&gt; &amp; Ко')
-    expect(html).toContain('@maria_chem')
-    expect(html).toContain('Нашел на ВБ')
-  })
-
-  it('still answers 201 when Telegram fails', async () => {
-    sendMessage.mockRejectedValue(new Error('boom'))
+  it('never sends the lead to the Telegram chat', async () => {
     const res = await request(createApp()).post('/api/public/material-leads').send(valid)
     expect(res.status).toBe(201)
-    expect(await AppDataSource.getRepository(MaterialLead).count()).toBe(1)
+    await vi.waitFor(() => expect(appendRowFrom).toHaveBeenCalledTimes(1))
+    expect(fromEnv).not.toHaveBeenCalled()
+    expect(sendMessage).not.toHaveBeenCalled()
   })
 
   it('appends the lead to the Google sheet from row 6256 and marks it synced', async () => {
@@ -115,20 +105,13 @@ describe('POST /api/public/material-leads', () => {
     })
   })
 
-  it('keeps the lead unmarked when the sheet fails, and Telegram still goes out', async () => {
+  it('keeps the lead unmarked and still answers 201 when the sheet fails', async () => {
     appendRowFrom.mockRejectedValue(new Error('403'))
     const res = await request(createApp()).post('/api/public/material-leads').send(valid)
     expect(res.status).toBe(201)
     await vi.waitFor(() => expect(appendRowFrom).toHaveBeenCalled())
-    expect(sendMessage).toHaveBeenCalledTimes(1)
     const [saved] = await AppDataSource.getRepository(MaterialLead).find()
     expect(saved.sheetSyncedAt).toBeNull()
-  })
-
-  it('still answers 201 when the bot is not configured', async () => {
-    fromEnv.mockReturnValue(null)
-    const res = await request(createApp()).post('/api/public/material-leads').send(valid)
-    expect(res.status).toBe(201)
   })
 
   it.each([
@@ -168,15 +151,14 @@ describe('POST /api/public/material-leads', () => {
     expect(res.status).toBe(201)
   })
 
-  it('stops notifying after the hourly budget but still saves the lead', async () => {
+  it('stops writing to the sheet after the hourly budget but still saves the lead', async () => {
     const app = express()
       .use(express.json())
       .use(createMaterialLeadsRouter({ notifyPerHour: 1 }))
     app.use(errorHandler)
     for (let i = 0; i < 3; i++) await request(app).post('/').send(valid).expect(201)
     expect(await AppDataSource.getRepository(MaterialLead).count()).toBe(3)
-    await vi.waitFor(() => expect(sendMessage).toHaveBeenCalledTimes(1))
-    expect(appendRowFrom).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(appendRowFrom).toHaveBeenCalledTimes(1))
   })
 
   it('rate-limits repeated submissions from one IP', async () => {

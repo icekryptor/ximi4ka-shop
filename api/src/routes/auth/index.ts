@@ -60,6 +60,7 @@ function publicUser(user: AdminUser) {
   return { id: user.id, email: user.email, role: user.role }
 }
 
+// Лимит попыток входа с одного IP стоит в app.ts (guard), а не здесь.
 authRouter.post('/login', async (req, res, next) => {
   try {
     const { email, password } = LoginSchema.parse(req.body)

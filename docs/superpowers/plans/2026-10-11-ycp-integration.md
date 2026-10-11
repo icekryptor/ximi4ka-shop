@@ -55,7 +55,7 @@
 
 | Path                                                                | Responsibility                                                                                                             |
 | ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `api/src/migrations/1790790000000-AddYcpFields.ts`                  | new columns, partial unique index, pickup-point snapshot table (Task 1)                                                    |
+| `api/src/migrations/1790800000000-AddYcpFields.ts`                  | new columns, partial unique index, pickup-point snapshot table (Task 1)                                                    |
 | `api/src/entities/Product.ts`, `Order.ts`                           | `ycpEnabled`; `source`, `externalSessionId`, `externalOrderId` (Task 1)                                                    |
 | `shared/src/types/order.ts`, `product.ts`, `notifications.ts`       | `OrderSource`, `PaymentProvider 'ycp'`, history actor `'ycp'`, `ProductShippingUnit`, alert event keys (Tasks 1, 4, 8, 12) |
 | `api/src/lib/ycp/config.ts`                                         | env readers: token, warehouse, site origin, CDEK deadline, stock constant (Tasks 2, 3, 4, 6)                               |
@@ -90,7 +90,7 @@
 
 **Files:**
 
-- Create: `api/src/migrations/1790790000000-AddYcpFields.ts`
+- Create: `api/src/migrations/1790800000000-AddYcpFields.ts`
 - Modify: `api/src/entities/Product.ts:85-87` (after `minBox`)
 - Modify: `api/src/entities/Order.ts:12-17` (imports), `:113` (after `idempotencyKey`)
 - Modify: `shared/src/types/order.ts:7-10, 56-62, 64-95`; `shared/src/types/product.ts:31-37`; `shared/src/index.ts:1-13`
@@ -177,7 +177,7 @@ Expected: FAIL. `beforeEach` throws `relation "ycp_pickup_points_snapshot" does 
 
 - [ ] **Step 3: Write the migration**
 
-Create `api/src/migrations/1790790000000-AddYcpFields.ts`:
+Create `api/src/migrations/1790800000000-AddYcpFields.ts`:
 
 ```ts
 import type { MigrationInterface, QueryRunner } from 'typeorm'
@@ -190,8 +190,8 @@ import type { MigrationInterface, QueryRunner } from 'typeorm'
 // IF NOT EXISTS — потому что deploy.sh сначала переключает контейнеры и только
 // потом гоняет миграции: колонки заранее добавляет владелец тем же SQL
 // (docs/ycp/RUNBOOK.md), а миграция при деплое проходит как no-op.
-export class AddYcpFields1790790000000 implements MigrationInterface {
-  name = 'AddYcpFields1790790000000'
+export class AddYcpFields1790800000000 implements MigrationInterface {
+  name = 'AddYcpFields1790800000000'
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
@@ -314,7 +314,7 @@ and after the `idempotencyKey` column (line 113), add:
 - [ ] **Step 6: Run the api test to see it pass**
 
 Run: `npm test -w api -- src/entities/ycpFields.test.ts`
-Expected: PASS (4 tests). globalSetup applies `AddYcpFields1790790000000` to the test DB.
+Expected: PASS (4 tests). globalSetup applies `AddYcpFields1790800000000` to the test DB.
 
 - [ ] **Step 7: Write the failing web test for the new labels**
 
@@ -362,7 +362,7 @@ Expected: PASS, and typecheck exits 0 in all three workspaces.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add api/src/migrations/1790790000000-AddYcpFields.ts api/src/entities/Product.ts api/src/entities/Order.ts api/src/entities/ycpFields.test.ts shared/src/types/order.ts shared/src/types/product.ts shared/src/index.ts "web/app/admin/(authed)/orders/orderUi.ts" "web/app/admin/(authed)/orders/page.test.tsx"
+git add api/src/migrations/1790800000000-AddYcpFields.ts api/src/entities/Product.ts api/src/entities/Order.ts api/src/entities/ycpFields.test.ts shared/src/types/order.ts shared/src/types/product.ts shared/src/index.ts "web/app/admin/(authed)/orders/orderUi.ts" "web/app/admin/(authed)/orders/page.test.tsx"
 git commit -m "feat(ycp): поля YCP в схеме — флаг товара, источник и внешние id заказа, снимок ПВЗ" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
@@ -5214,7 +5214,7 @@ Create `docs/ycp/RUNBOOK.md`:
 ## Порядок запуска
 
 1. **До мёржа — колонки заранее.** `deploy.sh` переключает контейнеры раньше, чем гоняет миграции, а новый код читает
-   `products.ycp_enabled` и `orders.source`. Миграция `AddYcpFields1790790000000` написана с `IF NOT EXISTS` и при
+   `products.ycp_enabled` и `orders.source`. Миграция `AddYcpFields1790800000000` написана с `IF NOT EXISTS` и при
    деплое пройдёт как no-op:
 
    ```bash
