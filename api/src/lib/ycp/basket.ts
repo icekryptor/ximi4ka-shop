@@ -5,6 +5,7 @@ export interface YcpBasketItem {
   name: string
   regular_price: number
   final_price: number
+  vat: number
   img?: string
   url?: string
   warehouses: { id: string; available_quantity: number }[]
@@ -22,8 +23,12 @@ function safeUrl(value: string | null | undefined, origin: string): string | und
   }
 }
 
-// Товар для basket/check (схема BasketItem). vat не передаём — Яндекс
-// подставит 22 (налоговый режим — вопрос владельца, docs/ycp/RUNBOOK.md).
+// Ставка НДС для Яндекса, %. Магазин НДС не платит; решение владельца 11.10.2026 —
+// отдавать 0 (способа передать «без НДС» в протоколе нет, docs/ycp/RUNBOOK.md).
+// Без поля Яндекс подставил бы 22.
+export const YCP_VAT_PERCENT = 0
+
+// Товар для basket/check (схема BasketItem).
 // Размеры — в мм, вес — в граммах; вариантов и характеристик у нас нет.
 export function ycpBasketItem(line: YcpLine, warehouseId: string, origin: string): YcpBasketItem {
   const p = line.product
@@ -35,6 +40,7 @@ export function ycpBasketItem(line: YcpLine, warehouseId: string, origin: string
     name: p.name,
     regular_price: line.regularPriceRub,
     final_price: line.finalPriceRub,
+    vat: YCP_VAT_PERCENT,
     ...(img ? { img } : {}),
     url: safeUrl(p.canonicalUrl, origin) ?? `${origin}/product/${encodeURIComponent(p.slug)}`,
     warehouses: [{ id: warehouseId, available_quantity: line.availableQuantity }],

@@ -52,6 +52,7 @@ describe('POST /api/v1/checkout/basket/check', () => {
           name: 'Набор юного химика',
           regular_price: 1500,
           final_price: 1500,
+          vat: 0,
           url: `https://new.ximi4ka.ru/product/${p.slug}`,
           warehouses: [{ id: 'msk-1', available_quantity: 99 }],
           dimensions: { width: 100, height: 40, depth: 100, weight: 830 },

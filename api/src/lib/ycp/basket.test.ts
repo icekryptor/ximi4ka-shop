@@ -46,6 +46,7 @@ describe('ycpBasketItem', () => {
       name: 'Набор',
       regular_price: 1500,
       final_price: 1400,
+      vat: 0,
       img: 'https://new.ximi4ka.ru/uploads/a%20b.webp',
       url: 'https://new.ximi4ka.ru/product/nabor',
       warehouses: [{ id: 'msk-1', available_quantity: 99 }],
