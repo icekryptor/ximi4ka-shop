@@ -1,14 +1,16 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { IsNull, In, Not } from 'typeorm'
-import type { CdekShipmentDto } from '@ximi4ka-shop/shared'
+import type { CdekShipmentDto, MetrikaConversionDto } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
+import { OrderItem } from '../../entities/OrderItem.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
+import { MetrikaConversion } from '../../entities/MetrikaConversion.js'
 import { OrdersListQuerySchema, OrderStatusPatchSchema } from './orders.schemas.js'
 import { conflict, notFound } from '../errors.js'
-import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
+import { writeOrderStatusEvent } from '../../lib/notifications/outbox.js'
 import { requireAdminAuth, requireCsrfToken, requireRole } from '../middleware/requireAdminAuth.js'
 import { cdekOrdersEnabled } from '../../lib/cdek/orders.js'
 import { enqueueCdekShipment, isCdekDelivery } from '../../lib/cdek/queue.js'
@@ -52,6 +54,21 @@ function cdekShipmentDto(s: CdekShipment): CdekShipmentDto {
 async function cdekShipment(orderId: string): Promise<CdekShipmentDto | null> {
   const s = await AppDataSource.getRepository(CdekShipment).findOneBy({ orderId })
   return s ? cdekShipmentDto(s) : null
+}
+
+// Состояние отправки оплаты в Метрику; yclid наружу не дублируем (он в атрибуции).
+async function metrikaConversion(orderId: string): Promise<MetrikaConversionDto | null> {
+  const c = await AppDataSource.getRepository(MetrikaConversion).findOneBy({ orderId })
+  if (!c) return null
+  return {
+    state: c.state,
+    target: c.target,
+    priceRub: c.priceRub,
+    attempts: c.attempts,
+    uploadId: c.uploadId,
+    sentAt: c.sentAt?.toISOString() ?? null,
+    lastError: c.lastError,
+  }
 }
 
 // List — newest first, optional status filter.
@@ -107,6 +124,7 @@ adminOrdersRouter.get('/:id', async (req, res, next) => {
         ...withoutSecret(order),
         notifications: await orderNotifications(order.id),
         cdekShipment: await cdekShipment(order.id),
+        metrikaConversion: await metrikaConversion(order.id),
         cdekOrdersEnabled: ordersEnabled,
         // Флаг выключен — почему обработчик не запущен неважно, он и не
         // должен быть запущен. Флаг включён — если обработчик всё же не
@@ -127,44 +145,51 @@ adminOrdersRouter.patch('/:id/status', async (req, res, next) => {
     if (!id.success) throw notFound('order_not_found', 'Заказ не найден')
     const { status, comment } = OrderStatusPatchSchema.parse(req.body)
 
-    const repo = AppDataSource.getRepository(Order)
-    const order = await repo.findOne({
-      where: { id: id.data },
-      relations: { items: true },
+    // Вся смена — под блокировкой строки (SELECT … FOR UPDATE): параллельный
+    // /checkout/placed от Яндекса или вебхук Т-Кассы выполняются по очереди, и
+    // проверки ниже идут по уже актуальному статусу, а не затирают оплату.
+    // Без relations: Postgres не даёт FOR UPDATE на nullable-стороне outer join —
+    // позиции читаем отдельно.
+    const saved = await AppDataSource.transaction(async (em) => {
+      const order = await em
+        .getRepository(Order)
+        .findOne({ where: { id: id.data }, lock: { mode: 'pessimistic_write' } })
+      if (!order) throw notFound('order_not_found', 'Заказ не найден')
+
+      if (order.status === status) {
+        throw conflict('status_unchanged', 'Заказ уже находится в этом статусе')
+      }
+      // «Отправлен» ставится только оплаченному заказу. Оплаченный заказ — это
+      // деньги: вернуть его в другое состояние можно только отправкой (возвраты —
+      // отдельная будущая история). Отправленный заказ вручную не меняется.
+      if (status === 'shipped' && order.status !== 'paid') {
+        throw conflict('order_not_paid', 'Отправить можно только оплаченный заказ')
+      }
+      if (order.status === 'paid' && status !== 'shipped') {
+        throw conflict('order_already_paid', 'Оплаченный заказ нельзя изменить вручную')
+      }
+      if (order.status === 'shipped') {
+        throw conflict('order_already_shipped', 'Отправленный заказ нельзя изменить вручную')
+      }
+
+      const now = new Date()
+      const from = order.status
+      order.status = status
+      if (status === 'paid' && !order.paidAt) order.paidAt = now
+      order.statusHistory = [
+        ...(order.statusHistory ?? []),
+        {
+          from,
+          to: status,
+          at: now.toISOString(),
+          by: 'admin' as const,
+          ...(comment ? { comment } : {}),
+        },
+      ]
+      await writeOrderStatusEvent(em, order, from)
+      order.items = await em.getRepository(OrderItem).findBy({ orderId: order.id })
+      return order
     })
-    if (!order) throw notFound('order_not_found', 'Заказ не найден')
-
-    if (order.status === status) {
-      throw conflict('status_unchanged', 'Заказ уже находится в этом статусе')
-    }
-    // «Отправлен» ставится только оплаченному заказу. Оплаченный заказ — это
-    // деньги: вернуть его в другое состояние можно только отправкой (возвраты —
-    // отдельная будущая история). Отправленный заказ вручную не меняется.
-    if (status === 'shipped' && order.status !== 'paid') {
-      throw conflict('order_not_paid', 'Отправить можно только оплаченный заказ')
-    }
-    if (order.status === 'paid' && status !== 'shipped') {
-      throw conflict('order_already_paid', 'Оплаченный заказ нельзя изменить вручную')
-    }
-    if (order.status === 'shipped') {
-      throw conflict('order_already_shipped', 'Отправленный заказ нельзя изменить вручную')
-    }
-
-    const now = new Date()
-    const from = order.status
-    order.status = status
-    if (status === 'paid' && !order.paidAt) order.paidAt = now
-    order.statusHistory = [
-      ...(order.statusHistory ?? []),
-      {
-        from,
-        to: status,
-        at: now.toISOString(),
-        by: 'admin' as const,
-        ...(comment ? { comment } : {}),
-      },
-    ]
-    const saved = await saveOrderWithStatusEvent(order, from)
     res.json({ data: withoutSecret(saved) })
   } catch (err) {
     next(err)

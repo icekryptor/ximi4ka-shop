@@ -64,7 +64,10 @@ const AttributionTouchSchema = z
     at: requiredClipped(40).refine((s) => Number.isFinite(Date.parse(s))),
     landing: requiredClipped(300),
     referrer: optionalClipped(300),
-    yclid: optionalClipped(100),
+    // Настоящий yclid — цифры; прочее отбрасываем (в файл для Метрики кривая строка не нужна).
+    yclid: optionalClipped(100)
+      .refine((v) => v === undefined || /^\d{1,32}$/.test(v))
+      .catch(undefined),
     ysclid: optionalClipped(100),
     utm_source: optionalClipped(200),
     utm_medium: optionalClipped(200),

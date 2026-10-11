@@ -27,6 +27,8 @@ import { adminOrdersRouter } from './routes/admin/orders.js'
 import { publicShippingRouter } from './routes/public/shipping.js'
 import { cdekWidgetRouter } from './routes/public/cdek-widget.js'
 import { cdekLocationsRouter } from './routes/public/cdek-locations.js'
+import { createYcpRouter } from './routes/ycp/index.js'
+import { ycpErrorHandler } from './routes/ycp/errors.js'
 import { errorHandler } from './routes/errors.js'
 import { rateLimit } from './routes/middleware/rateLimit.js'
 import { UPLOADS_DIR } from './lib/storage/index.js'
@@ -130,6 +132,13 @@ export function createApp(): Express {
   app.use('/api/admin/revisions', adminRevisionsRouter)
   app.use('/api/public/settings', publicSettingsRouter)
   app.use('/api/admin/settings', adminSettingsRouter)
+
+  // Yandex Commerce Protocol: Яндекс вызывает методы магазина под /api/v1
+  // (servers[0].url спецификации). Префикс свободен — других /api/v1 нет. Свой
+  // обработчик ошибок — формат Яндекса {"error": "..."}; стоит до общего, чтобы
+  // перехватить и битый JSON из express.json().
+  app.use('/api/v1', createYcpRouter())
+  app.use('/api/v1', ycpErrorHandler)
 
   // Serve uploaded files statically. UPLOADS_DIR is resolved relative to the
   // storage module, not process.cwd(), so it behaves consistently whether

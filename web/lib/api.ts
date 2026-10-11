@@ -98,7 +98,7 @@ function buildListQuery(opts: { limit?: number; offset?: number }): string {
 export type ProductWithCategories = Product & { categoryIds: string[] }
 
 export async function listPublishedProducts(
-  opts: { limit?: number; offset?: number; include?: 'categories' } = {},
+  opts: { limit?: number; offset?: number; include?: 'categories' | 'categories,shipping' } = {},
 ): Promise<Paginated<Product>> {
   const params = new URLSearchParams()
   if (opts.limit != null) params.set('limit', String(opts.limit))

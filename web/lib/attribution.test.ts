@@ -35,6 +35,13 @@ describe('readTouch', () => {
     })
   })
 
+  it('yclid не из цифр не считается меткой: нечего слать в Метрику', () => {
+    const { touch, tagged } = readTouch(visit('https://new.ximi4ka.ru/?yclid=abc%2Cdef'))
+
+    expect(tagged).toBe(false)
+    expect(touch).not.toHaveProperty('yclid')
+  })
+
   it('ysclid — метка органического перехода: записывается, но касание не рекламное', () => {
     const { touch, tagged } = readTouch(visit('https://new.ximi4ka.ru/?ysclid=lx1'))
 

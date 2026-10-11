@@ -178,6 +178,17 @@ describe('reconcilePendingOrders', () => {
     expect(provider.calls).toEqual([])
   })
 
+  it('не трогает заказы из Яндекса: деньги принял Яндекс, а не Т-Касса', async () => {
+    const ycp = await seedOrder({ paymentProvider: 'ycp', source: 'ycp', paymentIntentId: 'acq-1' })
+    await ageOrder(ycp.id, 5)
+    const provider = fakeProvider('failed')
+
+    const result = await reconcilePendingOrders(provider)
+
+    expect(result).toEqual({ checked: 0, updated: 0 })
+    expect(provider.calls).toEqual([])
+  })
+
   it('leaves orders untouched when the provider answers unknown or pending', async () => {
     const stale = await seedOrder()
     await ageOrder(stale.id, 5)
