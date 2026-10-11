@@ -5,16 +5,14 @@ const TZ = 'Europe/Moscow'
 
 // Границы периода по Москве: [00:00 from, 00:00 дня после to). Москва без
 // перехода на летнее время, но AT TIME ZONE оставляет решение базе.
-// su/eu — те же границы как «наивное» UTC-время: orders.created_at объявлена
-// как timestamp БЕЗ пояса (TypeORM @CreateDateColumn) и хранит UTC, поэтому
-// сравниваем её с su/eu, а не с s/e (иначе результат зависел бы от TimeZone
-// сессии Postgres). Остальные колонки — timestamptz, для них s/e.
+// orders.created_at — timestamp БЕЗ пояса (TypeORM @CreateDateColumn, DEFAULT now()),
+// значение записано во времени сессии БД. Сравнение с timestamptz-границами s/e
+// Postgres делает, приводя наивное значение по TimeZone сессии, то есть ровно так,
+// как оно было записано, поэтому результат не зависит от настройки TimeZone базы.
 const PERIOD_CTE = `
   WITH b AS (
     SELECT ($1::date)::timestamp AT TIME ZONE '${TZ}' AS s,
-           (($2::date) + 1)::timestamp AT TIME ZONE '${TZ}' AS e,
-           (($1::date)::timestamp AT TIME ZONE '${TZ}') AT TIME ZONE 'UTC' AS su,
-           ((($2::date) + 1)::timestamp AT TIME ZONE '${TZ}') AT TIME ZONE 'UTC' AS eu
+           (($2::date) + 1)::timestamp AT TIME ZONE '${TZ}' AS e
   )`
 
 type TotalsRow = Record<'clicks' | 'carts' | 'orders' | 'revenue' | 'logins' | 'new_users', string>
@@ -31,7 +29,7 @@ export async function getStats(from: string, to: string): Promise<StatsResponse>
          (SELECT COUNT(DISTINCT x.visitor_id) FROM analytics_events x, b
            WHERE x.type = 'add_to_cart' AND x.occurred_at >= b.s AND x.occurred_at < b.e) AS carts,
          (SELECT COUNT(*) FROM orders o, b
-           WHERE o.deleted_at IS NULL AND o.created_at >= b.su AND o.created_at < b.eu) AS orders,
+           WHERE o.deleted_at IS NULL AND o.created_at >= b.s AND o.created_at < b.e) AS orders,
          (SELECT COALESCE(SUM(o.total_rub), 0) FROM orders o, b
            WHERE o.deleted_at IS NULL AND o.status IN ('paid', 'shipped')
              AND o.paid_at >= b.s AND o.paid_at < b.e) AS revenue,
@@ -48,9 +46,9 @@ export async function getStats(from: string, to: string): Promise<StatsResponse>
               COALESCE(r.revenue, 0) AS revenue
          FROM generate_series($1::date::timestamp, $2::date::timestamp, interval '1 day') AS d(day)
          LEFT JOIN (
-           SELECT ((o.created_at AT TIME ZONE 'UTC') AT TIME ZONE '${TZ}')::date AS day, COUNT(*) AS orders
+           SELECT ((o.created_at AT TIME ZONE current_setting('TimeZone')) AT TIME ZONE '${TZ}')::date AS day, COUNT(*) AS orders
              FROM orders o, b
-            WHERE o.deleted_at IS NULL AND o.created_at >= b.su AND o.created_at < b.eu
+            WHERE o.deleted_at IS NULL AND o.created_at >= b.s AND o.created_at < b.e
             GROUP BY 1
          ) o ON o.day = d.day::date
          LEFT JOIN (

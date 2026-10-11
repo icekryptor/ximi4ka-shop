@@ -21,10 +21,14 @@ async function seedOrderAt(
 ): Promise<void> {
   const order = await seedOrder(overrides)
   await AppDataSource.query(
-    // orders.created_at/deleted_at — timestamp без пояса и хранят UTC: переводим явно,
-    // иначе Postgres молча отбросил бы смещение +03:00.
-    `UPDATE orders SET created_at = ($1::timestamptz AT TIME ZONE 'UTC'), paid_at = $2,
-       deleted_at = ($3::timestamptz AT TIME ZONE 'UTC') WHERE id = $4`,
+    // orders.created_at/deleted_at — timestamp без пояса, в проде их пишет now() во времени
+    // сессии БД. Тот же момент записываем во времени сессии, иначе Postgres молча отбросил
+    // бы смещение +03:00.
+    `UPDATE orders
+        SET created_at = ($1::timestamptz AT TIME ZONE current_setting('TimeZone')),
+            paid_at = $2,
+            deleted_at = ($3::timestamptz AT TIME ZONE current_setting('TimeZone'))
+      WHERE id = $4`,
     [createdAt, paidAt, deletedAt, order.id],
   )
 }
