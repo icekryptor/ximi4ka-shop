@@ -27,9 +27,11 @@ describe('сигналы менеджеру по заказам из Яндек�
     expect(text).toContain('Иван &lt;script&gt;')
   })
 
-  it('отмена после отправки: отменить в СДЭК и проверить возврат', () => {
+  it('отмена оплаченного заказа: не отгружать, отменить СДЭК вручную, проверить возврат', () => {
     const text = managerAlertText({ ...order, externalOrderId: null }, 'ycp:cancel_after_ship')
-    expect(text).toContain('отправка в СДЭК уже создана')
+    expect(text).toContain('Яндекс отменил оплаченный заказ')
+    expect(text).toContain('Не отгружайте его')
+    expect(text).toContain('отмените её в СДЭК вручную')
     expect(text).toContain('возврат')
     expect(text).not.toContain('Заказ в Яндексе')
   })

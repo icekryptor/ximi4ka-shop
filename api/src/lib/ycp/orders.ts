@@ -297,9 +297,12 @@ export async function cancelYcpSession(
   })
 }
 
-// Яндекс отменил оформленный заказ. Отменяем в базе всегда; если отправка в
-// СДЭК начата или заказ отправлен — менеджеру сигнал: отмена в СДЭК и возврат
-// денег — руками (автовозврата нет, порядок возврата у Яндекса не описан).
+// Яндекс отменил оформленный заказ. Отменяем в базе всегда; если заказ был
+// оплачен или отправлен либо отправка в СДЭК начата — менеджеру сигнал: склад
+// уже получил карточку «оплачен», отмена в СДЭК и возврат денег — руками
+// (автовозврата нет, порядок возврата у Яндекса не описан). Неоплаченный заказ
+// сигнала не требует. Результат 'cancelled_after_ship' — как и раньше только
+// при начатой отправке или статусе shipped.
 export async function cancelYcpOrder(
   externalOrderId: string,
   now: Date = new Date(),
@@ -312,7 +315,9 @@ export async function cancelYcpOrder(
     const previous = order.status
     appendYcpHistory(order, 'cancelled', now, 'Заказ отменён в Яндексе')
     await writeOrderStatusEvent(em, order, previous)
-    if (shipped) await enqueueOrderEvent(em, order.id, 'ycp:cancel_after_ship')
+    if (previous === 'paid' || previous === 'shipped' || shipped) {
+      await enqueueOrderEvent(em, order.id, 'ycp:cancel_after_ship')
+    }
     return shipped ? 'cancelled_after_ship' : 'cancelled'
   })
 }

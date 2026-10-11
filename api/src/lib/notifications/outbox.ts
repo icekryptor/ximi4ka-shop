@@ -18,7 +18,8 @@ export const TELEGRAM_EVENT: OrderEventKey = 'status:paid'
 // docs/superpowers/specs/2026-09-25-cdek-auto-orders-design.md §6; про
 // «только после оплаты» — 08.10.2026).
 // Сигналы менеджеру — отдельные сообщения в рабочий чат, не карточка заказа
-// и не строка таблицы (заказы из Яндекса, docs/superpowers/specs/2026-10-11-ycp-integration-design.md).
+// и не строка таблицы (заказы из Яндекса, docs/superpowers/specs/2026-10-11-ycp-integration-design.md):
+// оплата при получении и отмена оплаченного (или отправленного) заказа.
 export const MANAGER_ALERT_EVENTS: readonly OrderEventKey[] = [
   'ycp:on_delivery',
   'ycp:cancel_after_ship',

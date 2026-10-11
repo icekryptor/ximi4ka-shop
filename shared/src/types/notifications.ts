@@ -8,7 +8,7 @@ export type OrderEventKey =
   | 'status:cancelled'
   | 'status:failed'
   // Сигналы менеджеру по заказам из Яндекса (YCP): оплата при получении и
-  // отмена заказа, уже отправленного в СДЭК.
+  // отмена оплаченного (или уже отправленного) заказа.
   | 'ycp:on_delivery'
   | 'ycp:cancel_after_ship'
 

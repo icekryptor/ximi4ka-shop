@@ -85,11 +85,36 @@ describe('отмены из Яндекса', () => {
   })
 
   describe('POST /api/v1/order/cancel', () => {
-    it('оплаченный заказ без отправки в СДЭК — отменён, сигнала нет', async () => {
+    it('оплаченный заказ без отправки в СДЭК — отменён, менеджеру один сигнал (склад уже получил «оплачен»)', async () => {
       const order = await paidOrder('sess-o1')
       const res = await request(app).post('/api/v1/order/cancel?order_id=ya-sess-o1').set(ycpAuth)
       expect(res.status).toBe(200)
       expect(res.text).toBe('')
+      expect((await reload(order.id)).status).toBe('cancelled')
+      expect((await alerts(order.id)).map((a) => a.channel)).toEqual(['telegram'])
+    })
+
+    it('повторная отмена оплаченного заказа — сигнал по-прежнему один', async () => {
+      const order = await paidOrder('sess-o7')
+      const url = '/api/v1/order/cancel?order_id=ya-sess-o7'
+      expect((await request(app).post(url).set(ycpAuth)).status).toBe(200)
+      expect((await request(app).post(url).set(ycpAuth)).status).toBe(200)
+      expect(await alerts(order.id)).toHaveLength(1)
+    })
+
+    it('неоплаченный заказ (оплата при получении) отменяется без сигнала об оплаченном', async () => {
+      const order = await createYcpCheckout(app, 'sess-o8')
+      await request(app)
+        .post('/api/v1/checkout/placed')
+        .set(ycpAuth)
+        .send({
+          session_id: 'sess-o8',
+          order_id: 'ya-sess-o8',
+          order_number: 1,
+          payment_method: 'on_delivery',
+        })
+      const res = await request(app).post('/api/v1/order/cancel?order_id=ya-sess-o8').set(ycpAuth)
+      expect(res.status).toBe(200)
       expect((await reload(order.id)).status).toBe('cancelled')
       expect(await alerts(order.id)).toHaveLength(0)
     })
@@ -107,10 +132,10 @@ describe('отмены из Яндекса', () => {
       expect((await alerts(order.id)).map((a) => a.channel)).toEqual(['telegram'])
     })
 
-    it('отправка ещё в очереди — сигнала нет: обработчик СДЭК отменённый заказ не отправит', async () => {
+    it('отправка ещё в очереди — сигнал всё равно один: заказ был оплачен, а обработчик СДЭК отменённый не отправит', async () => {
       const order = await paidOrder('sess-o3')
       await request(app).post('/api/v1/order/cancel?order_id=ya-sess-o3').set(ycpAuth)
-      expect(await alerts(order.id)).toHaveLength(0)
+      expect(await alerts(order.id)).toHaveLength(1)
     })
 
     it('очередь после неудачной попытки без uuid — POST мог дойти до СДЭК: сигнал, один на повторы', async () => {
