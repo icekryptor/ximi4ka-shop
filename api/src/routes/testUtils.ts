@@ -15,25 +15,35 @@ export interface AdminAuth {
   csrfCookie: string
 }
 
-export async function loginAsAdmin(app: Express): Promise<AdminAuth> {
+export const TEST_EDITOR_EMAIL = 'editor@test.local'
+
+// Вход пользователем админки с заданной ролью (создаёт его, если нет).
+async function loginWithRole(
+  app: Express,
+  email: string,
+  role: 'admin' | 'editor',
+): Promise<AdminAuth> {
   const userRepo = AppDataSource.getRepository(AdminUser)
-  let admin = await userRepo.findOneBy({ email: TEST_ADMIN_EMAIL })
-  if (!admin) {
-    admin = await userRepo.save(
+  const existing = await userRepo.findOneBy({ email })
+  if (!existing) {
+    await userRepo.save(
       userRepo.create({
-        email: TEST_ADMIN_EMAIL,
+        email,
         passwordHash: await argon2.hash(TEST_ADMIN_PASSWORD),
-        role: 'admin',
+        role,
       }),
     )
+  } else if (existing.role !== role) {
+    // Тест мог понизить роль этого пользователя: не отдаём чужую сессию под видом нужной.
+    await userRepo.update({ id: existing.id }, { role })
   }
 
   const res = await request(app)
     .post('/api/auth/login')
-    .send({ email: TEST_ADMIN_EMAIL, password: TEST_ADMIN_PASSWORD })
+    .send({ email, password: TEST_ADMIN_PASSWORD })
 
   if (res.status !== 200) {
-    throw new Error(`loginAsAdmin: unexpected status ${res.status}: ${JSON.stringify(res.body)}`)
+    throw new Error(`login (${role}): unexpected status ${res.status}: ${JSON.stringify(res.body)}`)
   }
 
   const raw = res.headers['set-cookie']
@@ -41,13 +51,22 @@ export async function loginAsAdmin(app: Express): Promise<AdminAuth> {
   const sessionCookie = cookies.find((c) => c.startsWith('ximi4ka_shop_session='))
   const csrfCookie = cookies.find((c) => c.startsWith('ximi4ka_shop_csrf='))
   if (!sessionCookie || !csrfCookie) {
-    throw new Error('loginAsAdmin: missing session or csrf cookie in response')
+    throw new Error('login: missing session or csrf cookie in response')
   }
   const csrfTokenMatch = csrfCookie.match(/ximi4ka_shop_csrf=([^;]+)/)
-  if (!csrfTokenMatch) throw new Error('loginAsAdmin: could not parse csrf token')
+  if (!csrfTokenMatch) throw new Error('login: could not parse csrf token')
   const csrfToken = csrfTokenMatch[1]
 
   return { sessionCookie, csrfToken, csrfCookie }
+}
+
+export function loginAsAdmin(app: Express): Promise<AdminAuth> {
+  return loginWithRole(app, TEST_ADMIN_EMAIL, 'admin')
+}
+
+// Редактор контента: товары, страницы, блог и т.п., без заказов и настроек.
+export function loginAsEditor(app: Express): Promise<AdminAuth> {
+  return loginWithRole(app, TEST_EDITOR_EMAIL, 'editor')
 }
 
 export function authHeaders(auth: AdminAuth): Record<string, string> {
