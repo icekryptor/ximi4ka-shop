@@ -67,25 +67,58 @@ describe('packCart — наборы в своих коробках', () => {
     expect(pkg.items).toEqual([{ productId: 'himichka', quantity: 1 }])
   })
 
-  it('два одинаковых набора — два места', () => {
+  it('два одинаковых набора — одно место стопкой, вес складывается', () => {
     const packages = packCart([{ ...himichka, quantity: 2 }])
-    expect(packages).toHaveLength(2)
-    expect(packages.every((p) => p.box === 'large')).toBe(true)
+    expect(packages).toHaveLength(1)
+    const [pkg] = packages
+    expect(pkg.box).toBe('large')
+    expect(pkg.weightG).toBe(2600)
+    // Коробки стопкой: длина и ширина — как у одной, высота — сумма.
+    expect([pkg.lengthCm, pkg.widthCm, pkg.heightCm]).toEqual([40, 32, 16])
+    expect(pkg.items).toEqual([
+      { productId: 'himichka', quantity: 1 },
+      { productId: 'himichka', quantity: 1 },
+    ])
   })
 
-  it('комбо из двух наборов — два места, вес делится между ними', () => {
+  it('комбо из двух наборов — одно место, вес целиком', () => {
     const combo = line({ productId: 'combo', weightG: 2200, shipBoxes: ['large', 'elektro'] })
     const packages = packCart([combo])
-    expect(packages.map((p) => p.box)).toEqual(['large', 'elektro'])
-    expect(packages.reduce((sum, p) => sum + p.weightG, 0)).toBe(2200)
-    // Товар числится в первом месте — его и опишем в заказе СДЭК.
+    expect(packages).toHaveLength(1)
+    expect(packages[0].box).toBe('large')
+    expect(packages[0].weightG).toBe(2200)
+    expect([packages[0].lengthCm, packages[0].widthCm, packages[0].heightCm]).toEqual([40, 32, 15])
     expect(packages[0].items).toEqual([{ productId: 'combo', quantity: 1 }])
-    expect(packages[1].items).toEqual([])
   })
 
-  it('набор и мелочь — набор отдельно, мелочь своей коробкой', () => {
+  it('набор и мелочь — одно место: реактивы уложены в коробку набора', () => {
     const packages = packCart([elektro, reagent('a', 4)])
-    expect(packages.map((p) => p.box)).toEqual(['elektro', 'small'])
+    expect(packages).toHaveLength(1)
+    expect(packages[0].box).toBe('elektro')
+    // Вес набора + вес реактивов, пустую коробку мелочи не добавляем.
+    expect(packages[0].weightG).toBe(1000 + 4 * 50)
+    expect(packages[0].items).toEqual([
+      { productId: 'elektro', quantity: 1 },
+      { productId: 'a', quantity: 4 },
+    ])
+  })
+
+  it('несколько наборов и мелочь — всё одним местом', () => {
+    const packages = packCart([himichka, elektro, reagent('a', 2)])
+    expect(packages).toHaveLength(1)
+    expect(packages[0].weightG).toBe(1300 + 1000 + 2 * 50)
+    expect(packages[0].items).toEqual([
+      { productId: 'himichka', quantity: 1 },
+      { productId: 'elektro', quantity: 1 },
+      { productId: 'a', quantity: 2 },
+    ])
+  })
+
+  it('оценочный вес реактива делает место оценочным', () => {
+    const packages = packCart([himichka, line({ productId: 'x', weightG: null })])
+    expect(packages).toHaveLength(1)
+    expect(packages[0].weightG).toBe(1300 + DEFAULT_ITEM_WEIGHT_G)
+    expect(packages[0].estimated).toBe(true)
   })
 })
 
