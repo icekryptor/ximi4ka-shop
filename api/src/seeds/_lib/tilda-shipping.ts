@@ -67,6 +67,9 @@ export const SHIPPING_OVERRIDES: Record<string, ShippingRule> = {
   'mini-himichka': { shipBoxes: ['medium'] },
   'himichka-i-elektrohimichka': { shipBoxes: ['large', 'elektro'] },
   'vse-tri-nabora': { shipBoxes: ['large', 'elektro', 'medium'] },
+  // Товара нет в фиде Тильды, вес — сумма весов четырёх наборов
+  // (1300 + 1000 + 1000 + 1300), уточнить после первой отгрузки.
+  'vse-chetyre-nabora': { shipBoxes: ['large', 'elektro', 'medium', 'large'], weightG: 4600 },
   // Нет в фиде Тильды (скоро в наличии). Вес — оценка по Химичке 3.0,
   // уточнить после первой отгрузки.
   'bolshoi-nabor-dlya-oge': { shipBoxes: ['large'], weightG: 1300 },
