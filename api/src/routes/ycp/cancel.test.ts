@@ -104,15 +104,12 @@ describe('отмены из Яндекса', () => {
 
     it('неоплаченный заказ (оплата при получении) отменяется без сигнала об оплаченном', async () => {
       const order = await createYcpCheckout(app, 'sess-o8')
-      await request(app)
-        .post('/api/v1/checkout/placed')
-        .set(ycpAuth)
-        .send({
-          session_id: 'sess-o8',
-          order_id: 'ya-sess-o8',
-          order_number: 1,
-          payment_method: 'on_delivery',
-        })
+      await request(app).post('/api/v1/checkout/placed').set(ycpAuth).send({
+        session_id: 'sess-o8',
+        order_id: 'ya-sess-o8',
+        order_number: 1,
+        payment_method: 'on_delivery',
+      })
       const res = await request(app).post('/api/v1/order/cancel?order_id=ya-sess-o8').set(ycpAuth)
       expect(res.status).toBe(200)
       expect((await reload(order.id)).status).toBe('cancelled')
