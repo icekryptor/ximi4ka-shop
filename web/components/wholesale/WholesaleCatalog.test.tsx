@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { Product } from '@ximi4ka-shop/shared'
 import { WholesaleCatalog } from './WholesaleCatalog'
 
@@ -51,8 +51,13 @@ describe('WholesaleCatalog', () => {
   beforeEach(() => {
     listProductsByCategory.mockReset()
     mockApi()
+    // В тестах без наблюдателя каталог стартует сразу; ленивый старт — ниже.
+    vi.stubGlobal('IntersectionObserver', undefined)
   })
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    vi.unstubAllGlobals()
+  })
 
   it('показывает вкладки категорий и грузит первую', async () => {
     render(<WholesaleCatalog onPick={vi.fn()} stagedIds={new Set()} />)
@@ -228,5 +233,79 @@ describe('WholesaleCatalog', () => {
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Наборы' }), { key: 'ArrowRight' })
     expect(screen.getByRole('tab', { name: 'Реактивы' })).toHaveAttribute('aria-selected', 'true')
     expect(await screen.findByText('Сода')).toBeInTheDocument()
+  })
+
+  it('не грузит товары, пока блок вне экрана, и стартует при появлении', async () => {
+    let onIntersect: IntersectionObserverCallback = () => {}
+    const disconnect = vi.fn()
+    class FakeObserver {
+      constructor(cb: IntersectionObserverCallback) {
+        onIntersect = cb
+      }
+      observe() {}
+      unobserve() {}
+      disconnect = disconnect
+      takeRecords() {
+        return []
+      }
+    }
+    vi.stubGlobal('IntersectionObserver', FakeObserver)
+
+    render(<WholesaleCatalog onPick={vi.fn()} stagedIds={new Set()} />)
+    expect(listProductsByCategory).not.toHaveBeenCalled()
+
+    act(() => {
+      onIntersect(
+        [{ isIntersecting: false } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      )
+    })
+    expect(listProductsByCategory).not.toHaveBeenCalled()
+
+    act(() => {
+      onIntersect([{ isIntersecting: true } as IntersectionObserverEntry], {
+        disconnect,
+      } as unknown as IntersectionObserver)
+    })
+    expect(await screen.findByText('Химичка 30')).toBeInTheDocument()
+    expect(listProductsByCategory).toHaveBeenCalledTimes(1)
+    expect(disconnect).toHaveBeenCalled()
+  })
+
+  it.each([
+    [true, 'auto'],
+    [false, 'smooth'],
+  ])('prefers-reduced-motion=%s: стрелка листает с behavior=%s', async (reduced, behavior) => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn().mockImplementation((query: string) => ({
+        matches: reduced && query.includes('prefers-reduced-motion'),
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      })),
+    )
+    render(<WholesaleCatalog onPick={vi.fn()} stagedIds={new Set()} />)
+    await screen.findByText('Химичка 30')
+
+    const track = screen.getByTestId('wholesale-catalog-track')
+    const scrollBy = vi.fn()
+    Object.defineProperty(track, 'scrollBy', { value: scrollBy, configurable: true })
+    Object.defineProperty(track, 'clientWidth', { value: 600, configurable: true })
+    Object.defineProperty(track, 'scrollWidth', { value: 1200, configurable: true })
+    fireEvent.scroll(track)
+
+    const next = screen.getByRole('button', { name: 'Следующие товары' })
+    await waitFor(() => expect(next).toBeEnabled())
+    fireEvent.click(next)
+    expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ behavior }))
+  })
+
+  it('дорожка не включает плавную прокрутку при reduced motion (motion-safe)', async () => {
+    render(<WholesaleCatalog onPick={vi.fn()} stagedIds={new Set()} />)
+    await screen.findByText('Химичка 30')
+    const cls = screen.getByTestId('wholesale-catalog-track').className
+    expect(cls).toContain('motion-safe:scroll-smooth')
+    expect(cls).not.toMatch(/(^|\s)scroll-smooth/)
   })
 })

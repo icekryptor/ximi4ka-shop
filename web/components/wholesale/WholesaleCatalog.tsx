@@ -24,6 +24,13 @@ const CARD_GAP_PX = 12
 
 const KIT_SLUGS: ReadonlySet<string> = new Set(WHOLESALE_GROUPS.flatMap((g) => g.slugs))
 
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
 type TabState = { status: 'ready'; items: SearchProductResult[] } | { status: 'error' }
 
 // Сколько карточек видно в ряду на десктопе: на главной блок уже (четыре),
@@ -68,7 +75,12 @@ export function WholesaleCatalog({ perView = 4, onPick, stagedIds }: Props) {
   const baseId = useId()
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({})
   const trackRef = useRef<HTMLUListElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
 
+  // Блок стоит ниже первого экрана главной: пока он не показался, запросов нет.
+  // Без IntersectionObserver ждать нечего. На сервере true, на клиенте с
+  // наблюдателем — false; разметка одинаковая (в обоих случаях скелетон).
+  const [started, setStarted] = useState(() => typeof IntersectionObserver === 'undefined')
   const [active, setActive] = useState<TabSlug>(TABS[0].slug)
   const [tabs, setTabs] = useState<Partial<Record<TabSlug, TabState>>>({})
   const [canPrev, setCanPrev] = useState(false)
@@ -80,7 +92,22 @@ export function WholesaleCatalog({ perView = 4, onPick, stagedIds }: Props) {
   // Нет записи — вкладка ещё грузится. Ошибка сбрасывает запись (кнопка
   // «Повторить»), и эффект стартует загрузку заново.
   useEffect(() => {
-    if (state) return
+    const el = rootRef.current
+    if (started || !el) return
+    const observer = new IntersectionObserver(
+      (entries, self) => {
+        if (!entries.some((e) => e.isIntersecting)) return
+        self.disconnect()
+        setStarted(true)
+      },
+      { rootMargin: '200px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [started])
+
+  useEffect(() => {
+    if (!started || state) return
     let cancelled = false
     listProductsByCategory(active, { limit: PAGE_LIMIT })
       .then((res) => {
@@ -98,7 +125,7 @@ export function WholesaleCatalog({ perView = 4, onPick, stagedIds }: Props) {
     return () => {
       cancelled = true
     }
-  }, [active, state])
+  }, [started, active, state])
 
   const updateArrows = useCallback(() => {
     const el = trackRef.current
@@ -123,7 +150,7 @@ export function WholesaleCatalog({ perView = 4, onPick, stagedIds }: Props) {
     if (!el) return
     const card = el.firstElementChild as HTMLElement | null
     const step = (card?.offsetWidth ?? 0) + CARD_GAP_PX
-    el.scrollBy?.({ left: direction * step, behavior: 'smooth' })
+    el.scrollBy?.({ left: direction * step, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
   }
 
   const selectTab = (slug: TabSlug) => {
@@ -156,7 +183,7 @@ export function WholesaleCatalog({ perView = 4, onPick, stagedIds }: Props) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div ref={rootRef} className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <div
           role="tablist"
@@ -257,7 +284,7 @@ export function WholesaleCatalog({ perView = 4, onPick, stagedIds }: Props) {
               ref={trackRef}
               data-testid="wholesale-catalog-track"
               onScroll={updateArrows}
-              className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none]"
+              className="flex snap-x snap-mandatory gap-3 overflow-x-auto motion-safe:scroll-smooth pb-1 [scrollbar-width:none]"
             >
               {state.items.map((p) => {
                 const soldOut = p.stockStatus === 'out_of_stock'
