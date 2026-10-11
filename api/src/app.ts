@@ -11,6 +11,7 @@ import { publicBlogRouter } from './routes/public/blog.js'
 import { adminBlogRouter } from './routes/admin/blog.js'
 import { publicSearchRouter } from './routes/public/search.js'
 import { createMaterialLeadsRouter } from './routes/public/materialLeads.js'
+import { createEventsRouter } from './routes/public/events.js'
 import { mediaRouter } from './routes/admin/media.js'
 import { adminRedirectsRouter } from './routes/admin/redirects.js'
 import { publicRedirectsRouter } from './routes/public/redirects.js'
@@ -111,6 +112,13 @@ export function createApp(): Express {
   )
   app.use('/api/checkout', checkoutRouter)
   app.use('/api/public/material-leads', createMaterialLeadsRouter())
+  // Аналитика витрины: анонимный публичный POST. 300 событий за 10 минут с IP
+  // хватает живому посетителю (и школе за одним NAT), но не даёт забить таблицу.
+  app.use(
+    '/api/public/events',
+    guard('/', rateLimit({ limit: envLimit('EVENTS_RATE_LIMIT', 300), windowMs: 10 * 60 * 1000 })),
+  )
+  app.use('/api/public/events', createEventsRouter())
   app.use('/api/webhooks/tbank', tbankWebhookRouter)
   app.use('/api/public/orders', publicOrdersRouter)
   app.use('/api/admin/orders', adminOrdersRouter)
