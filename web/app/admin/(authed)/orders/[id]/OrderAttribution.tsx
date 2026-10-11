@@ -1,5 +1,6 @@
 import type {
   AttributionTouch,
+  MetrikaConversionDto,
   OrderAttribution as OrderAttributionData,
 } from '@ximi4ka-shop/shared'
 import { formatDateTime } from '../orderUi'
@@ -40,6 +41,39 @@ function Rows({ rows }: { rows: Row[] }) {
   )
 }
 
+const CONVERSION_STATUS: Record<MetrikaConversionDto['state'], string> = {
+  pending: 'в очереди на отправку',
+  sending: 'отправляется',
+  sent: 'отправлена в Метрику',
+  failed: 'не отправлена',
+}
+
+// Дошла ли оплата до Метрики (офлайн-конверсия по yclid): статус, номер
+// загрузки для отчёта «Офлайн-конверсии» и причина, если что-то сломалось.
+function ConversionStatus({ conversion }: { conversion: MetrikaConversionDto }) {
+  const details = [
+    conversion.uploadId ? `загрузка № ${conversion.uploadId}` : null,
+    `цель ${conversion.target}`,
+    conversion.sentAt ? formatDateTime(conversion.sentAt) : null,
+  ].filter(Boolean)
+  return (
+    <div className="mt-4">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-brand-text-secondary">
+        Конверсия в Метрику
+      </h3>
+      <p className="mt-2 text-brand-text">{CONVERSION_STATUS[conversion.state]}</p>
+      <p className="text-xs text-brand-text-secondary">{details.join(' · ')}</p>
+      {conversion.lastError && (
+        <p className="mt-1 text-xs text-red-700 break-words">
+          {conversion.state === 'sent'
+            ? `Внимание: ${conversion.lastError}`
+            : `Ошибка: ${conversion.lastError} · попыток: ${conversion.attempts}`}
+        </p>
+      )}
+    </div>
+  )
+}
+
 // Откуда пришёл покупатель: метки из адреса и referrer (их присылает витрина,
 // это подсказка для сверки рекламы, а не доказательство) и адрес с браузером,
 // которые зафиксировал сервер.
@@ -47,10 +81,12 @@ export function OrderAttribution({
   attribution,
   clientIp,
   clientUserAgent,
+  conversion,
 }: {
   attribution: OrderAttributionData | null | undefined
   clientIp: string | null | undefined
   clientUserAgent: string | null | undefined
+  conversion?: MetrikaConversionDto | null
 }) {
   const hasAny = Boolean(attribution?.first || attribution?.last || clientIp || clientUserAgent)
 
@@ -92,6 +128,7 @@ export function OrderAttribution({
           />
         </div>
       )}
+      {conversion && <ConversionStatus conversion={conversion} />}
     </section>
   )
 }

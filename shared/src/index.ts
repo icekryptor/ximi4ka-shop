@@ -10,6 +10,7 @@ export type {
   CheckoutRequest,
   CheckoutResponse,
   AttributionTouch,
+  MetrikaConversionDto,
   OrderAttribution,
   PublicOrderShipment,
   PublicOrderStatus,
