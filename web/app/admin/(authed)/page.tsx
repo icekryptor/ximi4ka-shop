@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers'
 import type { StatsResponse } from '@ximi4ka-shop/shared'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
+import { fetchCurrentAdmin } from '@/lib/adminSession'
+import { AdminWelcome } from './AdminWelcome'
 import { StatsDashboard } from './StatsDashboard'
 import { resolvePeriod } from './statsPeriod'
 
@@ -30,6 +32,11 @@ export default async function AdminDashboardPage({
 }: {
   searchParams?: Promise<SearchParams>
 }) {
+  // Суммы заказов — только для admin (API тоже вернёт 403 редактору). Роль сверяем здесь,
+  // до запроса статистики: layout и page рендерятся параллельно, layout не остановит запрос.
+  const admin = await fetchCurrentAdmin()
+  if (admin?.role !== 'admin') return <AdminWelcome />
+
   const params = (await searchParams) ?? {}
   const period = resolvePeriod(params, new Date())
 

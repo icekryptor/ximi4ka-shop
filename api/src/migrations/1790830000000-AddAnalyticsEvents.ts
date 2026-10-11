@@ -4,8 +4,8 @@ import type { MigrationInterface, QueryRunner } from 'typeorm'
 // Без IP и User-Agent — visitor_id случайный и живёт в localStorage браузера.
 // Индексы на orders нужны агрегатам статистики по периоду: раньше по
 // created_at и paid_at индексов не было.
-export class AddAnalyticsEvents1790810000000 implements MigrationInterface {
-  name = 'AddAnalyticsEvents1790810000000'
+export class AddAnalyticsEvents1790830000000 implements MigrationInterface {
+  name = 'AddAnalyticsEvents1790830000000'
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`

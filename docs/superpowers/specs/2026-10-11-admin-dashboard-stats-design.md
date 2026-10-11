@@ -22,7 +22,7 @@
 
 ### Таблица `analytics_events`
 
-Миграция `api/src/migrations/1790810000000-AddAnalyticsEvents.ts` (в проекте уже есть две миграции с ts `1790800000000`, берём больший). Формат как у соседних: класс `AddAnalyticsEvents1790810000000`, SQL через `queryRunner.query`, UUID по умолчанию `gen_random_uuid()`.
+Миграция `api/src/migrations/1790830000000-AddAnalyticsEvents.ts` (после слияния с main последняя чужая миграция `1790820000000`, берём больший). Формат как у соседних: класс `AddAnalyticsEvents1790830000000`, SQL через `queryRunner.query`, UUID по умолчанию `gen_random_uuid()`.
 
 | Колонка       | Тип         | Примечание                                  |
 | ------------- | ----------- | ------------------------------------------- |

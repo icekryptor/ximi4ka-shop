@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Миграции: файл `api/src/migrations/1790810000000-AddAnalyticsEvents.ts`, класс `AddAnalyticsEvents1790810000000`, SQL через `queryRunner.query`, UUID по умолчанию `gen_random_uuid()`. (В проекте уже есть две миграции с ts `1790800000000`, берём больший.)
+- Миграции: файл `api/src/migrations/1790830000000-AddAnalyticsEvents.ts`, класс `AddAnalyticsEvents1790830000000`, SQL через `queryRunner.query`, UUID по умолчанию `gen_random_uuid()`. (После слияния с main последняя чужая миграция `1790820000000`, берём больший.)
 - `synchronize: false` — схема меняется только миграциями.
 - Сырые запросы по `orders` всегда с `deleted_at IS NULL`.
 - Границы дней — `Europe/Moscow`; период не больше 366 дней.
@@ -41,7 +41,7 @@
 
 - `shared/src/types/analytics.ts` — типы событий и DTO ответа статистики, константа `MAX_STATS_DAYS`.
 - `shared/src/types/analytics.test.ts` — тест константы.
-- `api/src/migrations/1790810000000-AddAnalyticsEvents.ts` — таблица и индексы.
+- `api/src/migrations/1790830000000-AddAnalyticsEvents.ts` — таблица и индексы.
 - `api/src/routes/public/events.ts` — приём событий.
 - `api/src/routes/public-events.test.ts` — тесты приёма.
 - `api/src/lib/analytics/stats.ts` — агрегаты (`getStats`).
@@ -222,7 +222,7 @@ git commit -m "feat(shared): типы событий аналитики и от�
 
 **Files:**
 
-- Create: `api/src/migrations/1790810000000-AddAnalyticsEvents.ts`
+- Create: `api/src/migrations/1790830000000-AddAnalyticsEvents.ts`
 - Create: `api/src/routes/public/events.ts`
 - Create: `api/src/routes/public-events.test.ts`
 - Modify: `api/src/app.ts` (импорт и два `app.use` рядом с `/api/public/material-leads`)
@@ -364,7 +364,7 @@ Expected: FAIL — таблицы `analytics_events` нет (`relation "analytic
 
 - [ ] **Step 3: Write the migration**
 
-`api/src/migrations/1790810000000-AddAnalyticsEvents.ts`:
+`api/src/migrations/1790830000000-AddAnalyticsEvents.ts`:
 
 ```ts
 import type { MigrationInterface, QueryRunner } from 'typeorm'
@@ -373,8 +373,8 @@ import type { MigrationInterface, QueryRunner } from 'typeorm'
 // Без IP и User-Agent — visitor_id случайный и живёт в localStorage браузера.
 // Индексы на orders нужны агрегатам статистики по периоду: раньше по
 // created_at и paid_at индексов не было.
-export class AddAnalyticsEvents1790810000000 implements MigrationInterface {
-  name = 'AddAnalyticsEvents1790810000000'
+export class AddAnalyticsEvents1790830000000 implements MigrationInterface {
+  name = 'AddAnalyticsEvents1790830000000'
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -490,7 +490,7 @@ Expected: PASS (глобальная настройка прогонит миг�
 - [ ] **Step 6: Commit** (только с разрешения владельца)
 
 ```bash
-git add api/src/migrations/1790810000000-AddAnalyticsEvents.ts api/src/routes/public/events.ts api/src/routes/public-events.test.ts api/src/app.ts
+git add api/src/migrations/1790830000000-AddAnalyticsEvents.ts api/src/routes/public/events.ts api/src/routes/public-events.test.ts api/src/app.ts
 git commit -m "feat(api): таблица analytics_events и публичный приём событий"
 ```
 
@@ -1942,4 +1942,4 @@ Expected: `204`. Открыть `/admin`: шесть карточек, граф�
 
 - [ ] **Step 6: Отчёт владельцу**
 
-В отчёте: что сделано, результаты Step 1 (с выводом команд), скриншот дашборда, оговорки по метрикам (логины и новые пользователи — приближения; корзины и клики копятся с момента выкатки), открытый вопрос по приватности из спека. Напомнить: мёрж в `main` = автодеплой в прод, миграция `1790810000000` выполнится при старте; делать это только по команде владельца.
+В отчёте: что сделано, результаты Step 1 (с выводом команд), скриншот дашборда, оговорки по метрикам (логины и новые пользователи — приближения; корзины и клики копятся с момента выкатки), открытый вопрос по приватности из спека. Напомнить: мёрж в `main` = автодеплой в прод, миграция `1790830000000` выполнится при старте; делать это только по команде владельца.

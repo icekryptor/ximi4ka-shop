@@ -5,7 +5,7 @@ import request from 'supertest'
 import type { StatsResponse } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../config/dataSource.js'
 import { createApp } from '../app.js'
-import { authHeaders, loginAsAdmin, seedOrder, type AdminAuth } from './testUtils.js'
+import { authHeaders, loginAsAdmin, loginAsEditor, seedOrder, type AdminAuth } from './testUtils.js'
 
 // Все метки времени заданы со смещением +03:00: границы дней считаются по Москве.
 const V1 = '11111111-1111-4111-8111-111111111111'
@@ -85,6 +85,20 @@ describe('GET /api/admin/stats', () => {
   it('без сессии админа — 401', async () => {
     const res = await request(app).get('/api/admin/stats?from=2026-10-05&to=2026-10-07')
     expect(res.status).toBe(401)
+  })
+
+  it('редактор получает 403: суммы заказов только для admin', async () => {
+    const editor = await loginAsEditor(app)
+    const res = await request(app)
+      .get('/api/admin/stats?from=2026-10-05&to=2026-10-07')
+      .set(authHeaders(editor))
+    expect(res.status).toBe(403)
+    expect(res.body.data).toBeUndefined()
+  })
+
+  it('admin получает 200', async () => {
+    const res = await get('from=2026-10-05&to=2026-10-07')
+    expect(res.status).toBe(200)
   })
 
   it('считает итоги и ряд по дням; границы дней — по Москве', async () => {
