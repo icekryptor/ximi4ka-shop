@@ -12,6 +12,7 @@ import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { OrderNotification } from '../entities/OrderNotification.js'
 import { CdekShipment } from '../entities/CdekShipment.js'
+import { MetrikaConversion } from '../entities/MetrikaConversion.js'
 import { AdminUser } from '../entities/AdminUser.js'
 import { AdminSession } from '../entities/AdminSession.js'
 import { Customer } from '../entities/Customer.js'
@@ -97,6 +98,7 @@ export const AppDataSource = new DataSource({
     OrderItem,
     OrderNotification,
     CdekShipment,
+    MetrikaConversion,
     AdminUser,
     AdminSession,
     Customer,

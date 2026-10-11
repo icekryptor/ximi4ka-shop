@@ -76,8 +76,9 @@ export function readTouch(input: VisitInput): { touch: AttributionTouch; tagged:
   }
 
   let tagged = false
+  // Настоящий yclid — цифры; кривое значение за метку не считаем.
   const yclid = clip(params?.get('yclid'), 100)
-  if (yclid) touch.yclid = yclid
+  if (yclid && /^\d{1,32}$/.test(yclid)) touch.yclid = yclid
   const ysclid = clip(params?.get('ysclid'), 100)
   if (ysclid) touch.ysclid = ysclid
   for (const key of UTM_KEYS) {

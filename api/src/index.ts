@@ -6,6 +6,7 @@ import { startReconciliationJob } from './lib/payments/reconcile.js'
 import { startNotificationWorker } from './lib/notifications/worker.js'
 import { startCdekShipmentWorker } from './lib/cdek/worker.js'
 import { startPickupPointsJob } from './lib/ycp/pickupPoints.js'
+import { startMetrikaConversionWorker } from './lib/metrika/worker.js'
 import { startLoginBotPolling } from './lib/telegram/loginPoller.js'
 
 const logger = pino()
@@ -41,6 +42,12 @@ async function bootstrap() {
   // список и обновление раз в 12 часов. No-op без YCP_API_TOKEN.
   if (startPickupPointsJob()) {
     logger.info('ycp pickup points job started')
+  }
+
+  // Офлайн-конверсии оплаты в Яндекс.Метрику по yclid. No-op, пока
+  // METRIKA_OFFLINE_ENABLED не true и не задан METRIKA_OAUTH_TOKEN.
+  if (startMetrikaConversionWorker()) {
+    logger.info('metrika offline conversions worker started')
   }
 
   // Бот входа в кабинет забирает update сам. No-op без TELEGRAM_LOGIN_POLLING=1.
