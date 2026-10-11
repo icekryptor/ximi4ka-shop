@@ -153,6 +153,23 @@ describe('Product routes', () => {
       expect(plain.body.data[0]).not.toHaveProperty('shippingUnit')
     })
 
+    it('не отдаёт shippingUnit для товара без реального веса (фид без выдуманных данных)', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'no-weight', name: 'NoW', priceRub: 100 })
+      await request(app).post(`/api/admin/products/${id}/publish`).set(authHeaders(auth)).send()
+
+      const res = await request(app).get('/api/public/products?include=categories,shipping')
+      expect(res.status).toBe(200)
+      expect(res.body.data[0].weightG).toBeNull()
+      expect(res.body.data[0]).not.toHaveProperty('shippingUnit')
+    })
+
     it('paginates with limit and offset', async () => {
       for (let i = 0; i < 25; i++) {
         const {

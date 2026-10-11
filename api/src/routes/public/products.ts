@@ -29,13 +29,14 @@ publicProductsRouter.get('/', async (req, res, next) => {
     // feeds only need the id strings, and keeping the DB rows private
     // avoids leaking meta_title / meta_description into a CDN-cacheable
     // public response. shipping — вес и габариты одной штуки в упаковке для
-    // фида (weight, dimensions), тот же packCart, что и доставка.
+    // фида (weight, dimensions), тот же packCart, что и доставка. Только у
+    // товаров с реальным весом: расчётные значения в фид не выдумываем.
     const data = items.map((p) => ({
       ...p,
       ...(wantsCategories
         ? { categoryIds: (p.categories ?? []).map((c) => c.id), categories: undefined }
         : {}),
-      ...(wantsShipping ? { shippingUnit: unitShipping(p) } : {}),
+      ...(wantsShipping && p.weightG != null ? { shippingUnit: unitShipping(p) } : {}),
     }))
     res.json({ data, pagination: { limit, offset, total } })
   } catch (err) {
