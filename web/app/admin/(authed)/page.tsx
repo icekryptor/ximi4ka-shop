@@ -1,15 +1,51 @@
-// Admin dashboard. Minimal v1 — just a welcome message. Stat cards that
-// fetch counts can land in a follow-up; keeping this page thin avoids
-// baking in API shapes that will shift when admin product/category/page
-// endpoints grow listing metadata.
-export default function AdminDashboardPage() {
-  return (
-    <div className="max-w-4xl">
-      <h1 className="text-3xl font-bold text-brand-text mb-4">Добро пожаловать</h1>
-      <p className="text-brand-text-secondary">
-        Используйте меню слева, чтобы перейти к управлению товарами, категориями, страницами и
-        заказами.
-      </p>
-    </div>
-  )
+import { cookies } from 'next/headers'
+import type { StatsResponse } from '@ximi4ka-shop/shared'
+import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
+import { StatsDashboard } from './StatsDashboard'
+import { resolvePeriod } from './statsPeriod'
+
+// Главная админки — статистика. Тот же паттерн, что у списка заказов: cookie
+// пробрасываем вручную (api на другом origin), cache: 'no-store' для свежих данных.
+async function fetchStats(from: string, to: string): Promise<StatsResponse> {
+  const store = await cookies()
+  const params = new URLSearchParams({ from, to })
+  const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/stats?${params.toString()}`, {
+    headers: { cookie: store.toString() },
+    cache: 'no-store',
+  })
+  if (!res.ok) {
+    throw new Error(`Admin stats failed: ${res.status}`)
+  }
+  return ((await res.json()) as { data: StatsResponse }).data
+}
+
+interface SearchParams {
+  preset?: string
+  from?: string
+  to?: string
+}
+
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>
+}) {
+  const params = (await searchParams) ?? {}
+  const period = resolvePeriod(params, new Date())
+
+  let stats: StatsResponse
+  try {
+    stats = await fetchStats(period.from, period.to)
+  } catch {
+    return (
+      <div className="bg-white rounded-2xl border border-brand-border p-6 max-w-xl">
+        <h1 className="text-xl font-bold text-brand-text mb-2">Статистика</h1>
+        <p className="text-brand-text-secondary">
+          Не удалось загрузить статистику. Обновите страницу или попробуйте позже.
+        </p>
+      </div>
+    )
+  }
+
+  return <StatsDashboard stats={stats} period={period} />
 }
