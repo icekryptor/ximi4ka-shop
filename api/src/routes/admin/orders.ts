@@ -4,11 +4,12 @@ import { IsNull, In, Not } from 'typeorm'
 import type { CdekShipmentDto } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
+import { OrderItem } from '../../entities/OrderItem.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
 import { OrdersListQuerySchema, OrderStatusPatchSchema } from './orders.schemas.js'
 import { conflict, notFound } from '../errors.js'
-import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
+import { writeOrderStatusEvent } from '../../lib/notifications/outbox.js'
 import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 import { cdekOrdersEnabled } from '../../lib/cdek/orders.js'
 import { enqueueCdekShipment, isCdekDelivery } from '../../lib/cdek/queue.js'
@@ -112,44 +113,51 @@ adminOrdersRouter.patch('/:id/status', async (req, res, next) => {
     if (!id.success) throw notFound('order_not_found', 'Заказ не найден')
     const { status, comment } = OrderStatusPatchSchema.parse(req.body)
 
-    const repo = AppDataSource.getRepository(Order)
-    const order = await repo.findOne({
-      where: { id: id.data },
-      relations: { items: true },
+    // Вся смена — под блокировкой строки (SELECT … FOR UPDATE): параллельный
+    // /checkout/placed от Яндекса или вебхук Т-Кассы выполняются по очереди, и
+    // проверки ниже идут по уже актуальному статусу, а не затирают оплату.
+    // Без relations: Postgres не даёт FOR UPDATE на nullable-стороне outer join —
+    // позиции читаем отдельно.
+    const saved = await AppDataSource.transaction(async (em) => {
+      const order = await em
+        .getRepository(Order)
+        .findOne({ where: { id: id.data }, lock: { mode: 'pessimistic_write' } })
+      if (!order) throw notFound('order_not_found', 'Заказ не найден')
+
+      if (order.status === status) {
+        throw conflict('status_unchanged', 'Заказ уже находится в этом статусе')
+      }
+      // «Отправлен» ставится только оплаченному заказу. Оплаченный заказ — это
+      // деньги: вернуть его в другое состояние можно только отправкой (возвраты —
+      // отдельная будущая история). Отправленный заказ вручную не меняется.
+      if (status === 'shipped' && order.status !== 'paid') {
+        throw conflict('order_not_paid', 'Отправить можно только оплаченный заказ')
+      }
+      if (order.status === 'paid' && status !== 'shipped') {
+        throw conflict('order_already_paid', 'Оплаченный заказ нельзя изменить вручную')
+      }
+      if (order.status === 'shipped') {
+        throw conflict('order_already_shipped', 'Отправленный заказ нельзя изменить вручную')
+      }
+
+      const now = new Date()
+      const from = order.status
+      order.status = status
+      if (status === 'paid' && !order.paidAt) order.paidAt = now
+      order.statusHistory = [
+        ...(order.statusHistory ?? []),
+        {
+          from,
+          to: status,
+          at: now.toISOString(),
+          by: 'admin' as const,
+          ...(comment ? { comment } : {}),
+        },
+      ]
+      await writeOrderStatusEvent(em, order, from)
+      order.items = await em.getRepository(OrderItem).findBy({ orderId: order.id })
+      return order
     })
-    if (!order) throw notFound('order_not_found', 'Заказ не найден')
-
-    if (order.status === status) {
-      throw conflict('status_unchanged', 'Заказ уже находится в этом статусе')
-    }
-    // «Отправлен» ставится только оплаченному заказу. Оплаченный заказ — это
-    // деньги: вернуть его в другое состояние можно только отправкой (возвраты —
-    // отдельная будущая история). Отправленный заказ вручную не меняется.
-    if (status === 'shipped' && order.status !== 'paid') {
-      throw conflict('order_not_paid', 'Отправить можно только оплаченный заказ')
-    }
-    if (order.status === 'paid' && status !== 'shipped') {
-      throw conflict('order_already_paid', 'Оплаченный заказ нельзя изменить вручную')
-    }
-    if (order.status === 'shipped') {
-      throw conflict('order_already_shipped', 'Отправленный заказ нельзя изменить вручную')
-    }
-
-    const now = new Date()
-    const from = order.status
-    order.status = status
-    if (status === 'paid' && !order.paidAt) order.paidAt = now
-    order.statusHistory = [
-      ...(order.statusHistory ?? []),
-      {
-        from,
-        to: status,
-        at: now.toISOString(),
-        by: 'admin' as const,
-        ...(comment ? { comment } : {}),
-      },
-    ]
-    const saved = await saveOrderWithStatusEvent(order, from)
     res.json({ data: withoutSecret(saved) })
   } catch (err) {
     next(err)
