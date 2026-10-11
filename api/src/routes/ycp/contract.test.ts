@@ -37,7 +37,22 @@ ajv.addSchema(SPEC, 'ycp')
 
 const esc = (s: string) => s.replace(/~/g, '~0').replace(/\//g, '~1')
 
+// Схема Яндекса почти ничего не помечает required у Error и разрешает пустые
+// массивы, поэтому одной валидации мало: для ошибок дополнительно проверяем
+// наш контракт — тело ровно {error: string}, плюс actual_inventory и
+// checkout_canceled только у 409 на /checkout.
+function expectErrorShape(body: unknown, path: string, status: number): void {
+  expect(body).toBeTypeOf('object')
+  const rec = body as Record<string, unknown>
+  expect(rec.error).toBeTypeOf('string')
+  const extra =
+    path === '/checkout' && status === 409 ? ['actual_inventory', 'checkout_canceled'] : []
+  const unexpected = Object.keys(rec).filter((k) => k !== 'error' && !extra.includes(k))
+  expect(unexpected).toEqual([])
+}
+
 function expectSchema(body: unknown, path: string, method: 'get' | 'post', status: number): void {
+  if (status >= 400) expectErrorShape(body, path, status)
   const ref = `ycp#/paths/${esc(path)}/${method}/responses/${status}/content/${esc('application/json')}/schema`
   const validate = ajv.getSchema(ref)
   if (!validate) throw new Error(`нет схемы ответа ${ref}`)
@@ -81,6 +96,7 @@ describe('ответы /api/v1 соответствуют OpenAPI Яндекса
   it('GET /warehouses: 200 и 401', async () => {
     const ok = await request(app).get('/api/v1/warehouses?limit=1000&offset=0').set(ycpAuth)
     expectSchema(ok.body, '/warehouses', 'get', 200)
+    expect(ok.body.warehouses.length).toBeGreaterThan(0)
     const denied = await request(app).get('/api/v1/warehouses')
     expect(denied.status).toBe(401)
     expectSchema(denied.body, '/warehouses', 'get', 401)
@@ -100,6 +116,9 @@ describe('ответы /api/v1 соответствуют OpenAPI Яндекса
       })
     expect(ok.status).toBe(200)
     expectSchema(ok.body, path, 'post', 200)
+    // Схема допускает пустые items и warehouses — проверяем сами.
+    expect(ok.body.items).toHaveLength(1)
+    expect(ok.body.items[0].warehouses.length).toBeGreaterThan(0)
     const bad = await request(app).post(`/api/v1${path}`).set(ycpAuth).send({ items: [] })
     expect(bad.status).toBe(400)
     expectSchema(bad.body, path, 'post', 400)
@@ -120,6 +139,8 @@ describe('ответы /api/v1 соответствуют OpenAPI Яндекса
       .send(ycpCheckoutBody(items))
     expect(created.status).toBe(201)
     expectSchema(created.body, '/checkout', 'post', 201)
+    // order_number в схеме необязателен — без проверки сошёл бы и {}.
+    expect(created.body.order_number).toBeTypeOf('string')
     const again = await request(app)
       .post('/api/v1/checkout')
       .set(ycpAuth)
@@ -132,6 +153,8 @@ describe('ответы /api/v1 соответствуют OpenAPI Яндекса
       .send(ycpCheckoutBody([{ ...items[0], final_price: 1 }], { session_id: 'sess-other' }))
     expect(stale.status).toBe(409)
     expectSchema(stale.body, '/checkout', 'post', 409)
+    expect(Array.isArray(stale.body.actual_inventory.items)).toBe(true)
+    expect(stale.body.actual_inventory.items.length).toBeGreaterThan(0)
     const bad = await request(app).post('/api/v1/checkout').set(ycpAuth).send({})
     expect(bad.status).toBe(400)
     expectSchema(bad.body, '/checkout', 'post', 400)
@@ -152,6 +175,9 @@ describe('ответы /api/v1 соответствуют OpenAPI Яндекса
     expectSchema(ok.body, path, 'post', 200)
     // В схеме Яндекса ключ — delivery_options, в их же примере — options; отдаём оба.
     expectSchema({ delivery_options: ok.body.options }, path, 'post', 200)
+    expect(ok.body.options.length).toBeGreaterThan(0)
+    expect(ok.body.delivery_options.length).toBeGreaterThan(0)
+    expect(ok.body.delivery_options).toEqual(ok.body.options)
     const bad = await request(app)
       .post(`/api/v1${path}`)
       .set(ycpAuth)
@@ -172,6 +198,7 @@ describe('ответы /api/v1 соответствуют OpenAPI Яндекса
     const ok = await request(app).get(`/api/v1${path}?limit=1000&offset=0`).set(ycpAuth)
     expect(ok.status).toBe(200)
     expectSchema(ok.body, path, 'get', 200)
+    expect(ok.body.pickup_points.length).toBeGreaterThan(0)
   })
 
   it('POST /checkout/placed: 200 без тела, 404, 409', async () => {
