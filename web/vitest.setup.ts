@@ -1,6 +1,16 @@
 import '@testing-library/jest-dom/vitest'
-import { afterEach } from 'vitest'
+import { afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
+
+// The storefront tracker POSTs to the API on every trackEvent. Tests that run
+// useCart().add / CartDrawer / checkout without mocking it would fire a real
+// fetch to localhost:3001 (junk rows if a developer runs the API locally), so
+// trackEvent is a no-op spy by default. lib/track.test.ts opts out with
+// vi.unmock to exercise the real module.
+vi.mock('@/lib/track', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/track')>()),
+  trackEvent: vi.fn(),
+}))
 
 // With vitest's globals: false, @testing-library/react doesn't auto-register
 // its afterEach cleanup. Unmount rendered components between tests or

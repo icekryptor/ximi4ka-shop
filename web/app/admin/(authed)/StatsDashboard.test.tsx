@@ -60,10 +60,44 @@ describe('StatsDashboard', () => {
     expect(container.querySelector('svg title')?.textContent).toMatch(/05\.10/)
   })
 
+  it('подсказка столбца: выручка по дню оплаты и новые заказы, единое название графика', () => {
+    const { container } = render(<StatsDashboard stats={stats} period={period} />)
+    expect(container.querySelector('svg title')?.textContent).toMatch(
+      /^05\.10: выручка 1\s?000\s?₽, новых заказов: 1$/,
+    )
+    expect(screen.getByText('Сумма оплаченных заказов по дням')).toBeInTheDocument()
+    expect(
+      screen.getByRole('img', { name: 'Сумма оплаченных заказов по дням' }),
+    ).toBeInTheDocument()
+  })
+
   it('пустой период: нули, текст про отсутствие данных, график не ломается', () => {
     const { container } = render(<StatsDashboard stats={empty} period={period} />)
     expect(screen.getByText(/данных за этот период нет/i)).toBeInTheDocument()
+    expect(screen.queryByText(/оплаченных заказов за период нет/i)).not.toBeInTheDocument()
     expect(container.querySelectorAll('svg rect')).toHaveLength(3)
+  })
+
+  it('есть данные, но оплаченных заказов нет: отдельная заметка под графиком', () => {
+    const unpaid: StatsResponse = {
+      ...stats,
+      totals: { ...stats.totals, orders: 2, revenueRub: 0 },
+      days: stats.days.map((d) => ({ ...d, revenueRub: 0 })),
+    }
+    render(<StatsDashboard stats={unpaid} period={period} />)
+    expect(screen.getByText('Оплаченных заказов за период нет.')).toBeInTheDocument()
+    expect(screen.queryByText(/данных за этот период нет/i)).not.toBeInTheDocument()
+  })
+
+  it('период с оплатами: заметок об отсутствии нет', () => {
+    render(<StatsDashboard stats={stats} period={period} />)
+    expect(screen.queryByText(/оплаченных заказов за период нет/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/данных за этот период нет/i)).not.toBeInTheDocument()
+  })
+
+  it('клики и корзины помечены: считаются только с момента запуска сбора событий', () => {
+    render(<StatsDashboard stats={stats} period={period} />)
+    expect(screen.getAllByText(/считаются с момента запуска сбора событий/i)).toHaveLength(2)
   })
 
   it('оговорки про приближённые метрики видны', () => {

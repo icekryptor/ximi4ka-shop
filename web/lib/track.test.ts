@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// vitest.setup.ts replaces trackEvent with a no-op spy globally; here the real module is under test.
+vi.unmock('@/lib/track')
+
 import { buildEvent, resetTrackerForTests, trackEvent } from './track'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/

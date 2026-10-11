@@ -2,7 +2,7 @@ import type { StatsDay } from '@ximi4ka-shop/shared'
 import { barLayout } from './chartScale'
 import { formatRub } from './orders/orderUi'
 
-// Столбцы выручки по дням на inline-SVG: без библиотеки и без клиентского JS.
+// Столбцы суммы оплаченных заказов по дням на inline-SVG: без библиотеки и без клиентского JS.
 // Подсказка — нативный <title> внутри столбца.
 const WIDTH = 640
 const CHART_HEIGHT = 140
@@ -21,7 +21,7 @@ export function RevenueChart({ days }: { days: StatsDay[] }) {
     <svg
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       role="img"
-      aria-label="Выручка по дням"
+      aria-label="Сумма оплаченных заказов по дням"
       className="w-full h-auto"
     >
       <line
@@ -42,7 +42,7 @@ export function RevenueChart({ days }: { days: StatsDay[] }) {
           rx={Math.min(3, b.width / 2)}
           className="fill-brand"
         >
-          <title>{`${shortDate(b.date)}: ${formatRub(b.revenueRub)}, заказов: ${b.orders}`}</title>
+          <title>{`${shortDate(b.date)}: выручка ${formatRub(b.revenueRub)}, новых заказов: ${b.orders}`}</title>
         </rect>
       ))}
       {first && (

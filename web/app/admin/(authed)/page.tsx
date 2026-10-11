@@ -36,7 +36,8 @@ export default async function AdminDashboardPage({
   let stats: StatsResponse
   try {
     stats = await fetchStats(period.from, period.to)
-  } catch {
+  } catch (err) {
+    console.error('Admin stats failed', err)
     return (
       <div className="bg-white rounded-2xl border border-brand-border p-6 max-w-xl">
         <h1 className="text-xl font-bold text-brand-text mb-2">Статистика</h1>

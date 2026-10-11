@@ -14,10 +14,6 @@ import { reportPurchaseOnce, setMetrikaCounterId } from '@/lib/metrika'
 
 const mockPush = vi.fn<(path: string) => void>()
 
-// Собственная аналитика (begin_checkout при открытии страницы) шла бы в тот же
-// fetch, который тесты подменяют и считают.
-vi.mock('@/lib/track', () => ({ trackEvent: vi.fn() }))
-
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }))

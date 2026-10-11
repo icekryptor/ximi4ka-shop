@@ -19,11 +19,15 @@ const CARDS: CardDef[] = [
     format: formatRub,
   },
   { key: 'orders', label: 'Заказы', hint: 'созданные за период, любой статус' },
-  { key: 'carts', label: 'Корзины', hint: 'уникальные посетители, добавившие товар' },
+  {
+    key: 'carts',
+    label: 'Корзины',
+    hint: 'уникальные посетители, добавившие товар; считаются с момента запуска сбора событий',
+  },
   {
     key: 'clicks',
     label: 'Клики',
-    hint: 'в корзину, открытие корзины, оформление, заявки на материалы',
+    hint: 'в корзину, открытие корзины, оформление, заявки на материалы; считаются с момента запуска сбора событий',
   },
   {
     key: 'logins',
@@ -110,10 +114,18 @@ export function StatsDashboard({ stats, period }: { stats: StatsResponse; period
       </div>
 
       <div className="bg-white rounded-2xl border border-brand-border p-5">
-        <div className="mb-3 text-sm font-medium text-brand-text">Выручка по дням</div>
+        <div className="mb-3 text-sm font-medium text-brand-text">
+          Сумма оплаченных заказов по дням
+        </div>
         <RevenueChart days={stats.days} />
-        {isEmpty(stats) && (
+        {isEmpty(stats) ? (
           <p className="mt-3 text-sm text-brand-text-secondary">Данных за этот период нет.</p>
+        ) : (
+          stats.days.every((d) => d.revenueRub === 0) && (
+            <p className="mt-3 text-sm text-brand-text-secondary">
+              Оплаченных заказов за период нет.
+            </p>
+          )
         )}
       </div>
     </div>
