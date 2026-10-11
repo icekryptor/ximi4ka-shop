@@ -18,6 +18,8 @@ interface NavItem {
   href: string
   label: string
   exact?: boolean
+  /** Раздел только для роли admin (API закрыт для остальных, здесь лишь прячем пункт). */
+  adminOnly?: boolean
 }
 
 const NAV: NavItem[] = [
@@ -26,10 +28,10 @@ const NAV: NavItem[] = [
   { href: '/admin/categories', label: 'Категории' },
   { href: '/admin/pages', label: 'Страницы' },
   { href: '/admin/blog', label: 'Блог' },
-  { href: '/admin/orders', label: 'Заказы' },
+  { href: '/admin/orders', label: 'Заказы', adminOnly: true },
   { href: '/admin/redirects', label: 'Редиректы' },
   { href: '/admin/media', label: 'Медиа' },
-  { href: '/admin/settings', label: 'Настройки' },
+  { href: '/admin/settings', label: 'Настройки', adminOnly: true },
 ]
 
 function isActive(pathname: string | null, href: string, exact?: boolean): boolean {
@@ -68,7 +70,7 @@ export function AdminShell({ admin, children }: Props) {
         <div className="p-6 text-xl font-bold text-brand">Ximi4ka Admin</div>
         <nav aria-label="Админ навигация" className="px-3 flex-1">
           <ul className="flex flex-col gap-1">
-            {NAV.map((item) => {
+            {NAV.filter((item) => !item.adminOnly || admin.role === 'admin').map((item) => {
               const active = isActive(pathname, item.href, item.exact)
               return (
                 <li key={item.href}>
@@ -97,6 +99,12 @@ export function AdminShell({ admin, children }: Props) {
               {admin.role}
             </span>
           </div>
+          <Link
+            href="/admin/account"
+            className="ml-auto mr-4 text-sm text-brand-text-secondary hover:text-brand-text"
+          >
+            Сменить пароль
+          </Link>
           <button
             type="button"
             onClick={handleLogout}
@@ -106,6 +114,17 @@ export function AdminShell({ admin, children }: Props) {
             {loggingOut ? 'Выход...' : 'Выйти'}
           </button>
         </header>
+        {admin.mustChangePassword ? (
+          <div
+            role="status"
+            className="px-6 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800"
+          >
+            Используется пароль по умолчанию: он общеизвестен, и любой может войти в админку.{' '}
+            <Link href="/admin/account" className="font-semibold underline">
+              Сменить пароль
+            </Link>
+          </div>
+        ) : null}
         <div className="flex-1 p-6 overflow-auto">{children}</div>
       </div>
     </div>

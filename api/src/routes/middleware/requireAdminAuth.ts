@@ -4,7 +4,7 @@ import { IsNull } from 'typeorm'
 import { AppDataSource } from '../../config/dataSource.js'
 import { AdminSession } from '../../entities/AdminSession.js'
 import type { AdminUser } from '../../entities/AdminUser.js'
-import { ApiError } from '../errors.js'
+import { ApiError, forbidden } from '../errors.js'
 import { CSRF_COOKIE_NAME, SESSION_COOKIE_NAME } from '../auth/constants.js'
 
 // Augment the Express Request type with the fields we attach after a
@@ -43,6 +43,21 @@ export async function requireAdminAuth(
   req.adminUser = session.adminUser
   req.adminSession = session
   next()
+}
+
+// Пропускает только перечисленные роли. Ставить после requireAdminAuth: роль
+// берётся из пользователя, которого тот загрузил из базы на этом запросе,
+// поэтому понижение роли действует сразу, без перелогина. Строгое сравнение:
+// 'Admin' или любое неизвестное значение роли доступа не даёт.
+export function requireRole(...roles: AdminUser['role'][]) {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    const user = req.adminUser
+    if (!user) return next(new ApiError(401, 'auth_required', 'Authentication required'))
+    if (!roles.includes(user.role)) {
+      return next(forbidden('forbidden', 'Недостаточно прав для этого раздела'))
+    }
+    next()
+  }
 }
 
 export function requireCsrfToken(req: Request, _res: Response, next: NextFunction): void {

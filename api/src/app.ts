@@ -102,6 +102,15 @@ export function createApp(): Express {
       rateLimit({ limit: envLimit('LOGIN_RATE_LIMIT', 10), windowMs: 15 * 60 * 1000 }),
     ),
   )
+  // Смена пароля: текущий пароль можно подбирать краденой сессией. Тот же guard,
+  // чтобы запись пути вроде `/api/auth//password` лимит не обходила.
+  app.use(
+    '/api/auth',
+    guard(
+      '/password',
+      rateLimit({ limit: envLimit('PASSWORD_RATE_LIMIT', 5), windowMs: 15 * 60 * 1000 }),
+    ),
+  )
   app.use('/api/auth', authRouter)
   app.use('/api/account', createAccountRouter())
   app.use('/api/telegram', createTelegramWebhookRouter())

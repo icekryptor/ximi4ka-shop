@@ -50,6 +50,77 @@ describe('AdminShell', () => {
     }
   })
 
+  it('редактору в меню нет «Заказов» и «Настроек», контентные разделы на месте', () => {
+    render(
+      <AdminShell admin={{ ...admin, role: 'editor' }}>
+        <div>content</div>
+      </AdminShell>,
+    )
+    const nav = screen.getByRole('navigation', { name: 'Админ навигация' })
+    expect(within(nav).queryByRole('link', { name: 'Заказы' })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: 'Настройки' })).not.toBeInTheDocument()
+    for (const label of [
+      'Главная',
+      'Товары',
+      'Категории',
+      'Страницы',
+      'Блог',
+      'Редиректы',
+      'Медиа',
+    ]) {
+      expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument()
+    }
+  })
+
+  it('неизвестная роль приравнена к редактору: админские разделы скрыты', () => {
+    render(
+      <AdminShell admin={{ ...admin, role: 'superuser' }}>
+        <div>content</div>
+      </AdminShell>,
+    )
+    const nav = screen.getByRole('navigation', { name: 'Админ навигация' })
+    expect(within(nav).queryByRole('link', { name: 'Заказы' })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: 'Настройки' })).not.toBeInTheDocument()
+  })
+
+  it('в шапке есть ссылка на смену пароля', () => {
+    render(
+      <AdminShell admin={admin}>
+        <div>content</div>
+      </AdminShell>,
+    )
+
+    expect(screen.getByRole('link', { name: /сменить пароль/i })).toHaveAttribute(
+      'href',
+      '/admin/account',
+    )
+  })
+
+  it('пароль по умолчанию: заметный баннер со ссылкой на смену', () => {
+    render(
+      <AdminShell admin={{ ...admin, mustChangePassword: true }}>
+        <div>content</div>
+      </AdminShell>,
+    )
+
+    const banner = screen.getByRole('status')
+    expect(banner).toHaveTextContent(/пароль по умолчанию/i)
+    expect(within(banner).getByRole('link', { name: /сменить пароль/i })).toHaveAttribute(
+      'href',
+      '/admin/account',
+    )
+  })
+
+  it('обычный пароль: баннера нет', () => {
+    render(
+      <AdminShell admin={{ ...admin, mustChangePassword: false }}>
+        <div>content</div>
+      </AdminShell>,
+    )
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
   it('renders admin email and role in the topbar', () => {
     render(
       <AdminShell admin={admin}>

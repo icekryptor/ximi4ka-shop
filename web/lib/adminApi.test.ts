@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  adminChangePassword,
   adminCreateBlogPost,
   adminCreateCategory,
   adminCreatePage,
@@ -59,6 +60,37 @@ describe('adminApi', () => {
     // Expire the cookie between tests; jsdom persists document.cookie
     // across tests otherwise.
     document.cookie = 'ximi4ka_shop_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+  })
+
+  it('adminChangePassword: POST /api/auth/password с CSRF и обоими паролями, ответ 204', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }))
+
+    await adminChangePassword({ currentPassword: 'старый', newPassword: 'новый-пароль-12' })
+
+    const [url, init] = fetchMock.mock.calls[0]
+    expect(String(url)).toMatch(/\/api\/auth\/password$/)
+    expect(init?.method).toBe('POST')
+    expect(init?.credentials).toBe('include')
+    expect((init?.headers as Record<string, string>)['X-CSRF-Token']).toBe('csrf-token-123')
+    expect(JSON.parse(init?.body as string)).toEqual({
+      currentPassword: 'старый',
+      newPassword: 'новый-пароль-12',
+    })
+  })
+
+  it('adminChangePassword: отказ сервера приходит как ApiError с кодом', async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(400, {
+        error: { code: 'invalid_current_password', message: 'Текущий пароль указан неверно' },
+      }),
+    )
+
+    const err = await adminChangePassword({ currentPassword: 'x', newPassword: 'y' }).catch(
+      (e: unknown) => e,
+    )
+
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).code).toBe('invalid_current_password')
   })
 
   it('GET requests: no CSRF header, credentials: include', async () => {

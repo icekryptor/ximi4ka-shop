@@ -115,3 +115,26 @@ describe('planShippingImport — товары вне фида', () => {
     ])
   })
 })
+
+describe('SHIPPING_OVERRIDES — комбо «Все четыре набора»', () => {
+  const KITS = ['himichka-30', 'elektrohimichka', 'mini-himichka', 'bolshoi-nabor-dlya-oge']
+
+  it('едет теми же коробками, что входящие в него наборы', () => {
+    const expected = KITS.flatMap((slug) => SHIPPING_OVERRIDES[slug].shipBoxes ?? [])
+    expect(SHIPPING_OVERRIDES['vse-chetyre-nabora'].shipBoxes).toEqual(expected)
+  })
+
+  it('товара нет в фиде Тильды: вес задан правилом и равен сумме весов наборов', () => {
+    const plan = planShippingImport([], {}, [
+      { slug: 'vse-chetyre-nabora', priceRub: 9299, compareAtPriceRub: null },
+    ])
+    expect(plan.updates).toEqual([
+      expect.objectContaining({
+        slug: 'vse-chetyre-nabora',
+        weightG: 4600,
+        shipBoxes: ['large', 'elektro', 'medium', 'large'],
+      }),
+    ])
+    expect(plan.missingWeight).toEqual([])
+  })
+})

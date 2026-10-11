@@ -69,3 +69,31 @@ describe('<FaqBlock> v3', () => {
     expect(container.querySelector('[data-block="faq"]')).toBeNull()
   })
 })
+
+// Тексты вопросов и ответов вносит редактор: строка `</script>` в них не
+// должна закрывать тег JSON-LD и выполнять чужой скрипт у посетителей.
+describe('<FaqBlock> JSON-LD: экранирование', () => {
+  const block = (question: string, answer: string) => ({
+    type: 'faq' as const,
+    items: [{ question, answer }],
+  })
+
+  it('вопрос и ответ с </script> не создают лишний script и не ломают тег', () => {
+    const { container } = render(
+      <FaqBlock block={block('</script><script>alert(1)</script>', 'ответ </script><b>')} />,
+    )
+
+    expect(container.querySelectorAll('script')).toHaveLength(1)
+    expect(container.innerHTML).not.toContain('</script><script>')
+  })
+
+  it('JSON-LD при этом содержит исходные тексты без потерь', () => {
+    const { container } = render(
+      <FaqBlock block={block('Что внутри <набора>?', 'Реактивы & пробирки')} />,
+    )
+
+    const ld = JSON.parse(container.querySelector('script')!.textContent!)
+    expect(ld.mainEntity[0].name).toBe('Что внутри <набора>?')
+    expect(ld.mainEntity[0].acceptedAnswer.text).toBe('Реактивы & пробирки')
+  })
+})
