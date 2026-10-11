@@ -16,6 +16,8 @@ export interface AdminUserPublic {
   id: string
   email: string
   role: string
+  /** Вошёл с паролем по умолчанию из сида: просим сменить. */
+  mustChangePassword?: boolean
 }
 
 export function readCsrfTokenFromDocument(): string | null {

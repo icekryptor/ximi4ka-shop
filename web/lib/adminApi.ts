@@ -654,3 +654,16 @@ export async function adminDeleteMedia(id: string): Promise<void> {
     method: 'DELETE',
   })
 }
+
+// --- свой пароль ---
+
+/** Смена пароля вошедшего пользователя; сервер отзывает его остальные сессии. */
+export async function adminChangePassword(input: {
+  currentPassword: string
+  newPassword: string
+}): Promise<void> {
+  await authedRequest<void>(`/api/auth/password`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}

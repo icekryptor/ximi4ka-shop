@@ -6,6 +6,7 @@ import { startReconciliationJob } from './lib/payments/reconcile.js'
 import { startNotificationWorker } from './lib/notifications/worker.js'
 import { startCdekShipmentWorker } from './lib/cdek/worker.js'
 import { startLoginBotPolling } from './lib/telegram/loginPoller.js'
+import { flagDefaultPasswordUsers } from './lib/auth/passwordMaintenance.js'
 
 const logger = pino()
 const port = Number(process.env.PORT ?? 3001)
@@ -35,6 +36,12 @@ async function bootstrap() {
   if (startCdekShipmentWorker()) {
     logger.info('cdek shipments worker started')
   }
+
+  // Кто из пользователей админки ещё живёт с паролем по умолчанию из сида:
+  // помечаем (баннер в админке) и пишем в лог. Не блокирует старт.
+  flagDefaultPasswordUsers().catch((err) => {
+    logger.error(err, 'проверка паролей по умолчанию не удалась')
+  })
 
   // Бот входа в кабинет забирает update сам. No-op без TELEGRAM_LOGIN_POLLING=1.
   if (startLoginBotPolling()) {

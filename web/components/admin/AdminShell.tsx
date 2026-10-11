@@ -99,6 +99,12 @@ export function AdminShell({ admin, children }: Props) {
               {admin.role}
             </span>
           </div>
+          <Link
+            href="/admin/account"
+            className="ml-auto mr-4 text-sm text-brand-text-secondary hover:text-brand-text"
+          >
+            Сменить пароль
+          </Link>
           <button
             type="button"
             onClick={handleLogout}
@@ -108,6 +114,17 @@ export function AdminShell({ admin, children }: Props) {
             {loggingOut ? 'Выход...' : 'Выйти'}
           </button>
         </header>
+        {admin.mustChangePassword ? (
+          <div
+            role="status"
+            className="px-6 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800"
+          >
+            Используется пароль по умолчанию: он общеизвестен, и любой может войти в админку.{' '}
+            <Link href="/admin/account" className="font-semibold underline">
+              Сменить пароль
+            </Link>
+          </div>
+        ) : null}
         <div className="flex-1 p-6 overflow-auto">{children}</div>
       </div>
     </div>
