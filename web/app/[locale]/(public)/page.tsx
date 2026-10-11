@@ -76,12 +76,30 @@ export const SITE_CATALOG = [
     stats: { reagents: 14, instruments: 20, reactions: 74 },
     staggerOffset: 8, // rem
   },
+  {
+    sku: 'X-OGE',
+    slug: 'bolshoi-nabor-dlya-oge',
+    name: 'Химичка ОГЭ',
+    shortDescription:
+      'Подготовка к экспериментальной части ОГЭ по химии: 29 реактивов, 2 индикатора, методичка на 110+ реакций.',
+    priceRub: 3099,
+    emphasisWord: 'ОГЭ',
+    hoverFormula: 'CuSO₄ + Fe → FeSO₄ + Cu↓',
+    chips: ['ОГЭ', 'методичка', '9 класс'],
+    stats: { reagents: 29, instruments: 5, reactions: 110 },
+    staggerOffset: 4, // rem
+  },
 ] as const
 
 // Per-stat-type max across the whole catalog row, so each card's bars tell a
 // comparative story (e.g. Электрохимичка's instruments=20 fills 100%, while
-// Химичка 3.0's instruments=12 fills ~60% of the same scale).
-const SITE_CATALOG_STAT_MAXES = { reagents: 18, instruments: 20, reactions: 161 }
+// Химичка 3.0's instruments=12 fills ~60% of the same scale). Считается из
+// каталога, чтобы новая карточка не ломала шкалы ручной правкой констант.
+export const SITE_CATALOG_STAT_MAXES = {
+  reagents: Math.max(...SITE_CATALOG.map((e) => e.stats.reagents)),
+  instruments: Math.max(...SITE_CATALOG.map((e) => e.stats.instruments)),
+  reactions: Math.max(...SITE_CATALOG.map((e) => e.stats.reactions)),
+}
 
 // generateStaticParams по локалям здесь не нужен: образ собирается без доступа
 // к api (buildkit не пускает шаги сборки в docker-сеть), поэтому пререндер
@@ -228,7 +246,7 @@ export default async function HomePage({ params }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr_1.1fr] gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {flagships.map((entry) => {
               const stagger =
                 entry.staggerOffset === 0
