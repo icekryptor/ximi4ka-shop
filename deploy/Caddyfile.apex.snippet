@@ -1,0 +1,52 @@
+# Шаг 1 переключения апекса (docs/seo/apex-switch-plan-2026-10.md).
+# Добавляется в /opt/supabase-src/docker/volumes/proxy/caddy/Caddyfile рядом с
+# блоком new.ximi4ka.ru. Блок new.ximi4ka.ru на этом шаге НЕ меняется: сайт на
+# нём продолжает работать, пока не пройдут проверки апекса.
+#
+# Порядок:
+#   1. cp Caddyfile Caddyfile.bak-$(date +%F)
+#   2. cat /opt/ximishop/app/deploy/Caddyfile.apex.snippet >> Caddyfile
+#   3. docker exec supabase-caddy caddy validate --config /etc/caddy/Caddyfile
+#   4. docker exec supabase-caddy caddy reload   --config /etc/caddy/Caddyfile
+#   5. Только потом менять A-записи апекса и www: пока DNS ведёт на Tilda, Caddy
+#      не пройдёт ACME-проверку и будет копить неудачные попытки. Сертификат
+#      выпускается при первом обращении после переключения DNS, в первые
+#      минуты возможна ошибка TLS.
+#
+# Как и в Caddyfile.snippet, handle для api стоит ДО общего reverse_proxy на
+# витрину, иначе /api/* уедет в Next.js и вернёт 404.
+# Тело блока повторяет new.ximi4ka.ru (там оно не вынесено в именованный
+# фрагмент, чтобы не менять рабочий блок до проверок). После шага 5 плана
+# new.ximi4ka.ru заменяется блоком из Caddyfile.new-redirect.snippet, и это
+# тело остаётся только у апекса.
+ximi4ka.ru {
+    encode zstd gzip
+
+    # Express-api: каталог, заказы, вебхук Т-Кассы, загруженные картинки.
+    handle /api/* {
+        reverse_proxy ximishop-api:3001 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+    handle /uploads/* {
+        reverse_proxy ximishop-api:3001
+    }
+
+    # Всё остальное — витрина и админка (Next.js).
+    handle {
+        reverse_proxy ximishop-web:3000 {
+            header_up X-Real-IP {remote_host}
+        }
+    }
+
+    # Иммутабельные ассеты Next.js — год в кэше браузера
+    @next_static path /_next/static/*
+    header @next_static Cache-Control "public, max-age=31536000, immutable"
+
+    header -server
+}
+
+# www → апекс, 301, с сохранением пути и query. Сейчас так же отвечает Tilda.
+www.ximi4ka.ru {
+    redir https://ximi4ka.ru{uri} permanent
+}

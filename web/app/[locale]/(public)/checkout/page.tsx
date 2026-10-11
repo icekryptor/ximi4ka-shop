@@ -5,7 +5,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CheckoutRequest } from '@ximi4ka-shop/shared'
 import { getMeOrNull } from '@/lib/accountApi'
+import { loadAttribution, safeLocalStorage } from '@/lib/attribution'
 import { useCart } from '@/lib/cart'
+import { giftRemainingRub, saveGiftChoice, useGiftChoice } from '@/lib/gift'
 import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 import { ApiError, quoteShipping, submitCheckout, type ShippingQuoteResponse } from '@/lib/api'
 import { formatRub } from '@/lib/stockLabel'
@@ -36,6 +38,10 @@ const INITIAL_FIELDS: CheckoutFormFields = {
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, totals, itemCount, clear } = useCart()
+  const [giftChoice] = useGiftChoice()
+  // Подарок открыт от порога; сервер перепроверяет, здесь — чтобы не слать и не
+  // показывать выбор, оставшийся от большей корзины.
+  const gift = giftChoice && giftRemainingRub(totals.totalRub) === 0 ? giftChoice : null
   const [hydrated, setHydrated] = useState(false)
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setHydrated(true), [])
@@ -53,6 +59,24 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<CheckoutFormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Ловушка для ботов: людям поле не видно, формы-спамеры заполняют всё подряд.
+  const [trap, setTrap] = useState('')
+  // Заказ создан, браузер уходит на шлюз или на страницу заказа. Корзина к этому
+  // моменту уже очищена, и без отдельного состояния на секунду-две мелькало бы
+  // «Корзина пуста». payment — идём на оплату, order — открываем страницу заказа.
+  const [placed, setPlaced] = useState<'payment' | 'order' | null>(null)
+  // Кнопка «Назад» со шлюза возвращает страницу из bfcache вместе с её
+  // состоянием: сбрасываем «переходим», корзина при этом честно пуста.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (!event.persisted) return
+      setPlaced(null)
+      // Ключ идемпотентности уже сброшен: новая отправка создаст новый заказ.
+      setSubmitting(false)
+    }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [])
 
   // Город, способ, пункт или адрес курьера и цены — в блоке доставки (спека §5).
   const delivery = useCdekDelivery(items)
@@ -132,8 +156,10 @@ export default function CheckoutPage() {
     const email = fields.email.trim()
     const telegram = normalizeTelegramHandle(fields.telegram)
     const comment = fields.comment.trim()
+    const attribution = loadAttribution(safeLocalStorage(), new Date())
     const payload: CheckoutRequest = {
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      ...(gift ? { giftProductId: gift.productId } : {}),
       customer: {
         name: fields.name.trim(),
         phone: `+${phoneDigits(fields.phone)}`,
@@ -144,6 +170,8 @@ export default function CheckoutPage() {
         ...destination,
         ...(comment !== '' ? { comment } : {}),
       },
+      ...(trap !== '' ? { hp_check: trap } : {}),
+      ...(attribution ? { attribution } : {}),
     }
 
     setSubmitting(true)
@@ -164,7 +192,9 @@ export default function CheckoutPage() {
           quantity: i.quantity,
         })),
       )
+      setPlaced(result.paymentUrl ? 'payment' : 'order')
       clear()
+      saveGiftChoice(null)
       if (result.paymentUrl) {
         redirectTo(result.paymentUrl)
       } else {
@@ -176,7 +206,16 @@ export default function CheckoutPage() {
       }
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.code === 'delivery_point_unknown') {
+        if (err.code === 'bot_suspected') {
+          // Скорее всего автозаполнение тронуло скрытое поле: чистим его, иначе
+          // повтор снова упрётся в отказ. Текст сервера уже начинается с «Не удалось…».
+          setTrap('')
+          setServerError(`${err.message}.`)
+        } else if (err.code === 'rate_limited') {
+          setServerError(
+            'Слишком много попыток оформить заказ. Подождите несколько минут и попробуйте снова.',
+          )
+        } else if (err.code === 'delivery_point_unknown') {
           // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
           // «Пункт получения», выбор сброшен, список города грузится заново.
           delivery.rejectPoint(err.message)
@@ -204,6 +243,12 @@ export default function CheckoutPage() {
 
         {!hydrated ? (
           <div className="min-h-[40vh]" />
+        ) : placed ? (
+          <p role="status" className="text-xl text-[var(--color-lj-ink)] opacity-70">
+            {placed === 'payment'
+              ? 'Заказ оформлен. Переходим к оплате…'
+              : 'Заказ оформлен. Открываем страницу заказа…'}
+          </p>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-start gap-6">
             <p className="text-xl text-[var(--color-lj-ink)] opacity-70">Корзина пуста</p>
@@ -220,6 +265,24 @@ export default function CheckoutPage() {
             noValidate
             className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 items-start"
           >
+            {/* Ловушка для ботов: вынесена за экран и не берёт фокус. Менеджеры паролей
+                autocomplete="off" игнорируют, поэтому у поля нейтральное имя и data-атрибуты
+                1Password, LastPass, Bitwarden, Dashlane. */}
+            <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+              <input
+                type="text"
+                name="hp_check"
+                tabIndex={-1}
+                autoComplete="off"
+                data-1p-ignore
+                data-lpignore="true"
+                data-bwignore
+                data-form-type="other"
+                value={trap}
+                onChange={(e) => setTrap(e.target.value)}
+              />
+            </div>
+
             {/* ---- Левая колонка: данные покупателя и доставка ---- */}
             <div className="flex flex-col gap-8">
               {signedIn === false && (
@@ -338,6 +401,23 @@ export default function CheckoutPage() {
                     </span>
                   </li>
                 ))}
+                {gift && (
+                  <li
+                    data-testid="summary-gift"
+                    className="flex items-baseline justify-between gap-4 py-3 border-b border-[var(--color-lj-rule)]"
+                  >
+                    <span className="font-lj-body text-base text-[var(--color-lj-ink)] min-w-0 truncate">
+                      {gift.name}
+                      <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] opacity-60">
+                        {' '}
+                        × 1
+                      </span>
+                    </span>
+                    <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)] font-[700] whitespace-nowrap">
+                      🎁 подарок
+                    </span>
+                  </li>
+                )}
               </ul>
 
               <div className="flex flex-col gap-2">

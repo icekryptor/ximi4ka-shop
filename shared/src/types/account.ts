@@ -46,6 +46,8 @@ export interface AccountOrderSummary {
     unitPriceRub: number
     /** Сумма строки (с учётом оптовой скидки). */
     lineTotalRub: number
+    /** Подарок к заказу: строка за 0 ₽. */
+    isGift?: boolean
     imageUrl: string | null
   }>
   subtotalRub: number

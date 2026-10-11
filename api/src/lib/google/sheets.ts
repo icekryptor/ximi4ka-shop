@@ -101,6 +101,35 @@ export class GoogleSheetsClient {
     })
   }
 
+  // Таблица заявок со страницы /get_materials — отдельная от таблицы заказов
+  // (MATERIALS_SHEETS_*), но тот же сервисный аккаунт: ему нужен доступ
+  // «Редактор» и к ней. null — таблица не настроена.
+  static forMaterialsFromEnv(env: NodeJS.ProcessEnv = process.env): GoogleSheetsClient | null {
+    const raw = env.GOOGLE_SERVICE_ACCOUNT_JSON
+    const spreadsheetId = env.MATERIALS_SHEETS_ID
+    if (!raw || !spreadsheetId) return null
+    return new GoogleSheetsClient({
+      serviceAccount: parseServiceAccount(raw),
+      spreadsheetId,
+      sheetName: env.MATERIALS_SHEETS_TAB || 'Лист1',
+    })
+  }
+
+  // Дописывает строку в таблицу, начиная с startRow: пока ниже пусто, строка
+  // ложится ровно в startRow, дальше — под последнюю заполненную. Ничего выше
+  // startRow не читаем и не трогаем. RAW: телефон остаётся текстом как введён.
+  async appendRowFrom(
+    startRow: number,
+    lastColumn: string,
+    row: (string | number)[],
+  ): Promise<void> {
+    await this.request(
+      'POST',
+      `${this.valuesPath(this.range(`A${startRow}:${lastColumn}`))}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+      { values: [row] },
+    )
+  }
+
   async upsertOrderRow(orderNumber: string, row: (string | number)[]): Promise<void> {
     const column = await this.request<{ values?: string[][] }>(
       'GET',

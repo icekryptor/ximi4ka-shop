@@ -19,7 +19,7 @@ const REDIRECTS_CSV_PATH = path.resolve(
 const NON_CMS_PREFIXES = ['/categories/', '/product/', '/blog/']
 const SEEDED_ELSEWHERE = new Set(['/o-nas'])
 // /success и /fail — Next-роуты (платёжный флоу), не CMS.
-const NEXT_ROUTES = new Set(['/success', '/fail'])
+const NEXT_ROUTES = new Set(['/success', '/fail', '/get_materials/thanks'])
 
 const textOf = (html: string) =>
   sanitizeHtml(html)
@@ -125,6 +125,15 @@ describe('data/cms-pages.json', () => {
     expect(oferta).not.toMatch(/Ксени/)
     expect(oferta).not.toContain('431402136660')
     expect(oferta).not.toContain('323430000002972')
+  })
+
+  it('оператор в политике — Аистов В. А. (решение владельца от 08.10.2026), без следов другого лица', async () => {
+    const policy = pageText((await readCmsPages()).find((p) => p.slug === 'policy')!)
+    expect(policy).toMatch(
+      /предпринимаемые\s+Аистов Василий Андреевич,\s+ИНН 431401950080\s+\(далее\s+— Оператор\)/,
+    )
+    expect(policy).not.toMatch(/Ксени/)
+    expect(policy).not.toMatch(/Аистова/)
   })
 
   it('FAQ — блок faq с вопросами и ответами (из него строится FAQPage JSON-LD)', async () => {

@@ -1,4 +1,4 @@
-import type { DeliveryAddress, OrderStatus } from '@ximi4ka-shop/shared'
+import type { DeliveryAddress, OrderEventKey, OrderStatus } from '@ximi4ka-shop/shared'
 
 // Что показываем людям в таблице и в чате. Чистые функции без сети — вся
 // логика вида уведомлений тестируется здесь.
@@ -23,6 +23,8 @@ export interface NotifiableOrder {
     unitPriceRub: number
     /** Сумма строки; нет у заказов до оптовых партий. */
     lineTotalRub?: number | null
+    /** Подарок к заказу: строка за 0 ₽. */
+    isGift?: boolean
   }[]
 }
 
@@ -87,7 +89,7 @@ function formatPhone(phone: string): string {
   return m ? `+7 ${m[1]} ${m[2]}-${m[3]}-${m[4]}` : phone
 }
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
@@ -111,9 +113,15 @@ function pluralPositions(n: number): string {
   return 'позиций'
 }
 
+// Подарок — в конце списка: при обрезке по лимиту Telegram скрываться должен он, а не оплаченная позиция.
+function giftLast(items: NotifiableOrder['items']): NotifiableOrder['items'] {
+  return [...items].sort((a, b) => Number(!!a.isGift) - Number(!!b.isGift))
+}
+
 function itemLine(item: NotifiableOrder['items'][number]): string {
   const parts = [item.productSnapshot.name]
   if (item.productSnapshot.sku) parts.push(item.productSnapshot.sku)
+  if (item.isGift) return [...parts, '🎁 подарок'].join(' · ')
   // Цена партии не делится на целые рубли за штуку: тогда честнее назвать сумму.
   const exact = item.lineTotalRub != null && item.lineTotalRub !== item.unitPriceRub * item.quantity
   parts.push(
@@ -145,7 +153,7 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
     order.customerEmail,
     order.customerTelegram ?? '',
     deliveryCell(order),
-    order.items.map(itemLine).join('\n'),
+    giftLast(order.items).map(itemLine).join('\n'),
     // «Товары» — со скидкой: колонки таблицы не менялись, Товары + Доставка = Итого.
     order.subtotalRub - order.discountRub,
     order.shippingRub,
@@ -185,7 +193,7 @@ export function telegramCard(order: NotifiableOrder): string {
   const reserve = 40
   let length = [title, ...client, 'Товары:', totals].join('\n').length + 4 + reserve
   const lines: string[] = []
-  for (const item of order.items) {
+  for (const item of giftLast(order.items)) {
     const line = escapeHtml(itemLine(item))
     if (length + line.length + 1 > TELEGRAM_TEXT_LIMIT) break
     lines.push(line)
@@ -195,4 +203,26 @@ export function telegramCard(order: NotifiableOrder): string {
   if (hidden > 0) lines.push(`…и ещё ${hidden} ${pluralPositions(hidden)}`)
 
   return [title, client.join('\n'), ['Товары:', ...lines].join('\n'), totals].join('\n\n')
+}
+
+export type ManagerAlertOrder = Pick<
+  NotifiableOrder,
+  'orderNumber' | 'customerName' | 'customerPhone' | 'totalRub'
+> & { externalOrderId: string | null }
+
+// Сигнал менеджеру по заказу из Яндекса: что случилось и что сделать руками.
+export function managerAlertText(order: ManagerAlertOrder, eventKey: OrderEventKey): string {
+  const reason =
+    eventKey === 'ycp:on_delivery'
+      ? 'Яндекс прислал заказ с оплатой при получении. Такие заказы не поддерживаются: заказ не оплачен и в СДЭК не отправлен. Свяжитесь с покупателем.'
+      : 'Яндекс отменил оплаченный заказ. Не отгружайте его. Если отправка в СДЭК уже создана — отмените её в СДЭК вручную. Проверьте возврат денег покупателю.'
+  return [
+    `<b>Внимание: заказ ${escapeHtml(order.orderNumber)} из Яндекса</b>`,
+    escapeHtml(reason),
+    `Покупатель: ${escapeHtml(order.customerName)}, ${escapeHtml(order.customerPhone)}`,
+    `Сумма: ${rub(order.totalRub)}`,
+    order.externalOrderId ? `Заказ в Яндексе: ${escapeHtml(order.externalOrderId)}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n')
 }

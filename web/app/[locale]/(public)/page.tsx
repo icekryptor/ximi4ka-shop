@@ -21,6 +21,7 @@ import { Hero, PreFooterCta, Manifesto, DEFAULT_TESTIMONIALS } from '@/component
 import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
 import { HowItWorksStepLJ } from '@/components/marketing/HowItWorksStepLJ'
 import { TestimonialQuoteLJ } from '@/components/marketing/TestimonialQuoteLJ'
+import { buildPromoSlides } from '@/lib/promoSlides'
 import { DEFAULT_LOCALE, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -75,12 +76,30 @@ export const SITE_CATALOG = [
     stats: { reagents: 14, instruments: 20, reactions: 74 },
     staggerOffset: 8, // rem
   },
+  {
+    sku: 'X-OGE',
+    slug: 'bolshoi-nabor-dlya-oge',
+    name: 'Химичка ОГЭ',
+    shortDescription:
+      'Подготовка к экспериментальной части ОГЭ по химии: 29 реактивов, 2 индикатора, методичка на 110+ реакций.',
+    priceRub: 3099,
+    emphasisWord: 'ОГЭ',
+    hoverFormula: 'CuSO₄ + Fe → FeSO₄ + Cu↓',
+    chips: ['ОГЭ', 'методичка', '9 класс'],
+    stats: { reagents: 29, instruments: 5, reactions: 110 },
+    staggerOffset: 4, // rem
+  },
 ] as const
 
 // Per-stat-type max across the whole catalog row, so each card's bars tell a
 // comparative story (e.g. Электрохимичка's instruments=20 fills 100%, while
-// Химичка 3.0's instruments=12 fills ~60% of the same scale).
-const SITE_CATALOG_STAT_MAXES = { reagents: 18, instruments: 20, reactions: 161 }
+// Химичка 3.0's instruments=12 fills ~60% of the same scale). Считается из
+// каталога, чтобы новая карточка не ломала шкалы ручной правкой констант.
+export const SITE_CATALOG_STAT_MAXES = {
+  reagents: Math.max(...SITE_CATALOG.map((e) => e.stats.reagents)),
+  instruments: Math.max(...SITE_CATALOG.map((e) => e.stats.instruments)),
+  reactions: Math.max(...SITE_CATALOG.map((e) => e.stats.reactions)),
+}
 
 // generateStaticParams по локалям здесь не нужен: образ собирается без доступа
 // к api (buildkit не пускает шаги сборки в docker-сеть), поэтому пререндер
@@ -161,9 +180,8 @@ export default async function HomePage({ params }: Props) {
   const locale: Locale = rawLocale
   const { page, products, settings, categories } = await fetchHome()
 
-  // Текст hero зашит в код по макету Figma «Главная — 1440» (17:129). Если
-  // его снова понадобится менять из CMS, верните pickField() здесь и
-  // передайте значения в title/subtitle/lead у Hero.
+  // Слайды hero зашиты в код (web/lib/promoSlides.ts): это акционные плашки,
+  // а не CMS-контент.
 
   const blocks = (pickField<unknown[]>(
     page as unknown as Record<string, unknown>,
@@ -203,40 +221,17 @@ export default async function HomePage({ params }: Props) {
     }),
   )
 
+  const promoSlides = buildPromoSlides()
+
   return (
     <>
       {products.length > 0 ? <JsonLd data={itemListJsonLd(products)} /> : null}
 
-      {/* Маркиз-тикер фактов — чёрный и над hero, как в макете (17:234):
-          скруглённый низ фиолетового hero ложится на белый фон. */}
+      {/* Маркиз-тикер фактов — чёрный и над hero, как в макете (17:234). */}
       <Ticker items={FACTS_TICKER} surface="ink" />
 
-      {/* 1. Hero — фиолетовый, по макету Figma (17:129) */}
-      <Hero
-        title="ХИМИЧКА"
-        subtitle="Наборы для опытов"
-        lead="3 набора: от реакций меди до электролиза. Внутри реагенты, лабораторная посуда и протоколы к каждому опыту. Ребёнок проводит их своими руками — то, что в учебнике осталось картинкой на видео."
-        primaryCta={{ label: 'Открыть каталог', href: '/catalog' }}
-        secondaryCta={{ label: 'Что мы делаем', href: '#manifesto' }}
-        slides={flagships
-          // Слайдер флагманов (v3.5). Берём все флагманы с DB-фото; каждый
-          // слайд — реальный продукт с ценой из БД, ссылкой и CTA «В корзину».
-          // Без фото слайд не показываем; при <1 валидном слайде Hero скрывает
-          // панель и разворачивает заголовок на всю ширину.
-          .filter((f) => f.dbProduct && f.dbProduct.images.length > 0)
-          .map((f) => {
-            const p = f.dbProduct!
-            return {
-              productId: p.id,
-              slug: p.slug,
-              name: p.name,
-              priceRub: p.priceRub,
-              imageUrl: p.images[0].url,
-              alt: p.name,
-              href: `/product/${p.slug}`,
-            }
-          })}
-      />
+      {/* 1. Hero — промо-слайдер из трёх баннеров, по макету Figma (баннеры, 144:4627…) */}
+      <Hero title="ХИМИЧКА" subtitle="Наборы для опытов" slides={promoSlides} />
 
       {/* 2. v3 Catalog — asymmetric 3-card row (LAB CREAM) */}
       <section className="bg-[var(--color-lj-cream)] px-6 py-32 relative">
@@ -251,7 +246,7 @@ export default async function HomePage({ params }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr_1.1fr] gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {flagships.map((entry) => {
               const stagger =
                 entry.staggerOffset === 0

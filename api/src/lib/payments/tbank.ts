@@ -1,6 +1,12 @@
 import type { Order } from '../../entities/Order.js'
 import { generateToken, verifyToken } from './token.js'
 import { tbankFetch } from './tbankTransport.js'
+import {
+  buildReceipt,
+  parseReceiptConfig,
+  type ReceiptConfig,
+  type TBankReceipt,
+} from './receipt.js'
 import type { CreatePaymentResult, PaymentEvent, PaymentProvider, PaymentStatus } from './types.js'
 
 // Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring.
@@ -20,6 +26,30 @@ function logTbankError(message: string, err: unknown): void {
   } else {
     console.error(message, err)
   }
+}
+
+// Тексты из ответа банка (ErrorCode, Message, Details) попадают в лог. Details —
+// пояснение, какой параметр не прошёл (для ErrorCode вроде 309 «Неверные
+// параметры» одного Message мало). Это чужой текст, поэтому перед записью:
+//   * вычёркиваем наши значения, если банк процитировал их в пояснении
+//     (секрет заказа из адреса возврата, телефон, почта, пароль терминала);
+//   * убираем управляющие и bidi-символы и схлопываем пробелы — лог остаётся
+//     одной строкой и не рисует escape-последовательности;
+//   * режем до MAX_BANK_TEXT_LENGTH — лог не растёт от чужого ответа.
+const MAX_BANK_TEXT_LENGTH = 300
+
+function formatBankText(value: unknown, secrets: Array<string | null | undefined> = []): string {
+  if (typeof value !== 'string' && typeof value !== 'number') return '-'
+  let text = String(value)
+  for (const secret of secrets) {
+    if (secret && secret.length >= 4) text = text.split(secret).join('[redacted]')
+  }
+  const line = text
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, MAX_BANK_TEXT_LENGTH)
+  return line.length > 0 ? line : '-'
 }
 
 // Provider payment statuses → our order-status domain.
@@ -58,6 +88,10 @@ export interface TBankConfig {
    * СДЭК; successUrl/failUrl тогда не используются.
    */
   returnOrigin?: string
+  /** Слать ли Receipt (чек по 54-ФЗ). По умолчанию да; TBANK_SEND_RECEIPT=false выключает. */
+  sendReceipt?: boolean
+  /** СНО и ставка НДС для чека (TBANK_TAXATION, TBANK_RECEIPT_TAX). */
+  receipt?: ReceiptConfig
   /**
    * По умолчанию — tbankFetch (доверяет корню Минцифры только для запросов
    * к Т-Банку). Параметр — точка расширения для тестов.
@@ -69,6 +103,7 @@ interface TBankInitResponse {
   Success?: boolean
   ErrorCode?: string
   Message?: string
+  Details?: string
   PaymentId?: string | number
   PaymentURL?: string
   Status?: string
@@ -85,7 +120,7 @@ interface TBankGetStateResponse {
 
 export class TBankProvider implements PaymentProvider {
   readonly name = 'tbank' as const
-  private readonly cfg: TBankConfig
+  private readonly cfg: TBankConfig & { sendReceipt: boolean }
 
   constructor(cfg: Partial<TBankConfig> = {}) {
     const apiUrl = cfg.apiUrl ?? process.env.TBANK_API_URL ?? TBANK_DEFAULT_API_URL
@@ -99,6 +134,12 @@ export class TBankProvider implements PaymentProvider {
       successUrl: cfg.successUrl ?? process.env.TBANK_SUCCESS_URL,
       failUrl: cfg.failUrl ?? process.env.TBANK_FAIL_URL,
       returnOrigin: (cfg.returnOrigin ?? process.env.WEB_ORIGIN ?? '').replace(/\/+$/, ''),
+      sendReceipt:
+        cfg.sendReceipt ??
+        !['false', '0', 'off', 'no'].includes(
+          (process.env.TBANK_SEND_RECEIPT ?? '').trim().toLowerCase(),
+        ),
+      receipt: cfg.receipt,
       // По умолчанию — tbankFetch: доверяет корню Минцифры только для
       // запросов к Т-Банку, а не глобально (см. tbankTransport.ts).
       fetch: cfg.fetch ?? tbankFetch,
@@ -146,6 +187,21 @@ export class TBankProvider implements PaymentProvider {
           ...(order.customerEmail ? { Email: order.customerEmail } : {}),
         },
       }
+      // Терминал с онлайн-кассой требует чек; не собрался — Init не шлём
+      // (catch ниже вернёт null и заказ уйдёт на ручное оформление).
+      if (this.cfg.sendReceipt) {
+        try {
+          // СНО и НДС читаются здесь: неверное значение в env даёт отказ с
+          // логом и ручное оформление, а не 500 в чекауте.
+          params.Receipt = buildReceipt(order, this.cfg.receipt ?? parseReceiptConfig(process.env))
+        } catch (err) {
+          const reason = err instanceof Error ? err.message : String(err)
+          console.error(
+            `tbank: чек не собран для ${order.orderNumber} — Init не отправлен: ${reason}`,
+          )
+          return null
+        }
+      }
       if (this.cfg.notificationUrl) params.NotificationURL = this.cfg.notificationUrl
       if (this.cfg.returnOrigin) {
         const page = `${this.cfg.returnOrigin}/order/${encodeURIComponent(order.orderNumber)}`
@@ -161,8 +217,27 @@ export class TBankProvider implements PaymentProvider {
 
       const body = await this.post<TBankInitResponse>('Init', params)
       if (!body.Success || body.PaymentId == null || !body.PaymentURL) {
+        // params — только имена отправленных полей: по ним видно, чего не
+        // хватало или что лишнее. Значения (телефон, почта, секрет заказа,
+        // подпись) в лог не попадают.
+        const receipt = params.Receipt as TBankReceipt | undefined
+        const sent = Object.keys(params).concat(['TerminalKey', 'Token']).join(',')
+        const secrets = [
+          order.publicToken,
+          order.publicToken ? encodeURIComponent(order.publicToken) : null,
+          order.customerPhone,
+          order.customerEmail,
+          // Контакт, который реально ушёл в чек (телефон там нормализован).
+          receipt?.Phone,
+          receipt?.Phone?.replace(/^\+/, ''),
+          receipt?.Email,
+          this.cfg.password,
+        ]
+        const code = formatBankText(body.ErrorCode, secrets)
+        const message = formatBankText(body.Message, secrets)
+        const details = formatBankText(body.Details, secrets)
         console.error(
-          `tbank: Init rejected for ${order.orderNumber}: ErrorCode=${body.ErrorCode} Message=${body.Message}`,
+          `tbank: Init rejected for ${order.orderNumber}: ErrorCode=${code} Message=${message} Details=${details} params=${sent}`,
         )
         return null
       }

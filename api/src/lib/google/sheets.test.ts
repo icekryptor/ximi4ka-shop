@@ -214,3 +214,53 @@ describe('GoogleSheetsClient', () => {
     expect(GoogleSheetsClient.fromEnv({})).toBeNull()
   })
 })
+
+describe('таблица заявок на материалы', () => {
+  const materialsClient = (f: ReturnType<typeof vi.fn>) =>
+    new GoogleSheetsClient({
+      serviceAccount: account,
+      spreadsheetId: 'SHEET123',
+      sheetName: 'Лист1',
+      fetch: f,
+    })
+  const materialsRange = (r: string) => encodeURIComponent(`'Лист1'!${r}`)
+
+  it('appendRowFrom дописывает строку с заданной строки, не читая таблицу', async () => {
+    const f = vi.fn().mockResolvedValueOnce(tokenOk()).mockResolvedValueOnce(json(200, {}))
+    await materialsClient(f).appendRowFrom(6256, 'H', ['Мария', '=1+1'])
+
+    expect(f).toHaveBeenCalledTimes(2)
+    expect(f.mock.calls[1][0]).toBe(
+      `${BASE}${materialsRange('A6256:H')}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    )
+    expect(f.mock.calls[1][1].method).toBe('POST')
+    expect(JSON.parse(f.mock.calls[1][1].body)).toEqual({ values: [['Мария', '=1+1']] })
+  })
+
+  it('appendRowFrom: нет доступа к таблице — SheetsConfigError', async () => {
+    const f = vi
+      .fn()
+      .mockResolvedValueOnce(tokenOk())
+      .mockResolvedValueOnce(
+        json(403, { error: { message: 'The caller does not have permission' } }),
+      )
+    await expect(materialsClient(f).appendRowFrom(6256, 'H', ['x'])).rejects.toBeInstanceOf(
+      SheetsConfigError,
+    )
+  })
+
+  it('forMaterialsFromEnv: без MATERIALS_SHEETS_ID таблица не настроена', () => {
+    expect(
+      GoogleSheetsClient.forMaterialsFromEnv({
+        GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify(account),
+        GOOGLE_SHEETS_ID: 'ORDERS',
+      }),
+    ).toBeNull()
+    expect(
+      GoogleSheetsClient.forMaterialsFromEnv({
+        GOOGLE_SERVICE_ACCOUNT_JSON: JSON.stringify(account),
+        MATERIALS_SHEETS_ID: 'MATERIALS',
+      }),
+    ).toBeInstanceOf(GoogleSheetsClient)
+  })
+})

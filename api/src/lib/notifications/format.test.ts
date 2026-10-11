@@ -198,6 +198,45 @@ describe('telegramCard', () => {
     expect(card).toContain('Реактив · 10 × 80 ₽')
   })
 
+  it('подарок помечен «🎁 подарок» вместо «1 × 0 ₽»', () => {
+    const card = telegramCard({
+      ...order,
+      items: [
+        {
+          productSnapshot: { name: 'Йодат калия', sku: 'KIO3', priceRub: 249 },
+          quantity: 1,
+          unitPriceRub: 0,
+          lineTotalRub: 0,
+          isGift: true,
+        },
+      ],
+    })
+    expect(card).toContain('Йодат калия · KIO3 · 🎁 подарок')
+    expect(card).not.toContain('1 × 0 ₽')
+  })
+
+  it('подарок стоит в списке последним, даже если лежит первым в заказе', () => {
+    const card = telegramCard({
+      ...order,
+      items: [
+        {
+          productSnapshot: { name: 'Йодат калия', sku: 'KIO3', priceRub: 249 },
+          quantity: 1,
+          unitPriceRub: 0,
+          lineTotalRub: 0,
+          isGift: true,
+        },
+        {
+          productSnapshot: { name: 'Набор', sku: null, priceRub: 3000 },
+          quantity: 1,
+          unitPriceRub: 3000,
+          lineTotalRub: 3000,
+        },
+      ],
+    })
+    expect(card.indexOf('Набор')).toBeLessThan(card.indexOf('Йодат калия'))
+  })
+
   it('бесплатная доставка, курьер, без почты и Telegram, без комментария', () => {
     const card = telegramCard({
       ...order,

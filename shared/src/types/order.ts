@@ -6,8 +6,12 @@ export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled
 
 // Payment provider actually wired to the order. `manual` — no online payment:
 // the order stays pending and a manager contacts the customer. `tbank` —
-// Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring.
-export type PaymentProvider = 'manual' | 'tbank'
+// Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring. `ycp` — оплату принял
+// Яндекс (Яндекс Пэй, Сплит) в «Купить в 1 клик»; в Т-Кассу такие заказы не идут.
+export type PaymentProvider = 'manual' | 'tbank' | 'ycp'
+
+// Откуда пришёл заказ: витрина или «Купить в 1 клик» в Яндексе (YCP).
+export type OrderSource = 'site' | 'ycp'
 
 export type DeliveryMethod = 'cdek_pvz' | 'cdek_courier'
 
@@ -26,6 +30,8 @@ export interface OrderItem {
   unitPriceRub: number
   /** Сумма строки с оптовой скидкой; null у старых заказов (тогда unitPriceRub × quantity). */
   lineTotalRub: number | null
+  /** Подарок к заказу: строка за 0 ₽, в чек оплаты не входит. */
+  isGift?: boolean
 }
 
 export interface DeliveryAddress {
@@ -55,8 +61,52 @@ export interface OrderStatusHistoryEntry {
   from: OrderStatus | null
   to: OrderStatus
   at: string
-  by: 'tbank' | 'admin' | 'reconcile'
+  by: 'tbank' | 'admin' | 'reconcile' | 'ycp'
   comment?: string
+}
+
+// --- атрибуция заказа ---
+
+/**
+ * Одно касание: откуда посетитель пришёл на сайт. Всё берётся из адресной
+ * строки и referrer браузера и приходит от клиента, поэтому это подсказка для
+ * анализа рекламы, а не доказательство: подделать может кто угодно.
+ */
+export interface AttributionTouch {
+  /** Когда зафиксировано (ISO). */
+  at: string
+  /** Страница входа: путь без параметров. */
+  landing: string
+  /** Откуда пришёл: адрес без параметров; нет — прямой заход. */
+  referrer?: string
+  /** Метка клика Яндекс Директа. */
+  yclid?: string
+  /** Метка перехода из органической выдачи Яндекса. */
+  ysclid?: string
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
+  utm_term?: string
+  utm_content?: string
+}
+
+/** Первое касание (канал) и последнее рекламное (метки для конверсий). */
+export interface OrderAttribution {
+  first?: AttributionTouch
+  last?: AttributionTouch
+}
+
+/** Отправка оплаты заказа в Яндекс.Метрику как офлайн-конверсии (только для админки). */
+export interface MetrikaConversionDto {
+  state: 'pending' | 'sending' | 'sent' | 'failed'
+  /** Идентификатор цели в Метрике. */
+  target: string
+  priceRub: number
+  attempts: number
+  /** Номер загрузки в Метрике: по нему ищут её в отчёте «Офлайн-конверсии». */
+  uploadId: string | null
+  sentAt: string | null
+  lastError: string | null
 }
 
 export interface OrderDto {
@@ -69,6 +119,8 @@ export interface OrderDto {
   customerTelegram: string | null
   deliveryAddress: DeliveryAddress
   deliveryMethod: string
+  /** Откуда заказ. API отдаёт всегда; в типе необязательно, чтобы старые фикстуры не ломались. */
+  source?: OrderSource
   /** Товары по обычным ценам. */
   subtotalRub: number
   /** Оптовая скидка (наборы, проценты на реагенты, цены партий); totalRub = subtotalRub − discountRub + shippingRub. */
@@ -80,6 +132,13 @@ export interface OrderDto {
   paymentUrl: string | null
   statusHistory: OrderStatusHistoryEntry[]
   items: OrderItem[]
+  /** Откуда пришёл покупатель; null — заказ оформлен до появления атрибуции или без неё. */
+  attribution?: OrderAttribution | null
+  /** Адрес и браузер покупателя при оформлении (только для админки). */
+  clientIp?: string | null
+  clientUserAgent?: string | null
+  /** null — конверсию не ставили (нет yclid или отправка выключена). */
+  metrikaConversion?: MetrikaConversionDto | null
   notifications?: OrderNotificationDto[]
   // Заказ в СДЭК (только в деталях админки).
   cdekShipment?: CdekShipmentDto | null
@@ -96,9 +155,15 @@ export interface OrderDto {
 
 export interface CheckoutRequest {
   items: Array<{ productId: string; quantity: number }>
+  /** Подарок на выбор (реактив из списка); сервер проверяет порог, наличие и список. */
+  giftProductId?: string
   customer: { name: string; phone: string; email?: string; telegram?: string }
   // Куда везём — из виджета СДЭК (см. DeliveryDestination) + комментарий.
   delivery: DeliveryDestination & { comment?: string }
+  /** Ловушка для ботов: скрытое поле формы. Люди его не видят, поэтому живой клиент не шлёт его вовсе. */
+  hp_check?: string
+  /** Откуда пришёл покупатель (метки из URL и referrer); необязательно, кривое значение сервер отбрасывает. */
+  attribution?: OrderAttribution
 }
 
 export interface CheckoutResponse {

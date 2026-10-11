@@ -31,8 +31,17 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
     id: '00000000-0000-0000-0000-000000000001',
     orderNumber: 'XM-2026-00001',
     totalRub: 3450,
+    shippingRub: 450,
     customerPhone: '+79001234567',
     customerEmail: 'buyer@example.com',
+    items: [
+      {
+        quantity: 2,
+        unitPriceRub: 1500,
+        lineTotalRub: 3000,
+        productSnapshot: { name: 'Набор «Химичка»', sku: null, priceRub: 1500 },
+      },
+    ],
     ...overrides,
   } as Order
 }
@@ -136,10 +145,200 @@ describe('TBankProvider.createPayment', () => {
     expect(sent.FailURL).toBe('https://shop.test/fail')
   })
 
+  describe('Receipt (54-ФЗ)', () => {
+    async function sentBody(
+      cfg: Partial<ConstructorParameters<typeof TBankProvider>[0]> = {},
+      order: Order = makeOrder(),
+    ): Promise<{ sent: Record<string, unknown> | null; result: unknown }> {
+      const fetchMock = mockFetchOnce({ Success: true, PaymentId: 1, PaymentURL: 'https://pay/1' })
+      const provider = new TBankProvider({ ...CFG, fetch: fetchMock, ...cfg })
+      const result = await provider.createPayment(order)
+      const call = fetchMock.mock.calls[0] as unknown as [URL, RequestInit] | undefined
+      return { sent: call ? JSON.parse(call[1].body as string) : null, result }
+    }
+
+    it('sends a Receipt whose lines add up to Amount, outside the Token', async () => {
+      const { sent } = await sentBody()
+      const receipt = sent?.Receipt as {
+        Email?: string
+        Taxation: string
+        Items: Array<{ Amount: number; Tax: string }>
+      }
+      expect(receipt.Email).toBe('buyer@example.com')
+      expect(receipt.Taxation).toBe('usn_income')
+      expect(receipt.Items.every((i) => i.Tax === 'none')).toBe(true)
+      expect(receipt.Items.reduce((sum, i) => sum + i.Amount, 0)).toBe(sent?.Amount)
+      // Receipt вложенный — в подпись не входит, подпись остаётся верной.
+      expect(
+        verifyToken(sent as Record<string, unknown>, CFG.password, sent?.Token as string),
+      ).toBe(true)
+    })
+
+    it('reads taxation and VAT from the environment', async () => {
+      vi.stubEnv('TBANK_TAXATION', 'osn')
+      vi.stubEnv('TBANK_RECEIPT_TAX', 'vat22')
+      const { sent } = await sentBody()
+      const receipt = sent?.Receipt as { Taxation: string; Items: Array<{ Tax: string }> }
+      expect(receipt.Taxation).toBe('osn')
+      expect(receipt.Items.every((i) => i.Tax === 'vat22')).toBe(true)
+    })
+
+    it('leaves the Receipt out when TBANK_SEND_RECEIPT is off', async () => {
+      vi.stubEnv('TBANK_SEND_RECEIPT', 'false')
+      const { sent, result } = await sentBody()
+      expect(sent).not.toBeNull()
+      expect(sent).not.toHaveProperty('Receipt')
+      expect(result).not.toBeNull()
+    })
+
+    it('does not call Init when TBANK_TAXATION is invalid', async () => {
+      vi.stubEnv('TBANK_TAXATION', 'usn')
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      const { sent, result } = await sentBody()
+      expect(sent).toBeNull()
+      expect(result).toBeNull()
+      spy.mockRestore()
+    })
+
+    it('does not call Init and returns null when the Receipt cannot be built', async () => {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      const { sent, result } = await sentBody({}, makeOrder({ items: [] }))
+      expect(sent).toBeNull()
+      expect(result).toBeNull()
+      expect(spy).toHaveBeenCalledWith(
+        expect.stringMatching(/чек не собран для XM-2026-00001 — Init не отправлен/),
+      )
+      spy.mockRestore()
+    })
+  })
+
   it('returns null when Init responds Success=false', async () => {
     const fetchMock = mockFetchOnce({ Success: false, ErrorCode: '9999', Message: 'nope' })
     const provider = new TBankProvider({ ...CFG, fetch: fetchMock })
     expect(await provider.createPayment(makeOrder())).toBeNull()
+  })
+
+  describe('Init rejection log', () => {
+    const rejected = {
+      Success: false,
+      ErrorCode: '309',
+      Message: 'Неверные параметры.',
+      Details: 'Поле Phone имеет неверный формат',
+    }
+
+    // Возвращает единственную строку лога и ключи тела, реально ушедшего в банк.
+    async function rejectedLog(
+      body: unknown,
+      order: Order = makeOrder({ publicToken: 'a1b2c3d4' }),
+    ): Promise<{ line: string; sentKeys: string[] }> {
+      const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+      try {
+        const fetchMock = mockFetchOnce(body)
+        const provider = new TBankProvider({
+          ...CFG,
+          returnOrigin: 'https://shop.test',
+          notificationUrl: 'https://shop.test/api/webhooks/tbank',
+          fetch: fetchMock,
+        })
+        expect(await provider.createPayment(order)).toBeNull()
+        expect(spy).toHaveBeenCalledTimes(1)
+        const [, init] = fetchMock.mock.calls[0] as unknown as [URL, RequestInit]
+        return {
+          line: spy.mock.calls[0].join(' '),
+          sentKeys: Object.keys(JSON.parse(init.body as string) as Record<string, unknown>),
+        }
+      } finally {
+        spy.mockRestore()
+      }
+    }
+
+    it('shows the bank Details so the failing parameter can be named', async () => {
+      const { line } = await rejectedLog(rejected)
+      expect(line).toContain('ErrorCode=309')
+      expect(line).toContain('Неверные параметры.')
+      expect(line).toContain('Details=Поле Phone имеет неверный формат')
+    })
+
+    it('lists exactly the parameter names that were sent, never their values', async () => {
+      const { line, sentKeys } = await rejectedLog(rejected)
+      const logged = /params=(\S+)/.exec(line)?.[1].split(',') ?? []
+      expect([...logged].sort()).toEqual([...sentKeys].sort())
+      // Ни пароль терминала, ни подпись, ни секрет заказа, ни данные покупателя.
+      expect(line).not.toContain('a1b2c3d4')
+      expect(line).not.toContain('+79001234567')
+      expect(line).not.toContain('buyer@example.com')
+      expect(line).not.toMatch(/[0-9a-f]{64}/)
+    })
+
+    it('keeps one line and caps Details at 300 characters', async () => {
+      const { line } = await rejectedLog({
+        ...rejected,
+        Details: `первая\nвторая\r\n${'x'.repeat(1000)}`,
+      })
+      expect(line).not.toMatch(/[\r\n]/)
+      const details = /Details=(.*) params=/.exec(line)?.[1]
+      expect(details).toHaveLength(300)
+      expect(details?.startsWith('первая вторая x')).toBe(true)
+    })
+
+    it('shows a blank Details as a dash', async () => {
+      const { line } = await rejectedLog({ ...rejected, Details: '  \n ' })
+      expect(line).toContain('Details=- ')
+    })
+
+    it('strips control characters and bidi overrides from every bank text', async () => {
+      const { line } = await rejectedLog({
+        Success: false,
+        ErrorCode: '3\x1b[31m09',
+        Message: 'a\x1b[31mb\u0085c\u202ed',
+        Details: 'x\x00y\x07z',
+      })
+      expect(line).toContain('ErrorCode=3 [31m09')
+      expect(line).toContain('Message=a [31mb c d')
+      expect(line).toContain('Details=x y z')
+      // eslint-disable-next-line no-control-regex
+      expect(line).not.toMatch(/[\x00-\x08\x0b-\x1f\x7f-\x9f\u202e]/)
+    })
+
+    it('masks our own secrets when the bank quotes them back in the text', async () => {
+      const { line } = await rejectedLog({
+        Success: false,
+        ErrorCode: '309',
+        Message: 'Неверные параметры.',
+        Details:
+          'SuccessURL https://shop.test/order/XM-2026-00001#t=a1b2c3d4 телефон +79001234567 почта buyer@example.com пароль secret-password',
+      })
+      expect(line).toContain('Details=SuccessURL https://shop.test/order/XM-2026-00001#t=')
+      for (const secret of ['a1b2c3d4', '+79001234567', 'buyer@example.com', 'secret-password']) {
+        expect(line).not.toContain(secret)
+      }
+      expect(line).toContain('[redacted]')
+    })
+
+    it('masks the normalised phone that went into the Receipt', async () => {
+      const { line } = await rejectedLog(
+        {
+          Success: false,
+          ErrorCode: '309',
+          Message: 'Неверные параметры.',
+          Details: 'Receipt.Phone +79001234567 / 79001234567 неверен',
+        },
+        makeOrder({ customerEmail: '', customerPhone: '8 (900) 123-45-67' }),
+      )
+      expect(line).not.toContain('79001234567')
+      expect(line).toContain('[redacted]')
+    })
+
+    it('still logs a response without Details', async () => {
+      const { line } = await rejectedLog({ Success: false, ErrorCode: '9999', Message: 'nope' })
+      expect(line).toContain('ErrorCode=9999')
+      expect(line).toContain('Details=-')
+    })
+
+    it('ignores a non-string Details', async () => {
+      const { line } = await rejectedLog({ ...rejected, Details: { a: 1 } })
+      expect(line).toContain('Details=-')
+    })
   })
 
   it('returns null on network failure', async () => {

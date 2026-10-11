@@ -55,7 +55,9 @@ export function OrderDetails({ order }: Readonly<{ order: AccountOrderSummary }>
             <span className="flex-1">
               {i.name} × {i.quantity}
             </span>
-            <span className="font-[700] whitespace-nowrap">{formatRub(i.lineTotalRub)}</span>
+            <span className="font-[700] whitespace-nowrap">
+              {i.isGift ? '🎁 подарок' : formatRub(i.lineTotalRub)}
+            </span>
           </li>
         ))}
       </ul>

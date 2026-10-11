@@ -1,7 +1,24 @@
-import { afterEach, beforeEach, describe, it, expect } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import CartPage from './page'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
+
+const GIFT_PRODUCTS: Record<string, string> = {
+  'azotnaya-kislota-10': 'Азотная кислота',
+  'solyanaya-kislota': 'Соляная кислота',
+  'iodat-kaliya': 'Йодат калия',
+}
+
+// Реактивы-подарки отдаём, остальное — как при недоступном api (дозагрузка
+// категорий корзины молча пропускается).
+vi.mock('@/lib/api', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/api')>()),
+  getPublishedProduct: async (slug: string) => {
+    const name = GIFT_PRODUCTS[slug]
+    if (!name) throw new Error('not found')
+    return { id: `id-${slug}`, slug, name, isPublished: true, stockStatus: 'in_stock' }
+  },
+}))
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -96,5 +113,25 @@ describe('/cart page v3 calm', () => {
       fireEvent.click(incButtons[0]!)
     })
     expect(loadCart().find((i) => i.productId === 'a')?.quantity).toBe(3)
+  })
+
+  it('показывает плашку подарка с тремя реактивами, когда на товары от 3000 ₽', async () => {
+    act(() => {
+      saveCart(seed)
+    })
+    render(<CartPage />)
+    expect(screen.getByText('Вам подарок!')).toBeInTheDocument()
+    expect(await screen.findByRole('radio', { name: /Азотная кислота/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /Соляная кислота/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /Йодат калия/ })).toBeInTheDocument()
+  })
+
+  it('ниже 3000 ₽ подсказывает, сколько добавить до подарка', () => {
+    act(() => {
+      saveCart([seed[0]!])
+    })
+    render(<CartPage />)
+    expect(screen.queryByText('Вам подарок!')).not.toBeInTheDocument()
+    expect(screen.getByTestId('gift-banner')).toHaveTextContent(/1\s000\s*₽/)
   })
 })

@@ -1,4 +1,4 @@
-import express, { type Express } from 'express'
+import express, { type Express, type RequestHandler, type Router } from 'express'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import { publicProductsRouter } from './routes/public/products.js'
@@ -10,6 +10,7 @@ import { adminPagesRouter } from './routes/admin/pages.js'
 import { publicBlogRouter } from './routes/public/blog.js'
 import { adminBlogRouter } from './routes/admin/blog.js'
 import { publicSearchRouter } from './routes/public/search.js'
+import { createMaterialLeadsRouter } from './routes/public/materialLeads.js'
 import { mediaRouter } from './routes/admin/media.js'
 import { adminRedirectsRouter } from './routes/admin/redirects.js'
 import { publicRedirectsRouter } from './routes/public/redirects.js'
@@ -26,9 +27,31 @@ import { adminOrdersRouter } from './routes/admin/orders.js'
 import { publicShippingRouter } from './routes/public/shipping.js'
 import { cdekWidgetRouter } from './routes/public/cdek-widget.js'
 import { cdekLocationsRouter } from './routes/public/cdek-locations.js'
+import { createYcpRouter } from './routes/ycp/index.js'
+import { ycpErrorHandler } from './routes/ycp/errors.js'
 import { errorHandler } from './routes/errors.js'
+import { rateLimit } from './routes/middleware/rateLimit.js'
 import { UPLOADS_DIR } from './lib/storage/index.js'
 import { getLoginPollerHealth } from './lib/telegram/loginPoller.js'
+
+// Лимит из env (число запросов на окно); пусто, мусор и значения выше потолка —
+// по умолчанию, чтобы опечатка в app.env не отключила защиту молча. Читаем в
+// момент createApp, а не при импорте: тесты задают свои значения.
+const MAX_ENV_LIMIT = 1000
+function envLimit(name: string, fallback: number): number {
+  const n = Number(process.env[name])
+  return Number.isInteger(n) && n > 0 && n <= MAX_ENV_LIMIT ? n : fallback
+}
+
+// Лимитер вешаем на тот же префикс через Router, а не отдельным app.post с
+// полным путём: app.use срезает префикс вместе со слешем, и `/api/auth//login`
+// доходит до роутера, минуя app.post('/api/auth/login'). Через Router
+// пути сопоставляются по тем же правилам, что у настоящего обработчика.
+function guard(path: string, limiter: RequestHandler): Router {
+  const router = express.Router()
+  router.post(path, limiter)
+  return router
+}
 
 export function createApp(): Express {
   const app = express()
@@ -68,10 +91,26 @@ export function createApp(): Express {
     })
   })
 
+  // Вход в админку: argon2 жрёт CPU, а пароль можно перебирать. Лимит на IP
+  // ставим до роутера, только на сам логин (me/logout его не касаются).
+  app.use(
+    '/api/auth',
+    guard(
+      '/login',
+      rateLimit({ limit: envLimit('LOGIN_RATE_LIMIT', 10), windowMs: 15 * 60 * 1000 }),
+    ),
+  )
   app.use('/api/auth', authRouter)
   app.use('/api/account', createAccountRouter())
   app.use('/api/telegram', createTelegramWebhookRouter())
+  // Заказ анонимный и создаёт платёж в Т-Кассе: без лимита его можно засыпать
+  // фейковыми заказами. 20 в час с IP хватает школе или офису за одним NAT.
+  app.use(
+    '/api/checkout',
+    guard('/', rateLimit({ limit: envLimit('CHECKOUT_RATE_LIMIT', 20), windowMs: 60 * 60 * 1000 })),
+  )
   app.use('/api/checkout', checkoutRouter)
+  app.use('/api/public/material-leads', createMaterialLeadsRouter())
   app.use('/api/webhooks/tbank', tbankWebhookRouter)
   app.use('/api/public/orders', publicOrdersRouter)
   app.use('/api/admin/orders', adminOrdersRouter)
@@ -93,6 +132,13 @@ export function createApp(): Express {
   app.use('/api/admin/revisions', adminRevisionsRouter)
   app.use('/api/public/settings', publicSettingsRouter)
   app.use('/api/admin/settings', adminSettingsRouter)
+
+  // Yandex Commerce Protocol: Яндекс вызывает методы магазина под /api/v1
+  // (servers[0].url спецификации). Префикс свободен — других /api/v1 нет. Свой
+  // обработчик ошибок — формат Яндекса {"error": "..."}; стоит до общего, чтобы
+  // перехватить и битый JSON из express.json().
+  app.use('/api/v1', createYcpRouter())
+  app.use('/api/v1', ycpErrorHandler)
 
   // Serve uploaded files statically. UPLOADS_DIR is resolved relative to the
   // storage module, not process.cwd(), so it behaves consistently whether

@@ -68,7 +68,7 @@ export default async function OptPage({ params }: Props) {
             <h2 id="opt-order" className="font-lj-display text-2xl font-[700] tracking-[-0.03em]">
               Собрать заказ
             </h2>
-            <WholesaleOrder />
+            <WholesaleOrder catalogPerView={6} />
           </section>
 
           <section aria-labelledby="opt-tiers" className="flex flex-col gap-6">

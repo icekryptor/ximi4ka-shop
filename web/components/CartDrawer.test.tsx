@@ -4,6 +4,22 @@ import { CartDrawer } from './CartDrawer'
 import { OPEN_CART_EVENT, loadCart, saveCart, type CartItem } from '@/lib/cart'
 import { setMetrikaCounterId } from '@/lib/metrika'
 
+const GIFT_PRODUCTS: Record<string, string> = {
+  'azotnaya-kislota-10': 'Азотная кислота',
+  'solyanaya-kislota': 'Соляная кислота',
+  'iodat-kaliya': 'Йодат калия',
+}
+
+// Реактивы-подарки отдаём, остальное — как при недоступном api.
+vi.mock('@/lib/api', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/api')>()),
+  getPublishedProduct: async (slug: string) => {
+    const name = GIFT_PRODUCTS[slug]
+    if (!name) throw new Error('not found')
+    return { id: `id-${slug}`, slug, name, isPublished: true, stockStatus: 'in_stock' }
+  },
+}))
+
 const mockPrefetch = vi.fn()
 
 vi.mock('next/navigation', () => ({
@@ -56,6 +72,19 @@ describe('CartDrawer', () => {
     const dialog = screen.getByRole('dialog', { name: 'Корзина' })
     expect(within(dialog).getByText('Набор A')).toBeInTheDocument()
     expect(within(dialog).getByText('Набор B')).toBeInTheDocument()
+  })
+
+  it('в корзине от 3000 ₽ предлагает подарок на выбор', async () => {
+    act(() => {
+      saveCart(seed)
+    })
+    render(<CartDrawer />)
+    act(() => {
+      openDrawer()
+    })
+    const dialog = screen.getByRole('dialog', { name: 'Корзина' })
+    expect(within(dialog).getByText('Вам подарок!')).toBeInTheDocument()
+    expect(await within(dialog).findByRole('radio', { name: /Йодат калия/ })).toBeInTheDocument()
   })
 
   it('shows empty message when drawer opens with no items', () => {

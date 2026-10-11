@@ -4,6 +4,7 @@ import type {
   CdekCityPoints,
   CheckoutRequest,
   CheckoutResponse,
+  MaterialLeadRequest,
   DeliveryQuote,
   QuoteDestination,
   ShippingPackage,
@@ -97,7 +98,7 @@ function buildListQuery(opts: { limit?: number; offset?: number }): string {
 export type ProductWithCategories = Product & { categoryIds: string[] }
 
 export async function listPublishedProducts(
-  opts: { limit?: number; offset?: number; include?: 'categories' } = {},
+  opts: { limit?: number; offset?: number; include?: 'categories' | 'categories,shipping' } = {},
 ): Promise<Paginated<Product>> {
   const params = new URLSearchParams()
   if (opts.limit != null) params.set('limit', String(opts.limit))
@@ -235,6 +236,15 @@ export async function submitCheckout(
     method: 'POST',
     credentials: 'include',
     headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(payload),
+  })
+  return body.data
+}
+
+/** Заявка на обучающие материалы со страницы /get_materials. */
+export async function submitMaterialLead(payload: MaterialLeadRequest): Promise<{ id: string }> {
+  const body = await request<DataEnvelope<{ id: string }>>(`/api/public/material-leads`, {
+    method: 'POST',
     body: JSON.stringify(payload),
   })
   return body.data

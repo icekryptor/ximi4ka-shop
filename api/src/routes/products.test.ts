@@ -126,6 +126,50 @@ describe('Product routes', () => {
       expect(noInclude.body.data[0]).not.toHaveProperty('categoryIds')
     })
 
+    it('отдаёт вес и габариты штуки в упаковке при include=shipping', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'ship-kit', name: 'Kit', priceRub: 100, weightG: 1200, shipBoxes: ['large'] })
+      await request(app).post(`/api/admin/products/${id}/publish`).set(authHeaders(auth)).send()
+
+      const withShipping = await request(app).get(
+        '/api/public/products?include=categories,shipping',
+      )
+      expect(withShipping.body.data[0].shippingUnit).toEqual({
+        weightG: 1200,
+        lengthCm: 40,
+        widthCm: 32,
+        heightCm: 8,
+      })
+      expect(withShipping.body.data[0].ycpEnabled).toBe(false)
+      expect(withShipping.body.data[0]).toHaveProperty('categoryIds')
+
+      const plain = await request(app).get('/api/public/products')
+      expect(plain.body.data[0]).not.toHaveProperty('shippingUnit')
+    })
+
+    it('не отдаёт shippingUnit для товара без реального веса (фид без выдуманных данных)', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'no-weight', name: 'NoW', priceRub: 100 })
+      await request(app).post(`/api/admin/products/${id}/publish`).set(authHeaders(auth)).send()
+
+      const res = await request(app).get('/api/public/products?include=categories,shipping')
+      expect(res.status).toBe(200)
+      expect(res.body.data[0].weightG).toBeNull()
+      expect(res.body.data[0]).not.toHaveProperty('shippingUnit')
+    })
+
     it('paginates with limit and offset', async () => {
       for (let i = 0; i < 25; i++) {
         const {
@@ -206,6 +250,108 @@ describe('Product routes', () => {
         .set(authHeaders(auth))
         .send({ name: 'X' })
       expect(res.status).toBe(404)
+    })
+    it('флаг «Купить в 1 клик»: по умолчанию выключен, PATCH включает, прочие PATCH его не сбрасывают', async () => {
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'ycp-flag', name: 'Y', priceRub: 100 })
+      expect(created.body.data.ycpEnabled).toBe(false)
+      const id = created.body.data.id
+      const on = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ ycpEnabled: true })
+      expect(on.body.data.ycpEnabled).toBe(true)
+      const renamed = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ name: 'Y2' })
+      expect(renamed.body.data.ycpEnabled).toBe(true)
+      const bad = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ ycpEnabled: 'yes' })
+      expect(bad.status).toBe(400)
+    })
+  })
+
+  describe('product images (admin gallery)', () => {
+    async function createPublished(slug: string, images?: unknown) {
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug, name: 'Kit', priceRub: 100, ...(images ? { images } : {}) })
+      const id = created.body.data.id as string
+      await request(app).post(`/api/admin/products/${id}/publish`).set(authHeaders(auth)).send()
+      return id
+    }
+
+    it('PATCH с images заменяет галерею, и витрина отдаёт новые фото, а не старые', async () => {
+      const id = await createPublished('img-replace', [{ url: '/uploads/old.jpg', alt: 'старое' }])
+
+      const res = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({
+          images: [
+            { url: '/uploads/new-1.webp', alt: 'первое' },
+            { url: '/uploads/new-2.webp', alt: 'второе' },
+          ],
+        })
+      expect(res.status).toBe(200)
+      expect(res.body.data.images.map((i: { url: string }) => i.url)).toEqual([
+        '/uploads/new-1.webp',
+        '/uploads/new-2.webp',
+      ])
+
+      const pub = await request(app).get('/api/public/products/img-replace')
+      expect(pub.body.data.images.map((i: { url: string }) => i.url)).toEqual([
+        '/uploads/new-1.webp',
+        '/uploads/new-2.webp',
+      ])
+    })
+
+    it('PATCH без images оставляет галерею как есть', async () => {
+      const id = await createPublished('img-keep', [{ url: '/uploads/keep.jpg', alt: '' }])
+      await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ name: 'Renamed' })
+      const pub = await request(app).get('/api/public/products/img-keep')
+      expect(pub.body.data.images.map((i: { url: string }) => i.url)).toEqual(['/uploads/keep.jpg'])
+    })
+
+    it('PATCH с пустым images очищает галерею', async () => {
+      const id = await createPublished('img-clear', [{ url: '/uploads/x.jpg', alt: '' }])
+      await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ images: [] })
+      const pub = await request(app).get('/api/public/products/img-clear')
+      expect(pub.body.data.images).toEqual([])
+    })
+
+    it('GET /api/admin/products/:id отдаёт галерею по порядку', async () => {
+      const id = await createPublished('img-admin-get', [
+        { url: '/uploads/a.jpg', alt: 'a' },
+        { url: '/uploads/b.jpg', alt: 'b' },
+      ])
+      const res = await request(app).get(`/api/admin/products/${id}`).set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      expect(res.body.data.images.map((i: { url: string }) => i.url)).toEqual([
+        '/uploads/a.jpg',
+        '/uploads/b.jpg',
+      ])
+    })
+
+    it('отклоняет images с пустым url', async () => {
+      const id = await createPublished('img-bad')
+      const res = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ images: [{ url: '', alt: '' }] })
+      expect(res.status).toBe(400)
     })
   })
 

@@ -1,17 +1,20 @@
 import { Router } from 'express'
-import type { CheckoutResponse } from '@ximi4ka-shop/shared'
+import type { CheckoutResponse, OrderAttribution } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { Customer } from '../entities/Customer.js'
+import type { Product } from '../entities/Product.js'
 import { getCdekClient } from '../lib/cdek/index.js'
 import { isKnownDeliveryPoint } from '../lib/cdek/locations.js'
 import { enqueueOrderEvent } from '../lib/notifications/outbox.js'
 import { getPaymentProvider } from '../lib/payments/index.js'
+import { loadGift } from '../lib/gift.js'
 import { loadCart } from '../lib/shipping/cart.js'
-import { packCart } from '../lib/shipping/pack.js'
+import { packCart, type PackLine } from '../lib/shipping/pack.js'
 import { deliveryConfigFromEnv, quoteDelivery } from '../lib/shipping/quote.js'
 import { nextOrderNumber } from '../lib/orderNumber.js'
+import { isUniqueViolation } from '../lib/pgErrors.js'
 import { findCustomerSession } from '../lib/account/session.js'
 import { normalizeEmail } from '../lib/account/emailCodes.js'
 import { badRequest } from './errors.js'
@@ -19,13 +22,24 @@ import { CheckoutSchema } from './checkout.schemas.js'
 
 export const checkoutRouter: Router = Router()
 
-function isUniqueViolation(err: unknown): boolean {
-  return (
-    typeof err === 'object' &&
-    err !== null &&
-    'code' in err &&
-    (err as { code?: string }).code === '23505'
-  )
+// Вес подарка в упаковку: тот же товар уже в корзине — прибавляем штуку к его
+// позиции, чтобы productId в местах не двоился.
+function withGiftUnit(packLines: PackLine[], gift: Product): PackLine[] {
+  const same = packLines.find((l) => l.productId === gift.id)
+  if (same) {
+    return packLines.map((l) => (l === same ? { ...l, quantity: l.quantity + 1 } : l))
+  }
+  return [
+    ...packLines,
+    {
+      productId: gift.id,
+      quantity: 1,
+      weightG: gift.weightG,
+      shipBoxes: gift.shipBoxes ?? [],
+      looseUnits: gift.looseUnits ?? 1,
+      minBox: gift.minBox,
+    },
+  ]
 }
 
 function checkoutResponse(order: Order): { data: CheckoutResponse } {
@@ -46,7 +60,32 @@ function checkoutResponse(order: Order): { data: CheckoutResponse } {
 // by the first successful attempt.
 checkoutRouter.post('/', async (req, res, next) => {
   try {
+    // Ловушка для ботов: поле скрыто от людей, а формы-спамеры заполняют всё
+    // подряд. Живой покупатель его не увидит и не заполнит. Непустым считаем
+    // любое значение, не только строку: бот может прислать и число, и массив.
+    // Лимит частоты на этот маршрут стоит в app.ts (guard).
+    const trap = (req.body as { hp_check?: unknown } | undefined)?.hp_check
+    const trapFilled =
+      trap !== undefined && trap !== null && !(typeof trap === 'string' && trap.trim() === '')
+    if (trapFilled) {
+      // В лог — чтобы видеть и атаки, и ложные срабатывания автозаполнения.
+      console.warn('checkout: ловушка для ботов заполнена', {
+        ip: req.ip,
+        userAgent: (req.headers['user-agent'] ?? '').slice(0, 200),
+      })
+      throw badRequest(
+        'bot_suspected',
+        'Не удалось оформить заказ. Проверьте данные и попробуйте ещё раз',
+      )
+    }
+
     const parsed = CheckoutSchema.parse(req.body)
+    // Атрибуцию схема молча отбрасывает, чтобы заказ не срывался; в лог — чтобы
+    // расхождение форматов витрины и сервера не осталось незамеченным (без значений).
+    const sentAttribution = (req.body as { attribution?: unknown } | undefined)?.attribution
+    if (sentAttribution !== undefined && sentAttribution !== null && !parsed.attribution) {
+      console.warn('checkout: атрибуция отброшена из-за формата')
+    }
     const idempotencyKey = req.header('Idempotency-Key')?.trim() || null
 
     const orderRepo = AppDataSource.getRepository(Order)
@@ -73,16 +112,23 @@ checkoutRouter.post('/', async (req, res, next) => {
       }
     }
 
-    const { lines, subtotalRub, discountRub, packLines } = await loadCart(parsed.items)
+    const cart = await loadCart(parsed.items)
+    const { lines, subtotalRub, discountRub } = cart
     const { delivery } = parsed
 
-    const packages = packCart(packLines)
+    // Подарок едет в посылке, поэтому в местах для СДЭК он есть; на сумму заказа
+    // и порог бесплатной доставки он не влияет (строка за 0 ₽). Цену доставки
+    // покупателю считаем по местам без подарка: ту же цену он видел в чекауте
+    // до выбора «Оформить» (превью не знает про подарок).
+    const gift = await loadGift(parsed.giftProductId, subtotalRub - discountRub)
+    const quotePackages = packCart(cart.packLines)
+    const packages = gift ? packCart(withGiftUnit(cart.packLines, gift)) : quotePackages
 
     // Цену доставки считает только сервер: сумма, которую показал виджет, —
     // подсказка для интерфейса, клиенту не доверяем.
     // Порог бесплатной доставки — по сумме, которую платят за товары.
     const quote = await quoteDelivery(
-      { destination: delivery, subtotalRub: subtotalRub - discountRub, packages },
+      { destination: delivery, subtotalRub: subtotalRub - discountRub, packages: quotePackages },
       { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
     )
     const shippingRub = quote.customerPriceRub
@@ -143,11 +189,15 @@ checkoutRouter.post('/', async (req, res, next) => {
             totalRub,
             paymentProvider: provider.name,
             idempotencyKey,
+            attribution: (parsed.attribution as OrderAttribution | undefined) ?? null,
+            clientIp: req.ip?.replace(/^::ffff:/, '').slice(0, 45) || null,
+            clientUserAgent: (req.headers['user-agent'] ?? '').slice(0, 500) || null,
             statusHistory: [],
           }),
         )
         const itemRepo = em.getRepository(OrderItem)
-        await itemRepo.save(
+        // items нужны провайдеру оплаты: из них собирается чек.
+        created.items = await itemRepo.save(
           lines.map(({ product: p, quantity, unitPriceRub, lineTotalRub }) =>
             itemRepo.create({
               orderId: created.id,
@@ -162,6 +212,21 @@ checkoutRouter.post('/', async (req, res, next) => {
             }),
           ),
         )
+        if (gift) {
+          created.items.push(
+            await itemRepo.save(
+              itemRepo.create({
+                orderId: created.id,
+                productId: gift.id,
+                productSnapshot: { name: gift.name, sku: gift.sku, priceRub: gift.priceRub },
+                quantity: 1,
+                unitPriceRub: 0,
+                lineTotalRub: 0,
+                isGift: true,
+              }),
+            ),
+          )
+        }
         await enqueueOrderEvent(em, created.id, 'created')
         if (session) {
           const c = session.customer

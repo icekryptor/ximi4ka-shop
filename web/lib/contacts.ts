@@ -13,3 +13,8 @@ export const SOCIAL_URLS = [
   'https://www.tiktok.com/@ximi4ka',
   'https://www.youtube.com/@chemxenia',
 ] as const
+
+/** Обучающие материалы: страница /get_materials, QR-коды на наборах. */
+export const MATERIALS_GUIDE_URL = 'https://disk.yandex.ru/i/SDDjVabBNkSI_w'
+export const MATERIALS_DISK_URL = 'https://disk.yandex.ru/d/30QylPnGXhqH3g'
+export const MATERIALS_CLUB_URL = 'https://t.me/+2wj8GbrPE_wzZWY6'

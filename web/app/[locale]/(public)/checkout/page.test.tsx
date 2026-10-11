@@ -8,6 +8,7 @@ import type {
   QuoteDestination,
 } from '@ximi4ka-shop/shared'
 import CheckoutPage from './page'
+import { loadGiftChoice, saveGiftChoice } from '@/lib/gift'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
 import { reportPurchaseOnce, setMetrikaCounterId } from '@/lib/metrika'
 
@@ -278,6 +279,56 @@ describe('/checkout page', () => {
     expect(screen.getByTestId('summary-total')).toHaveTextContent('2 390')
   })
 
+  describe('подарок', () => {
+    const GIFT = {
+      productId: '5b0a1c2d-1111-4222-8333-444455556666',
+      slug: 'iodat-kaliya',
+      name: 'Йодат калия',
+    }
+    // 3000 ₽ за товары — подарок открыт.
+    const big: CartItem[] = [{ ...seed[0]!, priceRub: 1500 }]
+
+    it('выбранный подарок уходит в заказ и показан в составе заказа', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(big)
+      act(() => saveGiftChoice(GIFT))
+      render(<CheckoutPage />)
+
+      const line = screen.getByTestId('summary-gift')
+      expect(line).toHaveTextContent('Йодат калия')
+      expect(line).toHaveTextContent(/подарок/i)
+
+      await fillValidForm()
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string).giftProductId).toBe(GIFT.productId)
+      await vi.waitFor(() => expect(mockPush).toHaveBeenCalled())
+      expect(loadGiftChoice()).toBeNull()
+    })
+
+    it('если сумма ниже порога, подарок не показывается и не отправляется', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      act(() => saveGiftChoice(GIFT))
+      render(<CheckoutPage />)
+
+      expect(screen.queryByTestId('summary-gift')).not.toBeInTheDocument()
+
+      await fillValidForm()
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string)).not.toHaveProperty('giftProductId')
+    })
+  })
+
   it('полный путь без карты: город → пункт из списка → заказ', async () => {
     mapMock.available = false
     const fetchMock = vi.fn(async () => okCheckoutResponse())
@@ -308,6 +359,166 @@ describe('/checkout page', () => {
       expect(mockPush).toHaveBeenCalledWith('/order/XM-2026-00042?new=1#t=tok123')
     })
     expect(loadCart()).toEqual([])
+  })
+
+  describe('ловушка для ботов', () => {
+    function trapInput(): HTMLInputElement {
+      const input = document.querySelector<HTMLInputElement>('input[name="hp_check"]')
+      if (!input) throw new Error('нет поля hp_check')
+      return input
+    }
+
+    it('поле спрятано от людей, из табуляции и автозаполнения', () => {
+      seedCart(seed)
+      render(<CheckoutPage />)
+
+      const input = trapInput()
+      expect(input.tabIndex).toBe(-1)
+      expect(input.autocomplete).toBe('off')
+      // Менеджеры паролей не смотрят на autocomplete: просим их обойти поле.
+      expect(input.getAttribute('data-1p-ignore')).not.toBeNull()
+      expect(input.getAttribute('data-lpignore')).toBe('true')
+      expect(input.getAttribute('data-bwignore')).not.toBeNull()
+      expect(input.closest('[aria-hidden="true"]')).not.toBeNull()
+      expect(input.value).toBe('')
+    })
+
+    it('пустое поле в заказ не попадает', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string)).not.toHaveProperty('hp_check')
+    })
+
+    it('заполненное ботом поле уходит на сервер', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+      fireEvent.change(trapInput(), { target: { value: 'http://spam.example' } })
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string).hp_check).toBe('http://spam.example')
+    })
+  })
+
+  describe('атрибуция заказа', () => {
+    afterEach(() => {
+      window.localStorage.removeItem('ximi4ka-attribution')
+    })
+
+    it('сохранённые касания уходят вместе с заказом', async () => {
+      mapMock.available = false
+      const touch = {
+        at: new Date().toISOString(),
+        landing: '/product/kit',
+        yclid: '555',
+        utm_source: 'yandex',
+      }
+      window.localStorage.setItem(
+        'ximi4ka-attribution',
+        JSON.stringify({ first: { at: touch.at, landing: '/' }, last: touch }),
+      )
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string).attribution).toEqual({
+        first: { at: touch.at, landing: '/' },
+        last: touch,
+      })
+    })
+
+    it('без сохранённых касаний поле attribution не отправляется', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string)).not.toHaveProperty('attribution')
+    })
+  })
+
+  describe('отказ сервера по ловушке и лимиту', () => {
+    function errorResponse(status: number, code: string, message: string) {
+      return new Response(JSON.stringify({ error: { code, message } }), { status })
+    }
+
+    it('bot_suspected: поле очищается, текст без дубля, повтор уходит без ловушки', async () => {
+      mapMock.available = false
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          errorResponse(
+            400,
+            'bot_suspected',
+            'Не удалось оформить заказ. Проверьте данные и попробуйте ещё раз',
+          ),
+        )
+        .mockResolvedValueOnce(okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+      const input = document.querySelector<HTMLInputElement>('input[name="hp_check"]')!
+      fireEvent.change(input, { target: { value: 'автозаполнение' } })
+
+      submit()
+
+      const alert = await screen.findByText(/проверьте данные и попробуйте ещё раз/i)
+      expect(alert.textContent).toBe(
+        'Не удалось оформить заказ. Проверьте данные и попробуйте ещё раз.',
+      )
+      expect(input.value).toBe('')
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+      const [, init] = fetchMock.mock.calls[1] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string)).not.toHaveProperty('hp_check')
+    })
+
+    it('rate_limited: понятный текст вместо «Слишком много запросов»', async () => {
+      mapMock.available = false
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => errorResponse(429, 'rate_limited', 'Слишком много запросов')),
+      )
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+
+      submit()
+
+      expect(
+        await screen.findByText(/слишком много попыток оформить заказ.*подождите несколько минут/i),
+      ).toBeInTheDocument()
+    })
   })
 
   it('курьер: свои поля, адрес «город, улица, кв.» и индекс', async () => {
@@ -531,6 +742,65 @@ describe('/checkout page', () => {
     })
     expect(mockPush).not.toHaveBeenCalled()
     expect(loadCart()).toEqual([])
+  })
+
+  it('пока идёт переход на оплату, вместо «Корзина пуста» — «Переходим к оплате»', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okCheckoutResponse('XM-2026-00043', 'https://securepay.tinkoff.ru/pay/1')),
+    )
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await fillValidForm()
+
+    submit()
+
+    await vi.waitFor(() => expect(mockRedirectTo).toHaveBeenCalled())
+    // Корзина уже очищена, но браузер ещё не ушёл на шлюз: пустую корзину не мигаем.
+    expect(screen.queryByText(/корзина пуста/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/переходим к оплате/i)
+  })
+
+  it('без онлайн-оплаты, пока открывается страница заказа, пустую корзину тоже не мигаем', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okCheckoutResponse()),
+    )
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await fillValidForm()
+
+    submit()
+
+    await vi.waitFor(() => expect(mockPush).toHaveBeenCalled())
+    expect(screen.queryByText(/корзина пуста/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(/заказ оформлен/i)
+  })
+
+  it('возврат кнопкой «Назад» со шлюза (bfcache) не оставляет страницу в состоянии перехода', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okCheckoutResponse('XM-2026-00043', 'https://securepay.tinkoff.ru/pay/1')),
+    )
+    seedCart(seed)
+    render(<CheckoutPage />)
+    await fillValidForm()
+    submit()
+    await vi.waitFor(() => expect(mockRedirectTo).toHaveBeenCalled())
+
+    // Обычный pageshow (не из bfcache) состояние не трогает.
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: false }))
+    })
+    expect(screen.getByRole('status')).toHaveTextContent(/переходим к оплате/i)
+
+    // Браузер вернул страницу из bfcache: заказ уже оформлен, корзина пуста.
+    act(() => {
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
+    })
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByText(/корзина пуста/i)).toBeInTheDocument()
   })
 
   it('shows the server message on 409 (availability changed)', async () => {

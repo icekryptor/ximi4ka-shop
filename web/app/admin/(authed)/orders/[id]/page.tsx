@@ -6,6 +6,7 @@ import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import { OrderStatusActions } from './OrderStatusActions'
 import { OrderNotifications } from './OrderNotifications'
 import { CdekShipmentPanel } from './CdekShipmentPanel'
+import { OrderAttribution } from './OrderAttribution'
 import {
   DELIVERY_METHOD_LABELS,
   HISTORY_ACTOR_LABELS,
@@ -77,7 +78,12 @@ export default async function AdminOrderDetailPage({
               <tbody>
                 {order.items.map((item) => (
                   <tr key={item.id} className="border-t border-brand-border">
-                    <td className="px-4 py-3">{item.productSnapshot.name}</td>
+                    <td className="px-4 py-3">
+                      {item.productSnapshot.name}
+                      {item.isGift && (
+                        <span className="ml-2 text-brand-text-secondary">🎁 подарок</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-brand-text-secondary font-mono text-xs">
                       {item.productSnapshot.sku ?? '—'}
                     </td>
@@ -204,6 +210,14 @@ export default async function AdminOrderDetailPage({
               </div>
             </dl>
           </section>
+
+          {/* Источник */}
+          <OrderAttribution
+            attribution={order.attribution}
+            clientIp={order.clientIp}
+            clientUserAgent={order.clientUserAgent}
+            conversion={order.metrikaConversion}
+          />
 
           {/* Доставка */}
           <section className="bg-white rounded-2xl border border-brand-border p-4 text-sm">

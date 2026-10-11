@@ -17,6 +17,8 @@ const EVENT_LABELS: Record<OrderEventKey, string> = {
   'status:shipped': 'отправлен',
   'status:cancelled': 'отменён',
   'status:failed': 'оплата не прошла',
+  'ycp:on_delivery': 'Яндекс: оплата при получении',
+  'ycp:cancel_after_ship': 'Яндекс: отмена оплаченного заказа',
 }
 
 function stateLabel(n: OrderNotificationDto): string {

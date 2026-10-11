@@ -12,7 +12,8 @@
     "./types/category": "./src/types/category.ts",
     "./types/page": "./src/types/page.ts",
     "./types/blogPost": "./src/types/blogPost.ts",
-    "./types/blocks": "./src/types/blocks.ts"
+    "./types/blocks": "./src/types/blocks.ts",
+    "./types/materialLead": "./src/types/materialLead.ts"
   },
   "scripts": {
     "test": "tsc --noEmit && vitest run",

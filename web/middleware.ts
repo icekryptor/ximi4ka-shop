@@ -136,6 +136,27 @@ export function matchRedirect(items: Redirect[], path: string): Redirect | undef
   return items.find((r) => r.fromPath.includes(needle))
 }
 
+const OWN_DOMAIN = 'ximi4ka.ru'
+
+// Свой ли это адрес: наш домен, его поддомены или хост самого запроса. Только
+// на такие адреса переносим query: метки (yclid, utm_*) нужны нам, а чужому
+// сайту их отдавать незачем (в query бывают и токены). Завершающая точка у
+// хоста (`ximi4ka.ru.`) — это тот же хост.
+function isOwnHost(host: string, requestHost: string): boolean {
+  const h = host.toLowerCase().replace(/\.$/, '')
+  return h === requestHost.toLowerCase() || h === OWN_DOMAIN || h.endsWith(`.${OWN_DOMAIN}`)
+}
+
+// Дописывает в целевой адрес параметры запроса. Повторы ключа сохраняются,
+// одноимённые параметры, которые целевой адрес задаёт сам, не трогаем. Смысл
+// значений остаётся прежним, а запись Next к этому моменту уже нормализовал.
+function appendRequestQuery(target: URL, requestParams: URLSearchParams): void {
+  const own = new Set(target.searchParams.keys())
+  for (const [key, value] of requestParams) {
+    if (!own.has(key)) target.searchParams.append(key, value)
+  }
+}
+
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const path = req.nextUrl.pathname
   if (isExcluded(path)) {
@@ -164,9 +185,16 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       // swallow: counters are a soft signal, not correctness
     })
 
-    const targetUrl = /^https?:\/\//i.test(match.toPath)
-      ? match.toPath
-      : new URL(match.toPath, req.nextUrl.origin).toString()
+    // Старые адреса из рекламы приходят с метками (?yclid=…&utm_*=…): редирект
+    // не должен их терять, иначе пропадает атрибуция заказа.
+    const target = new URL(match.toPath, req.nextUrl.origin)
+    let targetUrl: string
+    if (isOwnHost(target.hostname, req.nextUrl.hostname)) {
+      appendRequestQuery(target, req.nextUrl.searchParams)
+      targetUrl = target.toString()
+    } else {
+      targetUrl = /^https?:\/\//i.test(match.toPath) ? match.toPath : target.toString()
+    }
     return NextResponse.redirect(targetUrl, match.statusCode)
   }
 

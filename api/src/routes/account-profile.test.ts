@@ -311,6 +311,57 @@ describe('профиль и заказы', () => {
     expect(body).not.toContain(strangerOrder.orderNumber)
   })
 
+  it('GET /orders: подарочная позиция помечена isGift, обычная — нет', async () => {
+    const auth = await loginAsCustomer(app)
+    const c = await me()
+    const products = AppDataSource.getRepository(Product)
+    const [kit, reagent] = await Promise.all(
+      [
+        ['kit', 'Набор', 3000],
+        ['iodat-kaliya', 'Йодат калия', 249],
+      ].map(([slug, name, priceRub]) =>
+        products.save(
+          products.create({
+            slug: slug as string,
+            name: name as string,
+            priceRub: priceRub as number,
+            stockStatus: 'in_stock',
+            isPublished: true,
+            longDescriptionBlocks: [],
+            translations: {},
+          }),
+        ),
+      ),
+    )
+    const order = await seedOrder({ customerId: c.id, subtotalRub: 3000, totalRub: 3000 })
+    const items = AppDataSource.getRepository(OrderItem)
+    await items.save({
+      orderId: order.id,
+      productId: kit.id,
+      productSnapshot: { name: 'Набор', sku: null, priceRub: 3000 },
+      quantity: 1,
+      unitPriceRub: 3000,
+      lineTotalRub: 3000,
+    })
+    await items.save({
+      orderId: order.id,
+      productId: reagent.id,
+      productSnapshot: { name: 'Йодат калия', sku: 'KIO3', priceRub: 249 },
+      quantity: 1,
+      unitPriceRub: 0,
+      lineTotalRub: 0,
+      isGift: true,
+    })
+
+    const res = await request(app).get('/api/account/orders').set(customerHeaders(auth))
+
+    const byName = new Map(
+      res.body.data.orders[0].items.map((i: { name: string }) => [i.name, i] as const),
+    )
+    expect(byName.get('Йодат калия')).toMatchObject({ isGift: true, lineTotalRub: 0 })
+    expect(byName.get('Набор')).toMatchObject({ isGift: false })
+  })
+
   it('битый курсор — 400', async () => {
     const auth = await loginAsCustomer(app, 'buyer@test.local', new MemoryMailer())
     const res = await request(app).get('/api/account/orders?cursor=junk').set(customerHeaders(auth))

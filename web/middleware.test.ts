@@ -383,6 +383,159 @@ describe('redirect middleware', () => {
   })
 })
 
+// Рекламные метки (yclid, utm_*) переживают редирект со старых адресов: иначе
+// объявление Директа, ведущее на старый Tilda-URL, теряет их по пути.
+describe('redirect middleware: query сохраняется', () => {
+  const fetchMock = vi.fn<typeof fetch>()
+  const originalFetch = global.fetch
+
+  function mockRedirects(items: Array<{ fromPath: string; toPath: string; statusCode?: number }>) {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/api/public/redirects')) {
+        return new Response(
+          JSON.stringify({
+            data: items.map((r, i) => ({ id: `r-${i}`, statusCode: 301, ...r })),
+          }),
+          { status: 200, headers: { 'content-type': 'application/json' } },
+        )
+      }
+      return new Response(null, { status: 204 })
+    })
+  }
+
+  beforeEach(() => {
+    global.fetch = fetchMock as unknown as typeof fetch
+    fetchMock.mockReset()
+    __resetCache()
+    process.env.NEXT_PUBLIC_API_URL = 'http://api.test'
+  })
+
+  afterEach(() => {
+    global.fetch = originalFetch
+    delete process.env.NEXT_PUBLIC_API_URL
+    delete process.env.API_URL
+  })
+
+  it('относительный to_path: query запроса переносится как есть, повторы и кодировка целы', async () => {
+    mockRedirects([{ fromPath: '/old-path', toPath: '/new-path' }])
+
+    const res = await middleware(
+      makeRequest('/old-path?yclid=123&utm_term=a&utm_term=b&q=%D1%85%D0%B8%D0%BC&r=a%26b'),
+    )
+
+    expect(res.status).toBe(301)
+    expect(res.headers.get('location')).toBe(
+      'http://localhost:3000/new-path?yclid=123&utm_term=a&utm_term=b&q=%D1%85%D0%B8%D0%BC&r=a%26b',
+    )
+  })
+
+  it('свои параметры в to_path приоритетнее одноимённых из запроса, остальные добавляются', async () => {
+    mockRedirects([{ fromPath: '/old-path', toPath: '/new?x=1&utm_source=catalog' }])
+
+    const res = await middleware(makeRequest('/old-path?x=2&utm_source=yandex&yclid=9'))
+
+    expect(res.headers.get('location')).toBe(
+      'http://localhost:3000/new?x=1&utm_source=catalog&yclid=9',
+    )
+  })
+
+  it.each(['https://ximi4ka.ru/new', 'https://new.ximi4ka.ru/new', 'https://www.ximi4ka.ru/new'])(
+    'абсолютный to_path на свой домен (%s) тоже получает query',
+    async (toPath) => {
+      mockRedirects([{ fromPath: '/old-path', toPath }])
+
+      const res = await middleware(makeRequest('/old-path?yclid=5&utm_source=yandex'))
+
+      expect(res.headers.get('location')).toBe(`${toPath}?yclid=5&utm_source=yandex`)
+    },
+  )
+
+  it('чужой домен query не получает: метки и токены наружу не утекают', async () => {
+    mockRedirects([{ fromPath: '/ext', toPath: 'https://example.com/landing' }])
+
+    const res = await middleware(makeRequest('/ext?yclid=5&token=secret'))
+
+    expect(res.headers.get('location')).toBe('https://example.com/landing')
+  })
+
+  it('похожий на свой домен чужой хост (ximi4ka.ru.evil.com) query не получает', async () => {
+    mockRedirects([{ fromPath: '/ext', toPath: 'https://ximi4ka.ru.evil.com/x' }])
+
+    const res = await middleware(makeRequest('/ext?yclid=5'))
+
+    expect(res.headers.get('location')).toBe('https://ximi4ka.ru.evil.com/x')
+  })
+
+  it('протокол-независимый to_path на чужой хост (//evil.com) query не получает', async () => {
+    mockRedirects([{ fromPath: '/ext', toPath: '//evil.com/x' }])
+
+    const res = await middleware(makeRequest('/ext?yclid=5'))
+
+    expect(res.headers.get('location')).toBe('http://evil.com/x')
+  })
+
+  it('старый tproduct-адрес с известным id: редирект по id тоже сохраняет query', async () => {
+    mockRedirects([{ fromPath: '/tproduct/123-old-slug', toPath: '/product/kit' }])
+
+    const res = await middleware(makeRequest('/catalog/tproduct/123-another?yclid=7'))
+
+    expect(res.headers.get('location')).toBe('http://localhost:3000/product/kit?yclid=7')
+  })
+
+  it.each([
+    ['userinfo', 'https://ximi4ka.ru@evil.com/x', 'https://ximi4ka.ru@evil.com/x'],
+    ['обратный слэш', 'https://evil.com\\.ximi4ka.ru/x', 'https://evil.com/.ximi4ka.ru/x'],
+    ['решётка в хосте', 'https://evil.com#.ximi4ka.ru/x', 'https://evil.com/#.ximi4ka.ru/x'],
+  ])('хост-обманка (%s) query не получает', async (_name, toPath, location) => {
+    mockRedirects([{ fromPath: '/ext', toPath }])
+
+    const res = await middleware(makeRequest('/ext?yclid=5'))
+
+    expect(res.headers.get('location')).toBe(location)
+  })
+
+  it('фрагмент to_path остаётся после query', async () => {
+    mockRedirects([{ fromPath: '/old-path', toPath: '/new#section' }])
+
+    const res = await middleware(makeRequest('/old-path?yclid=1'))
+
+    expect(res.headers.get('location')).toBe('http://localhost:3000/new?yclid=1#section')
+  })
+
+  it('ключ запроса с %-кодированием считается тем же ключом, что и в to_path', async () => {
+    mockRedirects([{ fromPath: '/old-path', toPath: '/new?utm_source=catalog' }])
+
+    const res = await middleware(makeRequest('/old-path?%75tm_source=yandex&yclid=1'))
+
+    expect(res.headers.get('location')).toBe('http://localhost:3000/new?utm_source=catalog&yclid=1')
+  })
+
+  it('абсолютный to_path на хост самого запроса получает query', async () => {
+    mockRedirects([{ fromPath: '/old-path', toPath: 'http://localhost:3000/new' }])
+
+    const res = await middleware(makeRequest('/old-path?yclid=1'))
+
+    expect(res.headers.get('location')).toBe('http://localhost:3000/new?yclid=1')
+  })
+
+  it('хост с завершающей точкой (ximi4ka.ru.) тоже свой', async () => {
+    mockRedirects([{ fromPath: '/old-path', toPath: 'https://ximi4ka.ru./new' }])
+
+    const res = await middleware(makeRequest('/old-path?yclid=1'))
+
+    expect(res.headers.get('location')).toBe('https://ximi4ka.ru./new?yclid=1')
+  })
+
+  it('без query адрес не меняется, лишнего «?» нет', async () => {
+    mockRedirects([{ fromPath: '/old-path', toPath: '/new-path' }])
+
+    const res = await middleware(makeRequest('/old-path'))
+
+    expect(res.headers.get('location')).toBe('http://localhost:3000/new-path')
+  })
+})
+
 describe('matchRedirect (tproduct-id fallback)', () => {
   const items = [
     {

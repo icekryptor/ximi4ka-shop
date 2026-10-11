@@ -51,7 +51,10 @@ describe('POST /api/public/shipping/quote', () => {
       })
     expect(res.status).toBe(200)
     expect(res.body.data.subtotalRub).toBe(3299 + 198)
-    expect(res.body.data.packages.map((p: { box: string }) => p.box)).toEqual(['large', 'small'])
+    // Реактивы уложены в коробку набора — одно место.
+    expect(res.body.data.packages).toHaveLength(1)
+    expect(res.body.data.packages[0].box).toBe('large')
+    expect(res.body.data.packages[0].weightG).toBe(1300 + 2 * 50)
     expect(res.body.data.quote).toBeNull()
     expect(res.body.data.tariffs).toEqual({ pvz: 136, courier: 137 })
   })
