@@ -101,7 +101,7 @@ export function GiftBanner({ totalRub }: { totalRub: number }) {
       data-testid="gift-banner"
       className="m-0 border border-[var(--color-lj-brand-deep)] bg-[var(--color-lj-cream)] p-4 flex flex-col gap-3"
     >
-      <legend className="px-2 font-lj-display font-[900] text-xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
+      <legend className="px-2 font-lj-mazzard font-[700] text-xl tracking-[-0.02em] text-[var(--color-lj-ink)]">
         Вам подарок!
       </legend>
       <p className="m-0 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-70">
@@ -122,29 +122,23 @@ export function GiftBanner({ totalRub }: { totalRub: number }) {
                 onChange={() => setChoice(toChoice(option))}
                 className="peer sr-only"
               />
-              <span
-                className={`relative block aspect-square overflow-hidden rounded-[var(--radius-lj-bright-sm)] border-2 bg-[#bbf9b0] transition-[border-color,box-shadow] duration-300 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-lj-brand-deep)] ${
-                  checked
-                    ? 'border-[var(--color-lj-brand-deep)] shadow-[0_0_0_2px_var(--color-lj-brand-deep)]'
-                    : 'border-[#a6e09b] group-hover:border-[var(--color-lj-brand)]'
-                }`}
-              >
+              <span className="relative block aspect-square overflow-hidden rounded-[var(--radius-lj-bright-sm)] peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-lj-brand-deep)]">
                 {option.image && (
                   <Image
                     src={option.image.url}
                     alt={option.image.alt}
                     fill
                     sizes="(max-width: 640px) 30vw, 140px"
-                    className="object-contain p-[12%]"
+                    className="object-cover"
                   />
                 )}
               </span>
-              <span className="font-lj-display font-[700] text-[0.8125rem] leading-[1.15] tracking-[-0.025em]">
+              <span className="font-lj-mazzard font-[700] text-[0.8125rem] leading-[1.15] tracking-[-0.01em]">
                 {option.name}
               </span>
               <span
                 aria-hidden="true"
-                className={`mt-auto inline-flex items-center justify-center rounded-[14px] border-2 border-[var(--color-lj-brand-deep)] px-2 py-1.5 font-lj-display font-[700] text-sm leading-none transition-colors ${
+                className={`mt-auto inline-flex items-center justify-center rounded-[14px] border-2 border-[var(--color-lj-brand-deep)] px-2 py-1.5 font-lj-mazzard font-[700] text-sm leading-none transition-colors ${
                   checked
                     ? 'bg-[var(--color-lj-brand-deep)] text-[var(--color-lj-on-bright)]'
                     : 'text-[var(--color-lj-brand-deep)] group-hover:bg-[var(--color-lj-brand-deep)]/10'
