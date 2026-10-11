@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useState } from 'react'
+import Image from 'next/image'
 import { getPublishedProduct } from '@/lib/api'
 import {
   GIFT_SLUGS,
@@ -12,10 +13,20 @@ import {
 } from '@/lib/gift'
 import { formatRub } from '@/lib/stockLabel'
 
+/** Подарок в плашке: выбор для хранилища плюс фото для мини-карточки. */
+interface GiftOption extends GiftChoice {
+  image: { url: string; alt: string } | null
+}
+
+/** Выбор без фото — в хранилище и чекаут уходит только он. */
+function toChoice({ productId, slug, name }: GiftOption): GiftChoice {
+  return { productId, slug, name }
+}
+
 // Реактивы-подарки: тянем карточки по slug, оставляем те, что можно положить в
 // заказ (сервер проверяет то же самое). Не загрузился один — остальные живут.
-function useGiftOptions(enabled: boolean): GiftChoice[] | null {
-  const [options, setOptions] = useState<GiftChoice[] | null>(null)
+function useGiftOptions(enabled: boolean): GiftOption[] | null {
+  const [options, setOptions] = useState<GiftOption[] | null>(null)
 
   useEffect(() => {
     if (!enabled || options !== null) return
@@ -26,7 +37,14 @@ function useGiftOptions(enabled: boolean): GiftChoice[] | null {
         setOptions(
           products.flatMap((p) =>
             p && p.isPublished && p.stockStatus === 'in_stock'
-              ? [{ productId: p.id, slug: p.slug, name: p.name }]
+              ? [
+                  {
+                    productId: p.id,
+                    slug: p.slug,
+                    name: p.name,
+                    image: p.images?.[0] ? { url: p.images[0].url, alt: p.images[0].alt } : null,
+                  },
+                ]
               : [],
           ),
         )
@@ -89,26 +107,51 @@ export function GiftBanner({ totalRub }: { totalRub: number }) {
       <p className="m-0 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)] opacity-70">
         Выберите реактив — он поедет с заказом бесплатно
       </p>
-      <div role="radiogroup" aria-label="Подарок на выбор" className="flex flex-col gap-2">
+      <div role="radiogroup" aria-label="Подарок на выбор" className="grid grid-cols-3 gap-3">
         {(options ?? []).map((option) => {
           const checked = choice?.productId === option.productId
           return (
             <label
               key={option.productId}
-              className={`flex items-center gap-3 border px-3 py-2 cursor-pointer text-[var(--color-lj-ink)] ${
-                checked
-                  ? 'border-[var(--color-lj-brand-deep)]'
-                  : 'border-[var(--color-lj-rule)] hover:border-[var(--color-lj-brand-deep)]'
-              }`}
+              className="group flex min-w-0 cursor-pointer flex-col gap-2 text-[var(--color-lj-ink)]"
             >
               <input
                 type="radio"
                 name={groupName}
                 checked={checked}
-                onChange={() => setChoice(option)}
-                className="accent-[var(--color-lj-brand-deep)]"
+                onChange={() => setChoice(toChoice(option))}
+                className="peer sr-only"
               />
-              <span className="font-lj-display font-[700] tracking-[-0.025em]">{option.name}</span>
+              <span
+                className={`relative block aspect-square overflow-hidden rounded-[var(--radius-lj-bright-sm)] border-2 bg-[#bbf9b0] transition-[border-color,box-shadow] duration-300 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--color-lj-brand-deep)] ${
+                  checked
+                    ? 'border-[var(--color-lj-brand-deep)] shadow-[0_0_0_2px_var(--color-lj-brand-deep)]'
+                    : 'border-[#a6e09b] group-hover:border-[var(--color-lj-brand)]'
+                }`}
+              >
+                {option.image && (
+                  <Image
+                    src={option.image.url}
+                    alt={option.image.alt}
+                    fill
+                    sizes="(max-width: 640px) 30vw, 140px"
+                    className="object-contain p-[12%]"
+                  />
+                )}
+              </span>
+              <span className="font-lj-display font-[700] text-[0.8125rem] leading-[1.15] tracking-[-0.025em]">
+                {option.name}
+              </span>
+              <span
+                aria-hidden="true"
+                className={`mt-auto inline-flex items-center justify-center rounded-[14px] border-2 border-[var(--color-lj-brand-deep)] px-2 py-1.5 font-lj-display font-[700] text-sm leading-none transition-colors ${
+                  checked
+                    ? 'bg-[var(--color-lj-brand-deep)] text-[var(--color-lj-on-bright)]'
+                    : 'text-[var(--color-lj-brand-deep)] group-hover:bg-[var(--color-lj-brand-deep)]/10'
+                }`}
+              >
+                {checked ? 'Выбрано' : 'Выбрать'}
+              </span>
             </label>
           )
         })}
