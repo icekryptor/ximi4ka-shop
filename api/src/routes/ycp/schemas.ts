@@ -114,14 +114,17 @@ export const CreateCheckoutSchema = z.object({
 })
 
 // Тело — контракт; query-параметры устарели, но обязательны по схеме, поэтому
-// принимаем оба источника (тело важнее).
+// принимаем оба источника (тело важнее). Деньги к этому моменту уже у Яндекса,
+// поэтому к безобидному дрейфу формы терпимы: order_number мы не используем,
+// способ оплаты и acquiring_id — только для истории и привязки платежа.
+// payment_method остаётся строгим: от него зависит, оплачен ли заказ.
 export const CheckoutPlacedSchema = z.object({
   session_id: z.string().trim().min(1).max(64),
   order_id: z.string().trim().min(1).max(64),
-  order_number: z.coerce.number().int().optional(),
+  order_number: z.unknown().optional(),
   payment_method: z.enum(['online', 'on_delivery']),
-  online_payment_method: z.enum(['card', 'sbp', 'split', 'split_sbp']).optional(),
-  acquiring_id: z.string().trim().max(255).optional(),
+  online_payment_method: z.string().trim().max(64).nullish(),
+  acquiring_id: z.string().trim().max(255).nullish(),
 })
 
 export const SessionQuerySchema = z.object({ session_id: z.string().trim().min(1).max(64) })

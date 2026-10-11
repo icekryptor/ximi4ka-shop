@@ -166,6 +166,36 @@ describe('POST /api/v1/checkout/placed', () => {
     expect(await shipments(order.id)).toBe(0)
   })
 
+  it('безобидный дрейф формы тела: null в acquiring_id, новый способ оплаты, строковый order_number — 200 и paid', async () => {
+    const order = await createYcpCheckout(app, 'sess-drift')
+    const res = await request(app)
+      .post(URL)
+      .set(ycpAuth)
+      .send(
+        placed('sess-drift', {
+          acquiring_id: null,
+          online_payment_method: 'new_method',
+          order_number: '1234',
+        }),
+      )
+    expect(res.status).toBe(200)
+    const fresh = await reload(order.id)
+    expect(fresh.status).toBe('paid')
+    expect(fresh.statusHistory.at(-1)).toMatchObject({ comment: 'Оплата в Яндексе: new_method' })
+  })
+
+  it('online_payment_method: null — 200, оплата записана без способа', async () => {
+    const order = await createYcpCheckout(app, 'sess-null')
+    const res = await request(app)
+      .post(URL)
+      .set(ycpAuth)
+      .send(placed('sess-null', { online_payment_method: null, acquiring_id: null }))
+    expect(res.status).toBe(200)
+    const fresh = await reload(order.id)
+    expect(fresh.status).toBe('paid')
+    expect(fresh.statusHistory.at(-1)).toMatchObject({ comment: 'Оплата в Яндексе' })
+  })
+
   it('неизвестный payment_method — 400', async () => {
     await createYcpCheckout(app, 'sess-6')
     const res = await request(app)
