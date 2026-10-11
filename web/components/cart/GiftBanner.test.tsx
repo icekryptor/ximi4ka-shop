@@ -65,6 +65,32 @@ describe('GiftBanner', () => {
     expect(screen.getAllByRole('radio')).toHaveLength(3)
   })
 
+  it('мини-карточка: фото реактива, кнопка «Выбрать» меняется на «Выбрано»', async () => {
+    CATALOG['iodat-kaliya'] = product('iodat-kaliya', 'Йодат калия', {
+      images: [
+        {
+          id: 'i1',
+          productId: 'id-iodat-kaliya',
+          url: '/iodat.png',
+          alt: 'Йодат калия, склянка',
+          sortOrder: 0,
+        },
+      ],
+    })
+    try {
+      render(<GiftBanner totalRub={3000} />)
+
+      expect(await screen.findByAltText('Йодат калия, склянка')).toBeInTheDocument()
+      expect(screen.getAllByText('Выбрать')).toHaveLength(3)
+
+      fireEvent.click(screen.getByRole('radio', { name: /Йодат калия/ }))
+      expect(screen.getByText('Выбрано')).toBeInTheDocument()
+      expect(screen.getAllByText('Выбрать')).toHaveLength(2)
+    } finally {
+      CATALOG['iodat-kaliya'] = product('iodat-kaliya', 'Йодат калия')
+    }
+  })
+
   it('выбор сохраняется и переключается', async () => {
     render(<GiftBanner totalRub={3500} />)
 
