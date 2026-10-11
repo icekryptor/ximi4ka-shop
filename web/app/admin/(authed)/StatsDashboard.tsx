@@ -73,7 +73,14 @@ export function StatsDashboard({ stats, period }: { stats: StatsResponse; period
             </Link>
           )
         })}
-        <form method="get" action="/admin" className="flex flex-wrap items-end gap-2 ml-2">
+        {/* key: при клиентской навигации (плашки) страница не перемонтируется, а defaultValue
+            после монтирования не применяется — перемонтируем форму при смене периода. */}
+        <form
+          key={`${period.from}_${period.to}`}
+          method="get"
+          action="/admin"
+          className="flex flex-wrap items-end gap-2 ml-2"
+        >
           <input type="hidden" name="preset" value="custom" />
           <label className="text-sm text-brand-text-secondary">
             <span className="mr-1">С</span>

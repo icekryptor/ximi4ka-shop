@@ -54,6 +54,21 @@ describe('StatsDashboard', () => {
     expect(screen.getByLabelText('По')).toHaveValue('2026-10-07')
   })
 
+  it('смена периода (рендер с новыми props): поля С/По и активная плашка обновляются', () => {
+    const { rerender } = render(<StatsDashboard stats={stats} period={period} />)
+    expect(screen.getByLabelText('С')).toHaveValue('2026-10-05')
+    rerender(
+      <StatsDashboard
+        stats={stats}
+        period={{ preset: 'month', from: '2026-09-12', to: '2026-10-11' }}
+      />,
+    )
+    expect(screen.getByLabelText('С')).toHaveValue('2026-09-12')
+    expect(screen.getByLabelText('По')).toHaveValue('2026-10-11')
+    expect(screen.getByRole('link', { name: 'Месяц' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Неделя' })).not.toHaveAttribute('aria-current')
+  })
+
   it('график: столбец на каждый день с подсказкой', () => {
     const { container } = render(<StatsDashboard stats={stats} period={period} />)
     expect(container.querySelectorAll('svg rect')).toHaveLength(3)
