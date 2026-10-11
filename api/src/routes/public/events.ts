@@ -9,6 +9,19 @@ import { AppDataSource } from '../../config/dataSource.js'
 const MAX_META_CHARS = 1000
 const MAX_PATH_CHARS = 300
 
+// Postgres не хранит NUL ни в text, ни в jsonb, а jsonb ещё и отвергает одиночные
+// суррогаты (в JSON.stringify они выходят как \ud800..\udfff; корректная пара,
+// например эмодзи, остаётся самим символом). Такие входы — 400, а не 500.
+const JSON_UNSTORABLE = /\\u0000|\\ud[89a-f][0-9a-f]{2}/i
+
+// Обрезка по code unit может разрезать суррогатную пару: хвостовой одинокий
+// старший суррогат отбрасываем, чтобы в базу попал валидный текст.
+function truncatePath(p: string): string {
+  const cut = p.slice(0, MAX_PATH_CHARS)
+  const last = cut.charCodeAt(cut.length - 1)
+  return p.length > MAX_PATH_CHARS && last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut
+}
+
 const BOT_UA =
   /bot|crawl|spider|slurp|headless|lighthouse|preview|monitor|curl|wget|python-requests|httpclient/i
 
@@ -20,10 +33,14 @@ const EventSchema = z.object({
     .string()
     .min(1)
     .max(2000)
-    .transform((p) => p.slice(0, MAX_PATH_CHARS)),
+    .refine((p) => !p.includes('\u0000'), { message: 'path содержит NUL' })
+    .transform(truncatePath),
   meta: z
     .record(z.string(), z.unknown())
     .refine((m) => JSON.stringify(m).length <= MAX_META_CHARS, { message: 'meta слишком большой' })
+    .refine((m) => !JSON_UNSTORABLE.test(JSON.stringify(m)), {
+      message: 'meta содержит NUL или одиночный суррогат',
+    })
     .optional(),
 })
 

@@ -97,6 +97,57 @@ describe('POST /api/public/events', () => {
     expect((row.path as string).length).toBe(300)
   })
 
+  it('NUL в path — 400, а не 500', async () => {
+    const res = await request(app)
+      .post('/api/public/events')
+      .send({ ...valid, path: '/a\u0000b' })
+    expect(res.status).toBe(400)
+    expect(await rows()).toHaveLength(0)
+  })
+
+  it('NUL в строке meta — 400, а не 500', async () => {
+    const res = await request(app)
+      .post('/api/public/events')
+      .send({ ...valid, meta: { note: 'a\u0000b' } })
+    expect(res.status).toBe(400)
+    expect(await rows()).toHaveLength(0)
+  })
+
+  it('одиночный суррогат в meta — 400, а не 500', async () => {
+    // JSON.stringify даёт для одиночного суррогата escape \ud83d, который jsonb не принимает.
+    const res = await request(app)
+      .post('/api/public/events')
+      .set('Content-Type', 'application/json')
+      .send(
+        '{"type":"add_to_cart","visitorId":"' +
+          VISITOR +
+          '","path":"/p","meta":{"note":"\\ud83d"}}',
+      )
+    expect(res.status).toBe(400)
+    expect(await rows()).toHaveLength(0)
+  })
+
+  it('эмодзи в meta принимается и сохраняется', async () => {
+    const res = await request(app)
+      .post('/api/public/events')
+      .send({ ...valid, meta: { note: '🧪' } })
+    expect(res.status).toBe(204)
+    expect((await rows())[0]).toMatchObject({ meta: { note: '🧪' } })
+  })
+
+  it('обрезка path не рвёт суррогатную пару на границе', async () => {
+    // 299 символов + эмодзи (2 code unit): slice(0, 300) оставил бы половину пары.
+    const path = `/${'a'.repeat(298)}🧪${'b'.repeat(700)}`
+    const res = await request(app)
+      .post('/api/public/events')
+      .send({ ...valid, path })
+    expect(res.status).toBe(204)
+    const stored = (await rows())[0].path as string
+    expect(stored.length).toBeLessThanOrEqual(300)
+    expect(stored).not.toMatch(/[\ud800-\udfff\ufffd]/)
+    expect(stored).toBe(`/${'a'.repeat(298)}`)
+  })
+
   it('бот по User-Agent: 204, но событие не пишется', async () => {
     const res = await request(app)
       .post('/api/public/events')
