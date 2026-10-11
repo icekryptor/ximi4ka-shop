@@ -1,11 +1,12 @@
 import { Router } from 'express'
 import { z } from 'zod'
 import { IsNull, In, Not } from 'typeorm'
-import type { CdekShipmentDto } from '@ximi4ka-shop/shared'
+import type { CdekShipmentDto, MetrikaConversionDto } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
+import { MetrikaConversion } from '../../entities/MetrikaConversion.js'
 import { OrdersListQuerySchema, OrderStatusPatchSchema } from './orders.schemas.js'
 import { conflict, notFound } from '../errors.js'
 import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
@@ -49,6 +50,21 @@ function cdekShipmentDto(s: CdekShipment): CdekShipmentDto {
 async function cdekShipment(orderId: string): Promise<CdekShipmentDto | null> {
   const s = await AppDataSource.getRepository(CdekShipment).findOneBy({ orderId })
   return s ? cdekShipmentDto(s) : null
+}
+
+// Состояние отправки оплаты в Метрику; yclid наружу не дублируем (он в атрибуции).
+async function metrikaConversion(orderId: string): Promise<MetrikaConversionDto | null> {
+  const c = await AppDataSource.getRepository(MetrikaConversion).findOneBy({ orderId })
+  if (!c) return null
+  return {
+    state: c.state,
+    target: c.target,
+    priceRub: c.priceRub,
+    attempts: c.attempts,
+    uploadId: c.uploadId,
+    sentAt: c.sentAt?.toISOString() ?? null,
+    lastError: c.lastError,
+  }
 }
 
 // List — newest first, optional status filter.
@@ -104,6 +120,7 @@ adminOrdersRouter.get('/:id', async (req, res, next) => {
         ...withoutSecret(order),
         notifications: await orderNotifications(order.id),
         cdekShipment: await cdekShipment(order.id),
+        metrikaConversion: await metrikaConversion(order.id),
         cdekOrdersEnabled: ordersEnabled,
         // Флаг выключен — почему обработчик не запущен неважно, он и не
         // должен быть запущен. Флаг включён — если обработчик всё же не

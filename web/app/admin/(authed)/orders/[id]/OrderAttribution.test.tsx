@@ -60,6 +60,127 @@ describe('<OrderAttribution>', () => {
     expect(screen.queryByText('Последнее с метками')).not.toBeInTheDocument()
   })
 
+  describe('конверсия в Метрику', () => {
+    const base = {
+      target: 'order_paid',
+      priceRub: 1500,
+      attempts: 0,
+      uploadId: null,
+      sentAt: null,
+      lastError: null,
+    }
+
+    it('отправлена: статус, номер загрузки и цель', () => {
+      render(
+        <OrderAttribution
+          attribution={{ last: LAST }}
+          clientIp={null}
+          clientUserAgent={null}
+          conversion={{
+            ...base,
+            state: 'sent',
+            uploadId: '777',
+            sentAt: '2026-10-05T13:00:00.000Z',
+          }}
+        />,
+      )
+
+      expect(screen.getByText('отправлена в Метрику')).toBeInTheDocument()
+      expect(screen.getByText(/777/)).toBeInTheDocument()
+      expect(screen.getByText(/order_paid/)).toBeInTheDocument()
+    })
+
+    it('отправляется прямо сейчас', () => {
+      render(
+        <OrderAttribution
+          attribution={{ last: LAST }}
+          clientIp={null}
+          clientUserAgent={null}
+          conversion={{ ...base, state: 'sending' }}
+        />,
+      )
+
+      expect(screen.getByText('отправляется')).toBeInTheDocument()
+    })
+
+    it('отправлена, но Метрика приняла не все строки: «Внимание», не «Ошибка»', () => {
+      render(
+        <OrderAttribution
+          attribution={{ last: LAST }}
+          clientIp={null}
+          clientUserAgent={null}
+          conversion={{
+            ...base,
+            state: 'sent',
+            uploadId: '5',
+            lastError: 'Метрика приняла не все строки (1 из 2)',
+          }}
+        />,
+      )
+
+      expect(screen.getByText(/Внимание: Метрика приняла не все строки/)).toBeInTheDocument()
+      expect(screen.queryByText(/Ошибка:/)).not.toBeInTheDocument()
+    })
+
+    it('в очереди', () => {
+      render(
+        <OrderAttribution
+          attribution={{ last: LAST }}
+          clientIp={null}
+          clientUserAgent={null}
+          conversion={{ ...base, state: 'pending' }}
+        />,
+      )
+
+      expect(screen.getByText('в очереди на отправку')).toBeInTheDocument()
+    })
+
+    it('с ошибкой: причина и число попыток', () => {
+      render(
+        <OrderAttribution
+          attribution={{ last: LAST }}
+          clientIp={null}
+          clientUserAgent={null}
+          conversion={{
+            ...base,
+            state: 'pending',
+            attempts: 3,
+            lastError: 'Metrika 403: Access denied',
+          }}
+        />,
+      )
+
+      expect(screen.getByText(/Metrika 403: Access denied/)).toBeInTheDocument()
+      expect(screen.getByText(/попыток: 3/)).toBeInTheDocument()
+    })
+
+    it('сдана после суток попыток', () => {
+      render(
+        <OrderAttribution
+          attribution={{ last: LAST }}
+          clientIp={null}
+          clientUserAgent={null}
+          conversion={{ ...base, state: 'failed', attempts: 9, lastError: 'down' }}
+        />,
+      )
+
+      expect(screen.getByText('не отправлена')).toBeInTheDocument()
+    })
+
+    it('нет записи: блока про Метрику нет', () => {
+      render(
+        <OrderAttribution
+          attribution={{ last: LAST }}
+          clientIp={null}
+          clientUserAgent={null}
+          conversion={null}
+        />,
+      )
+
+      expect(screen.queryByText('Конверсия в Метрику')).not.toBeInTheDocument()
+    })
+  })
+
   it('старый заказ без атрибуции: понятная заглушка', () => {
     render(<OrderAttribution attribution={null} clientIp={null} clientUserAgent={null} />)
 

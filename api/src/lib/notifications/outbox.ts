@@ -4,6 +4,7 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { enqueueCdekShipment } from '../cdek/queue.js'
+import { enqueueMetrikaConversion } from '../metrika/queue.js'
 
 // Куда сообщаем о каждом событии заказа.
 export const CHANNELS: NotificationChannel[] = ['sheets', 'telegram']
@@ -68,6 +69,7 @@ export async function saveOrderWithStatusEvent(
     // Оплаченный заказ — в очередь создания в СДЭК, той же транзакцией.
     if (order.status === 'paid' && previousStatus !== 'paid') {
       await enqueueCdekShipment(em, order)
+      await enqueueMetrikaConversion(em, order)
     }
     return order
   })

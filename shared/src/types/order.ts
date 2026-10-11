@@ -92,6 +92,19 @@ export interface OrderAttribution {
   last?: AttributionTouch
 }
 
+/** Отправка оплаты заказа в Яндекс.Метрику как офлайн-конверсии (только для админки). */
+export interface MetrikaConversionDto {
+  state: 'pending' | 'sending' | 'sent' | 'failed'
+  /** Идентификатор цели в Метрике. */
+  target: string
+  priceRub: number
+  attempts: number
+  /** Номер загрузки в Метрике: по нему ищут её в отчёте «Офлайн-конверсии». */
+  uploadId: string | null
+  sentAt: string | null
+  lastError: string | null
+}
+
 export interface OrderDto {
   id: string
   orderNumber: string
@@ -118,6 +131,8 @@ export interface OrderDto {
   /** Адрес и браузер покупателя при оформлении (только для админки). */
   clientIp?: string | null
   clientUserAgent?: string | null
+  /** null — конверсию не ставили (нет yclid или отправка выключена). */
+  metrikaConversion?: MetrikaConversionDto | null
   notifications?: OrderNotificationDto[]
   // Заказ в СДЭК (только в деталях админки).
   cdekShipment?: CdekShipmentDto | null

@@ -165,6 +165,23 @@ describe('атрибуция заказа', () => {
     expect(order.attribution).toBeNull()
   })
 
+  it('yclid не из цифр отбрасывается, остальные метки касания целы', async () => {
+    const order = await placeOrder({
+      attribution: { last: { ...LAST, yclid: 'abc,"def' } },
+    })
+
+    expect(order.attribution?.last).not.toHaveProperty('yclid')
+    expect(order.attribution?.last?.utm_source).toBe('yandex')
+  })
+
+  it('слишком длинный yclid (больше 32 цифр) отбрасывается', async () => {
+    const order = await placeOrder({
+      attribution: { last: { ...LAST, yclid: '1'.repeat(40) } },
+    })
+
+    expect(order.attribution?.last).not.toHaveProperty('yclid')
+  })
+
   it('дата касания «не дата» — касание отбрасывается целиком', async () => {
     const order = await placeOrder({
       attribution: { first: { ...FIRST, at: 'не дата' }, last: LAST },

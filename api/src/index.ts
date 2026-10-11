@@ -5,6 +5,7 @@ import { AppDataSource } from './config/dataSource.js'
 import { startReconciliationJob } from './lib/payments/reconcile.js'
 import { startNotificationWorker } from './lib/notifications/worker.js'
 import { startCdekShipmentWorker } from './lib/cdek/worker.js'
+import { startMetrikaConversionWorker } from './lib/metrika/worker.js'
 import { startLoginBotPolling } from './lib/telegram/loginPoller.js'
 
 const logger = pino()
@@ -34,6 +35,12 @@ async function bootstrap() {
   // Заказы в СДЭК после оплаты. No-op, пока CDEK_ORDERS_ENABLED не true.
   if (startCdekShipmentWorker()) {
     logger.info('cdek shipments worker started')
+  }
+
+  // Офлайн-конверсии оплаты в Яндекс.Метрику по yclid. No-op, пока
+  // METRIKA_OFFLINE_ENABLED не true и не задан METRIKA_OAUTH_TOKEN.
+  if (startMetrikaConversionWorker()) {
+    logger.info('metrika offline conversions worker started')
   }
 
   // Бот входа в кабинет забирает update сам. No-op без TELEGRAM_LOGIN_POLLING=1.

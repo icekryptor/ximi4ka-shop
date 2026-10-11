@@ -216,6 +216,7 @@ export default async function AdminOrderDetailPage({
             attribution={order.attribution}
             clientIp={order.clientIp}
             clientUserAgent={order.clientUserAgent}
+            conversion={order.metrikaConversion}
           />
 
           {/* Доставка */}
