@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AdminOnly } from '@/components/admin/AdminOnly'
 import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
 import type { OrderDto } from '@ximi4ka-shop/shared'
@@ -31,11 +32,16 @@ async function fetchOrder(id: string): Promise<OrderDto | null> {
   return body.data
 }
 
-export default async function AdminOrderDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+// Карточка заказа — только admin (см. orders/page.tsx про проверку внутри страницы).
+export default async function AdminOrderDetailPage(props: Parameters<typeof OrderDetail>[0]) {
+  return (
+    <AdminOnly>
+      <OrderDetail {...props} />
+    </AdminOnly>
+  )
+}
+
+async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const order = await fetchOrder(id)
   if (!order) notFound()

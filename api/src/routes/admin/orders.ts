@@ -9,7 +9,7 @@ import { CdekShipment } from '../../entities/CdekShipment.js'
 import { OrdersListQuerySchema, OrderStatusPatchSchema } from './orders.schemas.js'
 import { conflict, notFound } from '../errors.js'
 import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
-import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
+import { requireAdminAuth, requireCsrfToken, requireRole } from '../middleware/requireAdminAuth.js'
 import { cdekOrdersEnabled } from '../../lib/cdek/orders.js'
 import { enqueueCdekShipment, isCdekDelivery } from '../../lib/cdek/queue.js'
 import { cdekWorkerStatus } from '../../lib/cdek/worker.js'
@@ -18,6 +18,9 @@ export const adminOrdersRouter: Router = Router()
 
 adminOrdersRouter.use(requireAdminAuth)
 adminOrdersRouter.use(requireCsrfToken)
+// Заказы: персональные данные покупателей, ручная отметка оплаты, повторы
+// уведомлений и СДЭК — только admin.
+adminOrdersRouter.use(requireRole('admin'))
 
 async function orderNotifications(orderId: string) {
   const rows = await AppDataSource.getRepository(OrderNotification).find({

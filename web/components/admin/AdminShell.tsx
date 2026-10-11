@@ -18,6 +18,8 @@ interface NavItem {
   href: string
   label: string
   exact?: boolean
+  /** Раздел только для роли admin (API закрыт для остальных, здесь лишь прячем пункт). */
+  adminOnly?: boolean
 }
 
 const NAV: NavItem[] = [
@@ -26,10 +28,10 @@ const NAV: NavItem[] = [
   { href: '/admin/categories', label: 'Категории' },
   { href: '/admin/pages', label: 'Страницы' },
   { href: '/admin/blog', label: 'Блог' },
-  { href: '/admin/orders', label: 'Заказы' },
+  { href: '/admin/orders', label: 'Заказы', adminOnly: true },
   { href: '/admin/redirects', label: 'Редиректы' },
   { href: '/admin/media', label: 'Медиа' },
-  { href: '/admin/settings', label: 'Настройки' },
+  { href: '/admin/settings', label: 'Настройки', adminOnly: true },
 ]
 
 function isActive(pathname: string | null, href: string, exact?: boolean): boolean {
@@ -68,7 +70,7 @@ export function AdminShell({ admin, children }: Props) {
         <div className="p-6 text-xl font-bold text-brand">Ximi4ka Admin</div>
         <nav aria-label="Админ навигация" className="px-3 flex-1">
           <ul className="flex flex-col gap-1">
-            {NAV.map((item) => {
+            {NAV.filter((item) => !item.adminOnly || admin.role === 'admin').map((item) => {
               const active = isActive(pathname, item.href, item.exact)
               return (
                 <li key={item.href}>
