@@ -222,6 +222,7 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
             attribution={order.attribution}
             clientIp={order.clientIp}
             clientUserAgent={order.clientUserAgent}
+            conversion={order.metrikaConversion}
           />
 
           {/* Доставка */}

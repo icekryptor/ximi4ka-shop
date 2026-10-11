@@ -34,9 +34,24 @@ export interface Product {
   shipBoxes?: ShippingBox[]
   looseUnits?: number
   minBox?: ShippingBox | null
+  /** Кнопка «Купить в 1 клик» в Яндексе (YCP). API отдаёт всегда. */
+  ycpEnabled?: boolean
+  /**
+   * Вес и габариты одной штуки в упаковке; только в списке с include=shipping (фид)
+   * и только у товаров с реальным weightG.
+   */
+  shippingUnit?: ProductShippingUnit
   images: ProductImage[]
   /** Слаги категорий. Есть в ответе карточки товара (`/api/public/products/:slug`). */
   categorySlugs?: string[]
   createdAt: string
   updatedAt: string
+}
+
+/** Вес и габариты одной штуки в упаковке (packCart на одну штуку). */
+export interface ProductShippingUnit {
+  weightG: number
+  lengthCm: number
+  widthCm: number
+  heightCm: number
 }

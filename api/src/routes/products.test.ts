@@ -126,6 +126,50 @@ describe('Product routes', () => {
       expect(noInclude.body.data[0]).not.toHaveProperty('categoryIds')
     })
 
+    it('отдаёт вес и габариты штуки в упаковке при include=shipping', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'ship-kit', name: 'Kit', priceRub: 100, weightG: 1200, shipBoxes: ['large'] })
+      await request(app).post(`/api/admin/products/${id}/publish`).set(authHeaders(auth)).send()
+
+      const withShipping = await request(app).get(
+        '/api/public/products?include=categories,shipping',
+      )
+      expect(withShipping.body.data[0].shippingUnit).toEqual({
+        weightG: 1200,
+        lengthCm: 40,
+        widthCm: 32,
+        heightCm: 8,
+      })
+      expect(withShipping.body.data[0].ycpEnabled).toBe(false)
+      expect(withShipping.body.data[0]).toHaveProperty('categoryIds')
+
+      const plain = await request(app).get('/api/public/products')
+      expect(plain.body.data[0]).not.toHaveProperty('shippingUnit')
+    })
+
+    it('не отдаёт shippingUnit для товара без реального веса (фид без выдуманных данных)', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'no-weight', name: 'NoW', priceRub: 100 })
+      await request(app).post(`/api/admin/products/${id}/publish`).set(authHeaders(auth)).send()
+
+      const res = await request(app).get('/api/public/products?include=categories,shipping')
+      expect(res.status).toBe(200)
+      expect(res.body.data[0].weightG).toBeNull()
+      expect(res.body.data[0]).not.toHaveProperty('shippingUnit')
+    })
+
     it('paginates with limit and offset', async () => {
       for (let i = 0; i < 25; i++) {
         const {
@@ -206,6 +250,29 @@ describe('Product routes', () => {
         .set(authHeaders(auth))
         .send({ name: 'X' })
       expect(res.status).toBe(404)
+    })
+    it('флаг «Купить в 1 клик»: по умолчанию выключен, PATCH включает, прочие PATCH его не сбрасывают', async () => {
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'ycp-flag', name: 'Y', priceRub: 100 })
+      expect(created.body.data.ycpEnabled).toBe(false)
+      const id = created.body.data.id
+      const on = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ ycpEnabled: true })
+      expect(on.body.data.ycpEnabled).toBe(true)
+      const renamed = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ name: 'Y2' })
+      expect(renamed.body.data.ycpEnabled).toBe(true)
+      const bad = await request(app)
+        .patch(`/api/admin/products/${id}`)
+        .set(authHeaders(auth))
+        .send({ ycpEnabled: 'yes' })
+      expect(bad.status).toBe(400)
     })
   })
 

@@ -6,8 +6,12 @@ export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled
 
 // Payment provider actually wired to the order. `manual` — no online payment:
 // the order stays pending and a manager contacts the customer. `tbank` —
-// Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring.
-export type PaymentProvider = 'manual' | 'tbank'
+// Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring. `ycp` — оплату принял
+// Яндекс (Яндекс Пэй, Сплит) в «Купить в 1 клик»; в Т-Кассу такие заказы не идут.
+export type PaymentProvider = 'manual' | 'tbank' | 'ycp'
+
+// Откуда пришёл заказ: витрина или «Купить в 1 клик» в Яндексе (YCP).
+export type OrderSource = 'site' | 'ycp'
 
 export type DeliveryMethod = 'cdek_pvz' | 'cdek_courier'
 
@@ -57,7 +61,7 @@ export interface OrderStatusHistoryEntry {
   from: OrderStatus | null
   to: OrderStatus
   at: string
-  by: 'tbank' | 'admin' | 'reconcile'
+  by: 'tbank' | 'admin' | 'reconcile' | 'ycp'
   comment?: string
 }
 
@@ -92,6 +96,19 @@ export interface OrderAttribution {
   last?: AttributionTouch
 }
 
+/** Отправка оплаты заказа в Яндекс.Метрику как офлайн-конверсии (только для админки). */
+export interface MetrikaConversionDto {
+  state: 'pending' | 'sending' | 'sent' | 'failed'
+  /** Идентификатор цели в Метрике. */
+  target: string
+  priceRub: number
+  attempts: number
+  /** Номер загрузки в Метрике: по нему ищут её в отчёте «Офлайн-конверсии». */
+  uploadId: string | null
+  sentAt: string | null
+  lastError: string | null
+}
+
 export interface OrderDto {
   id: string
   orderNumber: string
@@ -102,6 +119,8 @@ export interface OrderDto {
   customerTelegram: string | null
   deliveryAddress: DeliveryAddress
   deliveryMethod: string
+  /** Откуда заказ. API отдаёт всегда; в типе необязательно, чтобы старые фикстуры не ломались. */
+  source?: OrderSource
   /** Товары по обычным ценам. */
   subtotalRub: number
   /** Оптовая скидка (наборы, проценты на реагенты, цены партий); totalRub = subtotalRub − discountRub + shippingRub. */
@@ -118,6 +137,8 @@ export interface OrderDto {
   /** Адрес и браузер покупателя при оформлении (только для админки). */
   clientIp?: string | null
   clientUserAgent?: string | null
+  /** null — конверсию не ставили (нет yclid или отправка выключена). */
+  metrikaConversion?: MetrikaConversionDto | null
   notifications?: OrderNotificationDto[]
   // Заказ в СДЭК (только в деталях админки).
   cdekShipment?: CdekShipmentDto | null

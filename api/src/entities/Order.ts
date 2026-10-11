@@ -10,6 +10,7 @@ import {
 } from 'typeorm'
 import { OrderItem } from './OrderItem.js'
 import type {
+  OrderSource,
   OrderStatus,
   OrderStatusHistoryEntry,
   PaymentProvider,
@@ -112,6 +113,18 @@ export class Order {
   // lets a retried checkout POST return the already-created order.
   @Column({ type: 'varchar', length: 255, name: 'idempotency_key', nullable: true })
   idempotencyKey!: string | null
+
+  // Откуда заказ: site — витрина, ycp — «Купить в 1 клик» в Яндексе.
+  @Column({ type: 'varchar', length: 16, default: 'site' })
+  source!: OrderSource
+
+  // session_id сессии оформления YCP; уникален среди ненулевых (миграция AddYcpFields).
+  @Column({ type: 'varchar', length: 64, name: 'external_session_id', nullable: true })
+  externalSessionId!: string | null
+
+  // order_id заказа в Яндексе из /checkout/placed; по нему приходит /order/cancel.
+  @Column({ type: 'varchar', length: 64, name: 'external_order_id', nullable: true })
+  externalOrderId!: string | null
 
   // Откуда пришёл покупатель (метки из URL и referrer; присылает витрина, это
   // подсказка для анализа рекламы). null — заказ без атрибуции.

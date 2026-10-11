@@ -448,7 +448,12 @@ describe('generateYmlXml — vendor, vendorCode, oldprice', () => {
 
   it('не выдумывает barcode, param и sales_notes: данных для них нет', () => {
     const xml = gen({ sku: 'A', priceRub: 1000, compareAtPriceRub: 2000 })
-    expect(xml).not.toMatch(/<barcode>|<param |<sales_notes>/)
+    // Единственный param — служебный is_checkout_enabled («Купить в 1 клик»).
+    const withoutCheckoutParam = xml.replace(
+      /<param name="is_checkout_enabled">[^<]*<\/param>/g,
+      '',
+    )
+    expect(withoutCheckoutParam).not.toMatch(/<barcode>|<param |<sales_notes>/)
   })
 
   it('соблюдает порядок элементов offer по спецификации', () => {
@@ -623,5 +628,84 @@ describe('generateYmlXml — фолбэк описания из longDescriptionB
     const text = descOf({ shortDescription: 'abcdefgh '.repeat(600) })!
     expect(text.length).toBeLessThanOrEqual(3000)
     expect(text.split(' ').every((w) => w === 'abcdefgh')).toBe(true)
+  })
+})
+
+describe('generateYmlXml — Яндекс Товары и «Купить в 1 клик»', () => {
+  const xmlFor = (overrides: Partial<ProductWithCategoryIds>) =>
+    generateYmlXml({
+      products: [makeProduct({ categoryIds: ['cat-1'], ...overrides })],
+      categories: [makeCategory({ id: 'cat-1' })],
+      settings: baseSettings,
+      siteUrl: 'https://ximi4ka.ru',
+      now: new Date('2026-10-11T00:00:00Z'),
+    })
+
+  it('is_checkout_enabled=true только у товаров с флагом ycpEnabled', () => {
+    expect(xmlFor({ ycpEnabled: true })).toContain('<param name="is_checkout_enabled">true</param>')
+    expect(xmlFor({ ycpEnabled: false })).toContain(
+      '<param name="is_checkout_enabled">false</param>',
+    )
+    expect(xmlFor({})).toContain('<param name="is_checkout_enabled">false</param>')
+  })
+
+  it('вес в кг и габариты в см (Д/Ш/В) из упаковки одной штуки', () => {
+    const xml = xmlFor({ shippingUnit: { weightG: 830, lengthCm: 10, widthCm: 10, heightCm: 4 } })
+    expect(xml).toContain('<weight>0.83</weight>')
+    expect(xml).toContain('<dimensions>10/10/4</dimensions>')
+  })
+
+  it('без данных упаковки weight и dimensions не выводятся', () => {
+    const xml = xmlFor({})
+    expect(xml).not.toContain('<weight>')
+    expect(xml).not.toContain('<dimensions>')
+  })
+
+  it('новые элементы идут после description', () => {
+    const xml = xmlFor({
+      shortDescription: 'Описание',
+      shippingUnit: { weightG: 1200, lengthCm: 40, widthCm: 32, heightCm: 8 },
+    })
+    const offer = xml.slice(xml.indexOf('<offer '))
+    const order = [
+      '<description>',
+      '<param name="is_checkout_enabled">',
+      '<weight>',
+      '<dimensions>',
+    ].map((tag) => offer.indexOf(tag))
+    expect(order.every((i) => i >= 0)).toBe(true)
+    expect([...order].sort((a, b) => a - b)).toEqual(order)
+  })
+
+  it('не выводит элементы, не рекомендованные для Яндекс Товаров', () => {
+    const xml = xmlFor({
+      ycpEnabled: true,
+      sku: 'X-1',
+      compareAtPriceRub: 2000,
+      shippingUnit: { weightG: 830, lengthCm: 10, widthCm: 10, heightCm: 4 },
+    })
+    for (const tag of [
+      'count',
+      'vat',
+      'bid',
+      'age',
+      'gifts',
+      'min-quantity',
+      'purchase_price',
+      'supplier',
+      'expiry',
+      'manufacturer_warranty',
+      'country_of_origin',
+      'downloadable',
+      'enable_auto_discounts',
+    ]) {
+      expect(xml).not.toMatch(new RegExp(`<${tag}[\\s>/]`))
+    }
+  })
+
+  it('id оффера — по-прежнему id товара', () => {
+    expect(xmlFor({ id: '11111111-2222-4333-8444-555555555555' })).toContain(
+      '<offer id="11111111-2222-4333-8444-555555555555"',
+    )
   })
 })

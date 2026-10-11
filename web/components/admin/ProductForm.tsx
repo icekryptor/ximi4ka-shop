@@ -51,6 +51,7 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
   const [ogImage, setOgImage] = useState<string | null>(initialValue?.ogImage ?? null)
   const [canonicalUrl, setCanonicalUrl] = useState(initialValue?.canonicalUrl ?? '')
   const [noindex, setNoindex] = useState<boolean>(initialValue?.noindex ?? false)
+  const [ycpEnabled, setYcpEnabled] = useState<boolean>(initialValue?.ycpEnabled ?? false)
 
   // Media gallery
   const [images, setImages] = useState<ImageItem[]>(
@@ -114,6 +115,7 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
       ogImage: ogImage || null,
       canonicalUrl: canonicalUrl.trim() || null,
       noindex,
+      ycpEnabled,
       images: images.map((img) => ({ url: img.url, alt: img.alt.trim() })),
     }
 
@@ -265,6 +267,14 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
             className="input"
           />
         </Field>
+        <label className="flex items-center gap-2 text-sm text-brand-text">
+          <input
+            type="checkbox"
+            checked={ycpEnabled}
+            onChange={(e) => setYcpEnabled(e.target.checked)}
+          />
+          <span>Купить в 1 клик через Яндекс</span>
+        </label>
       </Section>
 
       <Section title="Медиа">

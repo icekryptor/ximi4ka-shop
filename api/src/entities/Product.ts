@@ -85,6 +85,11 @@ export class Product {
   @Column({ type: 'varchar', length: 16, name: 'min_box', nullable: true })
   minBox!: ShippingBox | null
 
+  // Кнопка «Купить в 1 клик» в Яндексе (YCP): товар отдаётся в
+  // /api/v1/checkout/basket/check и в фиде получает is_checkout_enabled=true.
+  @Column({ type: 'boolean', name: 'ycp_enabled', default: false })
+  ycpEnabled!: boolean
+
   @OneToMany(() => ProductImage, (img) => img.product)
   images!: ProductImage[]
 

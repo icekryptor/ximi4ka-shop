@@ -4,12 +4,14 @@ export type {
   OrderItemSnapshot,
   OrderStatus,
   OrderStatusHistoryEntry,
+  OrderSource,
   PaymentProvider,
   DeliveryAddress,
   DeliveryMethod,
   CheckoutRequest,
   CheckoutResponse,
   AttributionTouch,
+  MetrikaConversionDto,
   OrderAttribution,
   PublicOrderShipment,
   PublicOrderStatus,
@@ -25,7 +27,7 @@ export type { MaterialLeadRequest, MaterialLeadSource } from './types/materialLe
 
 export type { CdekShipmentDto, CdekShipmentState } from './types/cdek.js'
 
-export type { Product, ProductImage, StockStatus } from './types/product.js'
+export type { Product, ProductImage, ProductShippingUnit, StockStatus } from './types/product.js'
 
 export type {
   CdekCity,

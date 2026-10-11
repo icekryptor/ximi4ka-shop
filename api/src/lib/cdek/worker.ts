@@ -1,6 +1,7 @@
 import { AppDataSource } from '../../config/dataSource.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
 import { Order } from '../../entities/Order.js'
+import { enqueueOrderEvent } from '../notifications/outbox.js'
 import {
   GIVE_UP_AFTER_MS,
   MIN_RATE_LIMIT_PAUSE_MS,
@@ -114,6 +115,25 @@ async function findByNumber(cdek: CdekApi, orderNumber: string): Promise<CdekOrd
   }
 }
 
+// Гонка с отменой из Яндекса: заказ отменили между проверкой статуса и ответом
+// СДЭК, и посылка всё же создана. Отмена оплаченного заказа менеджеру уже
+// сигналит сама (cancelYcpOrder); здесь — подстраховка, чтобы сигнал точно
+// был после записи uuid. Повтор — no-op (уникальный индекс outbox). Вызывается
+// ПОСЛЕ записи uuid: отмена, пришедшая позже, увидит uuid и просигналит сама;
+// пришедшая раньше — видна тут. Строку заказа берём под FOR UPDATE, чтобы
+// дождаться отмены, которая ещё не закоммитилась. Заказы с сайта и
+// неотменённые заказы не затрагиваем.
+async function alertIfYcpCancelled(orderId: string): Promise<void> {
+  await AppDataSource.transaction(async (em) => {
+    const fresh = await em
+      .getRepository(Order)
+      .findOne({ where: { id: orderId }, lock: { mode: 'pessimistic_write' } })
+    if (fresh?.source === 'ycp' && fresh.status === 'cancelled') {
+      await enqueueOrderEvent(em, fresh.id, 'ycp:cancel_after_ship')
+    }
+  })
+}
+
 async function submit(
   s: CdekShipment,
   order: Order,
@@ -140,6 +160,7 @@ async function submit(
       nextAttemptAt: now,
       lastError: null,
     })
+    await alertIfYcpCancelled(order.id)
     return 'submitted'
   }
   const { packages, lines } = await loadShipmentInput(order)
@@ -158,6 +179,7 @@ async function submit(
     nextAttemptAt: new Date(now.getTime() + CDEK_POLL_INTERVAL_MS),
     lastError: null,
   })
+  await alertIfYcpCancelled(order.id)
   return 'submitted'
 }
 
