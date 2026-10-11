@@ -11,7 +11,12 @@ vi.mock('@/lib/api', async () => {
   return {
     ...actual,
     getPublishedProduct: vi.fn().mockImplementation((slug: string) => {
-      const known = new Set(['himichka-30', 'mini-himichka', 'elektrohimichka'])
+      const known = new Set([
+        'himichka-30',
+        'mini-himichka',
+        'elektrohimichka',
+        'bolshoi-nabor-dlya-oge',
+      ])
       if (known.has(slug)) {
         return Promise.resolve({
           id: 'mock',
@@ -92,6 +97,25 @@ describe('HomePage generateMetadata', () => {
       .mockResolvedValue(homePage({ metaTitle: 'Свой заголовок' }))
     const meta = await generateMetadata({ params })
     expect(meta.title).toBe('Свой заголовок')
+  })
+})
+
+describe('SITE_CATALOG', () => {
+  it('содержит «Химичку ОГЭ» четвёртой карточкой после трёх флагманов', async () => {
+    const { SITE_CATALOG } = await import('./page')
+    expect(SITE_CATALOG.map((e) => e.slug)).toEqual([
+      'himichka-30',
+      'mini-himichka',
+      'elektrohimichka',
+      'bolshoi-nabor-dlya-oge',
+    ])
+  })
+
+  it('шкалы статов покрывают максимум по каждому показателю каталога', async () => {
+    const { SITE_CATALOG, SITE_CATALOG_STAT_MAXES } = await import('./page')
+    for (const key of ['reagents', 'instruments', 'reactions'] as const) {
+      expect(SITE_CATALOG_STAT_MAXES[key]).toBe(Math.max(...SITE_CATALOG.map((e) => e.stats[key])))
+    }
   })
 })
 
