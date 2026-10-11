@@ -29,6 +29,9 @@ export const CreateProductSchema = z.object({
   ogImage: z.string().max(500).nullable().optional(),
   canonicalUrl: z.string().max(500).nullable().optional(),
   noindex: z.boolean().default(false),
+  // Кнопка «Купить в 1 клик» в Яндексе (YCP). Без поля — колонка не трогается
+  // (при создании — default false из базы).
+  ycpEnabled: z.boolean().optional(),
   images: z.array(ProductImageInputSchema).max(50).optional(),
   translations: TranslationsSchema.default({}),
   // Доставка СДЭК — см. api/src/lib/shipping/pack.ts.

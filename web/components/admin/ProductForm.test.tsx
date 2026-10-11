@@ -80,6 +80,19 @@ describe('ProductForm', () => {
     expect(input.translations?.gallery).toBeUndefined()
   })
 
+  it('отправляет флаг «Купить в 1 клик через Яндекс»', async () => {
+    const onSubmit = vi.fn<(input: AdminProductInput) => Promise<void>>(async () => undefined)
+    render(<ProductForm mode="create" onSubmit={onSubmit} submitting={false} />)
+    fireEvent.change(screen.getByLabelText('Slug'), { target: { value: 'ycp-kit' } })
+    fireEvent.change(screen.getByLabelText('Название'), { target: { value: 'Набор' } })
+    const checkbox = screen.getByLabelText('Купить в 1 клик через Яндекс')
+    expect(checkbox).not.toBeChecked()
+    fireEvent.click(checkbox)
+    fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+    expect(onSubmit.mock.calls[0][0].ycpEnabled).toBe(true)
+  })
+
   it('surfaces 409 slug_conflict error', () => {
     const apiErr = {
       status: 409,

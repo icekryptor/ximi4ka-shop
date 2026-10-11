@@ -8,6 +8,7 @@ import {
   PAYMENT_PROVIDER_LABELS,
   formatRub,
   isOrderStatus,
+  orderSourceBadge,
 } from './orderUi'
 
 // Server components (list + detail) run on the server and call
@@ -26,6 +27,12 @@ describe('Admin orders pages', () => {
 })
 
 describe('order UI helpers', () => {
+  it('отметка источника — только у заказов из Яндекса', () => {
+    expect(orderSourceBadge('ycp')).toBe('Яндекс')
+    expect(orderSourceBadge('site')).toBeNull()
+    expect(orderSourceBadge(undefined)).toBeNull()
+  })
+
   it('has Russian labels for every status', () => {
     expect(ORDER_STATUS_LABELS).toEqual({
       pending: 'Ожидает оплаты',

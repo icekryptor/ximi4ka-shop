@@ -1,4 +1,4 @@
-import type { OrderStatus, PaymentProvider } from '@ximi4ka-shop/shared'
+import type { OrderSource, OrderStatus, PaymentProvider } from '@ximi4ka-shop/shared'
 
 // Russian labels + badge styling shared by the orders list and detail pages.
 
@@ -55,4 +55,14 @@ export function formatDateTime(iso: string | null | undefined): string {
 
 export function formatRub(value: number): string {
   return `${value.toLocaleString('ru-RU')} ₽`
+}
+
+export const ORDER_SOURCE_LABELS: Record<OrderSource, string> = {
+  site: 'Сайт',
+  ycp: 'Яндекс',
+}
+
+// Отметка в списке заказов — только у заказов не с сайта.
+export function orderSourceBadge(source: OrderSource | undefined): string | null {
+  return source === 'ycp' ? ORDER_SOURCE_LABELS.ycp : null
 }
