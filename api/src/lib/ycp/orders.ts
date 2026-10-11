@@ -241,7 +241,20 @@ export async function markYcpOrderPlaced(
   return withLockedOrder({ externalSessionId: input.sessionId }, async (em, order) => {
     if (!order) return 'not_found'
     if (order.status === 'cancelled') return 'cancelled'
-    if (order.status === 'paid' || order.status === 'shipped') return 'already_paid'
+    if (order.status === 'paid' || order.status === 'shipped') {
+      // Заказ оплачен другим путём (вебхук, ручная отметка): запоминаем order_id
+      // Яндекса, иначе /order/cancel не найдёт заказ (404) и мы отгрузим отменённое.
+      // Другой id у уже привязанного заказа не перезаписываем — только лог
+      // (номер заказа и id, без данных покупателя).
+      if (!order.externalOrderId) {
+        await em.update(Order, order.id, { externalOrderId: input.orderId })
+      } else if (order.externalOrderId !== input.orderId) {
+        console.warn(
+          `[ycp] /checkout/placed: у заказа ${order.orderNumber} уже сохранён order_id ${order.externalOrderId}, пришёл другой: ${input.orderId}`,
+        )
+      }
+      return 'already_paid'
+    }
     await em.update(Order, order.id, { externalOrderId: input.orderId })
     if (input.paymentMethod === 'on_delivery') {
       await enqueueOrderEvent(em, order.id, 'ycp:on_delivery')

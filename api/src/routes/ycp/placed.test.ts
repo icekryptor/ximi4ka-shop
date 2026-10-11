@@ -196,6 +196,49 @@ describe('POST /api/v1/checkout/placed', () => {
     expect(fresh.statusHistory.at(-1)).toMatchObject({ comment: 'Оплата в Яндексе' })
   })
 
+  it('уже оплаченный другим путём заказ без order_id: /placed записывает order_id, после чего отмена находит заказ', async () => {
+    const order = await createYcpCheckout(app, 'sess-paid')
+    await AppDataSource.getRepository(Order).update(order.id, {
+      status: 'paid',
+      paidAt: new Date(),
+    })
+    expect((await reload(order.id)).externalOrderId).toBeNull()
+
+    const res = await request(app).post(URL).set(ycpAuth).send(placed('sess-paid'))
+    expect(res.status).toBe(200)
+    expect((await reload(order.id)).externalOrderId).toBe('ya-order-1')
+
+    const cancel = await request(app).post('/api/v1/order/cancel?order_id=ya-order-1').set(ycpAuth)
+    expect(cancel.status).toBe(200)
+    expect((await reload(order.id)).status).toBe('cancelled')
+    const alerts = (await events(order.id)).filter((e) => e.eventKey === 'ycp:cancel_after_ship')
+    expect(alerts.map((a) => a.channel)).toEqual(['telegram'])
+  })
+
+  it('оплаченный заказ с другим order_id: 200, сохранённый id не меняется, в лог — только номер и id', async () => {
+    const order = await createYcpCheckout(app, 'sess-mismatch')
+    await request(app).post(URL).set(ycpAuth).send(placed('sess-mismatch'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      const res = await request(app)
+        .post(URL)
+        .set(ycpAuth)
+        .send(placed('sess-mismatch', { order_id: 'ya-other' }))
+      expect(res.status).toBe(200)
+      expect((await reload(order.id)).externalOrderId).toBe('ya-order-1')
+      expect(warn).toHaveBeenCalledTimes(1)
+      const logged = warn.mock.calls.flat().join(' ')
+      expect(logged).toContain(order.orderNumber)
+      expect(logged).toContain('ya-order-1')
+      expect(logged).toContain('ya-other')
+      expect(logged).not.toContain('Иван')
+      expect(logged).not.toContain('+7999')
+      expect(logged).not.toContain('ivan@example.com')
+    } finally {
+      warn.mockRestore()
+    }
+  })
+
   it('неизвестный payment_method — 400', async () => {
     await createYcpCheckout(app, 'sess-6')
     const res = await request(app)
