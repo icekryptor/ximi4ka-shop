@@ -10,6 +10,9 @@ import {
   reportPurchaseOnce,
   setMetrikaCounterId,
 } from './metrika'
+import { trackEvent } from './track'
+
+vi.mock('./track', () => ({ trackEvent: vi.fn() }))
 
 type W = Window & { ym?: unknown; dataLayer?: unknown[] }
 const w = window as W
@@ -21,6 +24,7 @@ beforeEach(() => {
   delete w.ym
   delete w.dataLayer
   setMetrikaCounterId(null)
+  vi.mocked(trackEvent).mockClear()
 })
 
 afterEach(() => {
@@ -28,6 +32,20 @@ afterEach(() => {
 })
 
 describe('reachGoal', () => {
+  it('дублирует цель в собственную аналитику даже без счётчика Метрики', () => {
+    reachGoal(METRIKA_GOALS.addToCart, { product_id: 'p1', quantity: 2 })
+    expect(trackEvent).toHaveBeenCalledWith('add_to_cart', { product_id: 'p1', quantity: 2 })
+  })
+
+  it('со счётчиком по-прежнему зовёт ym и трекер', () => {
+    const ym = vi.fn()
+    w.ym = ym
+    setMetrikaCounterId('12345')
+    reachGoal('open_cart')
+    expect(ym).toHaveBeenCalledWith('12345', 'reachGoal', 'open_cart')
+    expect(trackEvent).toHaveBeenCalledWith('open_cart', undefined)
+  })
+
   it('is a no-op without a counter id (ym is not touched)', () => {
     const ym = vi.fn()
     w.ym = ym
