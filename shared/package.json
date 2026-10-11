@@ -13,7 +13,8 @@
     "./types/page": "./src/types/page.ts",
     "./types/blogPost": "./src/types/blogPost.ts",
     "./types/blocks": "./src/types/blocks.ts",
-    "./types/materialLead": "./src/types/materialLead.ts"
+    "./types/materialLead": "./src/types/materialLead.ts",
+    "./types/analytics": "./src/types/analytics.ts"
   },
   "scripts": {
     "test": "tsc --noEmit && vitest run",

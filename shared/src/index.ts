@@ -77,3 +77,5 @@ export type {
 // JS (noEmit: true). Next.js's bundler can't resolve runtime re-exports from a
 // TS-only source. Consumers should import it directly:
 //   import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
+
+export type { AnalyticsEventType, StatsTotals, StatsDay, StatsResponse } from './types/analytics.js'
