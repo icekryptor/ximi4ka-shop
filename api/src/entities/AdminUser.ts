@@ -16,6 +16,11 @@ export class AdminUser {
   @Column({ type: 'varchar', length: 32, default: 'editor' })
   role!: 'editor' | 'admin'
 
+  // Вошёл с паролем по умолчанию из сида (он публичен): интерфейс настойчиво
+  // просит сменить пароль. Снимается сменой пароля.
+  @Column({ type: 'boolean', name: 'must_change_password', default: false })
+  mustChangePassword!: boolean
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date
 }

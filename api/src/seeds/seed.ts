@@ -7,6 +7,7 @@ import { Product } from '../entities/Product.js'
 import { ProductCategory } from '../entities/ProductCategory.js'
 import { Page } from '../entities/Page.js'
 import { AdminUser } from '../entities/AdminUser.js'
+import { DEFAULT_SEED_PASSWORD } from '../routes/auth/constants.js'
 
 const logger = pino().child({ mod: 'seed' })
 
@@ -14,7 +15,7 @@ const logger = pino().child({ mod: 'seed' })
 // This password is hashed via argon2 and the resulting hash stored in admin_users.
 // Do not reuse this account (or this password) in any shared or production environment.
 const ADMIN_EMAIL = 'admin@ximi4ka.local'
-const ADMIN_PASSWORD = 'admin-password-change-me'
+const ADMIN_PASSWORD = DEFAULT_SEED_PASSWORD
 
 type CatSlug = 'himicheskie-nabory' | 'eksperimentalnye-nabory' | 'obrazovatelnye-materialy'
 

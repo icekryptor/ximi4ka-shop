@@ -13,6 +13,7 @@
     "migration:run": "tsx ./node_modules/typeorm/cli.js migration:run -d src/config/dataSource.ts",
     "migration:revert": "tsx ./node_modules/typeorm/cli.js migration:revert -d src/config/dataSource.ts",
     "seed": "tsx src/seeds/seed.ts",
+    "admin:reset-password": "tsx src/scripts/reset-admin-password.ts",
     "import:tilda": "tsx src/seeds/import-tilda-csv.ts",
     "import:tilda-catalog": "tsx src/seeds/import-tilda-catalog.ts",
     "import:tilda-articles": "tsx src/seeds/import-tilda-articles.ts",

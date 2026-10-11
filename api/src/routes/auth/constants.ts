@@ -13,3 +13,12 @@ export const SESSION_MAX_AGE_MS = SESSION_MAX_AGE_SECONDS * 1000
 // a timing-attack decoy and never compared for acceptance.
 export const DUMMY_ARGON2_HASH =
   '$argon2id$v=19$m=65536,t=3,p=4$c29tZS1kdW1teS1zYWx0$KUGKdvH2h1gKj6XY3B7oVbfbEDOhhJUOK5y2rqpZ2wQ'
+
+// Пароль админа, который раздаёт сид (api/src/seeds/seed.ts). Он лежит в
+// репозитории, то есть публичен: вход с ним помечает пользователя
+// mustChangePassword, а выбрать его новым паролем нельзя.
+export const DEFAULT_SEED_PASSWORD = 'admin-password-change-me'
+
+// Границы нового пароля. Верхняя нужна, чтобы argon2 не считал мегабайты.
+export const MIN_PASSWORD_LENGTH = 12
+export const MAX_PASSWORD_LENGTH = 256
