@@ -21,7 +21,7 @@ export async function GET(): Promise<Response> {
     // settings in parallel. The list cap matches the sitemap's generous
     // limit so catalog growth doesn't silently truncate the feed.
     const [productsResp, categoriesResp, settings] = await Promise.all([
-      listPublishedProducts({ limit: 5000, include: 'categories' }),
+      listPublishedProducts({ limit: 5000, include: 'categories,shipping' }),
       listCategories({ limit: 500 }),
       getPublicSettings(),
     ])

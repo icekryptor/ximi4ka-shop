@@ -18,7 +18,20 @@ export const TELEGRAM_EVENT: OrderEventKey = 'status:paid'
 // заспамливали чат и мешали складу (решение владельца,
 // docs/superpowers/specs/2026-09-25-cdek-auto-orders-design.md §6; про
 // «только после оплаты» — 08.10.2026).
+// Сигналы менеджеру — отдельные сообщения в рабочий чат, не карточка заказа
+// и не строка таблицы (заказы из Яндекса, docs/superpowers/specs/2026-10-11-ycp-integration-design.md):
+// оплата при получении и отмена оплаченного (или отправленного) заказа.
+export const MANAGER_ALERT_EVENTS: readonly OrderEventKey[] = [
+  'ycp:on_delivery',
+  'ycp:cancel_after_ship',
+]
+
+export function isManagerAlert(eventKey: OrderEventKey): boolean {
+  return MANAGER_ALERT_EVENTS.includes(eventKey)
+}
+
 export function channelsForEvent(eventKey: OrderEventKey): NotificationChannel[] {
+  if (isManagerAlert(eventKey)) return ['telegram']
   return eventKey === TELEGRAM_EVENT ? CHANNELS : ['sheets']
 }
 
@@ -45,32 +58,41 @@ export async function enqueueOrderEvent(
     .execute()
 }
 
-// Сохраняет смену статуса заказа и, если статус изменился, ставит событие и,
-// при оплате, заказ в очередь СДЭК — в одной транзакции. Для вебхука
-// Т-Кассы, сверки и ручной смены статуса в админке. Пишем только колонки,
-// которые эти вызовы меняют (status, paid_at, status_history и привязку
-// платежа из вебхука), а не всю сущность: save() записал бы и устаревший
+// Пишет смену статуса заказа и, если статус изменился, ставит событие и, при
+// оплате, заказ в очередь СДЭК — внутри переданной транзакции. Пишем только
+// колонки, которые эти вызовы меняют (status, paid_at, status_history и
+// привязку платежа), а не всю сущность: save() записал бы и устаревший
 // telegram_message_id из памяти поверх id карточки, который обработчик
 // очереди успел сохранить, пока шли сетевые вызовы.
+export async function writeOrderStatusEvent(
+  em: EntityManager,
+  order: Order,
+  previousStatus: OrderStatus,
+): Promise<void> {
+  await em.update(Order, order.id, {
+    status: order.status,
+    paidAt: order.paidAt,
+    statusHistory: order.statusHistory,
+    // Привязку платежа никто не снимает — null из памяти не пишем.
+    ...(order.paymentIntentId ? { paymentIntentId: order.paymentIntentId } : {}),
+  })
+  const key = order.status === previousStatus ? null : statusEventKey(order.status)
+  if (key) await enqueueOrderEvent(em, order.id, key)
+  // Оплаченный заказ — в очередь создания в СДЭК, той же транзакцией.
+  if (order.status === 'paid' && previousStatus !== 'paid') {
+    await enqueueCdekShipment(em, order)
+    await enqueueMetrikaConversion(em, order)
+  }
+}
+
+// То же в своей транзакции — для вебхука Т-Кассы, сверки и ручной смены
+// статуса в админке.
 export async function saveOrderWithStatusEvent(
   order: Order,
   previousStatus: OrderStatus,
 ): Promise<Order> {
   return AppDataSource.transaction(async (em) => {
-    await em.update(Order, order.id, {
-      status: order.status,
-      paidAt: order.paidAt,
-      statusHistory: order.statusHistory,
-      // Привязку платежа никто не снимает — null из памяти не пишем.
-      ...(order.paymentIntentId ? { paymentIntentId: order.paymentIntentId } : {}),
-    })
-    const key = order.status === previousStatus ? null : statusEventKey(order.status)
-    if (key) await enqueueOrderEvent(em, order.id, key)
-    // Оплаченный заказ — в очередь создания в СДЭК, той же транзакцией.
-    if (order.status === 'paid' && previousStatus !== 'paid') {
-      await enqueueCdekShipment(em, order)
-      await enqueueMetrikaConversion(em, order)
-    }
+    await writeOrderStatusEvent(em, order, previousStatus)
     return order
   })
 }

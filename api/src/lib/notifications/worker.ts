@@ -4,8 +4,8 @@ import { Order } from '../../entities/Order.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { GoogleSheetsClient, SheetsConfigError } from '../google/sheets.js'
 import { TelegramBot, TelegramConfigError } from '../telegram/bot.js'
-import { sheetRow, telegramCard } from './format.js'
-import { CHANNELS, TELEGRAM_EVENT } from './outbox.js'
+import { managerAlertText, sheetRow, telegramCard } from './format.js'
+import { CHANNELS, TELEGRAM_EVENT, isManagerAlert } from './outbox.js'
 import { RateLimitError } from './rateLimit.js'
 
 // Доставка очереди order_notifications в Google Таблицу и Telegram. Тик —
@@ -83,6 +83,11 @@ async function deliver(
     return {}
   }
   const bot = channels.telegram!
+  if (isManagerAlert(row.eventKey)) {
+    // Сигнал менеджеру — отдельное сообщение, не карточка: id не сохраняем.
+    await bot.sendMessage(managerAlertText(order, row.eventKey))
+    return {}
+  }
   if (row.eventKey !== TELEGRAM_EVENT) {
     // В чат ставится только оплата (channelsForEvent). Другая запись могла
     // остаться только от прошлой версии — не отправляем.

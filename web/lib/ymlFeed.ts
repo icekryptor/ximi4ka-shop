@@ -134,11 +134,24 @@ export interface YmlGeneratorInput {
   now?: Date
 }
 
+// Вес (кг, до 3 знаков) и габариты (см, Д/Ш/В) одной штуки в упаковке — от api
+// (include=shipping, тот же packCart, что и доставка). Нет данных — не выводим.
+function shippingLines(product: Product): string[] {
+  const unit = product.shippingUnit
+  if (!unit || unit.weightG <= 0) return []
+  const kg = Number((unit.weightG / 1000).toFixed(3))
+  return [
+    `      <weight>${kg}</weight>`,
+    `      <dimensions>${unit.lengthCm}/${unit.widthCm}/${unit.heightCm}</dimensions>`,
+  ]
+}
+
 // Build the YML XML string. Pure function so tests can feed it fixtures and
 // assert line-level. Follows the minimal spec from the task brief: shop
 // metadata + currencies + categories + offers. We deliberately skip
-// variants/grouped offers — not needed for the MVP. barcode, param и
-// sales_notes не выводим: в модели товара и настройках сайта для них нет данных.
+// variants/grouped offers — not needed for the MVP. barcode и sales_notes не
+// выводим: в модели товара и настройках сайта для них нет данных. Элементы, не
+// рекомендованные для Яндекс Товаров (count, vat, bid и др.), не выводим вовсе.
 export function generateYmlXml(input: YmlGeneratorInput): string {
   const { products, categories, settings, siteUrl, now = new Date() } = input
 
@@ -205,6 +218,10 @@ export function generateYmlXml(input: YmlGeneratorInput): string {
       `      <vendor>${escapeXml(BRAND_NAME)}</vendor>`,
       vendorCode ? `      <vendorCode>${escapeXml(vendorCode)}</vendorCode>` : '',
       description ? `      <description>${escapeXml(description)}</description>` : '',
+      // Кнопка «Купить в 1 клик» (YCP): без параметра Яндекс включил бы её всем
+      // товарам фида — явно выключаем у тех, что не отмечены в админке.
+      `      <param name="is_checkout_enabled">${product.ycpEnabled === true ? 'true' : 'false'}</param>`,
+      ...shippingLines(product),
     ]
       .filter(Boolean)
       .join('\n')

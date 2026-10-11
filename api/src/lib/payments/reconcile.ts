@@ -31,6 +31,8 @@ export async function reconcilePendingOrders(
     .createQueryBuilder('o')
     .where('o.status = :status', { status: 'pending' })
     .andWhere('o.payment_intent_id IS NOT NULL')
+    // Заказы из Яндекса оплачены у Яндекса: Т-Касса о них не знает.
+    .andWhere("o.payment_provider <> 'ycp'")
     .andWhere('o.created_at < now() - make_interval(secs => :ageSec)', {
       ageSec: minAgeMs / 1000,
     })
