@@ -54,9 +54,33 @@ function packageFor(
   return { box, weightG: Math.ceil(weightG), lengthCm, widthCm, heightCm, estimated, items }
 }
 
-// Раскладывает корзину по местам отправления. Чистая функция: одна и та же
-// корзина всегда даёт одни и те же места — это важно, потому что по ним
-// считается цена в корзине, в чекауте и потом создаётся заказ в СДЭК.
+// Сводит коробки наборов и мелочь в одно место: вес и позиции складываются,
+// коробки стоят стопкой — длина и ширина по самой большой, высоты суммируются.
+// Название коробки — у самой большой по объёму.
+function stackPackages(
+  packages: ShippingPackage[],
+  extraWeightG: number,
+  extraEstimated: boolean,
+  extraItems: ShippingPackage['items'],
+): ShippingPackage {
+  const volume = (p: ShippingPackage) => p.lengthCm * p.widthCm * p.heightCm
+  const biggest = packages.reduce((a, b) => (volume(b) > volume(a) ? b : a))
+  return {
+    box: biggest.box,
+    weightG: Math.ceil(packages.reduce((sum, p) => sum + p.weightG, extraWeightG)),
+    lengthCm: Math.max(...packages.map((p) => p.lengthCm)),
+    widthCm: Math.max(...packages.map((p) => p.widthCm)),
+    heightCm: packages.reduce((sum, p) => sum + p.heightCm, 0),
+    estimated: extraEstimated || packages.some((p) => p.estimated),
+    items: [...packages.flatMap((p) => p.items), ...extraItems],
+  }
+}
+
+// Раскладывает корзину по местам отправления: все наборы вместе с мелочью
+// едут одним местом, а без наборов мелочь — в коробке по лестнице.
+// Чистая функция: одна и та же корзина всегда даёт одни и те же места — это
+// важно, потому что по ним считается цена в корзине, в чекауте и потом
+// создаётся заказ в СДЭК.
 export function packCart(lines: PackLine[]): ShippingPackage[] {
   const packages: ShippingPackage[] = []
 
@@ -89,6 +113,13 @@ export function packCart(lines: PackLine[]): ShippingPackage[] {
     looseEstimated ||= estimated
     if (line.minBox) looseMinIndex = Math.max(looseMinIndex, ladderIndex(line.minBox))
     looseItems.push({ productId: line.productId, quantity: line.quantity })
+  }
+
+  if (packages.length > 0) {
+    // Всё, что куплено вместе с наборами, едет одним местом: реактивы уложены
+    // в коробки наборов, а коробки наборов — друг на друга (владелец,
+    // 11.10.2026). Пустую коробку мелочи не считаем.
+    return [stackPackages(packages, looseWeightG, looseEstimated, looseItems)]
   }
 
   if (looseItems.length > 0) {
