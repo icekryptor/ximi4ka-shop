@@ -126,6 +126,33 @@ describe('Product routes', () => {
       expect(noInclude.body.data[0]).not.toHaveProperty('categoryIds')
     })
 
+    it('отдаёт вес и габариты штуки в упаковке при include=shipping', async () => {
+      const {
+        body: {
+          data: { id },
+        },
+      } = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'ship-kit', name: 'Kit', priceRub: 100, weightG: 1200, shipBoxes: ['large'] })
+      await request(app).post(`/api/admin/products/${id}/publish`).set(authHeaders(auth)).send()
+
+      const withShipping = await request(app).get(
+        '/api/public/products?include=categories,shipping',
+      )
+      expect(withShipping.body.data[0].shippingUnit).toEqual({
+        weightG: 1200,
+        lengthCm: 40,
+        widthCm: 32,
+        heightCm: 8,
+      })
+      expect(withShipping.body.data[0].ycpEnabled).toBe(false)
+      expect(withShipping.body.data[0]).toHaveProperty('categoryIds')
+
+      const plain = await request(app).get('/api/public/products')
+      expect(plain.body.data[0]).not.toHaveProperty('shippingUnit')
+    })
+
     it('paginates with limit and offset', async () => {
       for (let i = 0; i < 25; i++) {
         const {

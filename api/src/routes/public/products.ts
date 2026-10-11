@@ -4,6 +4,7 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { Product } from '../../entities/Product.js'
 import { PublicListQuerySchema } from '../admin/products.schemas.js'
 import { notFound } from '../errors.js'
+import { unitShipping } from '../../lib/shipping/unit.js'
 
 export const publicProductsRouter: Router = Router()
 
@@ -13,6 +14,7 @@ publicProductsRouter.get('/', async (req, res, next) => {
     const { limit, offset, include } = PublicListQuerySchema.parse(req.query)
     const repo = AppDataSource.getRepository(Product)
     const wantsCategories = include.includes('categories')
+    const wantsShipping = include.includes('shipping')
     const [items, total] = await repo.findAndCount({
       where: { isPublished: true, deletedAt: IsNull() },
       order: { sortOrder: 'ASC', createdAt: 'DESC' },
@@ -26,14 +28,15 @@ publicProductsRouter.get('/', async (req, res, next) => {
     // Shape the include output as a flat `categoryIds` array per product —
     // feeds only need the id strings, and keeping the DB rows private
     // avoids leaking meta_title / meta_description into a CDN-cacheable
-    // public response.
-    const data = wantsCategories
-      ? items.map((p) => ({
-          ...p,
-          categoryIds: (p.categories ?? []).map((c) => c.id),
-          categories: undefined,
-        }))
-      : items
+    // public response. shipping — вес и габариты одной штуки в упаковке для
+    // фида (weight, dimensions), тот же packCart, что и доставка.
+    const data = items.map((p) => ({
+      ...p,
+      ...(wantsCategories
+        ? { categoryIds: (p.categories ?? []).map((c) => c.id), categories: undefined }
+        : {}),
+      ...(wantsShipping ? { shippingUnit: unitShipping(p) } : {}),
+    }))
     res.json({ data, pagination: { limit, offset, total } })
   } catch (err) {
     next(err)

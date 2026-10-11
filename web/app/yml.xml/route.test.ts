@@ -82,6 +82,10 @@ describe('GET /yml.xml', () => {
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toMatch(/application\/xml/)
     expect(res.headers.get('cache-control')).toMatch(/max-age=3600/)
+    expect(vi.mocked(listPublishedProducts)).toHaveBeenCalledWith({
+      limit: 5000,
+      include: 'categories,shipping',
+    })
     const body = await res.text()
     expect(body).toContain('<yml_catalog')
     expect(body).toContain('<offer id="prod-uuid"')
