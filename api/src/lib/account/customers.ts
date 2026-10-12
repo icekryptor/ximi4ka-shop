@@ -60,6 +60,12 @@ export async function claimOrdersByEmail(
      WHERE customer_id IS NULL AND customer_email <> '' AND lower(customer_email) = $2`,
     [customerId, email],
   )
+  // Выдачи материалов гостю по тому же email (спека «Мои материалы»).
+  await em.query(
+    `UPDATE material_grants SET customer_id = $1
+     WHERE customer_id IS NULL AND email = $2`,
+    [customerId, email],
+  )
 }
 
 // Слияние аккаунтов (спека §4.5): пользователь только что доказал владение
@@ -74,6 +80,10 @@ export async function mergeCustomers(
   const keep = await repo.findOneByOrFail({ id: keepId })
   const drop = await repo.findOneByOrFail({ id: dropId })
   await em.query('UPDATE orders SET customer_id = $1 WHERE customer_id = $2', [keepId, dropId])
+  await em.query('UPDATE material_grants SET customer_id = $1 WHERE customer_id = $2', [
+    keepId,
+    dropId,
+  ])
   // След для клиентов ximi4ka ID (learn): они знают покупателя по id, и после
   // слияния должны найти свою связь по прежнему id. Старые следы удаляемого
   // тоже переезжают на keep — цепочка слияний не рвётся.
