@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import express from 'express'
@@ -114,4 +114,17 @@ describe('sendMaterialFile', () => {
     const res = await request(appFor(material())).get('/f')
     expect(res.status).toBe(404)
   })
+
+  it.skipIf(process.getuid?.() === 0)(
+    'файл есть, но не открывается (нет прав) — false, ничего не отправлено',
+    async () => {
+      const file = path.join(dir, 'a.pdf')
+      await writeFile(file, 'x')
+      await chmod(file, 0o000)
+      const res = await request(appFor(material())).get('/f')
+      expect(res.status).toBe(404)
+      expect(res.headers['content-disposition']).toBeUndefined()
+      expect(res.headers['content-length']).not.toBe('1')
+    },
+  )
 })
