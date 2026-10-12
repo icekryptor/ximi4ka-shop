@@ -87,6 +87,35 @@ describe('выдача материалов', () => {
 
       expect(await grantRows()).toMatchObject([{ customerId: customer.id, email: null }])
     })
+
+    it('берёт customer_id из БД: в памяти заказ ещё гостевой, а claim уже привязал его к аккаунту', async () => {
+      const kit = await seedProduct('himichka-30')
+      await seedMaterial({ title: 'Химичка', products: [kit] })
+      const customer = await AppDataSource.getRepository(Customer).save({ email: 'c@example.com' })
+      const order = await seedOrder({ customerId: customer.id })
+      await addOrderItem(order.id, kit)
+      const stale = Object.assign(new Order(), order, { customerId: null })
+
+      await grantMaterialsForOrder(AppDataSource.manager, stale)
+
+      expect(await grantRows()).toMatchObject([{ customerId: customer.id }])
+    })
+
+    it('устаревший customer_id в памяти (аккаунт слит и удалён) не роняет выдачу: customer_id = NULL', async () => {
+      const kit = await seedProduct('himichka-30')
+      await seedMaterial({ title: 'Химичка', products: [kit] })
+      const customer = await AppDataSource.getRepository(Customer).save({ email: 'c@example.com' })
+      const order = await seedOrder({ customerId: customer.id })
+      await addOrderItem(order.id, kit)
+      // Между загрузкой заказа и транзакцией оплаты аккаунт удалён: в БД
+      // orders.customer_id стал NULL (ON DELETE SET NULL), в памяти id остался.
+      await AppDataSource.getRepository(Customer).delete(customer.id)
+      expect(order.customerId).toBe(customer.id)
+
+      await expect(grantMaterialsForOrder(AppDataSource.manager, order)).resolves.toBeUndefined()
+
+      expect(await grantRows()).toMatchObject([{ customerId: null }])
+    })
   })
 
   describe('единая точка оплаты saveOrderWithStatusEvent', () => {

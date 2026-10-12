@@ -82,7 +82,7 @@ const BACKFILL_SQL = `INSERT INTO material_grants (material_id, order_id, custom
   JOIN order_items oi ON oi.order_id = o.id
   JOIN learning_material_products lmp ON lmp.product_id = oi.product_id
   JOIN learning_materials lm ON lm.id = lmp.material_id AND lm.is_active AND lm.file_key = ANY($1)
-  WHERE o.status IN ('paid', 'shipped')
+  WHERE o.status IN ('paid', 'shipped') AND o.deleted_at IS NULL
   ON CONFLICT (order_id, material_id) WHERE order_id IS NOT NULL DO NOTHING
   RETURNING 1`
 

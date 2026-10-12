@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { AppDataSource } from '../../config/dataSource.js'
 import { LearningMaterial } from '../../entities/LearningMaterial.js'
 import { MaterialGrant } from '../../entities/MaterialGrant.js'
+import { Order } from '../../entities/Order.js'
 import { addOrderItem, resetMaterialTables, seedProduct } from '../../lib/materials/testUtils.js'
 import { resetAccountTables, seedOrder } from '../../routes/testUtils.js'
 import { applyMethodichkiMaterials, METHODICHKI } from './methodichki-materials.js'
@@ -123,6 +124,22 @@ describe('applyMethodichkiMaterials', () => {
 
     await run()
     expect(await AppDataSource.getRepository(MaterialGrant).count()).toBe(2)
+  })
+
+  it('удалённым (soft-delete) заказам выдачу не добавляет', async () => {
+    await writeAll()
+    const kit = await seedProduct('himichka-30')
+    const alive = await seedOrder({ status: 'paid' })
+    const removed = await seedOrder({ status: 'paid' })
+    await addOrderItem(alive.id, kit)
+    await addOrderItem(removed.id, kit)
+    await AppDataSource.getRepository(Order).softDelete(removed.id)
+
+    const report = await run()
+
+    expect(report.backfilled).toBe(1)
+    const rows = await AppDataSource.getRepository(MaterialGrant).find()
+    expect(rows.map((r) => r.orderId)).toEqual([alive.id])
   })
 
   it('dry-run считает, но ничего не пишет', async () => {
