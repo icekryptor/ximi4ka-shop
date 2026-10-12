@@ -1,4 +1,5 @@
 import type { DeliveryMethod, OrderStatus, PaymentProvider, PublicOrderShipment } from './order.js'
+import type { Methodichka } from './methodichki.js'
 
 /** Какие способы входа включены на сервере (GET /api/account/auth/config). */
 export interface AuthConfig {
@@ -57,6 +58,8 @@ export interface AccountOrderSummary {
   /** Адрес доставки одной строкой: «<город>, <ПВЗ или улица>». */
   deliveryAddress: string
   shipment: PublicOrderShipment | null
+  /** Электронные методички к оплаченному заказу; у неоплаченного — пусто. */
+  methodichki: Methodichka[]
 }
 
 export interface AccountOrdersPage {

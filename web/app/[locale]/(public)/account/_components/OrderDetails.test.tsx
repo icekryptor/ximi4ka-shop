@@ -32,10 +32,33 @@ const order = (extra: Partial<AccountOrderSummary> = {}): AccountOrderSummary =>
   deliveryMethod: 'cdek_pvz',
   deliveryAddress: 'Москва, ул. Ленина, 1',
   shipment: null,
+  methodichki: [],
   ...extra,
 })
 
 describe('OrderDetails', () => {
+  it('методички: ссылки на PDF у оплаченного заказа, без них блока нет', () => {
+    const { rerender } = render(
+      <OrderDetails
+        order={order({
+          methodichki: [
+            {
+              key: 'himichka',
+              title: 'Методичка «Химичка 3.0 / Мини-Химичка»',
+              url: '/methodichki/himichka.pdf',
+            },
+          ],
+        })}
+      />,
+    )
+    expect(screen.getByRole('link', { name: /Методичка «Химичка 3\.0/ })).toHaveAttribute(
+      'href',
+      '/methodichki/himichka.pdf',
+    )
+    rerender(<OrderDetails order={order()} />)
+    expect(screen.queryByTestId('methodichki')).not.toBeInTheDocument()
+  })
+
   it('подарок: вместо «0 ₽» подпись «подарок»', () => {
     render(
       <OrderDetails

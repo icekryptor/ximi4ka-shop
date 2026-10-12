@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { AccountOrderSummary, DeliveryMethod } from '@ximi4ka-shop/shared'
 import { formatRub } from '@/lib/stockLabel'
+import { MethodichkiDownloads } from '@/components/MethodichkiDownloads'
 
 const DELIVERY_LABEL: Record<DeliveryMethod, string> = {
   cdek_pvz: 'ПВЗ СДЭК',
@@ -61,6 +62,8 @@ export function OrderDetails({ order }: Readonly<{ order: AccountOrderSummary }>
           </li>
         ))}
       </ul>
+
+      <MethodichkiDownloads items={order.methodichki} tone="light" />
 
       <div className="flex flex-col gap-1 border-t border-[var(--color-lj-rule)] pt-3">
         <TotalRow label="Товары">{formatRub(order.subtotalRub)}</TotalRow>

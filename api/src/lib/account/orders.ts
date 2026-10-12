@@ -14,6 +14,7 @@ import { Order } from '../../entities/Order.js'
 import { OrderItem } from '../../entities/OrderItem.js'
 import { ProductImage } from '../../entities/ProductImage.js'
 import { cdekTrackingUrl } from '../../routes/public/orders.js'
+import { grantsMethodichki, methodichkiByOrder } from '../methodichki.js'
 import { badRequest } from '../../routes/errors.js'
 
 export function toProfile(c: Customer, last: LastDelivery | null): CustomerProfile {
@@ -113,12 +114,14 @@ export async function listCustomerOrders(
   const ids = page.map((o) => o.id)
   if (ids.length === 0) return { orders: [], nextCursor: null }
 
-  const [items, shipments] = await Promise.all([
+  const paidIds = page.filter((o) => grantsMethodichki(o.status)).map((o) => o.id)
+  const [items, shipments, methodichki] = await Promise.all([
     AppDataSource.getRepository(OrderItem).find({
       where: { orderId: In(ids) },
       order: { id: 'ASC' },
     }),
     AppDataSource.getRepository(CdekShipment).find({ where: { orderId: In(ids) } }),
+    methodichkiByOrder(paidIds),
   ])
   const productIds = [...new Set(items.map((i) => i.productId))]
   const images = productIds.length
@@ -154,6 +157,7 @@ export async function listCustomerOrders(
       deliveryMethod: o.deliveryMethod as DeliveryMethod,
       deliveryAddress: o.deliveryAddress.address ?? '',
       shipment: shipmentView(shipments.find((s) => s.orderId === o.id)),
+      methodichki: methodichki.get(o.id) ?? [],
     }
   })
   const last = page[page.length - 1]

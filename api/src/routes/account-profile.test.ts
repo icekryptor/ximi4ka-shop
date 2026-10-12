@@ -311,6 +311,45 @@ describe('профиль и заказы', () => {
     expect(body).not.toContain(strangerOrder.orderNumber)
   })
 
+  it('GET /orders: методички — только у оплаченных заказов с наборами', async () => {
+    const auth = await loginAsCustomer(app)
+    const c = await me()
+    const products = AppDataSource.getRepository(Product)
+    const kit = await products.save(
+      products.create({
+        slug: 'himichka-30',
+        name: 'Химичка 3.0',
+        priceRub: 3099,
+        stockStatus: 'in_stock',
+        isPublished: true,
+        longDescriptionBlocks: [],
+        translations: {},
+      }),
+    )
+    const add = async (status: 'paid' | 'pending') => {
+      const o = await seedOrder({ customerId: c.id, status })
+      await AppDataSource.getRepository(OrderItem).save({
+        orderId: o.id,
+        productId: kit.id,
+        productSnapshot: { name: 'Химичка 3.0', sku: null, priceRub: 3099 },
+        quantity: 1,
+        unitPriceRub: 3099,
+      })
+      return o
+    }
+    const paid = await add('paid')
+    const pending = await add('pending')
+
+    const res = await request(app).get('/api/account/orders').set(customerHeaders(auth))
+    const byNumber = new Map(
+      res.body.data.orders.map((o: { orderNumber: string }) => [o.orderNumber, o]),
+    )
+    expect(byNumber.get(paid.orderNumber)).toMatchObject({
+      methodichki: [{ key: 'himichka', url: '/methodichki/himichka.pdf' }],
+    })
+    expect(byNumber.get(pending.orderNumber)).toMatchObject({ methodichki: [] })
+  })
+
   it('GET /orders: подарочная позиция помечена isGift, обычная — нет', async () => {
     const auth = await loginAsCustomer(app)
     const c = await me()

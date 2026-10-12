@@ -23,6 +23,9 @@ export type {
   OrderNotificationDto,
 } from './types/notifications.js'
 
+export { METHODICHKI, methodichkiForSlugs } from './types/methodichki.js'
+export type { Methodichka, MethodichkaKey } from './types/methodichki.js'
+
 export type { MaterialLeadRequest, MaterialLeadSource } from './types/materialLead.js'
 
 export type { CdekShipmentDto, CdekShipmentState } from './types/cdek.js'

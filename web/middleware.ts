@@ -28,7 +28,7 @@ import { DEFAULT_LOCALE, isLocale } from '@/lib/i18n'
 //   * No DB access from the edge runtime; we proxy through the API.
 //   * No per-request auth; the list and hit endpoints are public.
 //   * The matcher config below excludes /_next, /api, /admin, /uploads,
-//     static feeds (robots, sitemap, yml, turbo, amp) — those paths
+//     static files (methodichki/) and feeds (robots, sitemap, yml, turbo, amp) — those paths
 //     must stay unprefixed and untouched.
 
 interface Redirect {
@@ -219,7 +219,7 @@ export const config = {
   // (robots/sitemap/yml/turbo/llms). Everything else is public,
   // localizable, and potentially redirect-targeted.
   matcher: [
-    '/((?!_next|api|admin|fonts|img/|uploads|amp|v3-preview-e|v3-preview-d|v3-preview-c|v3-preview-b|v3-preview|favicon\\.ico|icon\\.png|apple-icon\\.png|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml|blog/rss\\.xml|yandex_[0-9a-f]+\\.html).*)',
+    '/((?!_next|api|admin|fonts|img/|methodichki/|uploads|amp|v3-preview-e|v3-preview-d|v3-preview-c|v3-preview-b|v3-preview|favicon\\.ico|icon\\.png|apple-icon\\.png|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml|blog/rss\\.xml|yandex_[0-9a-f]+\\.html).*)',
   ],
 }
 

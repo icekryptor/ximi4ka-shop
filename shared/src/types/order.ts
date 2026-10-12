@@ -1,6 +1,7 @@
 import type { DeliveryDestination, ShippingPackage } from './shipping.js'
 import type { OrderNotificationDto } from './notifications.js'
 import type { CdekShipmentDto } from './cdek.js'
+import type { Methodichka } from './methodichki.js'
 
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
 
@@ -195,4 +196,9 @@ export interface PublicOrderStatus {
    * (флаг выключен, не оплачен или доставка не СДЭК).
    */
   shipment?: PublicOrderShipment | null
+  /**
+   * Электронные методички к купленным наборам. Только при верном секрете
+   * заказа (?t=) и только у оплаченного заказа; иначе поля нет.
+   */
+  methodichki?: Methodichka[]
 }

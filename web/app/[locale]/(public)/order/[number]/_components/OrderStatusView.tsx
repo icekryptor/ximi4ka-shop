@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { PublicOrderStatus } from '@ximi4ka-shop/shared'
 import { ApiError, getOrderStatus } from '@/lib/api'
 import { formatRub } from '@/lib/stockLabel'
+import { MethodichkiDownloads } from '@/components/MethodichkiDownloads'
 import { forgetPendingPurchase, reportPurchaseOnce } from '@/lib/metrika'
 import {
   ORDER_POLL_INTERVAL_MS,
@@ -309,6 +310,12 @@ export function OrderStatusView({
                 >
                   Отследить на cdek.ru →
                 </a>
+              )}
+
+              {order.methodichki && order.methodichki.length > 0 && (
+                <div className="mb-8">
+                  <MethodichkiDownloads items={order.methodichki} />
+                </div>
               )}
 
               <div aria-live="polite" className="flex flex-col gap-3">

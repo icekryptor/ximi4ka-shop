@@ -225,6 +225,36 @@ describe('<OrderStatusView>', () => {
     expect(link).toHaveAttribute('target', '_blank')
   })
 
+  it('shows download links for the e-methodichki of a paid order', async () => {
+    vi.stubGlobal(
+      'fetch',
+      fetchReturning(
+        statusPayload({
+          status: 'paid',
+          paymentProvider: 'tbank',
+          paidAt: '2026-07-02T08:30:00.000Z',
+          methodichki: [
+            {
+              key: 'oge',
+              title: 'Методичка «Химичка ОГЭ»',
+              url: '/methodichki/oge-2026.pdf',
+            },
+          ],
+        }),
+      ),
+    )
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} token="t" />)
+    const link = await screen.findByRole('link', { name: /Методичка «Химичка ОГЭ»/ })
+    expect(link).toHaveAttribute('href', '/methodichki/oge-2026.pdf')
+  })
+
+  it('shows no methodichki before payment', async () => {
+    vi.stubGlobal('fetch', fetchReturning(statusPayload({ paymentProvider: 'tbank' })))
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} token="t" />)
+    await screen.findByTestId('order-status-label')
+    expect(screen.queryByTestId('methodichki')).not.toBeInTheDocument()
+  })
+
   it('keeps polling a paid order until CDEK assigns the track number', async () => {
     vi.useFakeTimers()
     const paid = { status: 'paid' as const, paidAt: '2026-07-02T08:30:00.000Z' }

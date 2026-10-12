@@ -33,6 +33,7 @@ const order = (n: number, extra: Partial<AccountOrderSummary> = {}): AccountOrde
   deliveryMethod: 'cdek_pvz',
   deliveryAddress: 'Москва, ул. Ленина, 1',
   shipment: null,
+  methodichki: [],
   ...extra,
 })
 

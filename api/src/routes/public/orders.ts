@@ -4,6 +4,7 @@ import type { PublicOrderShipment } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
 import { Order } from '../../entities/Order.js'
+import { grantsMethodichki, methodichkiByOrder } from '../../lib/methodichki.js'
 import { notFound } from '../errors.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 
@@ -67,6 +68,10 @@ publicOrdersRouter.get(
           createdAt: order.createdAt,
           paidAt: order.paidAt,
           ...(withSecret ? { shipment: await shipmentFor(order.id) } : {}),
+          // Методички — тоже только с секретом заказа и только за оплаченный.
+          ...(withSecret && grantsMethodichki(order.status)
+            ? { methodichki: (await methodichkiByOrder([order.id])).get(order.id) ?? [] }
+            : {}),
         },
       })
     } catch (err) {

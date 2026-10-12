@@ -594,6 +594,15 @@ describe('middleware matcher', () => {
     expect(matcher.test(path)).toBe(false)
   })
 
+  // PDF-методички лежат в public/methodichki/: с префиксом локали (/ru/...)
+  // файла нет, и покупатель получил бы 404 вместо скачивания.
+  it.each(['/methodichki/himichka.pdf', '/methodichki/oge-2026.pdf'])(
+    'does not intercept %s',
+    (path) => {
+      expect(matcher.test(path)).toBe(false)
+    },
+  )
+
   it('still intercepts regular pages', () => {
     expect(matcher.test('/catalog')).toBe(true)
   })
