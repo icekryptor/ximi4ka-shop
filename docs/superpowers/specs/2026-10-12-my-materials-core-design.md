@@ -41,7 +41,7 @@
 | file_key                | text null, unique             | имя файла в `MATERIALS_DIR`, только для `file` |
 | file_name               | text null                     | имя для скачивания (`himichka-metodichka.pdf`) |
 | mime_type               | text null                     |                                                |
-| size_bytes              | bigint null                   |                                                |
+| size_bytes              | integer null                  |                                                |
 | external_url            | text null                     | только для `link`                              |
 | is_active               | boolean not null default true |                                                |
 | created_at / updated_at | timestamptz                   |                                                |
@@ -86,6 +86,9 @@ CHECK: для `file` заполнен `file_key`, для `link` заполнен
 
 Доступ после отмены или возврата сохраняется: выдача не удаляется и не отзывается автоматически.
 
+Слияние аккаунтов: `mergeCustomers` (там же) переносит выдачи удаляемого покупателя на оставшегося
+(`UPDATE material_grants SET customer_id = $keep WHERE customer_id = $drop`), иначе выдачи осиротеют.
+
 Привязка гостевых выдач к аккаунту: `claimOrdersByEmail` (`api/src/lib/account/customers.ts`) дополняется
 `UPDATE material_grants SET customer_id = $1 WHERE customer_id IS NULL AND email = $2`. Он уже вызывается при
 подтверждении email и внутри `attachEmail`. Вход через Telegram без email ничего не привязывает, как и сейчас с заказами.
@@ -108,10 +111,12 @@ CHECK: для `file` заполнен `file_key`, для `link` заполнен
 
 Страница заказа (гость и покупатель):
 
-- `GET /api/public/orders/:number/status?t=` при верном токене и `paid`/`shipped` добавляет
-  `materials: [{ id, title, kind, url? }]` (`url` только у `link`). Путей к файлам нет.
-- `GET /api/public/orders/:number/materials/:materialId/download?t=` — поток файла; условия: верный токен, заказ
-  оплачен, у заказа есть неотозванная выдача на этот материал.
+- `GET /api/public/orders/:number/status?t=` при верном токене добавляет
+  `materials: [{ id, title, kind, url? }]` (`url` только у `link`) — материалы, выданные этому заказу и не отозванные.
+  Выдачи появляются только при оплате, поэтому до оплаты список пуст, а после отмены оплаченного заказа остаётся.
+  Без токена поля нет. Путей к файлам нет.
+- `GET /api/public/orders/:number/materials/:materialId/download?t=` — поток файла; условия: верный токен и
+  неотозванная выдача этого заказа на этот материал (выдача существует только у оплаченного заказа).
 
 Токен сравнивается через `timingSafeEqual`, как в существующем статусе заказа.
 
@@ -144,7 +149,8 @@ CHECK: для `file` заполнен `file_key`, для `link` заполнен
 ## Деплой
 
 - `deploy/docker-compose.yml`: том `ximishop-materials`, монтирование в api, `MATERIALS_DIR` в `deploy/app.env.example`.
-- Порядок выкатки: деплой кода и миграции → положить PDF в том → запустить скрипт → проверить заказ.
+- Порядок выкатки: деплой кода и миграции → положить PDF в том (читаемые, `chmod 644`) → запустить скрипт
+  (`node api/dist/seeds/apply-materials-methodichki.js`, как в `deploy/CARD-SEEDS.md`) → проверить заказ.
   До запуска скрипта у новых оплат выдача пустая (материалов в каталоге ещё нет), у старых заказов тоже.
 - Caddy не меняется: `/api/*` уже уходит в api.
 
@@ -153,8 +159,9 @@ CHECK: для `file` заполнен `file_key`, для `link` заполнен
 - shared: форма `PublicOrderMaterial`.
 - api: `grantMaterialsForOrder` — идемпотентность, подарочные позиции, неактивный материал, заказ без материалов,
   гость с email.
-- api: выдача срабатывает на путях оплаты (вебхук Т-Кассы, ручная смена статуса) и не срабатывает при непереходе в `paid`.
-- api: `claimOrdersByEmail` привязывает гостевые выдачи.
+- api: выдача срабатывает в единой точке оплаты `saveOrderWithStatusEvent` для путей `tbank`, `reconcile`, `admin`
+  (вебхук, сверка и ручная смена статуса вызывают именно её) и не срабатывает при непереходе в `paid`.
+- api: `claimOrdersByEmail` и реальный вход по email привязывают гостевые выдачи; `mergeCustomers` переносит выдачи.
 - api: доступ к скачиванию — владелец, чужой покупатель, отозванная выдача, неактивный материал, нет токена, чужой
   токен, неоплаченный заказ; заголовки ответа; защита от выхода за `MATERIALS_DIR`.
 - web: страница «Мои материалы» (пусто, список, ссылка), блок на странице заказа (оплачен / нет).
