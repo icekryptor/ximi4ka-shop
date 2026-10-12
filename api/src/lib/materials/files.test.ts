@@ -1,16 +1,54 @@
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
+import { Readable } from 'node:stream'
 import express from 'express'
 import request from 'supertest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LearningMaterial } from '../../entities/LearningMaterial.js'
-import { materialsDir, resolveMaterialPath, sendMaterialFile } from './files.js'
+import { isClientAbort, materialsDir, resolveMaterialPath, sendMaterialFile } from './files.js'
+
+// Швы для проверки обработки ошибок потока: логгер pino подменён шпионом, а open()
+// при включённом failRead отдаёт поток, который падает на первом же чтении.
+const seam = vi.hoisted(() => ({
+  logError: vi.fn(),
+  failRead: null as null | { code: string },
+}))
+
+vi.mock('pino', () => {
+  const logger = { error: seam.logError, child: () => logger }
+  return { default: () => logger }
+})
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>()
+  return {
+    ...actual,
+    open: async (...args: Parameters<typeof actual.open>) => {
+      const fh = await actual.open(...args)
+      const failure = seam.failRead
+      if (failure) {
+        fh.createReadStream = (() =>
+          new Readable({
+            read() {
+              this.destroy(Object.assign(new Error(failure.code), { code: failure.code }))
+            },
+            destroy(err, cb) {
+              fh.close().then(() => cb(err), cb)
+            },
+          })) as typeof fh.createReadStream
+      }
+      return fh
+    },
+  }
+})
 
 let dir: string
 beforeEach(async () => {
   dir = await mkdtemp(path.join(os.tmpdir(), 'materials-'))
   vi.stubEnv('MATERIALS_DIR', dir)
+  seam.logError.mockClear()
+  seam.failRead = null
 })
 afterEach(async () => {
   vi.unstubAllEnvs()
@@ -127,4 +165,66 @@ describe('sendMaterialFile', () => {
       expect(res.headers['content-length']).not.toBe('1')
     },
   )
+
+  describe('ошибки потока', () => {
+    // Приложение с записью результата sendMaterialFile; запрос из-за обрыва тела
+    // завершается ошибкой клиента — это ожидаемо, сам результат берём из замера.
+    async function download(): Promise<boolean | undefined> {
+      let result: boolean | undefined
+      const app = express()
+      app.get('/f', async (_req, res) => {
+        result = await sendMaterialFile(res, material())
+      })
+      await writeFile(path.join(dir, 'a.pdf'), 'x'.repeat(1000))
+      await request(app)
+        .get('/f')
+        .buffer(true)
+        .parse(binary)
+        .then(
+          () => undefined,
+          () => undefined,
+        )
+      return result
+    }
+
+    it('реальная ошибка чтения (EIO) логируется, функция возвращает true', async () => {
+      seam.failRead = { code: 'EIO' }
+      expect(await download()).toBe(true)
+      expect(seam.logError).toHaveBeenCalledTimes(1)
+      const [fields] = seam.logError.mock.calls[0]
+      expect((fields.err as NodeJS.ErrnoException).code).toBe('EIO')
+      expect(fields.fileKey).toBe('a.pdf')
+    })
+
+    it('обрыв клиента (ERR_STREAM_PREMATURE_CLOSE) не логируется, возвращает true', async () => {
+      seam.failRead = { code: 'ERR_STREAM_PREMATURE_CLOSE' }
+      expect(await download()).toBe(true)
+      expect(seam.logError).not.toHaveBeenCalled()
+    })
+  })
+})
+
+describe('isClientAbort', () => {
+  it.each(['ERR_STREAM_PREMATURE_CLOSE', 'ECONNRESET', 'ERR_STREAM_DESTROYED'])(
+    '%s — обрыв клиента',
+    (code) => {
+      expect(isClientAbort(Object.assign(new Error(code), { code }))).toBe(true)
+    },
+  )
+
+  it('AbortError — обрыв клиента', () => {
+    const err = new Error('aborted')
+    err.name = 'AbortError'
+    expect(isClientAbort(err)).toBe(true)
+  })
+
+  it.each([
+    Object.assign(new Error('io'), { code: 'EIO' }),
+    Object.assign(new Error('gone'), { code: 'ENOENT' }),
+    new Error('generic'),
+    'строка',
+    undefined,
+  ])('%j — реальная ошибка', (err) => {
+    expect(isClientAbort(err)).toBe(false)
+  })
 })

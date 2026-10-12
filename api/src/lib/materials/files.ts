@@ -59,9 +59,12 @@ const RESPONSE_HEADERS = [
   'X-Content-Type-Options',
 ]
 
-function isClientAbort(err: unknown, res: Response): boolean {
-  const code = (err as NodeJS.ErrnoException | undefined)?.code
-  return (code !== undefined && CLIENT_ABORT_CODES.has(code)) || res.destroyed || !res.writable
+// Классифицируем только по самой ошибке: после отказа pipeline уничтожает все
+// потоки, включая res, так что res.destroyed истинно для любой ошибки.
+export function isClientAbort(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false
+  const { code, name } = err as { code?: unknown; name?: unknown }
+  return (typeof code === 'string' && CLIENT_ABORT_CODES.has(code)) || name === 'AbortError'
 }
 
 /**
@@ -110,7 +113,7 @@ export async function sendMaterialFile(
   try {
     await pipeline(stream, res)
   } catch (err) {
-    if (!isClientAbort(err, res)) {
+    if (!isClientAbort(err)) {
       logger.error({ err, fileKey: material.fileKey }, 'ошибка при отдаче файла материала')
     }
   }
