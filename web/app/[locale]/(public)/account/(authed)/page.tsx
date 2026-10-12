@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { MaterialsLink } from '../_components/MaterialsLink'
 import { OrdersList } from '../_components/OrdersList'
 import { ProfileCard } from '../_components/ProfileCard'
 
@@ -12,6 +13,7 @@ export default function AccountPage() {
   return (
     <div className="flex flex-col gap-10">
       <ProfileCard />
+      <MaterialsLink />
       <section aria-labelledby="account-orders-heading" className="flex flex-col gap-4">
         <h2
           id="account-orders-heading"
