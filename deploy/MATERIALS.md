@@ -8,7 +8,24 @@
 
 Порядок важен: пока скрипт не запущен, каталог пуст и оплаты ничего не выдают.
 
-1. Деплой кода (мёрж в `main`) — миграция `AddLearningMaterials` применяется при старте.
+1. Деплой кода (мёрж в `main`). Миграция `AddLearningMaterials` применяется не при старте, а шагом
+   «→ миграции» в `deploy/deploy.sh` — уже ПОСЛЕ того, как новый контейнер api поднялся и стал healthy.
+   Поэтому: (а) мёржить в тихий час; (б) сразу после мёржа открыть лог деплоя и убедиться, что шаг
+   «→ миграции» прошёл без ошибки; (в) если он упал — оплаты не проходят, пока это не исправлено:
+   либо чинить миграцию, либо немедленно откатывать деплой.
+
+   **Риск окна деплоя.** От `docker compose up -d` до конца шага «→ миграции» (около 15–30 с) новый код
+   работает на старой схеме БД, таблицы `material_grants` ещё нет:
+   - каждый переход заказа `pending → paid` падает с `relation "material_grants" does not exist` внутри
+     транзакции оплаты — запись оплаты откатывается (вебхук Т-Кассы получает 500 и повторяет; ответ YCP
+     `/checkout/placed` тоже падает);
+   - каждый `GET /api/public/orders/:n/status?t=` отвечает 500, страница «Спасибо за заказ» показывает
+     ошибку сети.
+
+   Если миграция упала — это окно не закрывается само, все записи оплаты падают до исправления (так уже
+   бывало при упавшей миграции деплоя). Смягчение вне этой ветки: запускать миграции в `deploy.sh` новым
+   образом ДО `up -d`.
+
 2. Положить файлы в том. Имена фиксированы: `himichka.pdf`, `elektrohimichka.pdf`, `oge-2026.pdf`.
 
 ```bash
@@ -21,14 +38,20 @@ docker run --rm -v ximishop_ximishop-materials:/m -v /root/materials-src:/src:ro
 ```
 
 3. Dry-run, затем запись (скрипт идемпотентен; в отчёте — сколько материалов заведено, какие файлы
-   и slug не найдены, сколько выдач добавлено уже оплаченным заказам):
+   и slug не найдены, сколько выдач добавлено уже оплаченным заказам). Через `| tee` код выхода
+   скрипта теряется, поэтому после каждой команды печатается `exit=…`:
 
 ```bash
-$C exec -T ximishop-api node api/dist/seeds/apply-materials-methodichki.js --dry-run 2>&1 | tee -a /root/backups/card-seeds.log
-$C exec -T ximishop-api node api/dist/seeds/apply-materials-methodichki.js 2>&1 | tee -a /root/backups/card-seeds.log
+$C exec -T ximishop-api node api/dist/seeds/apply-materials-methodichki.js --dry-run 2>&1 | tee -a /root/backups/card-seeds.log; echo "exit=${PIPESTATUS[0]}"
+# смотрим отчёт: missingFiles и missingSlugs — и только потом реальный запуск
+$C exec -T ximishop-api node api/dist/seeds/apply-materials-methodichki.js 2>&1 | tee -a /root/backups/card-seeds.log; echo "exit=${PIPESTATUS[0]}"
 ```
 
-Ожидаемое предупреждение: `vse-chetyre-nabora` нет в каталоге — это нормально, пока товар не заведён.
+Перед реальным запуском прочитать в отчёте dry-run поля `missingFiles` (PDF нет на томе) и
+`missingSlugs` (товара с таким slug нет в каталоге). `exit=1` значит, что хотя бы одного PDF не
+хватило: в реальном запуске остальные материалы при этом уже записаны, а пропущенные нужно
+добавить на том и запустить скрипт повторно. Ожидаемое предупреждение про `vse-chetyre-nabora`
+(товара нет в каталоге) код выхода не меняет — это нормально, пока товар не заведён.
 
 4. Проверка в БД:
 
@@ -54,3 +77,8 @@ DELETE FROM learning_materials WHERE file_key IN ('himichka.pdf', 'elektrohimich
 ## Бэкап
 
 Том `ximishop-materials` нужно бэкапить так же, как `ximishop-uploads` (см. `deploy/README.md`).
+
+```bash
+docker run --rm -v ximishop_ximishop-materials:/m -v /root/backups:/b alpine \
+  tar czf /b/materials.$(date +%F).tgz -C /m .
+```
