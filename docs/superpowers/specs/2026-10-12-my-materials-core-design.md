@@ -77,7 +77,7 @@ CHECK: для `file` заполнен `file_key`, для `link` заполнен
 `order.status === 'paid' && previousStatus !== 'paid'`, вызывается `grantMaterialsForOrder(order)` в той же транзакции.
 
 Это один `INSERT … SELECT … ON CONFLICT DO NOTHING`: для позиций заказа (подарочные тоже) берёт материалы из
-`learning_material_products`, где `is_active`, и пишет `order_id`, `customer_id = order.customerId`,
+`learning_material_products`, где `is_active`, и пишет `order_id`, `customer_id` (читается из строки заказа в БД, а не из объекта в памяти),
 `email = lower(order.customerEmail)` (если есть), `source = 'order'`. Повторный переход или повторный вызов ничего не
 меняет.
 
