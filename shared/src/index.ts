@@ -25,6 +25,8 @@ export type {
 
 export type { MaterialLeadRequest, MaterialLeadSource } from './types/materialLead.js'
 
+export type { AccountMaterial, MaterialKind, PublicOrderMaterial } from './types/materials.js'
+
 export type { CdekShipmentDto, CdekShipmentState } from './types/cdek.js'
 
 export type { Product, ProductImage, ProductShippingUnit, StockStatus } from './types/product.js'
