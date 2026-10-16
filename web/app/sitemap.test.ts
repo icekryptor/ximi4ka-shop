@@ -226,6 +226,30 @@ describe('sitemap', () => {
     expect(entries.map((e) => e.url)).toContain('https://new.ximi4ka.ru/opt')
   })
 
+  it('lists /order-process as a static page with hreflang alternates', async () => {
+    vi.mocked(listPublishedProducts).mockResolvedValue({
+      data: [],
+      pagination: { limit: 1000, offset: 0, total: 0 },
+    })
+    vi.mocked(listCategories).mockResolvedValue({
+      data: [],
+      pagination: { limit: 1000, offset: 0, total: 0 },
+    })
+    vi.mocked(listPages).mockResolvedValue({
+      data: [],
+      pagination: { limit: 1000, offset: 0, total: 0 },
+    })
+    vi.mocked(listBlogPosts).mockResolvedValue(emptyBlogResponse())
+
+    const entry = (await sitemap()).find((e) => e.url.endsWith('/order-process'))
+
+    expect(entry?.url).toBe('https://new.ximi4ka.ru/order-process')
+    expect(entry?.alternates?.languages).toMatchObject({
+      ru: 'https://new.ximi4ka.ru/order-process',
+      en: 'https://new.ximi4ka.ru/en/order-process',
+    })
+  })
+
   it('degrades to an empty-but-valid sitemap when the API is down', async () => {
     vi.mocked(listPublishedProducts).mockRejectedValue(new Error('down'))
     vi.mocked(listCategories).mockRejectedValue(new Error('down'))
@@ -234,13 +258,14 @@ describe('sitemap', () => {
 
     const out = await sitemap()
     const urls = out.map((e) => e.url)
-    // Homepage + catalog + opt + categories + blog landings always ship, even without data.
+    // Homepage + catalog + opt + order-process + categories + blog landings always ship, even without data.
     expect(urls).toContain('https://new.ximi4ka.ru/')
     expect(urls).toContain('https://new.ximi4ka.ru/catalog')
     expect(urls).toContain('https://new.ximi4ka.ru/opt')
+    expect(urls).toContain('https://new.ximi4ka.ru/order-process')
     expect(urls).toContain('https://new.ximi4ka.ru/categories')
     expect(urls).toContain('https://new.ximi4ka.ru/blog')
-    expect(out.length).toBe(5)
+    expect(out.length).toBe(6)
   })
 
   it('respects NEXT_PUBLIC_SITE_URL when set', async () => {
