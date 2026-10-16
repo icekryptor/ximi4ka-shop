@@ -53,6 +53,11 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
 
 export const TELEGRAM_TEXT_LIMIT = 4096
 
+// «Запас всех реактивов» — товар без собственного состава: это все реактивы
+// каталога по 2 шт. Сборщику в чате нужен список, а не одна строка.
+export const ALL_REAGENTS_SKU = 'RRR'
+export const ALL_REAGENTS_PER_SET = 2
+
 // Дата и время по Москве. Собираем из частей сами: у Intl в ru-RU между
 // датой и временем запятая, а нам нужен пробел.
 function moscowParts(d: Date): Record<string, string> {
@@ -162,7 +167,13 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
   ]
 }
 
-export function telegramCard(order: NotifiableOrder): string {
+// Состав комплекта под строкой товара: реактив — количество в заказе.
+function compositionLines(names: string[], sets: number): string[] {
+  return names.map((name) => `— ${name} — ${ALL_REAGENTS_PER_SET * sets} шт`)
+}
+
+// `reagentNames` — реактивы каталога; нужны только заказу с «Запасом всех реактивов».
+export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []): string {
   const { deliveryPointCode } = order.deliveryAddress
   const address = clip(order.deliveryAddress.address, CARD_TEXT_LIMIT)
   const comment = order.deliveryAddress.comment
@@ -193,13 +204,27 @@ export function telegramCard(order: NotifiableOrder): string {
   const reserve = 40
   let length = [title, ...client, 'Товары:', totals].join('\n').length + 4 + reserve
   const lines: string[] = []
+  let shown = 0
   for (const item of giftLast(order.items)) {
     const line = escapeHtml(itemLine(item))
     if (length + line.length + 1 > TELEGRAM_TEXT_LIMIT) break
     lines.push(line)
     length += line.length + 1
+    shown += 1
+    if (item.productSnapshot.sku === ALL_REAGENTS_SKU && reagentNames.length > 0) {
+      // Состав — сколько влезет: хвост, который не поместился, считаем строкой.
+      const parts = compositionLines(reagentNames, item.quantity).map(escapeHtml)
+      let added = 0
+      for (const part of parts) {
+        if (length + part.length + 1 > TELEGRAM_TEXT_LIMIT) break
+        lines.push(part)
+        length += part.length + 1
+        added += 1
+      }
+      if (added < parts.length) lines.push(`…и ещё ${parts.length - added} реактивов`)
+    }
   }
-  const hidden = order.items.length - lines.length
+  const hidden = order.items.length - shown
   if (hidden > 0) lines.push(`…и ещё ${hidden} ${pluralPositions(hidden)}`)
 
   return [title, client.join('\n'), ['Товары:', ...lines].join('\n'), totals].join('\n\n')
