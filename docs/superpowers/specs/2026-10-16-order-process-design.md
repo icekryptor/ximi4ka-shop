@@ -30,16 +30,16 @@
 
 ## Архитектура
 
-| Файл | Назначение |
-| --- | --- |
-| `web/lib/orderProcess.ts` | Данные: шаги, зоны (страны, флаги, порог), сроки СДЭК. Порог РФ берётся из `SHIPPING_RULES` (`web/lib/checkout.ts`), чтобы не разойтись с чекаутом. |
-| `web/components/marketing/Flag.tsx` | Флаг страны по коду: `<img>` из `web/public/img/flags/<код>.svg`, размер 4:3, пустой `alt` (рядом всегда подпись страны). |
-| `web/components/marketing/OrderProcessSection.tsx` | Блок на главной: 4 карточки шагов, полоса зон с флагами, 3 строки сроков, ссылка на страницу. Тот же стиль, что у `HowItWorksStepLJ` и `LabSection`. |
-| `web/components/marketing/DeliveryZones.tsx`, `CdekTerms.tsx` | Таблицы зон и сроков; используются и в блоке, и на странице, чтобы данные не дублировались. |
-| `web/app/[locale]/(public)/order-process/page.tsx` | Страница: крошки, H1, вступление, 4 раздела (текст + скриншот), зоны, сроки, оговорка про передачу в СДЭК со ссылкой на оферту, CTA в каталог. `buildMetadata`, `breadcrumbJsonLd`, `alternatesByLocale`, как у `/opt`. |
-| `web/public/img/order-process/*.webp` | Скриншоты (см. ниже). |
-| `web/public/img/flags/*.svg` | Восемь флагов: `ru`, `by`, `kz`, `am`, `kg`, `uz`, `az`, `tj`. |
-| `web/app/sitemap.ts`, `web/components/Footer.tsx` | URL в sitemap; ссылка «как проходит заказ» в подвале. |
+| Файл                                                          | Назначение                                                                                                                                                                                                              |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/lib/orderProcess.ts`                                     | Данные: шаги, зоны (страны, флаги, порог), сроки СДЭК. Порог РФ берётся из `SHIPPING_RULES` (`web/lib/checkout.ts`), чтобы не разойтись с чекаутом.                                                                     |
+| `web/components/marketing/Flag.tsx`                           | Флаг страны по коду: `<img>` из `web/public/img/flags/<код>.svg`, размер 4:3, пустой `alt` (рядом всегда подпись страны).                                                                                               |
+| `web/components/marketing/OrderProcessSection.tsx`            | Блок на главной: 4 карточки шагов, полоса зон с флагами, 3 строки сроков, ссылка на страницу. Тот же стиль, что у `HowItWorksStepLJ` и `LabSection`.                                                                    |
+| `web/components/marketing/DeliveryZones.tsx`, `CdekTerms.tsx` | Таблицы зон и сроков; используются и в блоке, и на странице, чтобы данные не дублировались.                                                                                                                             |
+| `web/app/[locale]/(public)/order-process/page.tsx`            | Страница: крошки, H1, вступление, 4 раздела (текст + скриншот), зоны, сроки, оговорка про передачу в СДЭК со ссылкой на оферту, CTA в каталог. `buildMetadata`, `breadcrumbJsonLd`, `alternatesByLocale`, как у `/opt`. |
+| `web/public/img/order-process/*.webp`                         | Скриншоты (см. ниже).                                                                                                                                                                                                   |
+| `web/public/img/flags/*.svg`                                  | Восемь флагов: `ru`, `by`, `kz`, `am`, `kg`, `uz`, `az`, `tj`.                                                                                                                                                          |
+| `web/app/sitemap.ts`, `web/components/Footer.tsx`             | URL в sitemap; ссылка «как проходит заказ» в подвале.                                                                                                                                                                   |
 
 Место блока на главной: после «Как это работает» (ink), перед «Оптом» (cream). Блок на кремовом фоне, тексты и порядок элементов не зависят от CMS.
 

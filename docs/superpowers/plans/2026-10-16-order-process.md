@@ -37,10 +37,12 @@
 Первой, потому что тут выясняется, что интерфейс реально показывает (тексты шагов 1–2 опираются на это), и потому что тест в Task 3 требует файлы на диске.
 
 **Files:**
+
 - Create: `web/public/img/order-process/{cart,checkout,order-page,account}.webp` (1200×750)
 - Временно (не коммитить): `$SCRATCH/shots/{setup.sql,capture.cjs,convert.cjs}`, `$SCRATCH/shots/raw/*.png`, две записи в `.claude/launch.json`
 
 **Interfaces:**
+
 - Produces: четыре файла по путям выше; Task 3 ссылается на них как `/img/order-process/<имя>.webp`.
 
 Стенд: scratch-БД `shots_scratch` в локальной Postgres 16, api на `:3021`, web на `:3020`, всё только на localhost. Ничего из прода не используется; платежи и СДЭК не нужны (`PAYMENT_PROVIDER=manual` по умолчанию, ответы СДЭК подменяет Playwright). Данные в кадре вымышленные.
@@ -173,7 +175,13 @@ const POINTS = [
   ['MSK310', 'Пункт выдачи СДЭК (тест 1)', 'Москва, ул. Тестовая, 1', [37.62, 55.75]],
   ['MSK311', 'Пункт выдачи СДЭК (тест 2)', 'Москва, ул. Тестовая, 2', [37.64, 55.76]],
   ['MSK312', 'Пункт выдачи СДЭК (тест 3)', 'Москва, ул. Тестовая, 3', [37.6, 55.74]],
-].map(([code, name, address, location]) => ({ code, name, address, location, workTime: 'пн-вс 10-20' }))
+].map(([code, name, address, location]) => ({
+  code,
+  name,
+  address,
+  location,
+  workTime: 'пн-вс 10-20',
+}))
 
 async function mockCdek(context, subtotal) {
   await context.route(/\/api\/public\/cdek\/cities/, (r) =>
@@ -190,7 +198,15 @@ async function mockCdek(context, subtotal) {
       subtotalRub: subtotal,
       discountRub: 0,
       packages: [
-        { box: 'small', weightG: 800, lengthCm: 20, widthCm: 15, heightCm: 10, estimated: false, items: [] },
+        {
+          box: 'small',
+          weightG: 800,
+          lengthCm: 20,
+          widthCm: 15,
+          heightCm: 10,
+          estimated: false,
+          items: [],
+        },
       ],
       quote: dest
         ? {
@@ -349,7 +365,6 @@ const ROOT =
 const sharp = require(require.resolve('sharp', { paths: [path.join(ROOT, 'web')] }))
 const OUT_DIR = path.join(ROOT, 'web/public/img/order-process')
 fs.mkdirSync(OUT_DIR, { recursive: true })
-
 ;(async () => {
   for (const name of ['cart', 'checkout', 'order-page', 'account']) {
     const dest = path.join(OUT_DIR, `${name}.webp`)
@@ -398,9 +413,11 @@ Expected: в коммит попали только четыре `.webp`.
 ### Task 2: Флаги стран
 
 **Files:**
+
 - Create: `web/public/img/flags/{ru,by,kz,am,kg,uz,az,tj}.svg`, `web/public/img/flags/LICENSE-flag-icons.txt`
 
 **Interfaces:**
+
 - Produces: файлы `/img/flags/<код>.svg`, коды `ru|by|kz|am|kg|uz|az|tj` (используются `Flag`, Task 4).
 
 Тест на наличие и отсутствие скриптов в SVG добавляется в Task 3 (там же данные); здесь проверка вручную.
@@ -452,10 +469,12 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 3: Модуль данных `orderProcess.ts`
 
 **Files:**
+
 - Create: `web/lib/orderProcess.ts`
 - Test: `web/lib/orderProcess.test.ts`
 
 **Interfaces:**
+
 - Consumes: `SHIPPING_RULES` из `@/lib/checkout` (`{ cdek_pvz: { freeFromRub }, cdek_courier: { freeFromRub } }`), `formatRub(value: number): string` из `@/lib/stockLabel`, `DEFAULT_LOCALE`, `Locale` из `@/lib/i18n`; файлы Task 1 (скриншоты) и Task 2 (флаги).
 - Produces (используют Tasks 4–6):
   - `type FlagCode = 'ru'|'by'|'kz'|'am'|'kg'|'uz'|'az'|'tj'`
@@ -743,7 +762,8 @@ export const ORDER_STEPS: OrderStep[] = [
   {
     index: 2,
     title: 'Данные о доставке — на странице заказа и в кабинете',
-    summary: 'После оплаты трек СДЭК виден на странице заказа, а способ, адрес и трек — в личном кабинете.',
+    summary:
+      'После оплаты трек СДЭК виден на странице заказа, а способ, адрес и трек — в личном кабинете.',
     details: [
       'Сразу после оплаты откроется страница заказа: статус, сумма и трек-номер СДЭК со ссылкой «Отследить на cdek.ru». Трек появляется, как только заказ передан в СДЭК.',
       'В личном кабинете, в истории заказов, у каждого заказа видны состав, способ и адрес доставки и ссылка «Отследить посылку».',
@@ -803,10 +823,12 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 4: Компоненты `Flag`, `DeliveryZones`, `CdekTerms`
 
 **Files:**
+
 - Create: `web/components/marketing/Flag.tsx`, `web/components/marketing/DeliveryZones.tsx`, `web/components/marketing/CdekTerms.tsx`
 - Test: `web/components/marketing/Flag.test.tsx`, `web/components/marketing/DeliveryZones.test.tsx`, `web/components/marketing/CdekTerms.test.tsx`
 
 **Interfaces:**
+
 - Consumes: `FlagCode`, `buildDeliveryZones`, `CDEK_TERMS` (Task 3).
 - Produces: `<Flag code={FlagCode} className?={string} />`, `<DeliveryZones />` (без пропсов), `<CdekTerms />` (без пропсов).
 
@@ -1029,12 +1051,14 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 5: Блок `OrderProcessSection` на главной
 
 **Files:**
+
 - Create: `web/components/marketing/OrderProcessSection.tsx`
 - Test: `web/components/marketing/OrderProcessSection.test.tsx`
 - Modify: `web/app/[locale]/(public)/page.tsx` (импорт рядом со строкой 18; вставка между блоками «5. Как это работает» и «5б. Оптом», сейчас перед строкой 369)
 - Test: `web/app/[locale]/(public)/page.test.tsx` (новый `describe` в конец файла)
 
 **Interfaces:**
+
 - Consumes: `ORDER_STEPS`, `orderProcessPath` (Task 3); `DeliveryZones`, `CdekTerms` (Task 4); `LabSection` из `@/components/ui/LabSection`.
 - Produces: `<OrderProcessSection href={string} />` — `href` с учётом локали (как у `WholesaleHomeSection`).
 
@@ -1195,7 +1219,9 @@ describe('HomePage: блок «Заказ и доставка»', () => {
     expect(how && order && wholesale).toBeTruthy()
     // how-it-works → order-process → wholesale
     expect(how!.compareDocumentPosition(order!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(order!.compareDocumentPosition(wholesale!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(
+      order!.compareDocumentPosition(wholesale!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 })
 ```
@@ -1204,9 +1230,8 @@ describe('HomePage: блок «Заказ и доставка»', () => {
 
 ```tsx
 vi.mock('@/components/marketing', async () => {
-  const actual = await vi.importActual<typeof import('@/components/marketing')>(
-    '@/components/marketing',
-  )
+  const actual =
+    await vi.importActual<typeof import('@/components/marketing')>('@/components/marketing')
   return { ...actual, Hero: () => null, Manifesto: () => null, PreFooterCta: () => null }
 })
 vi.mock('@/components/ProductCard', () => ({ ProductCard: () => null }))
@@ -1240,9 +1265,10 @@ import { orderProcessPath } from '@/lib/orderProcess'
 2. Между закрывающим `</LabSection>` блока «5. Как это работает» и комментарием `{/* 5б. Оптом … */}` вставить:
 
 ```tsx
-      {/* 5а. Заказ и доставка (LAB CREAM) — шаги, условия по странам, сроки СДЭК */}
-      <OrderProcessSection href={orderProcessPath(locale)} />
-
+{
+  /* 5а. Заказ и доставка (LAB CREAM) — шаги, условия по странам, сроки СДЭК */
+}
+;<OrderProcessSection href={orderProcessPath(locale)} />
 ```
 
 - [ ] **Step 8: Run to verify it passes**
@@ -1264,6 +1290,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ### Task 6: Страница `/order-process`, sitemap, подвал
 
 **Files:**
+
 - Create: `web/app/[locale]/(public)/order-process/page.tsx`
 - Test: `web/app/[locale]/(public)/order-process/page.test.tsx`
 - Modify: `web/app/sitemap.ts` (запись после `/opt`, строки ~97–102)
@@ -1272,6 +1299,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 - Test: `web/components/Footer.test.tsx` (новый тест после строки ~58)
 
 **Interfaces:**
+
 - Consumes: `ORDER_STEPS`, `ORDER_PROCESS_PATH`, `orderProcessPath` (Task 3); `DeliveryZones`, `CdekTerms` (Task 4); `Breadcrumbs`, `JsonLd`, `LabSection`, `buildMetadata`, `breadcrumbJsonLd`, `BreadcrumbItem`, `isLocale`, `SUPPORTED_LOCALES`, `DEFAULT_LOCALE` — как в `opt/page.tsx`.
 - Produces: маршрут `/order-process` (и `/en/order-process`), запись в sitemap, ссылка в подвале.
 
@@ -1519,29 +1547,29 @@ Expected: PASS (8 тестов). Если красный тест про `figure
 В `web/app/sitemap.test.ts` после теста `lists /opt as a static page` добавить:
 
 ```ts
-  it('lists /order-process as a static page with hreflang alternates', async () => {
-    vi.mocked(listPublishedProducts).mockResolvedValue({
-      data: [],
-      pagination: { limit: 1000, offset: 0, total: 0 },
-    })
-    vi.mocked(listCategories).mockResolvedValue({
-      data: [],
-      pagination: { limit: 1000, offset: 0, total: 0 },
-    })
-    vi.mocked(listPages).mockResolvedValue({
-      data: [],
-      pagination: { limit: 1000, offset: 0, total: 0 },
-    })
-    vi.mocked(listBlogPosts).mockResolvedValue(emptyBlogResponse())
-
-    const entry = (await sitemap()).find((e) => e.url.endsWith('/order-process'))
-
-    expect(entry?.url).toBe('https://new.ximi4ka.ru/order-process')
-    expect(entry?.alternates?.languages).toMatchObject({
-      ru: 'https://new.ximi4ka.ru/order-process',
-      en: 'https://new.ximi4ka.ru/en/order-process',
-    })
+it('lists /order-process as a static page with hreflang alternates', async () => {
+  vi.mocked(listPublishedProducts).mockResolvedValue({
+    data: [],
+    pagination: { limit: 1000, offset: 0, total: 0 },
   })
+  vi.mocked(listCategories).mockResolvedValue({
+    data: [],
+    pagination: { limit: 1000, offset: 0, total: 0 },
+  })
+  vi.mocked(listPages).mockResolvedValue({
+    data: [],
+    pagination: { limit: 1000, offset: 0, total: 0 },
+  })
+  vi.mocked(listBlogPosts).mockResolvedValue(emptyBlogResponse())
+
+  const entry = (await sitemap()).find((e) => e.url.endsWith('/order-process'))
+
+  expect(entry?.url).toBe('https://new.ximi4ka.ru/order-process')
+  expect(entry?.alternates?.languages).toMatchObject({
+    ru: 'https://new.ximi4ka.ru/order-process',
+    en: 'https://new.ximi4ka.ru/en/order-process',
+  })
+})
 ```
 
 В тесте `degrades to an empty-but-valid sitemap when the API is down`: после строки `expect(urls).toContain('https://new.ximi4ka.ru/opt')` добавить `expect(urls).toContain('https://new.ximi4ka.ru/order-process')`, строку `expect(out.length).toBe(5)` заменить на `expect(out.length).toBe(6)`, комментарий выше дополнить словами `+ order-process`.
@@ -1549,13 +1577,13 @@ Expected: PASS (8 тестов). Если красный тест про `figure
 В `web/components/Footer.test.tsx` после теста `links оптом …` добавить:
 
 ```tsx
-  it('links «как проходит заказ» to the order process page in the СТРАНИЦЫ row', () => {
-    render(<Footer />)
-    expect(screen.getByRole('link', { name: 'как проходит заказ' })).toHaveAttribute(
-      'href',
-      '/order-process',
-    )
-  })
+it('links «как проходит заказ» to the order process page in the СТРАНИЦЫ row', () => {
+  render(<Footer />)
+  expect(screen.getByRole('link', { name: 'как проходит заказ' })).toHaveAttribute(
+    'href',
+    '/order-process',
+  )
+})
 ```
 
 - [ ] **Step 6: Run to verify they fail**
@@ -1603,6 +1631,7 @@ Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 **Files:** без новых файлов; правки по замечаниям проверок.
 
 **Interfaces:**
+
 - Consumes: всё из Tasks 1–6.
 - Produces: зелёные проверки с реальным выводом, готовый (не отправленный) PR-текст.
 

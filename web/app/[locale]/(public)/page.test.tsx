@@ -47,9 +47,8 @@ vi.mock('@/lib/api', async () => {
 })
 
 vi.mock('@/components/marketing', async () => {
-  const actual = await vi.importActual<typeof import('@/components/marketing')>(
-    '@/components/marketing',
-  )
+  const actual =
+    await vi.importActual<typeof import('@/components/marketing')>('@/components/marketing')
   return { ...actual, Hero: () => null, Manifesto: () => null, PreFooterCta: () => null }
 })
 vi.mock('@/components/ProductCard', () => ({ ProductCard: () => null }))
