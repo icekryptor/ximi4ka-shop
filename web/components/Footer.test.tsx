@@ -60,6 +60,14 @@ describe('<Footer> v3 colophon', () => {
     expect(screen.getByRole('link', { name: 'оптом' })).toHaveAttribute('href', '/opt')
   })
 
+  it('links «как проходит заказ» to the order process page in the СТРАНИЦЫ row', () => {
+    render(<Footer />)
+    expect(screen.getByRole('link', { name: 'как проходит заказ' })).toHaveAttribute(
+      'href',
+      '/order-process',
+    )
+  })
+
   it('renders the methane molecule accent (preserved from Stage 5)', () => {
     const { container } = render(<Footer />)
     const svgs = container.querySelectorAll('svg')

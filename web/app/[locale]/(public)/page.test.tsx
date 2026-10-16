@@ -46,6 +46,20 @@ vi.mock('@/lib/api', async () => {
   }
 })
 
+vi.mock('@/components/marketing', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/components/marketing')>('@/components/marketing')
+  return { ...actual, Hero: () => null, Manifesto: () => null, PreFooterCta: () => null }
+})
+vi.mock('@/components/ProductCard', () => ({ ProductCard: () => null }))
+vi.mock('@/components/wholesale/WholesaleHomeSection', () => ({
+  WholesaleHomeSection: () => <section id="wholesale" />,
+}))
+vi.mock('@/components/ui', async () => {
+  const actual = await vi.importActual<typeof import('@/components/ui')>('@/components/ui')
+  return { ...actual, Ticker: () => null }
+})
+
 import HomePage, { generateMetadata, revalidate } from './page'
 import * as api from '@/lib/api'
 
@@ -130,5 +144,32 @@ describe('SITE_CATALOG drift', () => {
         `Slug "${entry.slug}" did not resolve in the mock DB — either fix the slug in SITE_CATALOG or update the \`known\` set in this test file (and seed the DB).`,
       ).not.toBeNull()
     }
+  })
+})
+
+describe('HomePage: блок «Заказ и доставка»', () => {
+  it('показывает блок между «Как это работает» и «Оптом» со ссылкой на /order-process', async () => {
+    const { render, screen } = await import('@testing-library/react')
+    vi.spyOn(api, 'getPage').mockRejectedValue(new Error('down'))
+    vi.spyOn(api, 'listPublishedProducts').mockRejectedValue(new Error('down'))
+    vi.spyOn(api, 'getPublicSettings').mockRejectedValue(new Error('down'))
+    vi.spyOn(api, 'listCategories').mockRejectedValue(new Error('down'))
+
+    render(await HomePage({ params: Promise.resolve({ locale: 'ru' }) }))
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Заказ и доставка' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Подробнее о заказе и доставке' })).toHaveAttribute(
+      'href',
+      '/order-process',
+    )
+    const how = document.getElementById('how-it-works')
+    const order = document.getElementById('order-process')
+    const wholesale = document.getElementById('wholesale')
+    expect(how && order && wholesale).toBeTruthy()
+    // how-it-works → order-process → wholesale
+    expect(how!.compareDocumentPosition(order!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(
+      order!.compareDocumentPosition(wholesale!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 })
