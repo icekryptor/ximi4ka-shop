@@ -38,6 +38,20 @@ describe('OrderProcessPage', () => {
     expect(h2.filter((t) => /^[1-4]\./.test(t))).toHaveLength(4)
   })
 
+  it('для английской локали крошки и JSON-LD ведут на /en и /en/order-process', async () => {
+    const { container } = render(
+      await OrderProcessPage({ params: Promise.resolve({ locale: 'en' }) }),
+    )
+    const crumbs = screen.getByRole('navigation', { name: 'breadcrumbs' })
+    expect(within(crumbs).getByRole('link', { name: 'Главная' })).toHaveAttribute('href', '/en')
+    const ld = JSON.parse(
+      container.querySelector('script[type="application/ld+json"]')?.textContent ?? '{}',
+    )
+    const urls: string[] = ld.itemListElement.map((i: { item: string }) => i.item)
+    expect(urls[0]).toMatch(/\/en$/)
+    expect(urls[1]).toMatch(/\/en\/order-process$/)
+  })
+
   it('показывает четыре скриншота с alt и подписью, условия по странам и сроки СДЭК', async () => {
     const { container } = render(await OrderProcessPage(ru))
     const shots = container.querySelectorAll('figure img')
