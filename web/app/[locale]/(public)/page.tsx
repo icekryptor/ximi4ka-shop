@@ -20,6 +20,8 @@ import { Ticker } from '@/components/ui'
 import { Hero, PreFooterCta, Manifesto, DEFAULT_TESTIMONIALS } from '@/components/marketing'
 import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
 import { HowItWorksStepLJ } from '@/components/marketing/HowItWorksStepLJ'
+import { OrderProcessSection } from '@/components/marketing/OrderProcessSection'
+import { orderProcessPath } from '@/lib/orderProcess'
 import { TestimonialQuoteLJ } from '@/components/marketing/TestimonialQuoteLJ'
 import { buildPromoSlides } from '@/lib/promoSlides'
 import { DEFAULT_LOCALE, isLocale, pickField, type Locale } from '@/lib/i18n'
@@ -365,6 +367,9 @@ export default async function HomePage({ params }: Props) {
           </div>
         </div>
       </LabSection>
+
+      {/* 5а. Заказ и доставка (LAB CREAM) — шаги, условия по странам, сроки СДЭК */}
+      <OrderProcessSection href={orderProcessPath(locale)} />
 
       {/* 5б. Оптом (LAB CREAM) — тот же блок заказа, что на /opt */}
       <WholesaleHomeSection href={locale === DEFAULT_LOCALE ? '/opt' : `/${locale}/opt`} />
