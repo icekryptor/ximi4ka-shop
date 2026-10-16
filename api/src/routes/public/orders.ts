@@ -4,6 +4,8 @@ import type { PublicOrderShipment } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
 import { Order } from '../../entities/Order.js'
+import { sendMaterialFile } from '../../lib/materials/files.js'
+import { findOrderMaterial, isUuid, listOrderMaterials } from '../../lib/materials/queries.js'
 import { notFound } from '../errors.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 
@@ -47,6 +49,7 @@ async function shipmentFor(orderId: string): Promise<PublicOrderShipment | null>
 // перебираются. Лимит — против перебора номеров; с запасом, потому что у
 // мобильных операторов много покупателей за одним IP, а открытая страница
 // заказа опрашивает статус 12 раз в минуту.
+// Материалы (методички и т. п.) — тоже только с секретом заказа.
 publicOrdersRouter.get(
   '/:number/status',
   rateLimit({ limit: 300, windowMs: 60_000 }),
@@ -67,8 +70,37 @@ publicOrdersRouter.get(
           createdAt: order.createdAt,
           paidAt: order.paidAt,
           ...(withSecret ? { shipment: await shipmentFor(order.id) } : {}),
+          ...(withSecret ? { materials: await listOrderMaterials(order.id) } : {}),
         },
       })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+// Скачивание материала со страницы заказа: только с секретом заказа и только
+// материал, выданный этому заказу. Любой отказ — 404, чтобы по ответу нельзя
+// было отличить «нет заказа» от «неверный токен».
+publicOrdersRouter.get(
+  '/:number/materials/:materialId/download',
+  rateLimit({ limit: 60, windowMs: 60_000 }),
+  async (req, res, next) => {
+    try {
+      const order = await AppDataSource.getRepository(Order).findOneBy({
+        orderNumber: req.params.number,
+      })
+      if (!order || !tokenMatches(req.query.t, order.publicToken)) {
+        throw notFound('order_not_found', 'Заказ не найден')
+      }
+      const { materialId } = req.params
+      const material = isUuid(materialId) ? await findOrderMaterial(order.id, materialId) : null
+      if (!material || material.kind !== 'file') {
+        throw notFound('material_not_found', 'Материал не найден')
+      }
+      if (!(await sendMaterialFile(res, material))) {
+        throw notFound('material_file_missing', 'Файл временно недоступен')
+      }
     } catch (err) {
       next(err)
     }

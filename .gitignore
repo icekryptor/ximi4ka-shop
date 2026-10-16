@@ -48,6 +48,8 @@ api/uploads/*
 # Imported product photos (long-term repo asset, ~10MB total)
 !api/uploads/imported/
 !api/uploads/imported/**
+# закрытые материалы (локально; в проде — том ximishop-materials)
+api/materials/
 
 # Local Claude Code config
 .claude/

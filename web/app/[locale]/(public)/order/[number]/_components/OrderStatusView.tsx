@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { PublicOrderStatus } from '@ximi4ka-shop/shared'
+import { MaterialsDownloads } from '@/components/MaterialsDownloads'
 import { ApiError, getOrderStatus } from '@/lib/api'
+import { orderMaterialDownloadUrl } from '@/lib/materialUrls'
 import { formatRub } from '@/lib/stockLabel'
 import { forgetPendingPurchase, reportPurchaseOnce } from '@/lib/metrika'
 import {
@@ -309,6 +311,15 @@ export function OrderStatusView({
                 >
                   Отследить на cdek.ru →
                 </a>
+              )}
+
+              {token && order.materials && order.materials.length > 0 && (
+                <div className="mb-8">
+                  <MaterialsDownloads
+                    items={order.materials}
+                    hrefFor={(id) => orderMaterialDownloadUrl(orderNumber, id, token)}
+                  />
+                </div>
               )}
 
               <div aria-live="polite" className="flex flex-col gap-3">

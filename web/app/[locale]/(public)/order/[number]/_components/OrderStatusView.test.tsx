@@ -225,6 +225,36 @@ describe('<OrderStatusView>', () => {
     expect(link).toHaveAttribute('target', '_blank')
   })
 
+  it('shows download links for the materials of an order', async () => {
+    vi.stubGlobal(
+      'fetch',
+      fetchReturning(
+        statusPayload({
+          status: 'paid',
+          paymentProvider: 'tbank',
+          paidAt: '2026-07-02T08:30:00.000Z',
+          materials: [{ id: 'm1', title: 'Методичка «Химичка ОГЭ»', kind: 'file' }],
+        }),
+      ),
+    )
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} token="t" />)
+
+    const link = await screen.findByRole('link', { name: /Методичка «Химичка ОГЭ»/ })
+    expect(link.getAttribute('href')).toContain(
+      '/api/public/orders/XM-2026-00042/materials/m1/download?t=t',
+    )
+  })
+
+  it('shows no materials block when the list is empty or absent', async () => {
+    vi.stubGlobal(
+      'fetch',
+      fetchReturning(statusPayload({ paymentProvider: 'tbank', materials: [] })),
+    )
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} token="t" />)
+    await screen.findByTestId('order-status-label')
+    expect(screen.queryByTestId('materials')).not.toBeInTheDocument()
+  })
+
   it('keeps polling a paid order until CDEK assigns the track number', async () => {
     vi.useFakeTimers()
     const paid = { status: 'paid' as const, paidAt: '2026-07-02T08:30:00.000Z' }

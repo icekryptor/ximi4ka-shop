@@ -1,6 +1,7 @@
 import type { DeliveryDestination, ShippingPackage } from './shipping.js'
 import type { OrderNotificationDto } from './notifications.js'
 import type { CdekShipmentDto } from './cdek.js'
+import type { PublicOrderMaterial } from './materials.js'
 
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
 
@@ -195,4 +196,9 @@ export interface PublicOrderStatus {
    * (флаг выключен, не оплачен или доставка не СДЭК).
    */
   shipment?: PublicOrderShipment | null
+  /**
+   * Только при верном секрете заказа (?t=): материалы, выданные этому заказу и
+   * не отозванные. Выдачи появляются при оплате, поэтому до неё список пуст.
+   */
+  materials?: PublicOrderMaterial[]
 }
