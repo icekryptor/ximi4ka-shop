@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  ALL_REAGENTS_SKU,
   SHEET_HEADER,
   TELEGRAM_TEXT_LIMIT,
   sheetRow,
@@ -307,5 +308,46 @@ describe('telegramCard', () => {
     expect(card).not.toMatch(
       /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
     )
+  })
+})
+
+describe('telegramCard: «Запас всех реактивов»', () => {
+  const reserve = (quantity: number): NotifiableOrder => ({
+    ...order,
+    items: [
+      {
+        productSnapshot: { name: 'Запас всех реактивов', sku: ALL_REAGENTS_SKU, priceRub: 7599 },
+        quantity,
+        unitPriceRub: 7599,
+      },
+    ],
+  })
+
+  it('под строкой товара — реактивы каталога по 2 шт', () => {
+    const card = telegramCard(reserve(1), ['Сульфат алюминия 5%, 35 мл', 'Хлорид бария 3%, 35 мл'])
+    expect(card).toContain(
+      'Запас всех реактивов · RRR · 1 × 7 599 ₽\n— Сульфат алюминия 5%, 35 мл — 2 шт\n— Хлорид бария 3%, 35 мл — 2 шт',
+    )
+  })
+
+  it('количество умножается на число комплектов', () => {
+    expect(telegramCard(reserve(3), ['Хлорид бария 3%, 35 мл'])).toContain(
+      '— Хлорид бария 3%, 35 мл — 6 шт',
+    )
+  })
+
+  it('без списка реактивов карточка прежняя', () => {
+    expect(telegramCard(reserve(1))).not.toContain('— ')
+  })
+
+  it('другие товары состава не получают', () => {
+    expect(telegramCard(order, ['Хлорид бария 3%, 35 мл'])).not.toContain('Хлорид бария')
+  })
+
+  it('длинный список не выводит карточку за лимит Telegram', () => {
+    const many = Array.from({ length: 400 }, (_, i) => `Реактив номер ${i} с длинным названием`)
+    const card = telegramCard(reserve(1), many)
+    expect(card.length).toBeLessThanOrEqual(TELEGRAM_TEXT_LIMIT)
+    expect(card).toMatch(/…и ещё \d+ реактивов/)
   })
 })

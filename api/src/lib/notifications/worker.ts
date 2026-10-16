@@ -1,10 +1,11 @@
 import type { NotificationChannel } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
+import { Product } from '../../entities/Product.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { GoogleSheetsClient, SheetsConfigError } from '../google/sheets.js'
 import { TelegramBot, TelegramConfigError } from '../telegram/bot.js'
-import { managerAlertText, sheetRow, telegramCard } from './format.js'
+import { ALL_REAGENTS_SKU, managerAlertText, sheetRow, telegramCard } from './format.js'
 import { CHANNELS, TELEGRAM_EVENT, isManagerAlert } from './outbox.js'
 import { RateLimitError } from './rateLimit.js'
 
@@ -71,6 +72,25 @@ function isConfigError(err: unknown): boolean {
   return err instanceof SheetsConfigError || err instanceof TelegramConfigError
 }
 
+// Реактивы, из которых собирается «Запас всех реактивов»: опубликованные товары
+// категории «Реагенты». Комбо «Три кислоты» — те же кислоты, второй раз не считаем.
+const REAGENTS_CATEGORY_SLUG = 'reagents'
+const REAGENT_COMBO_SLUGS = ['tri-kisloti']
+
+async function loadReagentNames(): Promise<string[]> {
+  const products = await AppDataSource.getRepository(Product)
+    .createQueryBuilder('p')
+    .innerJoin('p.categories', 'c')
+    .where('c.slug = :category', { category: REAGENTS_CATEGORY_SLUG })
+    .andWhere('p.isPublished = true')
+    .andWhere('p.slug NOT IN (:...combos)', { combos: REAGENT_COMBO_SLUGS })
+    .orderBy('p.sortOrder', 'ASC')
+    .addOrderBy('p.name', 'ASC')
+    .select(['p.name'])
+    .getMany()
+  return products.map((p) => p.name)
+}
+
 // Только внешний вызов — запись в БД делает вызывающий код одной транзакцией
 // с отметкой доставки (см. processRow).
 async function deliver(
@@ -96,7 +116,9 @@ async function deliver(
   // Карточку этого заказа прошлая версия уже отправила при создании — второй
   // раз в чат не пишем, запись просто закрываем.
   if (order.telegramMessageId !== null) return {}
-  const telegramMessageId = await bot.sendMessage(telegramCard(order))
+  const needsReagents = order.items.some((i) => i.productSnapshot.sku === ALL_REAGENTS_SKU)
+  const reagentNames = needsReagents ? await loadReagentNames() : []
+  const telegramMessageId = await bot.sendMessage(telegramCard(order, reagentNames))
   return { telegramMessageId }
 }
 

@@ -4,6 +4,8 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrderItem } from '../../entities/OrderItem.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
+import { Product } from '../../entities/Product.js'
+import { ProductCategory } from '../../entities/ProductCategory.js'
 import { SheetsConfigError } from '../google/sheets.js'
 import { enqueueOrderEvent } from './outbox.js'
 import { RateLimitError } from './rateLimit.js'
@@ -143,6 +145,44 @@ describe('processDueNotifications', () => {
     expect(saved.telegramMessageId).toBe(501)
     expect((await row(order.id, 'telegram', 'status:paid')).sentAt).not.toBeNull()
     expect((await row(order.id, 'sheets', 'status:paid')).attempts).toBe(1)
+  })
+
+  it('«Запас всех реактивов»: в карточке — опубликованные реактивы категории, комбо не считаем', async () => {
+    const cats = AppDataSource.getRepository(ProductCategory)
+    const prods = AppDataSource.getRepository(Product)
+    const category =
+      (await cats.findOneBy({ slug: 'reagents' })) ??
+      (await cats.save(cats.create({ slug: 'reagents', name: 'Реагенты' })))
+    const make = (slug: string, name: string, isPublished = true) =>
+      prods.save(prods.create({ slug, name, priceRub: 99, isPublished, categories: [category] }))
+    const created = [
+      await make('t-reagent-b', 'Тест Б 5%, 35 мл'),
+      await make('t-reagent-a', 'Тест А 5%, 35 мл'),
+      await make('t-reagent-hidden', 'Тест скрытый', false),
+    ]
+    const combo = await prods.findOneBy({ slug: 'tri-kisloti' })
+    try {
+      const order = await seedOrder({ status: 'paid' })
+      await AppDataSource.getRepository(OrderItem).update(
+        { orderId: order.id },
+        {
+          productSnapshot: { name: 'Запас всех реактивов', sku: 'RRR', priceRub: 7599 },
+          quantity: 2,
+        },
+      )
+      await enqueue(order.id, 'status:paid', minutesAgo(1))
+      const channels = fakeChannels()
+
+      await processDueNotifications(channels, { now: NOW })
+
+      const [card] = channels.telegram.sendMessage.mock.calls[0]
+      expect(card).toContain('— Тест А 5%, 35 мл — 4 шт')
+      expect(card).toContain('— Тест Б 5%, 35 мл — 4 шт')
+      expect(card).not.toContain('Тест скрытый')
+      if (!combo) expect(card).not.toContain('Три кислоты')
+    } finally {
+      await prods.remove(created)
+    }
   })
 
   it('сигнал менеджеру по заказу из Яндекса — отдельное сообщение в чат, без таблицы', async () => {
