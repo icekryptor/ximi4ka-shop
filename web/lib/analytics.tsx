@@ -12,11 +12,16 @@ import { MetrikaCounterId } from '@/components/MetrikaCounterId'
 // gtag('event','purchase',…) и т.п. — покупка задвоится. Если появится GTM —
 // перед каждым ecommerce-пакетом делать dataLayer.push({ ecommerce: null }),
 // чтобы данные прошлого события не склеились со следующим.
+// Счётчики грузятся `lazyOnload` (после события load): на медленном 4G
+// tag.js Метрики (69 КБ) и код mail.ru (47 КБ) стартовали сразу после
+// гидратации и отбирали канал у главной картинки (PSI mobile: LCP 8,9 с).
+// Ранние события не теряются: reachGoal (lib/metrika.ts) складывает вызовы в
+// очередь ym, а стаб ниже её подхватывает.
 export function MetrikaScript({ counterId }: { counterId: string }) {
   return (
     <>
       <MetrikaCounterId counterId={counterId} />
-      <Script id="metrika" strategy="afterInteractive">{`
+      <Script id="metrika" strategy="lazyOnload">{`
         (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
         m[i].l=1*new Date();
         for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
@@ -38,7 +43,8 @@ export function MetrikaScript({ counterId }: { counterId: string }) {
   )
 }
 
-// GA4 (gtag.js). Loads `afterInteractive` so first paint is not blocked. The
+// GA4 (gtag.js). Loads `lazyOnload`, like the other counters, so it does not
+// compete with the hero image and the main bundle. The
 // measurement ID is injected via JSON.stringify for the same escaping reason
 // as above.
 export function Ga4Script({ measurementId }: { measurementId: string }) {
@@ -46,9 +52,9 @@ export function Ga4Script({ measurementId }: { measurementId: string }) {
     <>
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(measurementId)}`}
-        strategy="afterInteractive"
+        strategy="lazyOnload"
       />
-      <Script id="ga4" strategy="afterInteractive">{`
+      <Script id="ga4" strategy="lazyOnload">{`
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
@@ -66,7 +72,7 @@ export const VK_PIXEL_ID = '3799738'
 export function VkPixelScript({ pixelId = VK_PIXEL_ID }: { pixelId?: string }) {
   return (
     <>
-      <Script id="vk-pixel" strategy="afterInteractive">{`
+      <Script id="vk-pixel" strategy="lazyOnload">{`
         var _tmr = window._tmr || (window._tmr = []);
         _tmr.push({id: ${JSON.stringify(pixelId)}, type: "pageView", start: (new Date()).getTime()});
         (function (d, w, id) {

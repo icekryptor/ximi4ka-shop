@@ -3,8 +3,10 @@ import { render } from '@testing-library/react'
 
 // next/script в jsdom не исполняет код — подменяем на <script> с тем же телом.
 vi.mock('next/script', () => ({
-  default: ({ id, children }: { id?: string; children?: string }) => (
-    <script data-testid={id}>{children}</script>
+  default: ({ id, children, strategy }: { id?: string; children?: string; strategy?: string }) => (
+    <script data-testid={id} data-strategy={strategy}>
+      {children}
+    </script>
   ),
 }))
 
@@ -17,6 +19,11 @@ afterEach(() => {
 })
 
 describe('MetrikaScript', () => {
+  it('грузится после load, чтобы не мешать главной картинке', () => {
+    const { getByTestId } = render(<MetrikaScript counterId="12345" />)
+    expect(getByTestId('metrika')).toHaveAttribute('data-strategy', 'lazyOnload')
+  })
+
   it('инициализирует счётчик с ecommerce в dataLayer и без вебвизора', () => {
     const { getByTestId } = render(<MetrikaScript counterId="12345" />)
     const code = getByTestId('metrika').textContent ?? ''
@@ -38,6 +45,11 @@ describe('MetrikaScript', () => {
 })
 
 describe('VkPixelScript', () => {
+  it('грузится после load, чтобы не мешать главной картинке', () => {
+    const { getByTestId } = render(<VkPixelScript />)
+    expect(getByTestId('vk-pixel')).toHaveAttribute('data-strategy', 'lazyOnload')
+  })
+
   it('ставит пиксель VK 3799738 и грузит code.js с top-fwz1.mail.ru', () => {
     const { getByTestId } = render(<VkPixelScript />)
     const code = getByTestId('vk-pixel').textContent ?? ''
