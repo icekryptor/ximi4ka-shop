@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { CdekTerms } from '@/components/marketing/CdekTerms'
+import { DeliveryCities } from '@/components/marketing/DeliveryCities'
 import { DeliveryZones } from '@/components/marketing/DeliveryZones'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { LabSection } from '@/components/ui/LabSection'
@@ -84,7 +85,12 @@ export default async function OrderProcessPage({ params }: Props) {
                 ))}
               </div>
 
-              {step.index === 1 && <DeliveryZones />}
+              {step.index === 1 && (
+                <>
+                  <DeliveryZones />
+                  <DeliveryCities />
+                </>
+              )}
               {step.index === 4 && <CdekTerms />}
 
               {step.screenshots.length > 0 && (
