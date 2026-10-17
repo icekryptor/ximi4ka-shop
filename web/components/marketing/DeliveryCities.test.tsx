@@ -19,6 +19,16 @@ describe('<DeliveryCities>', () => {
     expect(items[3]).toHaveTextContent('Бишкек')
   })
 
+  it('заголовок называет страны и склоняется правильно', () => {
+    render(<DeliveryCities />)
+    expect(
+      screen.getByRole('heading', {
+        level: 3,
+        name: 'Города с пунктами выдачи СДЭК в Беларуси, Казахстане, Армении и Киргизии',
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('показывает каждый город из данных', () => {
     const { container } = render(<DeliveryCities />)
     for (const cities of Object.values(CIS_CITIES)) {

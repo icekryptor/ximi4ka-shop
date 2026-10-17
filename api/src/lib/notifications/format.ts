@@ -1,5 +1,5 @@
 import type { DeliveryAddress, OrderEventKey, OrderStatus } from '@ximi4ka-shop/shared'
-import { CIS_COUNTRY_NAMES } from '@ximi4ka-shop/shared/types/cis'
+import type { CisCountry } from '@ximi4ka-shop/shared/types/cis'
 
 // Что показываем людям в таблице и в чате. Чистые функции без сети — вся
 // логика вида уведомлений тестируется здесь.
@@ -142,10 +142,18 @@ function isPickupPoint(order: NotifiableOrder): boolean {
   return order.deliveryMethod === 'cdek_pvz'
 }
 
+// Страны в винительном падеже для фразы «Доставка в …» (CIS_COUNTRY_NAMES — именительный).
+const CIS_COUNTRY_ACCUSATIVE: Record<CisCountry, string> = {
+  BY: 'Беларусь',
+  KZ: 'Казахстан',
+  AM: 'Армению',
+  KG: 'Киргизию',
+}
+
 // Доставка в страну ЕАЭС: адрес ПВЗ покупатель написал сам, отправку оформляет оператор.
 function cisLabel(order: NotifiableOrder): string {
   const country = order.deliveryAddress.country
-  const name = country ? CIS_COUNTRY_NAMES[country] : 'другую страну'
+  const name = country ? CIS_COUNTRY_ACCUSATIVE[country] : 'другую страну'
   return `Доставка в ${name} (СДЭК, адрес вручную)`
 }
 

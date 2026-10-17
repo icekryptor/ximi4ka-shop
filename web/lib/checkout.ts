@@ -19,14 +19,18 @@ export function phoneDigits(value: string): string {
   return `7${subscriber.slice(0, 10)}`
 }
 
+const MAX_CIS_EMAIL_LENGTH = 64
+
 // Телефон покупателя из страны ЕАЭС: код страны любой (+375, +996, +374, +7), без маски.
 export function internationalPhoneDigits(value: string): string {
   return value.replace(/\D/g, '')
 }
 
 export function isInternationalPhone(value: string): boolean {
-  const length = internationalPhoneDigits(value).length
-  return length >= 8 && length <= 15
+  const digits = internationalPhoneDigits(value)
+  // Ведущая 8 — внутренний префикс КЗ/BY (8 701…): такой номер ушёл бы как +8…
+  if (digits.startsWith('8')) return false
+  return digits.length >= 8 && digits.length <= 15
 }
 
 /**
@@ -116,6 +120,9 @@ function validateContacts(
   if (international && email === '') {
     // Чек Т-Кассы принимает только email или номер +7…
     errors.email = 'Укажите email — на него придёт чек'
+  } else if (international && email.length > MAX_CIS_EMAIL_LENGTH) {
+    // Чек Т-Кассы берёт email не длиннее 64 символов (api/lib/payments/receipt.ts).
+    errors.email = 'Email не длиннее 64 символов'
   } else if (email !== '' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.email = 'Проверьте email — похоже, в нём опечатка'
   }

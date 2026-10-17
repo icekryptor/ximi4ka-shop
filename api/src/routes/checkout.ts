@@ -10,6 +10,7 @@ import { getCdekClient } from '../lib/cdek/index.js'
 import { isKnownDeliveryPoint } from '../lib/cdek/locations.js'
 import { enqueueOrderEvent } from '../lib/notifications/outbox.js'
 import { getPaymentProvider } from '../lib/payments/index.js'
+import { MAX_EMAIL_LENGTH } from '../lib/payments/receipt.js'
 import { loadGift } from '../lib/gift.js'
 import { loadCart } from '../lib/shipping/cart.js'
 import { packCart, type PackLine } from '../lib/shipping/pack.js'
@@ -102,8 +103,14 @@ checkoutRouter.post('/', async (req, res, next) => {
     // Страны ЕАЭС: чек Т-Кассы принимает только email или номер +7…, поэтому без
     // email заказ не оплатить; город — только из списка городов с ПВЗ СДЭК.
     if (parsed.delivery.method === 'cdek_manual_cis') {
-      if (!parsed.customer.email) {
+      const email = parsed.customer.email
+      if (!email) {
         throw badRequest('email_required', 'Укажите email — на него придёт чек')
+      }
+      // Чек берёт email только до 64 символов (receipt.ts), длиннее — fallback на +7,
+      // которого у покупателя из ЕАЭС нет.
+      if (email.length > MAX_EMAIL_LENGTH) {
+        throw badRequest('email_required', 'Укажите email до 64 символов — на него придёт чек')
       }
       if (!isCisCity(parsed.delivery.country, parsed.delivery.city)) {
         throw badRequest(
@@ -270,7 +277,10 @@ checkoutRouter.post('/', async (req, res, next) => {
           const c = session.customer
           const fill: Partial<Customer> = {}
           if (!c.name) fill.name = parsed.customer.name
-          if (!c.phone) fill.phone = parsed.customer.phone
+          // Профильный телефон — только российский +7: ProfileCard прогоняет его через
+          // formatPhoneInput, и номер покупателя из ЕАЭС (+375…) превратился бы в мусор.
+          if (!c.phone && /^\+7\d{10}$/.test(parsed.customer.phone))
+            fill.phone = parsed.customer.phone
           if (Object.keys(fill).length > 0)
             await em.getRepository(Customer).update({ id: c.id }, fill)
         }

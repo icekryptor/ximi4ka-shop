@@ -19,6 +19,14 @@ describe('cisShippingRub', () => {
     expect(cisShippingRub('AM', 5000)).toBe(0)
   })
 
+  // Текст страницы /order-process описывает Казахстан и Киргизию одной строкой, а порог
+  // бесплатной доставки Армении — тем же, что у Казахстана: правило должно совпадать.
+  it('Казахстан и Киргизия имеют одинаковое правило, порог Армении как у Казахстана', () => {
+    expect(CIS_DELIVERY_RULES.KG.freeFromRub).toBe(CIS_DELIVERY_RULES.KZ.freeFromRub)
+    expect(CIS_DELIVERY_RULES.KG.priceRub).toBe(CIS_DELIVERY_RULES.KZ.priceRub)
+    expect(CIS_DELIVERY_RULES.AM.freeFromRub).toBe(CIS_DELIVERY_RULES.KZ.freeFromRub)
+  })
+
   it('пороги и цены заданы для каждой страны', () => {
     for (const c of CIS_COUNTRIES) {
       expect(CIS_DELIVERY_RULES[c].priceRub).toBeGreaterThan(0)

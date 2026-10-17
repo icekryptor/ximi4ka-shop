@@ -11,7 +11,7 @@ export function DeliveryCities() {
   return (
     <div className="flex flex-col gap-4">
       <h3 className="m-0 font-lj-display text-xl font-[700] tracking-[-0.02em]">
-        Города с пунктами выдачи СДЭК
+        Города с пунктами выдачи СДЭК в Беларуси, Казахстане, Армении и Киргизии
       </h3>
       <ul aria-label="Города с пунктами выдачи СДЭК" className="m-0 flex list-none flex-col p-0">
         {CIS_COUNTRIES.map((code) => (

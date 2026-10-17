@@ -384,6 +384,29 @@ describe('POST /api/checkout', () => {
       expect(await AppDataSource.getRepository(Order).count()).toBe(0)
     })
 
+    it('400 email_required: email длиннее 64 символов — чек Т-Кассы его не примет', async () => {
+      noCdek()
+      const p = await seedProduct()
+      const body = cisBody([{ productId: p.id, quantity: 1 }])
+      body.customer.email = `${'a'.repeat(65 - '@example.com'.length)}@example.com`
+      expect(body.customer.email.length).toBe(65)
+      const res = await request(app).post('/api/checkout').send(body)
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('email_required')
+      expect(res.body.error.message).toBe('Укажите email до 64 символов — на него придёт чек')
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
+
+    it('email ровно 64 символа проходит', async () => {
+      noCdek()
+      const p = await seedProduct()
+      const body = cisBody([{ productId: p.id, quantity: 1 }])
+      body.customer.email = `${'a'.repeat(64 - '@example.com'.length)}@example.com`
+      expect(body.customer.email.length).toBe(64)
+      const res = await request(app).post('/api/checkout').send(body)
+      expect(res.status).toBe(201)
+    })
+
     it('400 delivery_city_unavailable: города нет в списке страны', async () => {
       noCdek()
       const res = await placeCis(2000, { city: 'Атлантида' })
@@ -1014,6 +1037,22 @@ describe('checkout и личный кабинет', () => {
     })
     expect(order.customerId).toBeNull()
     expect(await AppDataSource.getRepository(Customer).count()).toBe(0)
+  })
+
+  it('с сессией: чужой не +7 телефон из заказа в страну ЕАЭС в профиль не попадает', async () => {
+    const app = createApp()
+    const auth = await loginAsCustomer(app, 'buyer@test.local')
+    const product = await seedProduct()
+    const res = await request(app)
+      .post('/api/checkout')
+      .set('Cookie', auth.cookie)
+      .send(cisBody([{ productId: product.id, quantity: 1 }]))
+    expect(res.status).toBe(201)
+    const c = await AppDataSource.getRepository(Customer).findOneByOrFail({
+      email: 'buyer@test.local',
+    })
+    expect(c.name).toBe('Алесь Новик')
+    expect(c.phone).toBeNull()
   })
 
   it('с сессией профиль с уже заполненным именем не перетирается', async () => {

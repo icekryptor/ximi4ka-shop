@@ -211,6 +211,12 @@ describe('международный телефон', () => {
     expect(isInternationalPhone('1234567')).toBe(false)
     expect(isInternationalPhone('1234567890123456')).toBe(false)
   })
+
+  it('ведущая 8 (внутренний префикс КЗ/BY) отвергается, +7 принимается', () => {
+    expect(isInternationalPhone('8 701 123 45 67')).toBe(false)
+    expect(isInternationalPhone('8 029 123 45 67')).toBe(false)
+    expect(isInternationalPhone('+7 701 123 45 67')).toBe(true)
+  })
 })
 
 describe('validateCisCheckoutForm', () => {
@@ -222,6 +228,16 @@ describe('validateCisCheckoutForm', () => {
     expect(validateCisCheckoutForm({ ...cisFields, email: '' }, cisOk).email).toBe(
       'Укажите email — на него придёт чек',
     )
+  })
+
+  it('email длиннее 64 символов отвергается (чек Т-Кассы его не примет), 64 — проходит', () => {
+    const long = `${'a'.repeat(65 - '@example.com'.length)}@example.com`
+    expect(long).toHaveLength(65)
+    expect(validateCisCheckoutForm({ ...cisFields, email: long }, cisOk).email).toBe(
+      'Email не длиннее 64 символов',
+    )
+    const ok = `${'a'.repeat(64 - '@example.com'.length)}@example.com`
+    expect(validateCisCheckoutForm({ ...cisFields, email: ok }, cisOk).email).toBeUndefined()
   })
 
   it('телефон +375 не требует 11 цифр и маски +7', () => {
