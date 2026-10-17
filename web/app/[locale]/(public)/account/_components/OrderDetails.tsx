@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import type { AccountOrderSummary, DeliveryMethod } from '@ximi4ka-shop/shared'
+import type { AccountOrderSummary, OrderDeliveryMethod } from '@ximi4ka-shop/shared'
 import { formatRub } from '@/lib/stockLabel'
 
-const DELIVERY_LABEL: Record<DeliveryMethod, string> = {
+const DELIVERY_LABEL: Record<OrderDeliveryMethod, string> = {
   cdek_pvz: 'ПВЗ СДЭК',
   cdek_courier: 'Курьер СДЭК',
+  cdek_manual_cis: 'Доставка СДЭК в другую страну',
 }
 
 const LINK_BUTTON_CLASS =

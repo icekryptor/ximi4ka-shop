@@ -49,8 +49,10 @@ describe('buildDeliveryZones', () => {
   it('пишет пороги: РФ 3000/5000, Беларусь 3000, ЕАЭС 5000, СНГ отдельно', () => {
     const [ru, by, eaeu, cis] = buildDeliveryZones()
     expect(ru.condition).toMatch(/от 3\D000\D*₽ до пункта выдачи, курьером — от 5\D000\D*₽/u)
-    expect(by.condition).toMatch(/^Бесплатно от 3\D000\D*₽$/u)
-    expect(eaeu.condition).toMatch(/^Бесплатно от 5\D000\D*₽$/u)
+    expect(by.condition).toMatch(/^Бесплатно от 3\D000\D*₽, иначе 700\D*₽$/u)
+    expect(eaeu.condition).toMatch(
+      /^Бесплатно от 5\D000\D*₽, иначе 900\D*₽ \(Казахстан, Киргизия\), 1\D200\D*₽ \(Армения\)$/u,
+    )
     expect(cis.condition).toBe('Доставка оплачивается отдельно')
   })
 
@@ -73,6 +75,10 @@ describe('CDEK_TERMS', () => {
 })
 
 describe('ORDER_STEPS', () => {
+  it('шаг 1 объясняет выбор региона и города в чекауте', () => {
+    expect(ORDER_STEPS[0]!.details.join(' ')).toMatch(/выберите страну и город из списка/u)
+  })
+
   it('содержит четыре шага с номерами 1–4 и непустыми текстами', () => {
     expect(ORDER_STEPS.map((s) => s.index)).toEqual([1, 2, 3, 4])
     for (const s of ORDER_STEPS) {

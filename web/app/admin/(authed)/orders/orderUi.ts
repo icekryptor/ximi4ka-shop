@@ -33,6 +33,7 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
 export const DELIVERY_METHOD_LABELS: Record<string, string> = {
   cdek_pvz: 'СДЭК — пункт выдачи',
   cdek_courier: 'СДЭК — курьер',
+  cdek_manual_cis: 'СДЭК — другая страна, адрес вручную',
 }
 
 export const HISTORY_ACTOR_LABELS: Record<string, string> = {
