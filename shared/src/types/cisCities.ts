@@ -1,11 +1,10 @@
+import type { CisCountry } from './cis.js'
+
 // Города, где у СДЭК есть пункты выдачи или постаматы. Снимок боевого API СДЭК
 // (GET /v2/deliverypoints?country_code=…) на 17.10.2026; порядок — по числу точек,
 // затем по алфавиту. Названия очищены от района и области. Обновлять вручную.
-
-export type CdekCityCountry = 'by' | 'kz' | 'am' | 'kg'
-
-export const CDEK_CITIES: Record<CdekCityCountry, string[]> = {
-  by: [
+export const CIS_CITIES: Record<CisCountry, string[]> = {
+  BY: [
     'Минск',
     'Гомель',
     'Гродно',
@@ -38,7 +37,7 @@ export const CDEK_CITIES: Record<CdekCityCountry, string[]> = {
     'Солигорск',
     'Фаниполь',
   ],
-  kz: [
+  KZ: [
     'Алматы',
     'Астана',
     'Караганда',
@@ -86,7 +85,7 @@ export const CDEK_CITIES: Record<CdekCityCountry, string[]> = {
     'Щучинск',
     'Экибастуз',
   ],
-  kg: [
+  KG: [
     'Бишкек',
     'Балыкчи',
     'Джалал-Абад',
@@ -100,5 +99,5 @@ export const CDEK_CITIES: Record<CdekCityCountry, string[]> = {
     'Токмок',
     'Чолпон-Ата',
   ],
-  am: ['Ереван', 'Абовян', 'Вагаршапат (Эчмиадзин)', 'Гюмри', 'Дилижан'],
+  AM: ['Ереван', 'Абовян', 'Вагаршапат (Эчмиадзин)', 'Гюмри', 'Дилижан'],
 }

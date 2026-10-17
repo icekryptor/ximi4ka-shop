@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { DeliveryCities } from './DeliveryCities'
-import { CDEK_CITIES } from '@/lib/cdekCities'
+import { CIS_CITIES } from '@ximi4ka-shop/shared/types/cis'
 
 describe('<DeliveryCities>', () => {
   it('выводит города по четырём странам ЕАЭС', () => {
@@ -21,13 +21,13 @@ describe('<DeliveryCities>', () => {
 
   it('показывает каждый город из данных', () => {
     const { container } = render(<DeliveryCities />)
-    for (const cities of Object.values(CDEK_CITIES)) {
+    for (const cities of Object.values(CIS_CITIES)) {
       for (const city of cities) expect(container).toHaveTextContent(city)
     }
   })
 
   it('в данных нет пустых и повторяющихся названий', () => {
-    for (const cities of Object.values(CDEK_CITIES)) {
+    for (const cities of Object.values(CIS_CITIES)) {
       expect(cities.every((c) => c.trim() === c && c.length > 0)).toBe(true)
       expect(new Set(cities).size).toBe(cities.length)
     }
