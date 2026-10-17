@@ -79,6 +79,12 @@ describe('ORDER_STEPS', () => {
     expect(ORDER_STEPS[0]!.details.join(' ')).toMatch(/выберите страну и город из списка/u)
   })
 
+  it('шаг 1 предупреждает, что для этих стран оплата пока только картами «Мир»', () => {
+    expect(ORDER_STEPS[0]!.details.join(' ')).toMatch(
+      /оплата для этих стран доступна только картами «Мир»/u,
+    )
+  })
+
   it('содержит четыре шага с номерами 1–4 и непустыми текстами', () => {
     expect(ORDER_STEPS.map((s) => s.index)).toEqual([1, 2, 3, 4])
     for (const s of ORDER_STEPS) {
