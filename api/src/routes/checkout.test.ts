@@ -57,6 +57,22 @@ function checkoutBody(items: Array<{ productId: string; quantity: number }>) {
   }
 }
 
+function cisBody(
+  items: Array<{ productId: string; quantity: number }>,
+  delivery: Record<string, unknown> = {},
+) {
+  const body = checkoutBody(items)
+  body.customer = { name: 'Алесь Новик', phone: '+375291234567', email: 'ales@example.com' }
+  body.delivery = {
+    method: 'cdek_manual_cis',
+    country: 'BY',
+    city: 'Минск',
+    address: 'ул. Ленина, 5, ПВЗ СДЭК',
+    ...delivery,
+  }
+  return body
+}
+
 // Список пунктов города 44 так, как его отдаёт СДЭК (урезан). Калькулятор
 // «не отвечает» — цена фиксированная, как в соседних тестах.
 function stubCityPoints(codes: string[]) {
@@ -289,6 +305,108 @@ describe('POST /api/checkout', () => {
     })
     expect(order.shippingRub).toBe(500)
     expect(order.totalRub).toBe(4500)
+  })
+
+  describe('доставка в страны ЕАЭС: адрес ПВЗ вручную', () => {
+    function noCdek() {
+      const get = vi.fn()
+      setCdekClientForTests({ get, post: vi.fn(), raw: vi.fn() })
+      return get
+    }
+
+    async function placeCis(price: number, delivery: Record<string, unknown> = {}) {
+      const p = await seedProduct({ priceRub: price })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send(cisBody([{ productId: p.id, quantity: 1 }], delivery))
+      return res
+    }
+
+    it('Беларусь: 700 ₽ ниже 3000 ₽, адрес с городом, без калькулятора СДЭК', async () => {
+      const get = noCdek()
+      const res = await placeCis(2000)
+      expect(res.status).toBe(201)
+      const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: res.body.data.orderNumber,
+      })
+      expect(order.deliveryMethod).toBe('cdek_manual_cis')
+      expect(order.shippingRub).toBe(700)
+      expect(order.totalRub).toBe(2700)
+      expect(order.deliveryAddress).toMatchObject({
+        address: 'Минск, ул. Ленина, 5, ПВЗ СДЭК',
+        country: 'BY',
+        city: 'Минск',
+        quote: null,
+      })
+      expect(get).not.toHaveBeenCalled()
+    })
+
+    it('Беларусь: бесплатно от 3000 ₽', async () => {
+      noCdek()
+      const res = await placeCis(3000)
+      expect(res.status).toBe(201)
+      const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: res.body.data.orderNumber,
+      })
+      expect(order.shippingRub).toBe(0)
+      expect(order.totalRub).toBe(3000)
+    })
+
+    it.each([
+      ['KZ', 'Алматы', 900],
+      ['KG', 'Бишкек', 900],
+      ['AM', 'Ереван', 1200],
+    ])('%s: %i ₽ ниже 5000 ₽ и бесплатно от 5000 ₽', async (country, city, price) => {
+      noCdek()
+      const below = await placeCis(4000, { country, city })
+      expect(below.status).toBe(201)
+      const belowOrder = await AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: below.body.data.orderNumber,
+      })
+      expect(belowOrder.shippingRub).toBe(price)
+
+      const free = await placeCis(5000, { country, city })
+      expect(free.status).toBe(201)
+      const freeOrder = await AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: free.body.data.orderNumber,
+      })
+      expect(freeOrder.shippingRub).toBe(0)
+    })
+
+    it('400 email_required: без email чек не выписать — заказ не создаётся', async () => {
+      noCdek()
+      const p = await seedProduct()
+      const body = cisBody([{ productId: p.id, quantity: 1 }])
+      body.customer = { name: 'Алесь', phone: '+375291234567' } as typeof body.customer
+      const res = await request(app).post('/api/checkout').send(body)
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('email_required')
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
+
+    it('400 delivery_city_unavailable: города нет в списке страны', async () => {
+      noCdek()
+      const res = await placeCis(2000, { city: 'Атлантида' })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('delivery_city_unavailable')
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
+
+    it('400 delivery_city_unavailable: город другой страны', async () => {
+      noCdek()
+      const res = await placeCis(2000, { country: 'KZ', city: 'Минск' })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('delivery_city_unavailable')
+    })
+
+    it('400: страна вне списка и пустой адрес не проходят схему', async () => {
+      noCdek()
+      const ru = await placeCis(2000, { country: 'RU' })
+      expect(ru.status).toBe(400)
+      const noAddress = await placeCis(2000, { address: '   ' })
+      expect(noAddress.status).toBe(400)
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
   })
 
   it('берёт цену доставки у калькулятора СДЭК ниже порога', async () => {

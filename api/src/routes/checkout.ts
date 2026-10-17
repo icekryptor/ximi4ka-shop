@@ -1,5 +1,6 @@
 import { Router } from 'express'
-import type { CheckoutResponse, OrderAttribution } from '@ximi4ka-shop/shared'
+import type { CheckoutResponse, DeliveryQuote, OrderAttribution } from '@ximi4ka-shop/shared'
+import { cisShippingRub, isCisCity } from '@ximi4ka-shop/shared/types/cis'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
@@ -98,6 +99,20 @@ checkoutRouter.post('/', async (req, res, next) => {
       }
     }
 
+    // Страны ЕАЭС: чек Т-Кассы принимает только email или номер +7…, поэтому без
+    // email заказ не оплатить; город — только из списка городов с ПВЗ СДЭК.
+    if (parsed.delivery.method === 'cdek_manual_cis') {
+      if (!parsed.customer.email) {
+        throw badRequest('email_required', 'Укажите email — на него придёт чек')
+      }
+      if (!isCisCity(parsed.delivery.country, parsed.delivery.city)) {
+        throw badRequest(
+          'delivery_city_unavailable',
+          'Доставка в этот город недоступна — выберите город из списка',
+        )
+      }
+    }
+
     // Пункт сверяем со списком города из того же кеша, что видел покупатель
     // (спека §4.3). СДЭК не ответил — заказ принимаем: оформление важнее, а
     // закрытый пункт всплывёт ошибкой при создании заказа в СДЭК.
@@ -125,14 +140,31 @@ checkoutRouter.post('/', async (req, res, next) => {
     const packages = gift ? packCart(withGiftUnit(cart.packLines, gift)) : quotePackages
 
     // Цену доставки считает только сервер: сумма, которую показал виджет, —
-    // подсказка для интерфейса, клиенту не доверяем.
-    // Порог бесплатной доставки — по сумме, которую платят за товары.
-    const quote = await quoteDelivery(
-      { destination: delivery, subtotalRub: subtotalRub - discountRub, packages: quotePackages },
-      { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
-    )
-    const shippingRub = quote.customerPriceRub
+    // подсказка для интерфейса, клиенту не доверяем. Россия — по калькулятору
+    // СДЭК; страны ЕАЭС — по таблице shared (адрес ПВЗ вручную, калькулятор не нужен).
+    let quote: DeliveryQuote | null = null
+    let shippingRub: number
+    if (delivery.method === 'cdek_manual_cis') {
+      shippingRub = cisShippingRub(delivery.country, subtotalRub - discountRub)
+    } else {
+      // Порог бесплатной доставки — по сумме, которую платят за товары.
+      quote = await quoteDelivery(
+        { destination: delivery, subtotalRub: subtotalRub - discountRub, packages: quotePackages },
+        { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
+      )
+      shippingRub = quote.customerPriceRub
+    }
     const totalRub = subtotalRub - discountRub + shippingRub
+    // В заказ идёт расчёт СДЭК без лишних полей; у стран ЕАЭС расчёта нет (null).
+    const carrierQuote = quote
+      ? {
+          tariffCode: quote.tariffCode,
+          cdekPriceRub: quote.cdekPriceRub,
+          periodMin: quote.periodMin,
+          periodMax: quote.periodMax,
+          source: quote.source,
+        }
+      : null
 
     // Личный кабинет (спека кабинета §6): заказ идёт в аккаунт вошедшего
     // покупателя или владельца подтверждённого email из заказа. Аккаунтов
@@ -167,21 +199,27 @@ checkoutRouter.post('/', async (req, res, next) => {
             customerPhone: parsed.customer.phone,
             customerEmail: parsed.customer.email ?? '',
             customerTelegram: parsed.customer.telegram ?? null,
-            deliveryAddress: {
-              address: delivery.address,
-              comment: delivery.comment ?? null,
-              cityCode: delivery.cityCode ?? null,
-              deliveryPointCode: delivery.method === 'cdek_pvz' ? delivery.deliveryPointCode : null,
-              postalCode: delivery.method === 'cdek_courier' ? (delivery.postalCode ?? null) : null,
-              quote: {
-                tariffCode: quote.tariffCode,
-                cdekPriceRub: quote.cdekPriceRub,
-                periodMin: quote.periodMin,
-                periodMax: quote.periodMax,
-                source: quote.source,
-              },
-              packages,
-            },
+            deliveryAddress:
+              delivery.method === 'cdek_manual_cis'
+                ? {
+                    address: `${delivery.city}, ${delivery.address}`,
+                    comment: delivery.comment ?? null,
+                    country: delivery.country,
+                    city: delivery.city,
+                    quote: null,
+                    packages,
+                  }
+                : {
+                    address: delivery.address,
+                    comment: delivery.comment ?? null,
+                    cityCode: delivery.cityCode ?? null,
+                    deliveryPointCode:
+                      delivery.method === 'cdek_pvz' ? delivery.deliveryPointCode : null,
+                    postalCode:
+                      delivery.method === 'cdek_courier' ? (delivery.postalCode ?? null) : null,
+                    quote: carrierQuote,
+                    packages,
+                  },
             deliveryMethod: delivery.method,
             subtotalRub,
             discountRub,
