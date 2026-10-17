@@ -14,7 +14,9 @@ const kit: Omit<CartItem, 'quantity'> = {
 }
 
 function ecommerceEvents(): Array<Record<string, unknown>> {
-  return (w.dataLayer ?? []).map((e) => (e as { ecommerce: Record<string, unknown> }).ecommerce)
+  return (w.dataLayer ?? [])
+    .map((e) => (e as { ecommerce: Record<string, unknown> | null }).ecommerce)
+    .filter((e): e is Record<string, unknown> => e !== null) // без служебных сбросов
 }
 
 beforeEach(() => {
