@@ -6,6 +6,8 @@ vi.mock('@/lib/analytics', () => ({
   MetrikaScript: () => null,
   Ga4Script: () => null,
   VkPixelScript: () => <i data-vk-pixel />,
+  GtmScript: () => <i data-gtm-script />,
+  GtmNoscript: () => <i data-gtm-noscript />,
 }))
 vi.mock('@/lib/api', () => ({
   getPublicSettings: vi.fn(),
@@ -46,5 +48,12 @@ describe('RootLayout verification tags', () => {
   it('mounts the VK pixel even when settings are unavailable', async () => {
     vi.mocked(getPublicSettings).mockRejectedValue(new Error('api down'))
     expect(await renderHtml()).toContain('data-vk-pixel')
+  })
+
+  it('mounts GTM even when settings are unavailable, noscript right after <body>', async () => {
+    vi.mocked(getPublicSettings).mockRejectedValue(new Error('api down'))
+    const html = await renderHtml()
+    expect(html).toContain('data-gtm-script')
+    expect(html).toMatch(/<body[^>]*><i data-gtm-noscript/)
   })
 })

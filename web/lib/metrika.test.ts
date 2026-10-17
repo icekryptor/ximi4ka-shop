@@ -83,6 +83,11 @@ describe('reachGoal', () => {
   })
 })
 
+// Пакеты ecommerce без служебных { ecommerce: null } — сброса перед каждым событием.
+function packages(): unknown[] {
+  return (w.dataLayer ?? []).filter((e) => (e as { ecommerce: unknown }).ecommerce !== null)
+}
+
 describe('ecommerce packages (dataLayer)', () => {
   beforeEach(() => {
     w.dataLayer = []
@@ -92,12 +97,12 @@ describe('ecommerce packages (dataLayer)', () => {
   it('does not push anything without a counter id', () => {
     setMetrikaCounterId(null)
     ecommerceDetail(product)
-    expect(w.dataLayer).toEqual([])
+    expect(packages()).toEqual([])
   })
 
   it('detail: one product without quantity', () => {
     ecommerceDetail(product)
-    expect(w.dataLayer).toEqual([
+    expect(packages()).toEqual([
       {
         ecommerce: {
           currencyCode: 'RUB',
@@ -109,7 +114,7 @@ describe('ecommerce packages (dataLayer)', () => {
 
   it('add: products carry quantity', () => {
     ecommerceAdd(product, 3)
-    expect(w.dataLayer).toEqual([
+    expect(packages()).toEqual([
       {
         ecommerce: {
           currencyCode: 'RUB',
@@ -121,7 +126,7 @@ describe('ecommerce packages (dataLayer)', () => {
 
   it('remove: same product shape as add, with quantity', () => {
     ecommerceRemove(product, 2)
-    expect(w.dataLayer).toEqual([
+    expect(packages()).toEqual([
       {
         ecommerce: {
           currencyCode: 'RUB',
@@ -131,10 +136,17 @@ describe('ecommerce packages (dataLayer)', () => {
     ])
   })
 
+  it('resets ecommerce before every package so GTM does not merge events', () => {
+    ecommerceDetail(product)
+    ecommerceAdd(product, 1)
+    const layer = w.dataLayer as { ecommerce: unknown }[]
+    expect(layer.map((e) => e.ecommerce === null)).toEqual([true, false, true, false])
+  })
+
   it('creates window.dataLayer when it does not exist yet', () => {
     delete w.dataLayer
     ecommerceAdd(product, 1)
-    expect(w.dataLayer).toHaveLength(1)
+    expect(packages()).toHaveLength(1)
   })
 })
 
@@ -153,7 +165,7 @@ describe('reportPurchaseOnce', () => {
   it('sends ecommerce purchase and the purchase goal for a remembered order', () => {
     rememberPendingPurchase('XM-2026-00042', products)
     expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(true)
-    expect(w.dataLayer).toEqual([
+    expect(packages()).toEqual([
       {
         ecommerce: {
           currencyCode: 'RUB',
@@ -174,7 +186,7 @@ describe('reportPurchaseOnce', () => {
     rememberPendingPurchase('XM-2026-00042', products)
     expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(true)
     expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
-    expect(w.dataLayer).toHaveLength(1)
+    expect(packages()).toHaveLength(1)
     expect(w.ym).toHaveBeenCalledTimes(1)
   })
 
@@ -183,12 +195,12 @@ describe('reportPurchaseOnce', () => {
     reportPurchaseOnce('XM-2026-00042', 3200)
     rememberPendingPurchase('XM-2026-00042', products)
     expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
-    expect(w.dataLayer).toHaveLength(1)
+    expect(packages()).toHaveLength(1)
   })
 
   it('reports nothing for an order this browser did not place (no snapshot)', () => {
     expect(reportPurchaseOnce('XM-2026-00099', 1000)).toBe(false)
-    expect(w.dataLayer).toEqual([])
+    expect(packages()).toEqual([])
     expect(w.ym).not.toHaveBeenCalled()
   })
 
@@ -197,7 +209,7 @@ describe('reportPurchaseOnce', () => {
     rememberPendingPurchase('XM-2026-00002', products)
     expect(reportPurchaseOnce('XM-2026-00001', 100)).toBe(true)
     expect(reportPurchaseOnce('XM-2026-00002', 200)).toBe(true)
-    expect(w.dataLayer).toHaveLength(2)
+    expect(packages()).toHaveLength(2)
   })
 
   it('does not consume the snapshot while Metrika is disabled', () => {
@@ -220,7 +232,7 @@ describe('reportPurchaseOnce', () => {
       })
       expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
       spy.mockRestore()
-      expect(w.dataLayer).toEqual([])
+      expect(packages()).toEqual([])
       expect(w.ym).not.toHaveBeenCalled()
       expect(window.localStorage.getItem('ximi4ka-metrika-purchase:XM-2026-00042')).not.toBeNull()
     })
@@ -232,7 +244,7 @@ describe('reportPurchaseOnce', () => {
       })
       expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
       spy.mockRestore()
-      expect(w.dataLayer).toEqual([])
+      expect(packages()).toEqual([])
       expect(w.ym).not.toHaveBeenCalled()
       expect(window.localStorage.getItem('ximi4ka-metrika-purchase:XM-2026-00042')).not.toBeNull()
       expect(window.localStorage.getItem('ximi4ka-metrika-purchase-sent:XM-2026-00042')).toBeNull()
@@ -244,10 +256,10 @@ describe('reportPurchaseOnce', () => {
         throw new Error('denied')
       })
       expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(true)
-      expect(w.dataLayer).toHaveLength(1)
+      expect(packages()).toHaveLength(1)
       expect(w.ym).toHaveBeenCalledTimes(1)
       expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
-      expect(w.dataLayer).toHaveLength(1)
+      expect(packages()).toHaveLength(1)
     })
   })
 
@@ -257,7 +269,7 @@ describe('reportPurchaseOnce', () => {
     it.each([['{'], ['[]'], ['{"ts":1}'], ['null'], ['"str"']])('%s — не отправляется', (raw) => {
       window.localStorage.setItem(KEY, raw)
       expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
-      expect(w.dataLayer).toEqual([])
+      expect(packages()).toEqual([])
       expect(w.ym).not.toHaveBeenCalled()
     })
 
@@ -277,7 +289,7 @@ describe('reportPurchaseOnce', () => {
         }),
       )
       expect(reportPurchaseOnce('XM-2026-00042', 2000)).toBe(true)
-      expect(w.dataLayer).toEqual([
+      expect(packages()).toEqual([
         {
           ecommerce: {
             currencyCode: 'RUB',
@@ -296,7 +308,7 @@ describe('reportPurchaseOnce', () => {
         JSON.stringify({ ts: Date.now(), products: [{ id: 1 }, 'x'] }),
       )
       expect(reportPurchaseOnce('XM-2026-00042', 2000)).toBe(false)
-      expect(w.dataLayer).toEqual([])
+      expect(packages()).toEqual([])
     })
   })
 
@@ -344,7 +356,7 @@ describe('reportPurchaseOnce', () => {
         JSON.stringify({ ts: Date.now() - 3 * DAY, products }),
       )
       expect(reportPurchaseOnce('XM-2026-00042', 3200)).toBe(false)
-      expect(w.dataLayer).toEqual([])
+      expect(packages()).toEqual([])
     })
 
     it('снимок в старом формате (массив) считается просроченным и не отправляется', () => {

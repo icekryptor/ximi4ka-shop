@@ -318,6 +318,11 @@ describe('<OrderStatusView>', () => {
 describe('<OrderStatusView>: покупка для Метрики', () => {
   type W = Window & { ym?: unknown; dataLayer?: unknown[] }
   const w = window as W
+
+  // Пакеты ecommerce без служебных { ecommerce: null } — сброса перед каждым событием.
+  function packages(): unknown[] {
+    return (w.dataLayer ?? []).filter((e) => (e as { ecommerce: unknown }).ecommerce !== null)
+  }
   const products = [{ id: 'p1', name: 'Набор А', price: 1000, quantity: 3 }]
 
   beforeEach(() => {
@@ -338,7 +343,7 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     const first = render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
     await screen.findByTestId('order-status-label')
 
-    expect(w.dataLayer).toEqual([
+    expect(packages()).toEqual([
       {
         ecommerce: {
           currencyCode: 'RUB',
@@ -356,7 +361,7 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     rememberPendingPurchase('XM-2026-00042', products)
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
     await screen.findByTestId('order-status-label')
-    expect(w.dataLayer).toHaveLength(1)
+    expect(packages()).toHaveLength(1)
     expect(w.ym).toHaveBeenCalledTimes(1)
   })
 
@@ -364,7 +369,7 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     vi.stubGlobal('fetch', fetchReturning(statusPayload()))
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} />)
     await screen.findByTestId('order-status-label')
-    expect(w.dataLayer).toEqual([])
+    expect(packages()).toEqual([])
     expect(w.ym).not.toHaveBeenCalled()
   })
 
@@ -374,7 +379,7 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
       vi.stubGlobal('fetch', fetchReturning(statusPayload({ status })))
       render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
       await screen.findByTestId('order-status-label')
-      expect(w.dataLayer).toEqual([])
+      expect(packages()).toEqual([])
       expect(w.ym).not.toHaveBeenCalled()
       expect(window.localStorage.getItem('ximi4ka-metrika-purchase:XM-2026-00042')).toBeNull()
     },
@@ -384,7 +389,7 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     vi.stubGlobal('fetch', fetchReturning(statusPayload({ paymentProvider: 'tbank' })))
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
     await screen.findByTestId('order-status-label')
-    expect(w.dataLayer).toEqual([])
+    expect(packages()).toEqual([])
     expect(w.ym).not.toHaveBeenCalled()
   })
 
@@ -407,12 +412,12 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(0)
     })
-    expect(w.dataLayer).toEqual([])
+    expect(packages()).toEqual([])
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
-    expect(w.dataLayer).toHaveLength(1)
+    expect(packages()).toHaveLength(1)
     expect(w.ym).toHaveBeenCalledTimes(1)
     expect(w.ym).toHaveBeenCalledWith('777', 'reachGoal', 'purchase', {
       order_price: 3399,
@@ -422,7 +427,7 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     await act(async () => {
       await vi.advanceTimersByTimeAsync(20000)
     })
-    expect(w.dataLayer).toHaveLength(1)
+    expect(packages()).toHaveLength(1)
     expect(w.ym).toHaveBeenCalledTimes(1)
   })
 
@@ -439,14 +444,14 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     )
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
     await screen.findByTestId('order-status-label')
-    expect(w.dataLayer).toHaveLength(1)
+    expect(packages()).toHaveLength(1)
   })
 
   it('возврат из банка ?payment=failed: покупка не уходит, снимок остаётся для повторной оплаты', async () => {
     vi.stubGlobal('fetch', fetchReturning(statusPayload({ paymentProvider: 'tbank' })))
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} paymentFailed />)
     await screen.findByTestId('order-payment-failed')
-    expect(w.dataLayer).toEqual([])
+    expect(packages()).toEqual([])
     expect(w.ym).not.toHaveBeenCalled()
     expect(window.localStorage.getItem('ximi4ka-metrika-purchase:XM-2026-00042')).not.toBeNull()
   })
@@ -456,6 +461,6 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     vi.stubGlobal('fetch', fetchReturning(statusPayload()))
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
     await screen.findByTestId('order-status-label')
-    expect(w.dataLayer).toEqual([])
+    expect(packages()).toEqual([])
   })
 })

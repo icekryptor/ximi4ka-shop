@@ -5,6 +5,11 @@ import { ProductViewTracker } from './ProductViewTracker'
 
 type W = Window & { dataLayer?: unknown[] }
 const w = window as W
+
+// Пакеты ecommerce без служебных { ecommerce: null } — сброса перед каждым событием.
+function packages(): unknown[] {
+  return (w.dataLayer ?? []).filter((e) => (e as { ecommerce: unknown }).ecommerce !== null)
+}
 const product = { id: 'p1', name: 'Набор «Кристаллы»', priceRub: 1500 }
 
 beforeEach(() => {
@@ -19,7 +24,7 @@ describe('<ProductViewTracker>', () => {
   it('шлёт ecommerce detail при показе карточки', () => {
     setMetrikaCounterId('777')
     render(<ProductViewTracker product={product} />)
-    expect(w.dataLayer).toEqual([
+    expect(packages()).toEqual([
       {
         ecommerce: {
           currencyCode: 'RUB',
@@ -31,7 +36,7 @@ describe('<ProductViewTracker>', () => {
 
   it('без счётчика ничего не шлёт и ничего не рисует', () => {
     const { container } = render(<ProductViewTracker product={product} />)
-    expect(w.dataLayer).toEqual([])
+    expect(packages()).toEqual([])
     expect(container).toBeEmptyDOMElement()
   })
 })
