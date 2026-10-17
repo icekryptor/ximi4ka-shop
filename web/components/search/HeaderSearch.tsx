@@ -121,7 +121,7 @@ export function HeaderSearch() {
       <div
         role="combobox"
         aria-expanded={showPreview}
-        aria-owns={listboxId}
+        aria-owns={showPreview ? listboxId : undefined}
         aria-haspopup="listbox"
         className="relative"
       >
@@ -160,7 +160,7 @@ export function HeaderSearch() {
           placeholder="Поиск по каталогу…"
           aria-label="Поиск по каталогу"
           aria-autocomplete="list"
-          aria-controls={listboxId}
+          aria-controls={showPreview ? listboxId : undefined}
           aria-activedescendant={
             showPreview && activeIndex >= 0 ? optionId(activeIndex) : undefined
           }
