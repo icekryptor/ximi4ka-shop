@@ -186,7 +186,11 @@ describe('outbox', () => {
     const cancelled = await seedOrder()
     cancelled.status = 'cancelled'
     await saveOrderWithStatusEvent(cancelled, 'pending')
+    const cis = await seedOrder({ deliveryMethod: 'cdek_manual_cis' })
+    cis.status = 'paid'
+    await saveOrderWithStatusEvent(cis, 'pending')
     expect(await shipments(pickup.id)).toHaveLength(0)
     expect(await shipments(cancelled.id)).toHaveLength(0)
+    expect(await shipments(cis.id)).toHaveLength(0)
   })
 })

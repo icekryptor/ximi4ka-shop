@@ -36,6 +36,20 @@ const order = (extra: Partial<AccountOrderSummary> = {}): AccountOrderSummary =>
 })
 
 describe('OrderDetails', () => {
+  it('доставка в страну ЕАЭС: подпись способа и адрес', () => {
+    render(
+      <OrderDetails
+        order={order({
+          deliveryMethod: 'cdek_manual_cis',
+          deliveryAddress: 'Минск, ул. Ленина, 5',
+        })}
+      />,
+    )
+    expect(screen.getByText(/Доставка СДЭК в другую страну:/)).toBeInTheDocument()
+    expect(screen.getByText(/Минск, ул. Ленина, 5/)).toBeInTheDocument()
+    expect(screen.queryByText(/undefined/)).not.toBeInTheDocument()
+  })
+
   it('подарок: вместо «0 ₽» подпись «подарок»', () => {
     render(
       <OrderDetails

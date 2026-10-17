@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CIS_COUNTRIES } from '@ximi4ka-shop/shared/types/cis'
 import { normalizeTelegramHandle } from '../lib/telegramHandle.js'
 
 const comment = z.string().trim().max(1000).optional()
@@ -22,9 +23,21 @@ const CourierDeliverySchema = z.object({
   comment,
 })
 
+// Доставка в Беларусь, Казахстан, Армению, Киргизию: город — из списка городов
+// с ПВЗ СДЭК (проверяет маршрут), адрес пункта покупатель пишет сам. Расчёта СДЭК
+// и кода пункта здесь нет: отправку оформляет оператор.
+const CisDeliverySchema = z.object({
+  method: z.literal('cdek_manual_cis'),
+  country: z.enum(CIS_COUNTRIES),
+  city: z.string().trim().min(1).max(100),
+  address: z.string().trim().min(1).max(1000),
+  comment,
+})
+
 export const DeliverySchema = z.discriminatedUnion('method', [
   PvzDeliverySchema,
   CourierDeliverySchema,
+  CisDeliverySchema,
 ])
 
 // Для расчёта цены ПВЗ код пункта не нужен (QuoteDestination в shared):

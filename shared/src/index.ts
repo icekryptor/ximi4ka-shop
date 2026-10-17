@@ -8,6 +8,8 @@ export type {
   PaymentProvider,
   DeliveryAddress,
   DeliveryMethod,
+  OrderDeliveryMethod,
+  CheckoutDelivery,
   CheckoutRequest,
   CheckoutResponse,
   AttributionTouch,
@@ -81,3 +83,4 @@ export type {
 //   import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 
 export type { AnalyticsEventType, StatsTotals, StatsDay, StatsResponse } from './types/analytics.js'
+export type { CisCountry, CisDeliveryDestination } from './types/cis.js'

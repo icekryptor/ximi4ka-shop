@@ -7,6 +7,9 @@ import {
   getOrCreateIdempotencyKey,
   clearIdempotencyKey,
   normalizeTelegramHandle,
+  internationalPhoneDigits,
+  isInternationalPhone,
+  validateCisCheckoutForm,
   type CheckoutFormFields,
   type DeliveryFormState,
 } from './checkout'
@@ -185,5 +188,80 @@ describe('idempotency key', () => {
     clearIdempotencyKey()
     const second = getOrCreateIdempotencyKey()
     expect(second).not.toBe(first)
+  })
+})
+
+const cisFields: CheckoutFormFields = {
+  name: 'Алесь',
+  phone: '+375 29 123-45-67',
+  email: 'ales@example.com',
+  telegram: '',
+  comment: '',
+}
+const cisOk = { country: 'BY', city: 'Минск', address: 'ул. Ленина, 5' } as const
+
+describe('международный телефон', () => {
+  it('оставляет только цифры, без маски +7', () => {
+    expect(internationalPhoneDigits('+375 (29) 123-45-67')).toBe('375291234567')
+  })
+
+  it('принимает от 8 до 15 цифр', () => {
+    expect(isInternationalPhone('+375291234567')).toBe(true)
+    expect(isInternationalPhone('+996 555 123 456')).toBe(true)
+    expect(isInternationalPhone('1234567')).toBe(false)
+    expect(isInternationalPhone('1234567890123456')).toBe(false)
+  })
+
+  it('ведущая 8 (внутренний префикс КЗ/BY) отвергается, +7 принимается', () => {
+    expect(isInternationalPhone('8 701 123 45 67')).toBe(false)
+    expect(isInternationalPhone('8 029 123 45 67')).toBe(false)
+    expect(isInternationalPhone('+7 701 123 45 67')).toBe(true)
+  })
+})
+
+describe('validateCisCheckoutForm', () => {
+  it('полная форма без ошибок', () => {
+    expect(validateCisCheckoutForm(cisFields, cisOk)).toEqual({})
+  })
+
+  it('email обязателен: на него идёт чек', () => {
+    expect(validateCisCheckoutForm({ ...cisFields, email: '' }, cisOk).email).toBe(
+      'Укажите email — на него придёт чек',
+    )
+  })
+
+  it('email длиннее 64 символов отвергается (чек Т-Кассы его не примет), 64 — проходит', () => {
+    const long = `${'a'.repeat(65 - '@example.com'.length)}@example.com`
+    expect(long).toHaveLength(65)
+    expect(validateCisCheckoutForm({ ...cisFields, email: long }, cisOk).email).toBe(
+      'Email не длиннее 64 символов',
+    )
+    const ok = `${'a'.repeat(64 - '@example.com'.length)}@example.com`
+    expect(validateCisCheckoutForm({ ...cisFields, email: ok }, cisOk).email).toBeUndefined()
+  })
+
+  it('телефон +375 не требует 11 цифр и маски +7', () => {
+    expect(validateCisCheckoutForm(cisFields, cisOk).phone).toBeUndefined()
+    expect(validateCisCheckoutForm({ ...cisFields, phone: '12345' }, cisOk).phone).toBe(
+      'Укажите телефон с кодом страны, например +375 29 123-45-67',
+    )
+  })
+
+  it('страна и город обязательны, город — только из списка страны', () => {
+    expect(
+      validateCisCheckoutForm(cisFields, { country: null, city: '', address: 'x' }).country,
+    ).toBe('Выберите страну')
+    expect(
+      validateCisCheckoutForm(cisFields, { country: 'BY', city: '', address: 'x' }).cisCity,
+    ).toBe('Выберите город из списка')
+    expect(
+      validateCisCheckoutForm(cisFields, { country: 'BY', city: 'Алматы', address: 'x' }).cisCity,
+    ).toBe('Доставка в этот город недоступна')
+  })
+
+  it('адрес пункта обязателен', () => {
+    expect(validateCisCheckoutForm(cisFields, { ...cisOk, address: '  ' }).cisAddress).toBe(
+      'Укажите адрес пункта выдачи СДЭК',
+    )
   })
 })

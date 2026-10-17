@@ -73,6 +73,26 @@ describe('профиль и заказы', () => {
     })
   })
 
+  it('lastDelivery пропускает заказ в страну ЕАЭС и берёт последний российский', async () => {
+    const auth = await loginAsCustomer(app)
+    const c = await me()
+    await seedOrder({ customerId: c.id, placedSignedIn: true })
+    await seedOrder({
+      customerId: c.id,
+      placedSignedIn: true,
+      deliveryMethod: 'cdek_manual_cis',
+      deliveryAddress: {
+        address: 'Минск, ул. Ленина, 5',
+        comment: null,
+        country: 'BY',
+        city: 'Минск',
+        quote: null,
+      },
+    })
+    const res = await request(app).get('/api/account/me').set(customerHeaders(auth))
+    expect(res.body.data.lastDelivery).toMatchObject({ method: 'cdek_pvz' })
+  })
+
   it('lastDelivery не берёт заказ, привязанный только по email (не вживую)', async () => {
     const auth = await loginAsCustomer(app)
     const c = await me()

@@ -351,3 +351,59 @@ describe('telegramCard: «Запас всех реактивов»', () => {
     expect(card).toMatch(/…и ещё \d+ реактивов/)
   })
 })
+
+describe('доставка в страны ЕАЭС (cdek_manual_cis)', () => {
+  const cisOrder: NotifiableOrder = {
+    ...order,
+    deliveryMethod: 'cdek_manual_cis',
+    deliveryAddress: {
+      address: 'Минск, ул. Ленина, 5, ПВЗ СДЭК',
+      comment: null,
+      country: 'BY',
+      city: 'Минск',
+      quote: null,
+    },
+    customerPhone: '+375291234567',
+  }
+
+  it('в таблице — не «Курьер», а страна и адрес', () => {
+    expect(sheetRow(cisOrder)[6]).toBe(
+      'Доставка в Беларусь (СДЭК, адрес вручную) · Минск, ул. Ленина, 5, ПВЗ СДЭК',
+    )
+  })
+
+  it('в карточке Telegram — страна и адрес, телефон без маски +7', () => {
+    const card = telegramCard(cisOrder)
+    expect(card).toContain(
+      'Адрес: Доставка в Беларусь (СДЭК, адрес вручную): Минск, ул. Ленина, 5, ПВЗ СДЭК',
+    )
+    expect(card).toContain('Телефон: +375291234567')
+    expect(card).not.toContain('Курьер')
+  })
+
+  // Страна в винительном падеже: «Доставка в Армению», а не «в Армения».
+  it.each([
+    ['BY', 'Беларусь'],
+    ['KZ', 'Казахстан'],
+    ['AM', 'Армению'],
+    ['KG', 'Киргизию'],
+  ] as const)('%s: «Доставка в %s» и в таблице, и в карточке', (country, accusative) => {
+    const o: NotifiableOrder = {
+      ...cisOrder,
+      deliveryAddress: { ...cisOrder.deliveryAddress, country },
+    }
+    const label = `Доставка в ${accusative} (СДЭК, адрес вручную)`
+    expect(sheetRow(o)[6]).toContain(label)
+    expect(telegramCard(o)).toContain(`Адрес: ${label}`)
+  })
+
+  it('без страны в заказе — «другую страну»', () => {
+    const o: NotifiableOrder = {
+      ...cisOrder,
+      deliveryAddress: { ...cisOrder.deliveryAddress, country: undefined },
+    }
+    const label = 'Доставка в другую страну (СДЭК, адрес вручную)'
+    expect(sheetRow(o)[6]).toContain(label)
+    expect(telegramCard(o)).toContain(`Адрес: ${label}`)
+  })
+})

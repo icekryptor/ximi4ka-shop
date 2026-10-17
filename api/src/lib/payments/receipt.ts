@@ -83,7 +83,7 @@ function normalizePhone(raw: string): string | null {
 }
 
 // Банк принимает Email чека не длиннее 64 символов.
-const MAX_EMAIL_LENGTH = 64
+export const MAX_EMAIL_LENGTH = 64
 
 // По символам, а не по кодовым единицам UTF-16: эмодзи не режется пополам.
 function cut(name: string): string {

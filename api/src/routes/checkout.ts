@@ -1,5 +1,6 @@
 import { Router } from 'express'
-import type { CheckoutResponse, OrderAttribution } from '@ximi4ka-shop/shared'
+import type { CheckoutResponse, DeliveryQuote, OrderAttribution } from '@ximi4ka-shop/shared'
+import { cisShippingRub, isCisCity } from '@ximi4ka-shop/shared/types/cis'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
@@ -9,6 +10,7 @@ import { getCdekClient } from '../lib/cdek/index.js'
 import { isKnownDeliveryPoint } from '../lib/cdek/locations.js'
 import { enqueueOrderEvent } from '../lib/notifications/outbox.js'
 import { getPaymentProvider } from '../lib/payments/index.js'
+import { MAX_EMAIL_LENGTH } from '../lib/payments/receipt.js'
 import { loadGift } from '../lib/gift.js'
 import { loadCart } from '../lib/shipping/cart.js'
 import { packCart, type PackLine } from '../lib/shipping/pack.js'
@@ -98,6 +100,26 @@ checkoutRouter.post('/', async (req, res, next) => {
       }
     }
 
+    // Страны ЕАЭС: чек Т-Кассы принимает только email или номер +7…, поэтому без
+    // email заказ не оплатить; город — только из списка городов с ПВЗ СДЭК.
+    if (parsed.delivery.method === 'cdek_manual_cis') {
+      const email = parsed.customer.email
+      if (!email) {
+        throw badRequest('email_required', 'Укажите email — на него придёт чек')
+      }
+      // Чек берёт email только до 64 символов (receipt.ts), длиннее — fallback на +7,
+      // которого у покупателя из ЕАЭС нет.
+      if (email.length > MAX_EMAIL_LENGTH) {
+        throw badRequest('email_required', 'Укажите email до 64 символов — на него придёт чек')
+      }
+      if (!isCisCity(parsed.delivery.country, parsed.delivery.city)) {
+        throw badRequest(
+          'delivery_city_unavailable',
+          'Доставка в этот город недоступна — выберите город из списка',
+        )
+      }
+    }
+
     // Пункт сверяем со списком города из того же кеша, что видел покупатель
     // (спека §4.3). СДЭК не ответил — заказ принимаем: оформление важнее, а
     // закрытый пункт всплывёт ошибкой при создании заказа в СДЭК.
@@ -125,14 +147,31 @@ checkoutRouter.post('/', async (req, res, next) => {
     const packages = gift ? packCart(withGiftUnit(cart.packLines, gift)) : quotePackages
 
     // Цену доставки считает только сервер: сумма, которую показал виджет, —
-    // подсказка для интерфейса, клиенту не доверяем.
-    // Порог бесплатной доставки — по сумме, которую платят за товары.
-    const quote = await quoteDelivery(
-      { destination: delivery, subtotalRub: subtotalRub - discountRub, packages: quotePackages },
-      { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
-    )
-    const shippingRub = quote.customerPriceRub
+    // подсказка для интерфейса, клиенту не доверяем. Россия — по калькулятору
+    // СДЭК; страны ЕАЭС — по таблице shared (адрес ПВЗ вручную, калькулятор не нужен).
+    let quote: DeliveryQuote | null = null
+    let shippingRub: number
+    if (delivery.method === 'cdek_manual_cis') {
+      shippingRub = cisShippingRub(delivery.country, subtotalRub - discountRub)
+    } else {
+      // Порог бесплатной доставки — по сумме, которую платят за товары.
+      quote = await quoteDelivery(
+        { destination: delivery, subtotalRub: subtotalRub - discountRub, packages: quotePackages },
+        { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
+      )
+      shippingRub = quote.customerPriceRub
+    }
     const totalRub = subtotalRub - discountRub + shippingRub
+    // В заказ идёт расчёт СДЭК без лишних полей; у стран ЕАЭС расчёта нет (null).
+    const carrierQuote = quote
+      ? {
+          tariffCode: quote.tariffCode,
+          cdekPriceRub: quote.cdekPriceRub,
+          periodMin: quote.periodMin,
+          periodMax: quote.periodMax,
+          source: quote.source,
+        }
+      : null
 
     // Личный кабинет (спека кабинета §6): заказ идёт в аккаунт вошедшего
     // покупателя или владельца подтверждённого email из заказа. Аккаунтов
@@ -167,21 +206,27 @@ checkoutRouter.post('/', async (req, res, next) => {
             customerPhone: parsed.customer.phone,
             customerEmail: parsed.customer.email ?? '',
             customerTelegram: parsed.customer.telegram ?? null,
-            deliveryAddress: {
-              address: delivery.address,
-              comment: delivery.comment ?? null,
-              cityCode: delivery.cityCode ?? null,
-              deliveryPointCode: delivery.method === 'cdek_pvz' ? delivery.deliveryPointCode : null,
-              postalCode: delivery.method === 'cdek_courier' ? (delivery.postalCode ?? null) : null,
-              quote: {
-                tariffCode: quote.tariffCode,
-                cdekPriceRub: quote.cdekPriceRub,
-                periodMin: quote.periodMin,
-                periodMax: quote.periodMax,
-                source: quote.source,
-              },
-              packages,
-            },
+            deliveryAddress:
+              delivery.method === 'cdek_manual_cis'
+                ? {
+                    address: `${delivery.city}, ${delivery.address}`,
+                    comment: delivery.comment ?? null,
+                    country: delivery.country,
+                    city: delivery.city,
+                    quote: null,
+                    packages,
+                  }
+                : {
+                    address: delivery.address,
+                    comment: delivery.comment ?? null,
+                    cityCode: delivery.cityCode ?? null,
+                    deliveryPointCode:
+                      delivery.method === 'cdek_pvz' ? delivery.deliveryPointCode : null,
+                    postalCode:
+                      delivery.method === 'cdek_courier' ? (delivery.postalCode ?? null) : null,
+                    quote: carrierQuote,
+                    packages,
+                  },
             deliveryMethod: delivery.method,
             subtotalRub,
             discountRub,
@@ -232,7 +277,10 @@ checkoutRouter.post('/', async (req, res, next) => {
           const c = session.customer
           const fill: Partial<Customer> = {}
           if (!c.name) fill.name = parsed.customer.name
-          if (!c.phone) fill.phone = parsed.customer.phone
+          // Профильный телефон — только российский +7: ProfileCard прогоняет его через
+          // formatPhoneInput, и номер покупателя из ЕАЭС (+375…) превратился бы в мусор.
+          if (!c.phone && /^\+7\d{10}$/.test(parsed.customer.phone))
+            fill.phone = parsed.customer.phone
           if (Object.keys(fill).length > 0)
             await em.getRepository(Customer).update({ id: c.id }, fill)
         }

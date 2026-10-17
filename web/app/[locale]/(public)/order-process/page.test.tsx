@@ -61,6 +61,7 @@ describe('OrderProcessPage', () => {
     expect(
       screen.getByRole('list', { name: 'Условия бесплатной доставки по странам' }),
     ).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Города с пунктами выдачи СДЭК' })).toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'Средние сроки доставки СДЭК' })).toBeInTheDocument()
   })
 

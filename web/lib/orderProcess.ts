@@ -1,3 +1,4 @@
+import { CIS_DELIVERY_RULES } from '@ximi4ka-shop/shared/types/cis'
 import { SHIPPING_RULES } from '@/lib/checkout'
 import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n'
 import { formatRub } from '@/lib/stockLabel'
@@ -49,10 +50,6 @@ export const SCREEN_SIZE = { width: 1200, height: 750 } as const
 
 export const ORDER_PROCESS_PATH = '/order-process'
 
-// Беларусь — как Россия до пункта выдачи, прочие страны ЕАЭС — как курьер по России.
-const BELARUS_FREE_FROM_RUB = 3000
-const EAEU_FREE_FROM_RUB = 5000
-
 export function orderProcessPath(locale: Locale): string {
   return locale === DEFAULT_LOCALE ? ORDER_PROCESS_PATH : `/${locale}${ORDER_PROCESS_PATH}`
 }
@@ -60,6 +57,7 @@ export function orderProcessPath(locale: Locale): string {
 export function buildDeliveryZones(): DeliveryZone[] {
   const pvz = formatRub(SHIPPING_RULES.cdek_pvz.freeFromRub)
   const courier = formatRub(SHIPPING_RULES.cdek_courier.freeFromRub)
+  const { BY, KZ, AM } = CIS_DELIVERY_RULES
   return [
     {
       id: 'ru',
@@ -71,7 +69,7 @@ export function buildDeliveryZones(): DeliveryZone[] {
       id: 'by',
       label: 'Беларусь',
       countries: [{ code: 'by', name: 'Беларусь' }],
-      condition: `Бесплатно от ${formatRub(BELARUS_FREE_FROM_RUB)}`,
+      condition: `Бесплатно от ${formatRub(BY.freeFromRub)}, иначе ${formatRub(BY.priceRub)}`,
     },
     {
       id: 'eaeu',
@@ -81,7 +79,7 @@ export function buildDeliveryZones(): DeliveryZone[] {
         { code: 'am', name: 'Армения' },
         { code: 'kg', name: 'Киргизия' },
       ],
-      condition: `Бесплатно от ${formatRub(EAEU_FREE_FROM_RUB)}`,
+      condition: `Бесплатно от ${formatRub(KZ.freeFromRub)}, иначе ${formatRub(KZ.priceRub)} (Казахстан, Киргизия), ${formatRub(AM.priceRub)} (Армения)`,
     },
     {
       id: 'cis',
@@ -112,6 +110,7 @@ export const ORDER_STEPS: OrderStep[] = [
     details: [
       'Добавьте наборы и реактивы в корзину. Полоска в корзине показывает, сколько осталось до бесплатной доставки.',
       'В оформлении заказа выберите город, способ получения — пункт выдачи СДЭК или курьер — и пункт выдачи или адрес, затем оплатите заказ онлайн.',
+      'Для Беларуси, Казахстана, Армении и Киргизии в оформлении заказа выберите регион «Беларусь, Казахстан, Армения, Киргизия», затем выберите страну и город из списка и впишите адрес пункта выдачи СДЭК. Если вашего города нет в списке, доставка туда пока невозможна.',
       'Условия бесплатной доставки зависят от страны:',
     ],
     screenshots: [
