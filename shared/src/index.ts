@@ -8,6 +8,8 @@ export type {
   PaymentProvider,
   DeliveryAddress,
   DeliveryMethod,
+  OrderDeliveryMethod,
+  CheckoutDelivery,
   CheckoutRequest,
   CheckoutResponse,
   AttributionTouch,
