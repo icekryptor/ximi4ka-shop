@@ -76,6 +76,11 @@ describe('<CisDelivery>', () => {
     expect(model.shippingRub(3000)).toBe(0)
   })
 
+  it('предупреждает, что пока оплата доступна только картами «Мир» (до выбора страны)', () => {
+    render(<Harness />)
+    expect(screen.getByRole('note')).toHaveTextContent('Пока оплата доступна только картами «Мир».')
+  })
+
   it('показывает ошибки полей', () => {
     render(
       <Harness
