@@ -24,8 +24,14 @@ import localFont from 'next/font/local'
 //     wins, the value resolves to the same family;
 //   - skips the generated metric fallback: the '<Family> Fallback' faces live
 //     in globals.css with the numbers next/font/google computed.
-// Only latin + cyrillic are preloaded, as before; the other subsets download
-// only when a page contains such characters (₽ is latin-ext, for instance).
+// Only IBM Plex Sans (body copy) is preloaded, and only its latin + cyrillic
+// subsets: it is the one family every first screen paints. Inter, Roboto Mono
+// and Unbounded are used further down the page; preloading them (196 KB at
+// "high" priority) starved the hero image on a slow 4G connection — the PSI
+// mobile run measured LCP 8.9 s. They still load as soon as a page uses them,
+// font-display: swap + the metric fallbacks in globals.css hide the swap. The
+// other subsets download only when a page contains such characters (₽ is
+// latin-ext, for instance).
 
 // IBM Plex Sans — body copy (globals.css: --font-sans → --font-plex).
 const plexSansCyrillicExt = localFont({
@@ -301,7 +307,7 @@ const robotoMonoCyrillic = localFont({
   variable: '--font-mono-google',
   fallback: ["'Roboto Mono'", "'Roboto Mono Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 const robotoMonoGreek = localFont({
   src: [
@@ -400,7 +406,7 @@ const robotoMonoLatin = localFont({
   variable: '--font-mono-google',
   fallback: ["'Roboto Mono'", "'Roboto Mono Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 
 // Unbounded — lj display headings (--font-lj-display).
@@ -447,7 +453,7 @@ const unboundedCyrillic = localFont({
   variable: '--font-lj-display',
   fallback: ["'Unbounded'", "'Unbounded Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 const unboundedVietnamese = localFont({
   src: [
@@ -516,7 +522,7 @@ const unboundedLatin = localFont({
   variable: '--font-lj-display',
   fallback: ["'Unbounded'", "'Unbounded Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 
 // Inter — lj body copy (--font-lj-body).
@@ -551,7 +557,7 @@ const interCyrillic = localFont({
   variable: '--font-lj-body',
   fallback: ["'Inter'", "'Inter Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 const interGreekExt = localFont({
   src: [
@@ -641,7 +647,7 @@ const interLatin = localFont({
   variable: '--font-lj-body',
   fallback: ["'Inter'", "'Inter Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 
 export const fontVariables = [

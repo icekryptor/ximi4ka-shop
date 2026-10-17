@@ -103,6 +103,20 @@ describe('<PromoSlider>', () => {
     })
   })
 
+  it('loads the first banner hero (the LCP image) eagerly with high fetch priority', () => {
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    const hero = container.querySelector('img[src*="gift-box.webp"]')
+    expect(hero).not.toBeNull()
+    expect(hero).toHaveAttribute('fetchpriority', 'high')
+    expect(hero).toHaveAttribute('loading', 'eager')
+    // остальные иллюстрации не должны отбирать у неё канал
+    container
+      .querySelectorAll('img[src*="/img/promo/"]:not([src*="gift-box.webp"])')
+      .forEach((img) => {
+        expect(img).not.toHaveAttribute('fetchpriority')
+      })
+  })
+
   it('restarts the autoplay countdown after a manual switch', () => {
     vi.useFakeTimers()
     render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)

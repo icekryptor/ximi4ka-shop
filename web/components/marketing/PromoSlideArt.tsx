@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import Image from 'next/image'
+import { imageLoadingProps } from '@/lib/imageLoading'
 import type { PromoVisual } from '@/lib/promoSlides'
 
 /**
@@ -106,8 +107,13 @@ function GiftArt() {
           src="/img/promo/gift-box.webp"
           alt=""
           fill
-          priority
-          sizes="(min-width: 1280px) 60vw, 90vw"
+          // Кандидат в LCP первого экрана. Next 16: `priority` даёт только
+          // <link rel="preload"> без fetchpriority — картинка стоит в очереди
+          // за шрифтами; high-приоритет задаём явно (см. lib/imageLoading.ts).
+          {...imageLoadingProps('priority')}
+          // Мобильный арт — ~75% ширины экрана; 90vw тянул вариант на 750px
+          // там, где хватает 640px.
+          sizes="(min-width: 1280px) 60vw, 75vw"
           className="max-w-none object-contain"
         />
       </Layer>
