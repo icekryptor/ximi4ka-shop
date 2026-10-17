@@ -104,7 +104,11 @@ export default function CheckoutPage() {
       setFields((prev) => ({
         ...prev,
         name: prev.name || me.name || '',
-        phone: prev.phone || (me.phone ? formatPhoneInput(me.phone) : ''),
+        // Маска телефона — российская: чужой номер из профиля не подставляем,
+        // иначе formatPhoneInput исказит его до неверного +7.
+        phone:
+          prev.phone ||
+          (me.phone && /^\+7\d{10}$/.test(me.phone) ? formatPhoneInput(me.phone) : ''),
         email: prev.email || me.email || '',
         telegram: prev.telegram || (me.telegramUsername ? `@${me.telegramUsername}` : ''),
       }))
@@ -144,6 +148,17 @@ export default function CheckoutPage() {
   const hasShippingPrice = isCis ? cisShippingRub !== null : quote !== null
   const shippingRub = isCis ? (cisShippingRub ?? 0) : (quote?.customerPriceRub ?? 0)
   const totalRub = totals.totalRub + shippingRub
+
+  // Маска и проверка телефона у регионов разные: введённый номер при смене
+  // региона не переносим (иначе чужой номер молча превратится в +7…), а
+  // сообщения прежнего региона сбрасываем.
+  function changeRegion(next: 'ru' | 'cis') {
+    if (next === region) return
+    setRegion(next)
+    setField('phone', '')
+    setErrors((prev) => ({ ...prev, phone: undefined, email: undefined }))
+    setServerError(null)
+  }
 
   function setField<K extends keyof CheckoutFormFields>(key: K, value: CheckoutFormFields[K]) {
     setFields((prev) => ({ ...prev, [key]: value }))
@@ -405,7 +420,7 @@ export default function CheckoutPage() {
                       name="checkout-region"
                       value={value}
                       checked={region === value}
-                      onChange={() => setRegion(value)}
+                      onChange={() => changeRegion(value)}
                       className="accent-[var(--color-lj-ink)]"
                     />
                     {label}

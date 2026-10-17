@@ -562,7 +562,64 @@ describe('/checkout page', () => {
       cisContacts()
       fillCis('BY', 'Минск')
       submit()
-      expect(await screen.findByRole('alert')).toHaveTextContent('Доставка в этот город недоступна')
+      const alert = await screen.findByRole('alert')
+      // Точный текст сервера, без общей обёртки «Не удалось оформить заказ: …».
+      expect(alert.textContent).toBe('Доставка в этот город недоступна.')
+    })
+
+    it('сервер потребовал email (400 email_required) — его текст на экране', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({
+                error: { code: 'email_required', message: 'Укажите email — на него придёт чек' },
+              }),
+              { status: 400 },
+            ),
+        ),
+      )
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      cisContacts()
+      fillCis('BY', 'Минск')
+      submit()
+      const alert = await screen.findByRole('alert')
+      expect(alert.textContent).toBe('Укажите email — на него придёт чек.')
+    })
+
+    it('в режиме CIS кнопка доступна, пока российский расчёт СДЭК не готов', async () => {
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      cisContacts()
+      fillCis('BY', 'Минск')
+      expect(screen.getByRole('button', { name: /оформить заказ/i })).toBeEnabled()
+    })
+
+    it('смена региона очищает телефон: +375 из «Россия» не превращается в +7 в CIS', async () => {
+      seedCart(seed)
+      render(<CheckoutPage />)
+      fireEvent.change(screen.getByLabelText(/телефон/i), {
+        target: { value: '+375 29 123 45 67' },
+      })
+      await chooseCisRegion()
+      expect(screen.getByLabelText(/телефон/i)).toHaveValue('')
+    })
+
+    it('возврат с CIS на «Россия» очищает телефон и сообщения об ошибках', async () => {
+      vi.stubGlobal('fetch', vi.fn())
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      cisContacts('+375 29 123-45-67', '')
+      submit()
+      expect(await screen.findByText('Укажите email — на него придёт чек')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('radio', { name: /^россия$/i }))
+      expect(screen.getByLabelText(/телефон/i)).toHaveValue('')
+      expect(screen.queryByText('Укажите email — на него придёт чек')).not.toBeInTheDocument()
     })
   })
 
@@ -950,6 +1007,14 @@ describe('чекаут для вошедшего покупателя', () => {
     expect(screen.getByLabelText(/email/i)).toHaveValue('ivan@example.com')
     expect(screen.getByLabelText(/^telegram/i)).toHaveValue('@ivan_tg')
     expect(screen.queryByText(/чтобы заказ сохранился/)).toBeNull()
+  })
+
+  it('номер не из России в профиле не подставляется (маска +7 его исказила бы)', async () => {
+    accountMock.me = { ...profile, phone: '+375291234567' }
+    seedCart(seed)
+    render(<CheckoutPage />)
+    expect(await screen.findByDisplayValue('Иван')).toBeInTheDocument()
+    expect(screen.getByLabelText(/телефон/i)).toHaveValue('')
   })
 
   it('гостю — подсказка войти со ссылкой назад на чекаут', async () => {
