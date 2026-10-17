@@ -176,4 +176,21 @@ describe('HeaderSearch', () => {
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
+
+  it('aria-controls points to the listbox only while it is rendered', async () => {
+    render(<HeaderSearch />)
+    const input = screen.getByRole('searchbox')
+    expect(input).not.toHaveAttribute('aria-controls')
+
+    type('химич')
+    act(() => vi.advanceTimersByTime(300))
+    await act(async () => {
+      await Promise.resolve()
+    })
+    const listbox = screen.getByRole('listbox')
+    expect(input).toHaveAttribute('aria-controls', listbox.id)
+
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(input).not.toHaveAttribute('aria-controls')
+  })
 })
