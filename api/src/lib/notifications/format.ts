@@ -1,4 +1,5 @@
 import type { DeliveryAddress, OrderEventKey, OrderStatus } from '@ximi4ka-shop/shared'
+import { CIS_COUNTRY_NAMES } from '@ximi4ka-shop/shared/types/cis'
 
 // Что показываем людям в таблице и в чате. Чистые функции без сети — вся
 // логика вида уведомлений тестируется здесь.
@@ -141,11 +142,19 @@ function isPickupPoint(order: NotifiableOrder): boolean {
   return order.deliveryMethod === 'cdek_pvz'
 }
 
+// Доставка в страну ЕАЭС: адрес ПВЗ покупатель написал сам, отправку оформляет оператор.
+function cisLabel(order: NotifiableOrder): string {
+  const country = order.deliveryAddress.country
+  const name = country ? CIS_COUNTRY_NAMES[country] : 'другую страну'
+  return `Доставка в ${name} (СДЭК, адрес вручную)`
+}
+
 function deliveryCell(order: NotifiableOrder): string {
   const { address, deliveryPointCode } = order.deliveryAddress
   if (isPickupPoint(order)) {
     return deliveryPointCode ? `ПВЗ ${deliveryPointCode} · ${address}` : `ПВЗ · ${address}`
   }
+  if (order.deliveryMethod === 'cdek_manual_cis') return `${cisLabel(order)} · ${address}`
   return `Курьер · ${address}`
 }
 
@@ -179,9 +188,12 @@ export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []
   const comment = order.deliveryAddress.comment
     ? clip(order.deliveryAddress.comment, CARD_TEXT_LIMIT)
     : order.deliveryAddress.comment
-  const where = isPickupPoint(order)
-    ? `ПВЗ${deliveryPointCode ? ` ${deliveryPointCode}` : ''}: ${address}`
-    : `Курьер: ${address}`
+  const where =
+    order.deliveryMethod === 'cdek_manual_cis'
+      ? `${cisLabel(order)}: ${address}`
+      : isPickupPoint(order)
+        ? `ПВЗ${deliveryPointCode ? ` ${deliveryPointCode}` : ''}: ${address}`
+        : `Курьер: ${address}`
   const shipping =
     order.shippingRub === 0 ? 'доставка бесплатно' : `доставка ${rub(order.shippingRub)}`
 

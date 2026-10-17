@@ -351,3 +351,33 @@ describe('telegramCard: «Запас всех реактивов»', () => {
     expect(card).toMatch(/…и ещё \d+ реактивов/)
   })
 })
+
+describe('доставка в страны ЕАЭС (cdek_manual_cis)', () => {
+  const cisOrder: NotifiableOrder = {
+    ...order,
+    deliveryMethod: 'cdek_manual_cis',
+    deliveryAddress: {
+      address: 'Минск, ул. Ленина, 5, ПВЗ СДЭК',
+      comment: null,
+      country: 'BY',
+      city: 'Минск',
+      quote: null,
+    },
+    customerPhone: '+375291234567',
+  }
+
+  it('в таблице — не «Курьер», а страна и адрес', () => {
+    expect(sheetRow(cisOrder)[6]).toBe(
+      'Доставка в Беларусь (СДЭК, адрес вручную) · Минск, ул. Ленина, 5, ПВЗ СДЭК',
+    )
+  })
+
+  it('в карточке Telegram — страна и адрес, телефон без маски +7', () => {
+    const card = telegramCard(cisOrder)
+    expect(card).toContain(
+      'Адрес: Доставка в Беларусь (СДЭК, адрес вручную): Минск, ул. Ленина, 5, ПВЗ СДЭК',
+    )
+    expect(card).toContain('Телефон: +375291234567')
+    expect(card).not.toContain('Курьер')
+  })
+})

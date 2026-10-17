@@ -5,6 +5,7 @@ import type {
   CustomerProfile,
   DeliveryMethod,
   LastDelivery,
+  OrderDeliveryMethod,
   PublicOrderShipment,
 } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
@@ -38,6 +39,9 @@ export async function lastDeliveryFor(customerId: string): Promise<LastDelivery 
     .createQueryBuilder('o')
     .where('o.customer_id = :customerId', { customerId })
     .andWhere('o.placed_signed_in = true')
+    // Автозаполнение чекаута — только для способов с городом и пунктом СДЭК;
+    // заказ в страну ЕАЭС (адрес вручную) форму не заполнит.
+    .andWhere('o.delivery_method IN (:...methods)', { methods: ['cdek_pvz', 'cdek_courier'] })
     .andWhere('o.status NOT IN (:...excluded)', { excluded: ['cancelled', 'failed'] })
     .orderBy('o.created_at', 'DESC')
     .getOne()
@@ -151,7 +155,7 @@ export async function listCustomerOrders(
       subtotalRub: o.subtotalRub,
       discountRub: o.discountRub,
       shippingRub: o.shippingRub,
-      deliveryMethod: o.deliveryMethod as DeliveryMethod,
+      deliveryMethod: o.deliveryMethod as OrderDeliveryMethod,
       deliveryAddress: o.deliveryAddress.address ?? '',
       shipment: shipmentView(shipments.find((s) => s.orderId === o.id)),
     }
