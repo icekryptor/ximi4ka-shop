@@ -34,6 +34,10 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
   const [index, setIndex] = useState(0)
   const [reduced, setReduced] = useState(false)
   const [paused, setPaused] = useState(false)
+  // Иллюстрации скрытых слайдов подключаются после загрузки страницы: они лежат
+  // в той же ячейке сетки, что и активный слайд, поэтому браузер считает их
+  // «видимыми» и качает до LCP (≈100 КБ), деля канал с главной картинкой.
+  const [artReady, setArtReady] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
   const count = slides.length
@@ -48,6 +52,16 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
     apply()
     mq.addEventListener('change', apply)
     return () => mq.removeEventListener('change', apply)
+  }, [])
+
+  useEffect(() => {
+    const arm = () => setArtReady(true)
+    if (document.readyState === 'complete') {
+      const id = window.setTimeout(arm, 0)
+      return () => window.clearTimeout(id)
+    }
+    window.addEventListener('load', arm, { once: true })
+    return () => window.removeEventListener('load', arm)
   }, [])
 
   useEffect(() => {
@@ -160,7 +174,7 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
               </div>
 
               <div className="relative z-[1] mx-auto mt-10 aspect-[900/760] w-full max-w-[640px] xl:absolute xl:inset-0 xl:mt-0 xl:aspect-auto xl:max-w-none">
-                <PromoSlideArt visual={slide.visual} />
+                {active || artReady ? <PromoSlideArt visual={slide.visual} /> : null}
               </div>
             </div>
           )

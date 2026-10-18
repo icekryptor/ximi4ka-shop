@@ -87,7 +87,11 @@ describe('<PromoSlider>', () => {
   })
 
   it('draws the banner illustrations from /img/promo, hidden from assistive tech', () => {
+    vi.useFakeTimers()
     const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    act(() => {
+      vi.advanceTimersByTime(10)
+    })
     const srcs = Array.from(container.querySelectorAll('img[src*="/img/promo/"]')).map((img) =>
       img.getAttribute('src'),
     )
@@ -101,6 +105,38 @@ describe('<PromoSlider>', () => {
     container.querySelectorAll('img[src*="/img/promo/"]').forEach((img) => {
       expect(img.closest('[aria-hidden="true"]')).not.toBeNull()
     })
+  })
+
+  it('до загрузки страницы рисует иллюстрации только активного слайда', () => {
+    vi.useFakeTimers()
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    // Скрытые слайды лежат в той же ячейке сетки, так что lazy-картинки в них
+    // «видны» браузеру и качались до LCP, деля канал с главной картинкой.
+    expect(container.querySelector('img[src*="gift-box.webp"]')).not.toBeNull()
+    expect(container.querySelector('img[src*="oge-box.webp"]')).toBeNull()
+    expect(container.querySelector('img[src*="learn-tablet"]')).toBeNull()
+    // Каркас слайда на месте: высота не прыгает, когда картинки подгрузятся.
+    expect(container.querySelectorAll('[aria-roledescription="слайд"]')).toHaveLength(3)
+    act(() => {
+      vi.advanceTimersByTime(10)
+    })
+    expect(container.querySelector('img[src*="oge-box.webp"]')).not.toBeNull()
+  })
+
+  it('рисует иллюстрации скрытых слайдов, когда страница уже загружена', () => {
+    vi.useFakeTimers()
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    act(() => {
+      vi.advanceTimersByTime(10)
+    })
+    expect(container.querySelector('img[src*="learn-tablet-1.webp"]')).not.toBeNull()
+  })
+
+  it('показывает иллюстрацию слайда сразу, если на него переключились до загрузки', () => {
+    vi.useFakeTimers()
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Следующий слайд' }))
+    expect(container.querySelector('img[src*="oge-box.webp"]')).not.toBeNull()
   })
 
   it('loads the first banner hero (the LCP image) eagerly with high fetch priority', () => {

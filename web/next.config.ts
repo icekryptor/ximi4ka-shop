@@ -17,6 +17,9 @@ const nextConfig: NextConfig = {
   // Required because @ximi4ka-shop/shared ships .ts source rather than compiled JS.
   transpilePackages: ['@ximi4ka-shop/shared'],
   images: {
+    // Next 16 принимает только перечисленные quality. 75 — по умолчанию, 65 — у фото
+    // карточек товаров (components/ProductCard.tsx).
+    qualities: [65, 75],
     // Transition period: until `migrate:tilda-images -w api --apply` has run on
     // the server (and while some admin-edited content may still point at
     // Tilda's CDN), next/image throws a 500 for any un-allowlisted remote host.
