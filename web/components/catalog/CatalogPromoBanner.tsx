@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 interface Props {
   /** Крупный оффер (белым по градиенту). */
   headline: string
@@ -5,6 +7,8 @@ interface Props {
   sub?: string
   /** Моно-эйбрау над заголовком. */
   eyebrow?: string
+  /** Ссылка под подстрочником (белая, с подчёркиванием). */
+  link?: { label: string; href: string }
 }
 
 /**
@@ -12,7 +16,7 @@ interface Props {
  * крупное скругление, заголовок Mazzard Light Italic 48/47, лёгкая тень, без
  * декора. Ink-текст на градиенте запрещён — только белый.
  */
-export function CatalogPromoBanner({ headline, sub, eyebrow }: Props) {
+export function CatalogPromoBanner({ headline, sub, eyebrow, link }: Props) {
   return (
     <div className="relative overflow-hidden rounded-[var(--radius-lj-bright)] bg-[image:var(--gradient-lj-bright)] shadow-[var(--shadow-lj-bright)] px-7 py-10 sm:px-12 sm:py-14">
       <div className="relative max-w-[572px]">
@@ -28,6 +32,14 @@ export function CatalogPromoBanner({ headline, sub, eyebrow }: Props) {
           <p className="mt-4 max-w-[460px] text-[0.9375rem] sm:text-base leading-[1.5] text-[var(--color-lj-on-bright-mute)]">
             {sub}
           </p>
+        )}
+        {link && (
+          <Link
+            href={link.href}
+            className="mt-5 inline-block font-lj-body text-base font-[600] text-[var(--color-lj-on-bright)] underline underline-offset-4 hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+          >
+            {link.label} →
+          </Link>
         )}
       </div>
     </div>

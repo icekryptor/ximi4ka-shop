@@ -6,6 +6,7 @@ import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { CdekTerms } from '@/components/marketing/CdekTerms'
 import { DeliveryCities } from '@/components/marketing/DeliveryCities'
 import { DeliveryZones } from '@/components/marketing/DeliveryZones'
+import { EaeuOrderGuide } from '@/components/marketing/EaeuOrderGuide'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { LabSection } from '@/components/ui/LabSection'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
@@ -114,6 +115,8 @@ export default async function OrderProcessPage({ params }: Props) {
               )}
             </section>
           ))}
+
+          <EaeuOrderGuide />
 
           <p className="max-w-[48rem] font-lj-body text-base">
             Риск случайной гибели или повреждения товара переходит к Покупателю с момента передачи

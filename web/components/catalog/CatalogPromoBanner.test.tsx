@@ -31,4 +31,22 @@ describe('CatalogPromoBanner', () => {
     expect(headline).toHaveClass('font-lj-mazzard', 'font-light', 'italic')
     expect(container.querySelector('svg')).toBeNull()
   })
+
+  it('renders an optional link under the sub text', () => {
+    const { container } = render(
+      <CatalogPromoBanner
+        headline="Оффер"
+        link={{ label: 'Как заказать', href: '/order-process#eaeu-guide' }}
+      />,
+    )
+    expect(within(container).getByRole('link', { name: /Как заказать/ })).toHaveAttribute(
+      'href',
+      '/order-process#eaeu-guide',
+    )
+  })
+
+  it('has no link by default', () => {
+    const { container } = render(<CatalogPromoBanner headline="Оффер" />)
+    expect(within(container).queryByRole('link')).toBeNull()
+  })
 })

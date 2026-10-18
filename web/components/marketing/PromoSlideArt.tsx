@@ -5,7 +5,8 @@ import type { PromoVisual } from '@/lib/promoSlides'
 
 /**
  * Картинки баннеров по макету Figma («баннеры», 144:4627 / 144:4642 / 144:4664).
- * Координаты — в пикселях макета 1440×760 относительно плашки; единица
+ * Координаты — в пикселях макета 1440×760 относительно плашки (кроме планшетов
+ * платформы: их по просьбе владельца уменьшили, чтобы целиком влезали в кадр); единица
  * `--u` (1/1440 ширины баннера) и сдвиг `--ox` задаёт PromoSlider: на широком
  * экране арт занимает весь баннер, на узком — правую часть макета (от x=560)
  * отдельной картинкой под текстом.
@@ -82,7 +83,7 @@ const PX = (pct: number) => `${pct}%`
 
 /** Фото на светлой рамке — планшеты платформы: белая обводка 3px, радиус 50. */
 const TABLET_FRAME = 'border-solid border-white bg-[#0e0914]'
-const tabletBorder: CSSProperties = { borderWidth: u(3), borderRadius: u(50) }
+const tabletBorder: CSSProperties = { borderWidth: u(2), borderRadius: u(32) }
 
 function GiftArt() {
   return (
@@ -175,7 +176,7 @@ function OgeArt() {
 function LearnArt() {
   return (
     <>
-      <Layer box={[649.84, 155.37, 713.96, 675.97]} size={[594.3, 540.57]} rotate={-15}>
+      <Layer box={[655, 309.4, 428.3, 405.6]} size={[356.6, 324.3]} rotate={-15}>
         <div className={`absolute inset-0 overflow-hidden ${TABLET_FRAME}`} style={tabletBorder}>
           <div className="relative size-full">
             <Crop
@@ -187,7 +188,7 @@ function LearnArt() {
           </div>
         </div>
       </Layer>
-      <Layer box={[953.69, -118.16, 1058.67, 807.32]} size={[939.52, 584.06]} rotate={-15}>
+      <Layer box={[823, 50, 582.2, 444]} size={[516.7, 321.2]} rotate={-15}>
         <div className={`absolute inset-0 overflow-hidden ${TABLET_FRAME}`} style={tabletBorder}>
           <div className="relative size-full">
             <Crop

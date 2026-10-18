@@ -7,6 +7,7 @@ import {
   CIS_DELIVERY_RULES,
   type CisCountry,
 } from '@ximi4ka-shop/shared/types/cis'
+import { CIS_PAYMENT_NOTE } from '@/lib/orderProcess'
 import { formatRub } from '@/lib/stockLabel'
 import { ERROR_CLASS, FIELD_CLASS, HINT_CLASS, LABEL_CLASS } from './fieldStyles'
 import type { CisDeliveryModel } from './useCisDelivery'
@@ -33,13 +34,13 @@ export function CisDelivery({ delivery: d, errors }: Props) {
         Доставка СДЭК в другую страну *
       </h2>
 
-      {/* Платёж идёт через Т-Кассу в рублях: карты Visa/Mastercard/UnionPay банков этих
-          стран пока не принимаются. Предупреждаем до выбора страны, а не после отказа. */}
+      {/* Платёж идёт через Т-Кассу в рублях: Visa/Mastercard/UnionPay банков этих стран
+          пока не принимаются. Предупреждаем до выбора страны, а не после отказа. */}
       <p
         role="note"
         className="m-0 border border-[var(--color-lj-rule)] px-4 py-3 font-lj-body text-sm text-[var(--color-lj-ink)]"
       >
-        Пока оплата доступна только картами «Мир».
+        {CIS_PAYMENT_NOTE}
       </p>
 
       <div className="flex flex-col gap-2">

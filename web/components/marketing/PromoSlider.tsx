@@ -121,7 +121,7 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
                   slide.leadWidth ? ({ '--lead-w': slide.leadWidth } as CSSProperties) : undefined
                 }
               >
-                <h2 className="font-lj-mazzard text-[clamp(2.25rem,9vw,4.5rem)] font-light italic leading-[1.1] tracking-[-0.045em] xl:whitespace-nowrap xl:text-[length:calc(var(--u)*72)]">
+                <h2 className="font-lj-mazzard text-[clamp(1.625rem,7.6vw,4.5rem)] font-light italic leading-[1.1] tracking-[-0.045em] xl:whitespace-nowrap xl:text-[length:calc(var(--u)*72)]">
                   {slide.titleLines.map((line, n) => (
                     <Fragment key={line}>
                       {n > 0 && (
