@@ -4,6 +4,11 @@ import { resolve } from 'node:path'
 import { SHIPPING_RULES } from '@/lib/checkout'
 import {
   CDEK_TERMS,
+  CIS_PAYMENT_NOTE,
+  EAEU_CARD_RULES,
+  EAEU_GUIDE_HREF,
+  EAEU_GUIDE_STEPS,
+  EAEU_GUIDE_TITLE,
   ORDER_PROCESS_PATH,
   ORDER_STEPS,
   SCREEN_SIZE,
@@ -79,10 +84,8 @@ describe('ORDER_STEPS', () => {
     expect(ORDER_STEPS[0]!.details.join(' ')).toMatch(/выберите страну и город из списка/u)
   })
 
-  it('шаг 1 предупреждает, что для этих стран оплата пока только картами «Мир»', () => {
-    expect(ORDER_STEPS[0]!.details.join(' ')).toMatch(
-      /оплата для этих стран доступна только картами «Мир»/u,
-    )
+  it('шаг 1 отсылает к гайду по заказу в Беларусь, Казахстан, Армению и Киргизию', () => {
+    expect(ORDER_STEPS[0]!.details.join(' ')).toContain(EAEU_GUIDE_TITLE)
   })
 
   it('содержит четыре шага с номерами 1–4 и непустыми текстами', () => {
@@ -130,5 +133,36 @@ describe('orderProcessPath', () => {
     expect(ORDER_PROCESS_PATH).toBe('/order-process')
     expect(orderProcessPath('ru')).toBe('/order-process')
     expect(orderProcessPath('en')).toBe('/en/order-process')
+  })
+})
+
+describe('гайд по заказу в Беларусь, Казахстан, Армению и Киргизию', () => {
+  it('ссылка ведёт на якорь страницы /order-process', () => {
+    expect(EAEU_GUIDE_HREF).toBe('/order-process#eaeu-guide')
+  })
+
+  it('шаги идут в порядке чекаута: доставка, страна и город, адрес ПВЗ, оплата', () => {
+    const text = EAEU_GUIDE_STEPS.map((s) => `${s.title} ${s.text}`).join(' ')
+    expect(EAEU_GUIDE_STEPS).toHaveLength(5)
+    expect(text).toMatch(/Беларусь, Казахстан, Армения, Киргизия/u)
+    expect(text).toMatch(/из списка/u)
+    expect(text).toMatch(/вручную/u)
+    expect(text).toMatch(/Оплатите/u)
+  })
+
+  it('принимает Visa/Mastercard из России и «Мир» из этих стран, но не Visa/Mastercard этих стран', () => {
+    const accepted = EAEU_CARD_RULES.filter((r) => r.accepted).map((r) => r.card)
+    const declined = EAEU_CARD_RULES.filter((r) => !r.accepted).map((r) => r.card)
+    expect(accepted).toHaveLength(2)
+    expect(accepted[0]).toMatch(/Visa и Mastercard, выпущенные в России/u)
+    expect(accepted[1]).toMatch(/«Мир», выпущенные в Беларуси/u)
+    expect(declined).toHaveLength(1)
+    expect(declined[0]).toMatch(/Visa и Mastercard, выпущенные в Беларуси/u)
+  })
+
+  it('короткое предупреждение для чекаута не противоречит правилам карт', () => {
+    expect(CIS_PAYMENT_NOTE).toMatch(/Visa и Mastercard, выпущенными в России/u)
+    expect(CIS_PAYMENT_NOTE).toMatch(/«Мир», выпущенными в Беларуси/u)
+    expect(CIS_PAYMENT_NOTE).toMatch(/пока не принимаются/u)
   })
 })

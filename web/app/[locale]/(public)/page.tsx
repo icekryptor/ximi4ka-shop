@@ -202,8 +202,8 @@ export default async function HomePage({ params }: Props) {
       ? settings.testimonials
       : DEFAULT_TESTIMONIALS
 
-  // First six categories featured on the homepage; full list lives at /categories.
-  const featuredCategories = categories.slice(0, 6)
+  // Первые пять категорий — ряд из пяти плиток на десктопе; полный список — на /categories.
+  const featuredCategories = categories.slice(0, 5)
 
   // Hybrid resolution: SITE_CATALOG keeps the marketing decoration (stats,
   // chips, hover formulas) in code, but each flagship slug resolves to
@@ -240,10 +240,8 @@ export default async function HomePage({ params }: Props) {
         <div className="max-w-[var(--max-lj-content)] mx-auto">
           <div className="flex justify-between items-end mb-24 gap-8 flex-wrap">
             <div>
-              <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.75rem)] leading-[0.92] tracking-[-0.045em]">
-                Готовые
-                <br />
-                <em className="italic text-[var(--color-lj-brand)] font-[900]">наборы</em>
+              <h2 className="font-lj-display font-[900] text-[clamp(1.5rem,8vw,2.5rem)] sm:text-[clamp(2.5rem,5vw,4.75rem)] whitespace-nowrap leading-[0.92] tracking-[-0.045em]">
+                Готовые <em className="italic text-[var(--color-lj-brand)] font-[900]">наборы</em>
               </h2>
             </div>
           </div>
@@ -318,11 +316,12 @@ export default async function HomePage({ params }: Props) {
             <em className="italic text-[var(--color-lj-brand)] font-[900]">интересам</em>
           </h2>
           {featuredCategories.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-5">
               {featuredCategories.map((cat) => (
                 <CategoryTileLJ
                   key={cat.id}
                   category={cat}
+                  compact
                   // TODO(productCount): public /api/public/categories does not
                   // currently return productCount. Stage 8.C.2 (categories
                   // rewrite) will plumb the count through; for now show 0.

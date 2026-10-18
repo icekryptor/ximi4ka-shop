@@ -46,11 +46,13 @@ const IMAGE_BY_SLUG: Record<string, string> = {
 interface Props {
   category: ProductCategory
   productCount: number
+  /** Узкая плитка для рядов «2 / 5 в ряд» (главная): меньше отступы и кегль. */
+  compact?: boolean
 }
 
 // v3.5 Bright: плитка категории — яркий градиентный контейнер с крупным
 // скруглением и белой типографикой (см. V3_5_BRIGHT_ADDENDUM §4).
-export function CategoryTileLJ({ category, productCount }: Props) {
+export function CategoryTileLJ({ category, productCount, compact = false }: Props) {
   const variant = MOLECULE_BY_SLUG[category.slug] ?? 'benzene'
   const image = IMAGE_BY_SLUG[category.slug]
   // «0 товаров» — сломанное состояние (public API пока не отдаёт счётчик);
@@ -70,7 +72,11 @@ export function CategoryTileLJ({ category, productCount }: Props) {
             src={image}
             alt=""
             fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            sizes={
+              compact
+                ? '(max-width: 1024px) 50vw, 20vw'
+                : '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw'
+            }
             className="object-cover object-right transition-transform duration-700 group-hover/cat:scale-105"
           />
           {/* Затемнение снизу-слева: заголовок иногда ложится на край товара. */}
@@ -85,8 +91,20 @@ export function CategoryTileLJ({ category, productCount }: Props) {
           className="absolute right-[-15%] top-[8%] w-[62%] text-[var(--color-lj-on-bright)] opacity-30 pointer-events-none transition-transform duration-700 group-hover/cat:rotate-6 group-hover/cat:scale-105"
         />
       )}
-      <div className="absolute bottom-5 left-6 right-6 z-[2] flex flex-col gap-2">
-        <h3 className="font-lj-mazzard font-medium text-2xl leading-none text-[var(--color-lj-on-bright)] md:font-light md:text-[clamp(1.5rem,2.2vw,2rem)] md:leading-[0.95]">
+      <div
+        className={`absolute z-[2] flex flex-col gap-2 ${
+          compact
+            ? 'bottom-4 left-4 right-4 lg:bottom-5 lg:left-5 lg:right-5'
+            : 'bottom-5 left-6 right-6'
+        }`}
+      >
+        <h3
+          className={`font-lj-mazzard font-medium leading-none text-[var(--color-lj-on-bright)] md:font-light md:leading-[0.95] ${
+            compact
+              ? 'text-[1.125rem] md:text-[1.375rem] xl:text-[1.5rem]'
+              : 'text-2xl md:text-[clamp(1.5rem,2.2vw,2rem)]'
+          }`}
+        >
           {category.name}
         </h3>
         <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.03em] text-[var(--color-lj-on-bright-mute)]">

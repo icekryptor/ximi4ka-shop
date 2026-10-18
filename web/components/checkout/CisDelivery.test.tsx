@@ -76,9 +76,14 @@ describe('<CisDelivery>', () => {
     expect(model.shippingRub(3000)).toBe(0)
   })
 
-  it('предупреждает, что пока оплата доступна только картами «Мир» (до выбора страны)', () => {
+  it('предупреждает, какими картами можно оплатить (до выбора страны)', () => {
     render(<Harness />)
-    expect(screen.getByRole('note')).toHaveTextContent('Пока оплата доступна только картами «Мир».')
+    const note = screen.getByRole('note')
+    expect(note).toHaveTextContent('Visa и Mastercard, выпущенными в России')
+    expect(note).toHaveTextContent(
+      'картами «Мир», выпущенными в Беларуси, Казахстане, Армении и Киргизии',
+    )
+    expect(note).toHaveTextContent('пока не принимаются')
   })
 
   it('показывает ошибки полей', () => {
