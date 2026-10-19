@@ -39,6 +39,14 @@ interface Props {
   imageLoading?: ImageLoading
 }
 
+// Ширина фото на телефоне — экран минус поля страницы (px-6 = 48px). С «100vw»
+// браузер брал вариант 750 px для карточки в ~362 px (PSI mobile: −122 КиБ).
+// quality 65 вместо 75 по умолчанию — на фото наборов разницы не видно (65 есть
+// в images.qualities, next.config.ts).
+const PHOTO_QUALITY = 65
+const PHOTO_SIZES = '(max-width: 768px) calc(100vw - 48px), 33vw'
+const PHOTO_SIZES_FEATURED = '(max-width: 768px) calc(100vw - 48px), 66vw'
+
 export function ProductCard({
   product,
   emphasisWord,
@@ -60,6 +68,7 @@ export function ProductCard({
   // Категорийные карточки пока не имеют реальных стат (TODO Task 4.4) —
   // нулевые бары выглядят сломанными, скрываем блок целиком.
   const hasStats = stats.reagents > 0 || stats.instruments > 0 || stats.reactions > 0
+  const photoSizes = featured ? PHOTO_SIZES_FEATURED : PHOTO_SIZES
 
   const renderName = () => {
     if (!emphasisWord || !product.name.includes(emphasisWord)) return product.name
@@ -94,7 +103,8 @@ export function ProductCard({
               src={images[0].url}
               alt={images[0].alt}
               fill
-              sizes={featured ? '(max-width: 768px) 100vw, 66vw' : '(max-width: 768px) 100vw, 33vw'}
+              sizes={photoSizes}
+              quality={PHOTO_QUALITY}
               {...imageLoadingProps(imageLoading)}
               className="object-cover transition-[opacity,transform] duration-500 group-hover/pcard:scale-[1.04] group-hover/pcard:opacity-0"
             />
@@ -103,9 +113,8 @@ export function ProductCard({
                 src={images[1].url}
                 alt={images[1].alt}
                 fill
-                sizes={
-                  featured ? '(max-width: 768px) 100vw, 66vw' : '(max-width: 768px) 100vw, 33vw'
-                }
+                sizes={photoSizes}
+                quality={PHOTO_QUALITY}
                 className="absolute inset-0 object-cover opacity-0 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:scale-[1.04]"
               />
             )}
