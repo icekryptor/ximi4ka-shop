@@ -412,10 +412,13 @@ export default async function HomePage({ params }: Props) {
         </LabSection>
       )}
 
-      {/* 8. Other CMS blocks (LAB CREAM) — v3 LabSection wrapper */}
+      {/* 8. Other CMS blocks (LAB CREAM) — v3 LabSection wrapper.
+          Основной сюжет — вводный абзац «Ximi4ka — наборы для…»: он нужен и людям, и
+          поисковикам, поэтому стоит аккуратным центрированным лидом, а не левым
+          «сиротой». Призыв «Открыть каталог» уже есть в PreFooterCta ниже. */}
       {otherBlocks.length > 0 && (
-        <LabSection variant="cream" className="px-6 py-24">
-          <div className="max-w-[var(--max-lj-narrow)] mx-auto">
+        <LabSection variant="cream" className="px-6 py-16">
+          <div className="max-w-[var(--max-lj-narrow)] mx-auto text-center [&_[data-block=paragraph]]:mx-auto [&_[data-block=paragraph]]:text-[1.125rem] [&_[data-block=paragraph]]:max-w-[52ch] [&_[data-block=paragraph]]:[--lj-prose-color:color-mix(in_srgb,var(--color-lj-ink)_78%,transparent)]">
             <BlockRenderer blocks={otherBlocks} />
           </div>
         </LabSection>
