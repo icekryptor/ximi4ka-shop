@@ -43,6 +43,18 @@ const order: NotifiableOrder = {
 }
 
 describe('sheetRow', () => {
+  it('«Товары» учитывает промокод: Товары + Доставка = Итого', () => {
+    const row = sheetRow({
+      ...order,
+      subtotalRub: 1000,
+      promoCode: 'RENATA2026',
+      promoDiscountRub: 50,
+      shippingRub: 350,
+      totalRub: 1300,
+    })
+    expect(row.slice(-4, -1)).toEqual([950, 350, 1300])
+  })
+
   it('строка заказа по колонкам листа', () => {
     expect(sheetRow(order)).toEqual([
       'XM-2026-00042',
@@ -166,6 +178,20 @@ describe('telegramCard', () => {
     })
     expect(card).toContain(
       'Товары 15 495 ₽ · оптовая скидка −1 495 ₽ · доставка бесплатно · итого 14 000 ₽',
+    )
+  })
+
+  it('промокод — отдельной частью итоговой строки, доставка без него', () => {
+    const card = telegramCard({
+      ...order,
+      subtotalRub: 3099,
+      promoCode: 'RENATA2026',
+      promoDiscountRub: 155,
+      shippingRub: 0,
+      totalRub: 2944,
+    })
+    expect(card).toContain(
+      'Товары 3 099 ₽ · промокод RENATA2026 −155 ₽ · доставка бесплатно · итого 2 944 ₽',
     )
   })
 

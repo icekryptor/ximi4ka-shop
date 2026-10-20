@@ -68,6 +68,11 @@ export function OrderDetails({ order }: Readonly<{ order: AccountOrderSummary }>
         {order.discountRub > 0 && (
           <TotalRow label="Скидка">{`−${formatRub(order.discountRub)}`}</TotalRow>
         )}
+        {order.promoDiscountRub > 0 && (
+          <TotalRow label={`Промокод ${order.promoCode ?? ''}`.trim()}>
+            {`−${formatRub(order.promoDiscountRub)}`}
+          </TotalRow>
+        )}
         <TotalRow label="Доставка">
           {order.shippingRub === 0 ? 'бесплатно' : formatRub(order.shippingRub)}
         </TotalRow>

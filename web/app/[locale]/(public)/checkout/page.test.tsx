@@ -340,6 +340,118 @@ describe('/checkout page', () => {
     })
   })
 
+  describe('промокод', () => {
+    // 3099 ₽: ПВЗ бесплатно от 3000 ₽; с промокодом 5% будет 2944 ₽, а доставка — по-прежнему бесплатно.
+    const kit: CartItem[] = [{ ...seed[0]!, priceRub: 3099, quantity: 1 }]
+
+    function errorResponse(status: number, code: string, message: string) {
+      return new Response(JSON.stringify({ error: { code, message } }), { status })
+    }
+
+    function applyPromo(code: string) {
+      fireEvent.change(screen.getByLabelText(/промокод/i), { target: { value: code } })
+      fireEvent.click(screen.getByRole('button', { name: /применить/i }))
+    }
+
+    it('применённый код показывает скидку и новый итог', () => {
+      seedCart(kit)
+      render(<CheckoutPage />)
+      expect(screen.queryByTestId('summary-promo')).not.toBeInTheDocument()
+
+      applyPromo(' renata2026 ')
+
+      expect(screen.getByTestId('summary-promo')).toHaveTextContent('155')
+      expect(screen.getByTestId('summary-promo')).toHaveTextContent('RENATA2026')
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('2 944')
+    })
+
+    it('доставка остаётся бесплатной, хотя сумма после скидки ниже порога', async () => {
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('RENATA2026')
+      await chooseCity()
+      expect(screen.getByTestId('summary-shipping')).toHaveTextContent(/бесплатно/i)
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('2 944')
+    })
+
+    it('неизвестный код — ошибка у поля, скидки нет', () => {
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('WRONG')
+      expect(screen.getByText(/промокод не найден/i)).toBeInTheDocument()
+      expect(screen.queryByTestId('summary-promo')).not.toBeInTheDocument()
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('3 099')
+    })
+
+    it('«Убрать» снимает промокод', () => {
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('RENATA2026')
+      fireEvent.click(screen.getByRole('button', { name: /убрать/i }))
+      expect(screen.queryByTestId('summary-promo')).not.toBeInTheDocument()
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('3 099')
+    })
+
+    it('Enter в поле применяет код, а не отправляет форму заказа', () => {
+      seedCart(kit)
+      render(<CheckoutPage />)
+      const input = screen.getByLabelText(/промокод/i)
+      fireEvent.change(input, { target: { value: 'RENATA2026' } })
+      // false — обработчик отменил стандартное действие (отправку формы).
+      expect(fireEvent.keyDown(input, { key: 'Enter' })).toBe(false)
+      expect(screen.getByTestId('summary-promo')).toHaveTextContent('155')
+    })
+
+    it('код уходит в заказ', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('renata2026')
+
+      await fillValidForm()
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string).promoCode).toBe('RENATA2026')
+    })
+
+    it('без промокода в запросе его нет', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(kit)
+      render(<CheckoutPage />)
+
+      await fillValidForm()
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string)).not.toHaveProperty('promoCode')
+    })
+
+    it('promo_invalid с сервера снимает промокод и объясняет почему', async () => {
+      mapMock.available = false
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => errorResponse(400, 'promo_invalid', 'Промокод не найден')),
+      )
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('RENATA2026')
+
+      await fillValidForm()
+      submit()
+
+      await screen.findByText(/промокод не найден/i)
+      expect(screen.queryByTestId('summary-promo')).not.toBeInTheDocument()
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('3 099')
+    })
+  })
+
   it('полный путь без карты: город → пункт из списка → заказ', async () => {
     mapMock.available = false
     const fetchMock = vi.fn(async () => okCheckoutResponse())

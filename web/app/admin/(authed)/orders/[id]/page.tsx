@@ -127,6 +127,19 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
                     </td>
                   </tr>
                 )}
+                {(order.promoDiscountRub ?? 0) > 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-2 text-right text-brand-text-secondary">
+                      Промокод {order.promoCode}
+                    </td>
+                    <td
+                      data-testid="order-promo"
+                      className="px-4 py-2 text-right tabular-nums text-brand-accent"
+                    >
+                      −{formatRub(order.promoDiscountRub ?? 0)}
+                    </td>
+                  </tr>
+                )}
                 <tr>
                   <td colSpan={4} className="px-4 py-2 text-right text-brand-text-secondary">
                     Доставка

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import type { CheckoutResponse, DeliveryQuote, OrderAttribution } from '@ximi4ka-shop/shared'
 import { cisShippingRub, isCisCity } from '@ximi4ka-shop/shared/types/cis'
+import { findPromo, promoDiscountRub } from '@ximi4ka-shop/shared/types/promo'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
@@ -100,6 +101,14 @@ checkoutRouter.post('/', async (req, res, next) => {
       }
     }
 
+    // Промокод проверяет только сервер. Пустая строка — «без промокода»; всё
+    // остальное, чего нет в списке, отклоняем, чтобы покупатель не заплатил
+    // больше, чем ему показали.
+    const promo = parsed.promoCode?.trim() ? findPromo(parsed.promoCode) : null
+    if (parsed.promoCode?.trim() && !promo) {
+      throw badRequest('promo_invalid', 'Промокод не найден')
+    }
+
     // Страны ЕАЭС: чек Т-Кассы принимает только email или номер +7…, поэтому без
     // email заказ не оплатить; город — только из списка городов с ПВЗ СДЭК.
     if (parsed.delivery.method === 'cdek_manual_cis') {
@@ -161,7 +170,10 @@ checkoutRouter.post('/', async (req, res, next) => {
       )
       shippingRub = quote.customerPriceRub
     }
-    const totalRub = subtotalRub - discountRub + shippingRub
+    // Промо берётся с суммы товаров после оптовых скидок. Доставка и порог
+    // бесплатной доставки выше посчитаны от суммы ДО промокода и не меняются.
+    const promoRub = promo ? promoDiscountRub(subtotalRub - discountRub, promo.percent) : 0
+    const totalRub = subtotalRub - discountRub - promoRub + shippingRub
     // В заказ идёт расчёт СДЭК без лишних полей; у стран ЕАЭС расчёта нет (null).
     const carrierQuote = quote
       ? {
@@ -230,6 +242,8 @@ checkoutRouter.post('/', async (req, res, next) => {
             deliveryMethod: delivery.method,
             subtotalRub,
             discountRub,
+            promoCode: promo?.code ?? null,
+            promoDiscountRub: promoRub,
             shippingRub,
             totalRub,
             paymentProvider: provider.name,

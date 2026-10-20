@@ -28,6 +28,8 @@ const order = (extra: Partial<AccountOrderSummary> = {}): AccountOrderSummary =>
   ],
   subtotalRub: 3400,
   discountRub: 0,
+  promoCode: null,
+  promoDiscountRub: 0,
   shippingRub: 0,
   deliveryMethod: 'cdek_pvz',
   deliveryAddress: 'Москва, ул. Ленина, 1',
@@ -80,6 +82,18 @@ describe('OrderDetails', () => {
     expect(screen.getByText(price('3 000 ₽'))).toBeInTheDocument()
     expect(screen.getByText('Колба × 1')).toBeInTheDocument()
     expect(screen.getByText(price('400 ₽'))).toBeInTheDocument()
+  })
+
+  it('промокод: строка со скидкой только когда он применён', () => {
+    const { rerender } = render(<OrderDetails order={order()} />)
+    expect(screen.queryByText(/Промокод/)).toBeNull()
+    rerender(
+      <OrderDetails
+        order={order({ promoCode: 'RENATA2026', promoDiscountRub: 170, totalRub: 3230 })}
+      />,
+    )
+    expect(screen.getByText('Промокод RENATA2026')).toBeInTheDocument()
+    expect(screen.getByText(price('−170 ₽'))).toBeInTheDocument()
   })
 
   it('итоги: скидка только когда есть, доставка 0 — «бесплатно»', () => {

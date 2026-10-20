@@ -154,6 +154,8 @@ export async function listCustomerOrders(
       })),
       subtotalRub: o.subtotalRub,
       discountRub: o.discountRub,
+      promoCode: o.promoCode,
+      promoDiscountRub: o.promoDiscountRub,
       shippingRub: o.shippingRub,
       deliveryMethod: o.deliveryMethod as OrderDeliveryMethod,
       deliveryAddress: o.deliveryAddress.address ?? '',

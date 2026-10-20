@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CheckoutRequest } from '@ximi4ka-shop/shared'
+import { findPromo, promoDiscountRub, type Promo } from '@ximi4ka-shop/shared/types/promo'
 import { getMeOrNull } from '@/lib/accountApi'
 import { loadAttribution, safeLocalStorage } from '@/lib/attribution'
 import { useCart } from '@/lib/cart'
@@ -14,6 +15,7 @@ import { formatRub } from '@/lib/stockLabel'
 import { METRIKA_GOALS, reachGoal, rememberPendingPurchase } from '@/lib/metrika'
 import { CdekDelivery } from '@/components/checkout/CdekDelivery'
 import { CisDelivery } from '@/components/checkout/CisDelivery'
+import { PromoCodeField } from '@/components/checkout/PromoCodeField'
 import { ERROR_CLASS, FIELD_CLASS, LABEL_CLASS } from '@/components/checkout/fieldStyles'
 import { useCdekDelivery } from '@/components/checkout/useCdekDelivery'
 import { useCisDelivery } from '@/components/checkout/useCisDelivery'
@@ -59,6 +61,8 @@ export default function CheckoutPage() {
     reachGoal(METRIKA_GOALS.beginCheckout, { items_count: itemCount, cart_total: totals.totalRub })
   }, [hydrated, items.length, itemCount, totals.totalRub])
 
+  const [promo, setPromo] = useState<Promo | null>(null)
+  const [promoError, setPromoError] = useState<string | null>(null)
   const [fields, setFields] = useState<CheckoutFormFields>(INITIAL_FIELDS)
   const [errors, setErrors] = useState<CheckoutFormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
@@ -147,7 +151,10 @@ export default function CheckoutPage() {
   const cisShippingRub = isCis ? cis.shippingRub(totals.totalRub) : null
   const hasShippingPrice = isCis ? cisShippingRub !== null : quote !== null
   const shippingRub = isCis ? (cisShippingRub ?? 0) : (quote?.customerPriceRub ?? 0)
-  const totalRub = totals.totalRub + shippingRub
+  // Промо — с суммы товаров после скидок. Доставка (и порог бесплатной) выше
+  // считаются от суммы до промокода, как на сервере.
+  const promoRub = promo ? promoDiscountRub(totals.totalRub, promo.percent) : 0
+  const totalRub = totals.totalRub - promoRub + shippingRub
 
   // Маска и проверка телефона у регионов разные: введённый номер при смене
   // региона не переносим (иначе чужой номер молча превратится в +7…), а
@@ -158,6 +165,12 @@ export default function CheckoutPage() {
     setField('phone', '')
     setErrors((prev) => ({ ...prev, phone: undefined, email: undefined }))
     setServerError(null)
+  }
+
+  function applyPromo(code: string) {
+    const found = findPromo(code)
+    setPromo(found)
+    setPromoError(found ? null : 'Промокод не найден')
   }
 
   function setField<K extends keyof CheckoutFormFields>(key: K, value: CheckoutFormFields[K]) {
@@ -192,6 +205,7 @@ export default function CheckoutPage() {
     const payload: CheckoutRequest = {
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       ...(gift ? { giftProductId: gift.productId } : {}),
+      ...(promo ? { promoCode: promo.code } : {}),
       customer: {
         name: fields.name.trim(),
         phone: `+${isCis ? internationalPhoneDigits(fields.phone) : phoneDigits(fields.phone)}`,
@@ -247,6 +261,11 @@ export default function CheckoutPage() {
           setServerError(
             'Слишком много попыток оформить заказ. Подождите несколько минут и попробуйте снова.',
           )
+        } else if (err.code === 'promo_invalid') {
+          // Сервер не знает код (список разошёлся с витриной): снимаем скидку,
+          // чтобы покупатель увидел настоящую сумму до повторной отправки.
+          setPromo(null)
+          setPromoError(`${err.message}. Скидка снята, проверьте сумму и оформите заказ ещё раз.`)
         } else if (err.code === 'delivery_point_unknown') {
           // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
           // «Пункт получения», выбор сброшен, список города грузится заново.
@@ -491,8 +510,27 @@ export default function CheckoutPage() {
                 )}
               </ul>
 
+              <PromoCodeField
+                applied={promo}
+                error={promoError}
+                onApply={applyPromo}
+                onRemove={() => {
+                  setPromo(null)
+                  setPromoError(null)
+                }}
+              />
+
               <div className="flex flex-col gap-2">
                 <CartSummaryRows totals={totals} itemCount={itemCount} />
+                {promo && promoRub > 0 && (
+                  <div
+                    data-testid="summary-promo"
+                    className="flex justify-between gap-4 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)]"
+                  >
+                    <span>Промокод {promo.code}</span>
+                    <span className="whitespace-nowrap">−{formatRub(promoRub)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                   <span>Доставка</span>
                   <span data-testid="summary-shipping">

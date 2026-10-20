@@ -118,6 +118,9 @@ export const CheckoutSchema = z.object({
   // Подарок на выбор; условия (порог, список реактивов, наличие) проверяет loadGift.
   // Битое значение — это «без подарка»: подарок не должен срывать заказ.
   giftProductId: z.string().uuid().optional().catch(undefined),
+  // Промокод: пустая строка — «без промокода». Неизвестный код отклоняет роут
+  // (promo_invalid), а не молча игнорирует: покупатель ждёт скидку.
+  promoCode: z.string().max(64).optional(),
   customer: z.object({
     name: z.string().trim().min(1).max(255),
     phone: z.string().trim().min(5).max(64),
