@@ -42,6 +42,36 @@ describe('WholesaleSearch — понятно, что это поиск', () => {
     expect(screen.getByRole('search')).toContainElement(screen.getByRole('searchbox'))
   })
 
+  it('aria-controls ссылается на список, только пока он отрисован', async () => {
+    searchCatalog.mockResolvedValue({
+      products: [
+        {
+          id: 'p1',
+          slug: 'probirka',
+          name: 'Пробирка',
+          priceRub: 29,
+          image: null,
+          stockStatus: 'in_stock',
+          categories: ['equipment'],
+        },
+      ],
+      posts: [],
+    })
+    render(<WholesaleSearch onPick={vi.fn()} />)
+    const input = screen.getByRole('searchbox')
+    // Закрытый список не в DOM — ссылка на него ломает дерево доступности (Lighthouse).
+    expect(input).not.toHaveAttribute('aria-controls')
+    expect(screen.getByRole('combobox')).not.toHaveAttribute('aria-controls')
+    expect(screen.getByRole('combobox')).not.toHaveAttribute('aria-owns')
+
+    fireEvent.change(input, { target: { value: 'проб' } })
+    const listbox = await screen.findByRole('listbox')
+    expect(input).toHaveAttribute('aria-controls', listbox.id)
+
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(input).not.toHaveAttribute('aria-controls')
+  })
+
   it('Enter на выбранной подсказке добавляет товар и не отправляет форму', async () => {
     searchCatalog.mockResolvedValue({
       products: [
