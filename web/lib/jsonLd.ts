@@ -172,6 +172,16 @@ interface RatingLd {
   worstRating: 1
 }
 
+export interface OfferLd {
+  '@type': 'Offer'
+  url: string
+  priceCurrency: 'RUB'
+  price: number
+  availability: string
+  itemCondition: 'https://schema.org/NewCondition'
+  seller: { '@id': string }
+}
+
 export interface ProductLd {
   '@context': 'https://schema.org'
   '@type': 'Product'
@@ -194,21 +204,25 @@ export interface ProductLd {
     reviewBody?: string
     datePublished?: string
   }>
-  offers: {
-    '@type': 'Offer'
-    url: string
-    priceCurrency: 'RUB'
-    price: number
-    availability: string
-    itemCondition: 'https://schema.org/NewCondition'
-    seller: { '@id': string }
+  offers: OfferLd
+}
+
+/** Цена и наличие — только из базы; один построитель на карточку товара и на списки. */
+function offerJsonLd(product: Product): OfferLd {
+  const base = siteUrl()
+  return {
+    '@type': 'Offer',
+    url: `${base}/product/${product.slug}`,
+    priceCurrency: 'RUB',
+    price: product.priceRub,
+    availability: availabilityUrl(product.stockStatus),
+    itemCondition: 'https://schema.org/NewCondition',
+    seller: { '@id': `${base}/#organization` },
   }
 }
 
 export function productJsonLd(product: Product, extras: ProductLdExtras = {}): ProductLd {
-  const base = siteUrl()
   const { aggregateRating, reviews } = extras
-  const url = `${base}/product/${product.slug}`
   const images = product.images?.map((img) => absoluteUrl(img.url))
   return {
     '@context': 'https://schema.org',
@@ -244,16 +258,7 @@ export function productJsonLd(product: Product, extras: ProductLdExtras = {}): P
             datePublished: r.datePublished ?? undefined,
           }))
         : undefined,
-    // Цена и наличие — только из базы.
-    offers: {
-      '@type': 'Offer',
-      url,
-      priceCurrency: 'RUB',
-      price: product.priceRub,
-      availability: availabilityUrl(product.stockStatus),
-      itemCondition: 'https://schema.org/NewCondition',
-      seller: { '@id': `${base}/#organization` },
-    },
+    offers: offerJsonLd(product),
   }
 }
 
@@ -263,8 +268,13 @@ export interface ItemListLd {
   itemListElement: Array<{
     '@type': 'ListItem'
     position: number
-    url: string
-    name: string
+    item: {
+      '@type': 'Product'
+      name: string
+      url: string
+      image?: string
+      offers: OfferLd
+    }
   }>
 }
 
@@ -273,12 +283,20 @@ export function itemListJsonLd(products: Product[]): ItemListLd {
   return {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    itemListElement: products.map((p, i) => ({
-      '@type': 'ListItem',
-      position: i + 1,
-      url: `${base}/product/${p.slug}`,
-      name: p.name,
-    })),
+    itemListElement: products.map((p, i) => {
+      const firstImage = p.images?.[0]
+      return {
+        '@type': 'ListItem',
+        position: i + 1,
+        item: {
+          '@type': 'Product',
+          name: p.name,
+          url: `${base}/product/${p.slug}`,
+          image: firstImage ? absoluteUrl(firstImage.url) : undefined,
+          offers: offerJsonLd(p),
+        },
+      }
+    }),
   }
 }
 
