@@ -44,6 +44,31 @@ export function MetrikaScript({ counterId }: { counterId: string }) {
   )
 }
 
+// Вариокуб (Яндекс эксперименты, exp.js). Работает поверх счётчика Метрики того
+// же сайта — ID берём из настройки metrikaId, как и MetrikaScript, а не из
+// кода. Грузится `lazyOnload`, как остальные счётчики (см. MetrikaScript):
+// без экспериментов в кабинете скрипт ничего не меняет на странице. Если когда-нибудь
+// заведут визуальный эксперимент, он применится после load и может дать мигание.
+// Обработчик error — из кода Яндекса: если exp.js не загрузился (блокировщик,
+// сеть), колбэки init получают пустые флаги и страница работает как без экспериментов.
+export function VarioqubScript({ counterId }: { counterId: string }) {
+  return (
+    <Script id="varioqub" strategy="lazyOnload">{`
+      (function(e,x,pe,r,i,me,nt){
+        e[i]=e[i]||function(){(e[i].a=e[i].a||[]).push(arguments)};
+        me=x.createElement(pe);me.async=1;me.src=r;nt=x.getElementsByTagName(pe)[0];
+        me.addEventListener('error',function(){
+          function cb(t){t=t[t.length-1];'function'==typeof t&&t({flags:{}})}
+          Array.isArray(e[i].a)&&e[i].a.forEach(cb);
+          e[i]=function(){cb(arguments)}
+        });
+        nt.parentNode.insertBefore(me,nt)
+      })(window, document, "script", "https://abt.s3.yandex.net/expjs/latest/exp.js", "ymab");
+      ymab(${JSON.stringify(`metrika.${counterId}`)}, "init");
+    `}</Script>
+  )
+}
+
 // GA4 (gtag.js). Loads `lazyOnload`, like the other counters, so it does not
 // compete with the hero image and the main bundle. The
 // measurement ID is injected via JSON.stringify for the same escaping reason

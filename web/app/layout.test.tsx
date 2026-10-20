@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 vi.mock('./fonts', () => ({ fontVariables: '' }))
 vi.mock('@/lib/analytics', () => ({
   MetrikaScript: () => null,
+  VarioqubScript: ({ counterId }: { counterId: string }) => <i data-varioqub={counterId} />,
   Ga4Script: () => null,
   VkPixelScript: () => <i data-vk-pixel />,
   GtmScript: () => <i data-gtm-script />,
@@ -43,6 +44,28 @@ describe('RootLayout verification tags', () => {
     const html = await renderHtml()
     expect(html).toContain(`content="${MERCHANTS_VERIFICATION}"`)
     expect(html).toContain('<meta name="yandex-verification" content="webmaster-code"/>')
+  })
+
+  it('mounts Varioqub on the Metrika counter from settings, and not without one', async () => {
+    const settings = {
+      yandexWebmasterVerification: null,
+      googleSiteVerification: null,
+      ga4Id: null,
+    }
+    vi.mocked(getPublicSettings).mockResolvedValue({
+      ...settings,
+      metrikaId: '12345',
+    } as unknown as PublicSettings)
+    expect(await renderHtml()).toContain('data-varioqub="12345"')
+
+    vi.mocked(getPublicSettings).mockResolvedValue({
+      ...settings,
+      metrikaId: null,
+    } as unknown as PublicSettings)
+    expect(await renderHtml()).not.toContain('data-varioqub')
+
+    vi.mocked(getPublicSettings).mockRejectedValue(new Error('api down'))
+    expect(await renderHtml()).not.toContain('data-varioqub')
   })
 
   it('mounts the VK pixel even when settings are unavailable', async () => {
