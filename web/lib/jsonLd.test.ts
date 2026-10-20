@@ -245,27 +245,82 @@ describe('JSON-LD helpers', () => {
   })
 
   describe('itemListJsonLd', () => {
-    it('gives each entry a 1-based position and absolute product URL', () => {
-      const out = itemListJsonLd([
-        makeProduct({ id: 'a', slug: 'a', name: 'A' }),
-        makeProduct({ id: 'b', slug: 'b', name: 'B' }),
-      ])
+    it('gives each entry a 1-based position and a Product with absolute URL, price and availability', () => {
+      const out = serialized(
+        itemListJsonLd([
+          makeProduct({ id: 'a', slug: 'a', name: 'A', priceRub: 1500 }),
+          makeProduct({
+            id: 'b',
+            slug: 'b',
+            name: 'B',
+            priceRub: 990,
+            stockStatus: 'out_of_stock',
+          }),
+        ]),
+      )
       expect(out['@context']).toBe('https://schema.org')
       expect(out['@type']).toBe('ItemList')
       expect(out.itemListElement).toEqual([
         {
           '@type': 'ListItem',
           position: 1,
-          url: 'https://new.ximi4ka.ru/product/a',
-          name: 'A',
+          item: {
+            '@type': 'Product',
+            name: 'A',
+            url: 'https://new.ximi4ka.ru/product/a',
+            image: 'https://cdn.example.com/a.jpg',
+            offers: {
+              '@type': 'Offer',
+              url: 'https://new.ximi4ka.ru/product/a',
+              priceCurrency: 'RUB',
+              price: 1500,
+              availability: 'https://schema.org/InStock',
+              itemCondition: 'https://schema.org/NewCondition',
+              seller: { '@id': 'https://new.ximi4ka.ru/#organization' },
+            },
+          },
         },
         {
           '@type': 'ListItem',
           position: 2,
-          url: 'https://new.ximi4ka.ru/product/b',
-          name: 'B',
+          item: {
+            '@type': 'Product',
+            name: 'B',
+            url: 'https://new.ximi4ka.ru/product/b',
+            image: 'https://cdn.example.com/a.jpg',
+            offers: {
+              '@type': 'Offer',
+              url: 'https://new.ximi4ka.ru/product/b',
+              priceCurrency: 'RUB',
+              price: 990,
+              availability: 'https://schema.org/OutOfStock',
+              itemCondition: 'https://schema.org/NewCondition',
+              seller: { '@id': 'https://new.ximi4ka.ru/#organization' },
+            },
+          },
         },
       ])
+    })
+
+    it('maps preorder and omits image when the product has none', () => {
+      const out = serialized(
+        itemListJsonLd([makeProduct({ images: [], stockStatus: 'preorder' })]),
+      ) as { itemListElement: Array<{ item: Record<string, unknown> }> }
+      const item = out.itemListElement[0]!.item
+      expect(item).not.toHaveProperty('image')
+      expect((item.offers as { availability: string }).availability).toBe(
+        'https://schema.org/PreOrder',
+      )
+    })
+
+    it('matches the Offer that productJsonLd emits for the same product', () => {
+      const product = makeProduct({ priceRub: 2490 })
+      const list = serialized(itemListJsonLd([product])) as {
+        itemListElement: Array<{ item: { offers: unknown } }>
+      }
+      expect(list.itemListElement[0]!.item.offers).toEqual(
+        serialized(productJsonLd(product)).offers,
+      )
     })
   })
 
