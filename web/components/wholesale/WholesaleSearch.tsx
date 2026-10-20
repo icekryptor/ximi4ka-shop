@@ -130,8 +130,8 @@ export function WholesaleSearch({ onPick }: Props) {
           role="combobox"
           aria-expanded={showList}
           aria-haspopup="listbox"
-          aria-owns={listboxId}
-          aria-controls={listboxId}
+          aria-owns={showList ? listboxId : undefined}
+          aria-controls={showList ? listboxId : undefined}
         >
           <svg
             aria-hidden="true"
@@ -156,7 +156,7 @@ export function WholesaleSearch({ onPick }: Props) {
             onKeyDown={onKeyDown}
             placeholder="Пробирка, реактив"
             aria-autocomplete="list"
-            aria-controls={listboxId}
+            aria-controls={showList ? listboxId : undefined}
             aria-activedescendant={showList && activeIndex >= 0 ? optionId(activeIndex) : undefined}
             autoComplete="off"
             className="w-full rounded-full border border-[var(--color-lj-ink)] bg-white py-3.5 pl-12 pr-24 sm:pr-28 font-lj-body text-base text-[var(--color-lj-ink)] outline-none transition-colors placeholder:opacity-55 focus:border-[var(--color-lj-brand)] focus:ring-2 focus:ring-[var(--color-lj-brand)]/30"

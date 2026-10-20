@@ -17,7 +17,7 @@ export function ElementOfDayCell({ date }: { date?: Date }) {
         <span className="font-lj-display font-[700] text-xl leading-none tracking-[-0.02em] text-[var(--color-lj-ink)] group-hover/eod:text-[var(--color-lj-brand-deep)] transition-colors duration-300">
           {el.symbol}
         </span>
-        <span className="font-lj-mono text-[0.5rem] leading-none uppercase tracking-[0.06em] opacity-55 truncate">
+        <span className="font-lj-mono text-[0.5rem] leading-none uppercase tracking-[0.06em] opacity-60 truncate">
           {el.name}
         </span>
       </div>

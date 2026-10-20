@@ -31,7 +31,7 @@ export function OrderProcessSection({ href }: Props) {
               key={step.index}
               className="flex flex-col gap-4 border border-[var(--color-lj-rule)] p-5"
             >
-              <span className="font-lj-mazzard text-sm font-bold leading-[1.18] text-[var(--color-lj-brand)]">
+              <span className="font-lj-mazzard text-sm font-bold leading-[1.18] text-[var(--color-lj-brand-deep)]">
                 {String(step.index).padStart(2, '0')}
               </span>
               <h3 className="m-0 font-lj-mazzard text-[1.125rem] leading-[1.15] tracking-[-0.02em]">

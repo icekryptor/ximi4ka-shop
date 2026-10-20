@@ -197,7 +197,7 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
             >
               {index + 1} / {count}
             </span>
-            <div className="flex items-center gap-2" role="tablist" aria-label="Выбор слайда">
+            <div className="flex items-center" role="tablist" aria-label="Выбор слайда">
               {slides.map((s, i) => (
                 <button
                   key={s.id}
@@ -206,10 +206,15 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
                   aria-selected={i === index}
                   aria-label={`Слайд ${i + 1}: ${slideTitle(s)}`}
                   onClick={() => setIndex(i)}
-                  className={`rounded-[4px] bg-[var(--color-lj-on-bright)] transition-all duration-300 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                    i === index ? 'h-1.5 w-[18px]' : 'size-[5px] hover:opacity-80'
-                  }`}
-                />
+                  className="group/dot flex size-6 items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`block rounded-[4px] bg-[var(--color-lj-on-bright)] transition-all duration-300 motion-reduce:transition-none ${
+                      i === index ? 'h-1.5 w-[18px]' : 'size-[5px] group-hover/dot:opacity-80'
+                    }`}
+                  />
+                </button>
               ))}
             </div>
             <button
