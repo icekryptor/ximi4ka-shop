@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./types/order": "./src/types/order.ts",
     "./types/cis": "./src/types/cis.ts",
+    "./types/promo": "./src/types/promo.ts",
     "./types/product": "./src/types/product.ts",
     "./types/category": "./src/types/category.ts",
     "./types/page": "./src/types/page.ts",

@@ -16,6 +16,9 @@ export interface NotifiableOrder {
   deliveryAddress: DeliveryAddress
   subtotalRub: number
   discountRub: number
+  /** Промокод и его скидка; нет у заказов до промокодов. */
+  promoCode?: string | null
+  promoDiscountRub?: number
   shippingRub: number
   totalRub: number
   items: {
@@ -176,8 +179,8 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
     order.customerTelegram ?? '',
     deliveryCell(order),
     giftLast(order.items).map(itemLine).join('\n'),
-    // «Товары» — со скидкой: колонки таблицы не менялись, Товары + Доставка = Итого.
-    order.subtotalRub - order.discountRub,
+    // «Товары» — со всеми скидками: колонки таблицы не менялись, Товары + Доставка = Итого.
+    order.subtotalRub - order.discountRub - (order.promoDiscountRub ?? 0),
     order.shippingRub,
     order.totalRub,
     STATUS_LABELS[order.status],
@@ -217,6 +220,9 @@ export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []
 
   const goods = [`Товары ${rub(order.subtotalRub)}`]
   if (order.discountRub > 0) goods.push(`оптовая скидка −${rub(order.discountRub)}`)
+  if (order.promoCode && (order.promoDiscountRub ?? 0) > 0) {
+    goods.push(`промокод ${escapeHtml(order.promoCode)} −${rub(order.promoDiscountRub ?? 0)}`)
+  }
   const totals = `${goods.join(' · ')} · ${shipping} · итого ${rub(order.totalRub)}`
 
   // Позиции добавляем, пока влезает в лимит, оставляя место на хвост и на

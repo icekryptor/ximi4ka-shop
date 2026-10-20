@@ -307,6 +307,104 @@ describe('POST /api/checkout', () => {
     expect(order.totalRub).toBe(4500)
   })
 
+  describe('промокод', () => {
+    async function orderFor(res: request.Response): Promise<Order> {
+      return AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: res.body.data.orderNumber,
+      })
+    }
+
+    it('RENATA2026: 5% с товаров, доставка по сумме до промокода остаётся бесплатной', async () => {
+      const p = await seedProduct({ priceRub: 3099 })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({ ...checkoutBody([{ productId: p.id, quantity: 1 }]), promoCode: 'RENATA2026' })
+      expect(res.status).toBe(201)
+      const order = await orderFor(res)
+      expect(order.promoCode).toBe('RENATA2026')
+      expect(order.promoDiscountRub).toBe(155)
+      expect(order.subtotalRub).toBe(3099)
+      expect(order.discountRub).toBe(0)
+      expect(order.shippingRub).toBe(0) // 2944 ₽ после скидки, но порог — от 3099
+      expect(order.totalRub).toBe(2944)
+    })
+
+    it('код принимается без учёта регистра и пробелов', async () => {
+      const p = await seedProduct({ priceRub: 3000 })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({ ...checkoutBody([{ productId: p.id, quantity: 1 }]), promoCode: ' renata2026 ' })
+      expect(res.status).toBe(201)
+      const order = await orderFor(res)
+      expect(order.promoCode).toBe('RENATA2026')
+      expect(order.promoDiscountRub).toBe(150)
+    })
+
+    it('ниже порога доставка платная, скидка её не уменьшает', async () => {
+      const p = await seedProduct({ priceRub: 1000 })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({ ...checkoutBody([{ productId: p.id, quantity: 1 }]), promoCode: 'RENATA2026' })
+      expect(res.status).toBe(201)
+      const order = await orderFor(res)
+      expect(order.shippingRub).toBe(350)
+      expect(order.totalRub).toBe(1000 - 50 + 350)
+    })
+
+    it('суммируется с оптовой скидкой: промо берётся с суммы после неё', async () => {
+      // 10 реактивов со скидкой 20% = 800 ₽, из них промо 5% = 40 ₽.
+      const reagent = await seedProduct({ slug: 'copper-sulfate', priceRub: 100, sku: 'CU-9' })
+      await seedCategory('reagents', [reagent])
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({
+          ...checkoutBody([{ productId: reagent.id, quantity: 10 }]),
+          promoCode: 'RENATA2026',
+        })
+      expect(res.status).toBe(201)
+      const order = await orderFor(res)
+      expect(order.subtotalRub).toBe(1000)
+      expect(order.discountRub).toBe(200)
+      expect(order.promoDiscountRub).toBe(40)
+      expect(order.totalRub).toBe(1000 - 200 - 40 + order.shippingRub)
+    })
+
+    it('для ЕАЭС порог тоже считается до промокода', async () => {
+      const p = await seedProduct({ priceRub: 3100 })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({ ...cisBody([{ productId: p.id, quantity: 1 }]), promoCode: 'RENATA2026' })
+      expect(res.status).toBe(201)
+      const order = await orderFor(res)
+      expect(order.shippingRub).toBe(0) // Беларусь: бесплатно от 3000 ₽
+      expect(order.totalRub).toBe(3100 - 155)
+    })
+
+    it('без промокода и с пустой строкой заказ как раньше', async () => {
+      const p = await seedProduct({ priceRub: 3000 })
+      for (const promoCode of [undefined, '', '  ']) {
+        const res = await request(app)
+          .post('/api/checkout')
+          .send({ ...checkoutBody([{ productId: p.id, quantity: 1 }]), promoCode })
+        expect(res.status).toBe(201)
+        const order = await orderFor(res)
+        expect(order.promoCode).toBeNull()
+        expect(order.promoDiscountRub).toBe(0)
+        expect(order.totalRub).toBe(3000)
+      }
+    })
+
+    it('400 promo_invalid на неизвестный код, заказ не создаётся', async () => {
+      const p = await seedProduct({ priceRub: 3000 })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({ ...checkoutBody([{ productId: p.id, quantity: 1 }]), promoCode: 'WRONG' })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('promo_invalid')
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
+  })
+
   describe('доставка в страны ЕАЭС: адрес ПВЗ вручную', () => {
     function noCdek() {
       const get = vi.fn()
@@ -714,6 +812,52 @@ describe('POST /api/checkout', () => {
     expect(Items).toContainEqual(
       expect.objectContaining({ Price: 8000, Quantity: 10, Amount: 80000 }),
     )
+  })
+
+  it('sends a Receipt that adds up to Amount when a promo code is applied', async () => {
+    vi.stubEnv('PAYMENT_PROVIDER', 'tbank')
+    vi.stubEnv('TBANK_TERMINAL_KEY', 'TestTerminal')
+    vi.stubEnv('TBANK_PASSWORD', 'secret')
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        Success: true,
+        PaymentId: 8,
+        PaymentURL: 'https://securepay.tinkoff.ru/pay/8',
+      }),
+    }))
+    tbankFetchMock.mockImplementation(fetchMock)
+
+    // Товары 1000 + 333 ₽, промо 5% = 67 ₽ (66,65 округляется), доставка 350 ₽.
+    const a = await seedProduct({ slug: 'a', priceRub: 1000, sku: 'A-1' })
+    const b = await seedProduct({ slug: 'b', priceRub: 111, sku: 'B-1' })
+    const res = await request(app)
+      .post('/api/checkout')
+      .send({
+        ...checkoutBody([
+          { productId: a.id, quantity: 1 },
+          { productId: b.id, quantity: 3 },
+        ]),
+        promoCode: 'RENATA2026',
+      })
+
+    expect(res.status).toBe(201)
+    expect(res.body.data.paymentUrl).toBe('https://securepay.tinkoff.ru/pay/8')
+    const sent = JSON.parse(
+      (fetchMock.mock.calls[0] as unknown as [URL, RequestInit])[1].body as string,
+    ) as {
+      Amount: number
+      Receipt: {
+        Items: Array<{ Name: string; Price: number; Quantity: number; Amount: number }>
+      }
+    }
+    expect(sent.Amount).toBe((1333 - 67 + 350) * 100)
+    const { Items } = sent.Receipt
+    expect(Items.reduce((sum, i) => sum + i.Amount, 0)).toBe(sent.Amount)
+    for (const line of Items) expect(line.Price * line.Quantity).toBe(line.Amount)
+    // Доставка в чеке без скидки.
+    expect(Items.find((i) => i.Name.startsWith('Доставка'))?.Amount).toBe(35000)
   })
 
   it('keeps the order pending when tbank Init fails', async () => {

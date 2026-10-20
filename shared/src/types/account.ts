@@ -58,6 +58,9 @@ export interface AccountOrderSummary {
   }>
   subtotalRub: number
   discountRub: number
+  /** Промокод заказа и его скидка (0 — без промокода). */
+  promoCode: string | null
+  promoDiscountRub: number
   shippingRub: number
   deliveryMethod: OrderDeliveryMethod
   /** Адрес доставки одной строкой: «<город>, <ПВЗ или улица>». */

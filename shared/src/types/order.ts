@@ -134,6 +134,9 @@ export interface OrderDto {
   subtotalRub: number
   /** Оптовая скидка (наборы, проценты на реагенты, цены партий); totalRub = subtotalRub − discountRub + shippingRub. */
   discountRub: number
+  /** Промокод заказа (null — без промокода) и его скидка; totalRub = subtotalRub − discountRub − promoDiscountRub + shippingRub. */
+  promoCode?: string | null
+  promoDiscountRub?: number
   shippingRub: number
   totalRub: number
   paymentProvider: PaymentProvider
@@ -171,6 +174,8 @@ export interface CheckoutRequest {
   items: Array<{ productId: string; quantity: number }>
   /** Подарок на выбор (реактив из списка); сервер проверяет порог, наличие и список. */
   giftProductId?: string
+  /** Промокод; сервер сверяет его сам и отвечает 400 promo_invalid на неизвестный. */
+  promoCode?: string
   customer: { name: string; phone: string; email?: string; telegram?: string }
   // Куда везём — из виджета СДЭК (см. DeliveryDestination) + комментарий.
   delivery: CheckoutDelivery
