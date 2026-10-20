@@ -11,7 +11,7 @@ vi.mock('next/script', () => ({
   ),
 }))
 
-import { GtmNoscript, GtmScript, MetrikaScript, VkPixelScript } from './analytics'
+import { GtmNoscript, GtmScript, MetrikaScript, VarioqubScript, VkPixelScript } from './analytics'
 import { reachGoal, setMetrikaCounterId } from './metrika'
 
 afterEach(() => {
@@ -42,6 +42,34 @@ describe('MetrikaScript', () => {
     render(<MetrikaScript counterId="12345" />)
     reachGoal('open_cart')
     expect(ym).toHaveBeenCalledWith('12345', 'reachGoal', 'open_cart')
+  })
+})
+
+describe('VarioqubScript', () => {
+  it('грузится после load, чтобы не мешать главной картинке', () => {
+    const { getByTestId } = render(<VarioqubScript counterId="12345" />)
+    expect(getByTestId('varioqub')).toHaveAttribute('data-strategy', 'lazyOnload')
+  })
+
+  it('грузит exp.js с abt.s3.yandex.net и стартует эксперименты на счётчике сайта', () => {
+    const { getByTestId } = render(<VarioqubScript counterId="12345" />)
+    const code = getByTestId('varioqub').textContent ?? ''
+    expect(code).toContain('"https://abt.s3.yandex.net/expjs/latest/exp.js"')
+    expect(code).toContain('"ymab"')
+    expect(code).toContain('ymab("metrika.12345", "init")')
+  })
+
+  it('при сбое загрузки exp.js отдаёт колбэкам пустые флаги, а не вешает страницу', () => {
+    const { getByTestId } = render(<VarioqubScript counterId="12345" />)
+    const code = getByTestId('varioqub').textContent ?? ''
+    expect(code).toContain("addEventListener('error'")
+    expect(code).toContain('flags:{}')
+  })
+
+  it('экранирует ID через JSON.stringify', () => {
+    const { getByTestId } = render(<VarioqubScript counterId={'1"+alert(1)+"'} />)
+    const code = getByTestId('varioqub').textContent ?? ''
+    expect(code).toContain(JSON.stringify('metrika.1"+alert(1)+"'))
   })
 })
 
