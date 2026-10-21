@@ -85,14 +85,16 @@ export function Header({ headerPromoText = null }: HeaderProps) {
           шириной по содержимому и по центру — не растягивается на весь экран;
           уже — занимает всю ширину, чтобы корзина и «МЕНЮ» были у края.
           Навигация встаёт в ряд с lg, поле поиска — с xl: раньше логотип,
-          пункты меню, поле и корзина в одну пилюлю не помещаются. */}
+          пункты меню, поле и корзина в одну пилюлю не помещаются.
+          Фон сплошной, без backdrop-blur и тени: на серверах PageSpeed без GPU
+          каждый такой эффект первого экрана задерживает первый кадр. */}
       <header
         ref={headerRef}
         className="pointer-events-none sticky top-0 z-[50] w-full px-2.5 pt-2.5"
       >
         <div
           data-testid="header-pill"
-          className="pointer-events-auto mx-auto flex w-full items-center justify-between gap-4 lg:w-fit lg:max-w-full lg:justify-start lg:gap-8 rounded-full border border-[var(--color-lj-rule-soft)] bg-[var(--color-lj-cream)]/90 backdrop-blur shadow-[0_6px_24px_rgba(10,10,10,0.06)] py-2.5 pl-4 pr-3 md:pl-6 md:pr-2.5"
+          className="pointer-events-auto mx-auto flex w-full items-center justify-between gap-4 lg:w-fit lg:max-w-full lg:justify-start lg:gap-8 rounded-full border border-[var(--color-lj-rule-soft)] bg-[var(--color-lj-cream)] py-2.5 pl-4 pr-3 md:pl-6 md:pr-2.5"
         >
           {/* На мобильном логотип (~199px при 1.75rem) — единственное, что
               может сжиматься: лупа, корзина и «МЕНЮ» вместе с ним не помещались

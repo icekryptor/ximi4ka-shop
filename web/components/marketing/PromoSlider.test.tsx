@@ -153,9 +153,66 @@ describe('<PromoSlider>', () => {
       })
   })
 
+  it('не листает сам, пока посетитель ничего не сделал: иначе второй баннер становится LCP', () => {
+    vi.useFakeTimers()
+    render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+    expect(screen.getByText('1 / 3')).toBeInTheDocument()
+
+    act(() => {
+      fireEvent.scroll(window)
+    })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(screen.getByText('2 / 3')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['касание', () => fireEvent.pointerDown(window)],
+    ['клавиша', () => fireEvent.keyDown(window, { key: 'Tab' })],
+    ['тач', () => fireEvent.touchStart(window)],
+  ])('запускает автопрокрутку после первого действия: %s', (_, interact) => {
+    vi.useFakeTimers()
+    render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      interact()
+    })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(screen.getByText('2 / 3')).toBeInTheDocument()
+  })
+
+  it('движение мыши автопрокрутку не запускает: оно не завершает поиск LCP', () => {
+    vi.useFakeTimers()
+    render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      fireEvent.mouseMove(window)
+      vi.advanceTimersByTime(2500)
+    })
+    expect(screen.getByText('1 / 3')).toBeInTheDocument()
+  })
+
+  it('не использует backdrop-filter: на серверах PSI без GPU размытие задерживает первый кадр', () => {
+    vi.useFakeTimers()
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    // jsdom уже в readyState=complete: иллюстрации всех слайдов подключаются по таймеру
+    act(() => {
+      vi.advanceTimersByTime(10)
+    })
+    expect(container.querySelectorAll('img[src*="gift-naoh-2"]')).toHaveLength(1)
+    expect(container.innerHTML).not.toMatch(/backdrop/)
+  })
+
   it('restarts the autoplay countdown after a manual switch', () => {
     vi.useFakeTimers()
     render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      fireEvent.scroll(window)
+    })
     act(() => {
       vi.advanceTimersByTime(900)
     })
@@ -191,6 +248,9 @@ describe('<PromoSlider>', () => {
     vi.useFakeTimers()
     const { unmount } = render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
     act(() => {
+      fireEvent.scroll(window)
+    })
+    act(() => {
       vi.advanceTimersByTime(1000)
     })
     expect(screen.getByText('2 / 3')).toBeInTheDocument()
@@ -205,6 +265,9 @@ describe('<PromoSlider>', () => {
 
     reducedMotion = true
     render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      fireEvent.scroll(window)
+    })
     act(() => {
       vi.advanceTimersByTime(5000)
     })

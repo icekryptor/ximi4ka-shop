@@ -134,7 +134,9 @@ function GiftArt() {
         </div>
       </Layer>
       <Layer box={[793, 406.24, 155.66, 239.53]} size={[102.03, 220.64]} rotate={-15}>
-        <div className="absolute inset-0 overflow-hidden backdrop-blur-[16.5px]">
+        {/* Без backdrop-blur из макета (стекло флакона): на серверах PageSpeed
+            без GPU размытие подложки задерживает первый кадр. */}
+        <div className="absolute inset-0 overflow-hidden">
           <Crop
             src="/img/promo/gift-naoh-2.webp"
             intrinsic={[900, 900]}
