@@ -27,8 +27,9 @@ const CTA_CLASS = 'lj-btn lj-btn-white rounded-[4px] px-7 py-4 max-sm:w-full'
  * Все слайды лежат в одной ячейке сетки — высота задаётся самым высоким и
  * при переключении ничего не прыгает. Неактивные скрыты (opacity + visibility
  * + inert), но остаются в DOM — их текст виден поисковикам. Управление:
- * стрелки ‹ ›, точки, свайп, клавиши ← →. Автопрокрутка встаёт на паузу при
- * наведении и фокусе и отключается при prefers-reduced-motion.
+ * стрелки ‹ ›, точки, свайп, клавиши ← →. Автопрокрутка начинается после
+ * первого действия посетителя, встаёт на паузу при наведении и фокусе и
+ * отключается при prefers-reduced-motion.
  */
 export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
   const [index, setIndex] = useState(0)
@@ -38,6 +39,11 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
   // в той же ячейке сетки, что и активный слайд, поэтому браузер считает их
   // «видимыми» и качает до LCP (≈100 КБ), деля канал с главной картинкой.
   const [artReady, setArtReady] = useState(false)
+  // Автопрокрутка ждёт первого действия посетителя: скролла, касания, клавиши.
+  // До него браузер ещё ищет LCP, и перелистнутый сам собой баннер с крупной
+  // картинкой становится новым LCP (PSI десктоп ловил второй слайд на ~8 с).
+  // Движение мыши не в счёт: оно поиск LCP не завершает.
+  const [engaged, setEngaged] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
   const count = slides.length
@@ -65,12 +71,22 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
   }, [])
 
   useEffect(() => {
-    if (reduced || paused || count < 2 || autoPlayMs <= 0) return
+    if (engaged || count < 2 || autoPlayMs <= 0) return
+    const engage = () => setEngaged(true)
+    const events = ['pointerdown', 'keydown', 'touchstart', 'scroll'] as const
+    for (const type of events) window.addEventListener(type, engage, { once: true, passive: true })
+    return () => {
+      for (const type of events) window.removeEventListener(type, engage)
+    }
+  }, [engaged, count, autoPlayMs])
+
+  useEffect(() => {
+    if (!engaged || reduced || paused || count < 2 || autoPlayMs <= 0) return
     // index в зависимостях: ручное переключение начинает отсчёт заново, и слайд
     // не перескакивает сразу после клика.
     const id = window.setInterval(next, autoPlayMs)
     return () => window.clearInterval(id)
-  }, [reduced, paused, count, autoPlayMs, next, index])
+  }, [engaged, reduced, paused, count, autoPlayMs, next, index])
 
   if (count === 0) return null
 

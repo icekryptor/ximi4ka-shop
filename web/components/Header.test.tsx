@@ -56,6 +56,13 @@ describe('Header v3', () => {
     expect(within(pill).getByTestId('header-cart-button')).toBeInTheDocument()
   })
 
+  it('рисует пилюлю сплошным фоном без размытия и тени (первый кадр в PSI без GPU)', () => {
+    render(<Header />)
+    const pill = screen.getByTestId('header-pill')
+    expect(pill.className).not.toMatch(/backdrop|(^|[\s:])shadow(-|\s|$)/)
+    expect(pill.className).toMatch(/(^|\s)bg-\[var\(--color-lj-cream\)\](\s|$)/)
+  })
+
   it('keeps the desktop pill as wide as its content instead of stretching it', () => {
     render(<Header />)
     const pill = screen.getByTestId('header-pill')
