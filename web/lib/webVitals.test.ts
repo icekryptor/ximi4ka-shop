@@ -13,6 +13,7 @@ import { onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals/attribution'
 import { trackEvent } from './track'
 import {
   WEB_VITAL_META_MAX_CHARS,
+  describeTarget,
   notePage,
   reportWebVital,
   resetWebVitalsForTests,
@@ -325,6 +326,91 @@ describe('vitalMeta', () => {
   })
 })
 
+describe('describeTarget', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  function el(html: string, selector: string): Element {
+    document.body.innerHTML = html
+    return document.querySelector(selector)!
+  }
+
+  it('иконка внутри кнопки — кнопка по aria-label, а не «svg»', () => {
+    const target = el(
+      '<div class="flex gap-[5px]"><button aria-label="Списком"><svg><rect></rect></svg></button></div>',
+      'rect',
+    )
+    expect(describeTarget(target)).toBe('button[aria-label="Списком"]')
+    expect(describeTarget(target.closest('svg'))).toBe('button[aria-label="Списком"]')
+  })
+
+  it('ссылка — путь href без query и hash', () => {
+    const target = el(
+      '<a href="/catalog?utm_source=ya&yclid=1#top" class="lj-link"><span>Каталог</span></a>',
+      'span',
+    )
+    expect(describeTarget(target)).toBe('a[href="/catalog"]')
+  })
+
+  it('картинка — alt до 40 символов; без alt — в контексте описанного предка', () => {
+    const alt = 'Набор «Химичка 3.0» — большой набор для опытов с реактивами'
+    expect(describeTarget(el(`<img alt="${alt}" class="object-cover">`, 'img'))).toBe(
+      `img[alt="${alt.slice(0, 40)}"]`,
+    )
+    expect(describeTarget(el('<a href="/product/kit"><img alt="" src="/k.png"></a>', 'img'))).toBe(
+      'a[href="/product/kit"] img',
+    )
+  })
+
+  it('id и data-testid, если нет aria-label', () => {
+    expect(describeTarget(el('<button id="buy-now">Купить</button>', 'button'))).toBe(
+      'button#buy-now',
+    )
+    expect(describeTarget(el('<div role="dialog" data-testid="cart"><p>x</p></div>', 'p'))).toBe(
+      'div[data-testid="cart"]',
+    )
+    expect(describeTarget(el('<div role="dialog"><p>x</p></div>', 'p'))).toBe('div[role="dialog"]')
+  })
+
+  it('не берёт текст и значения полей — только тег и атрибуты-описания', () => {
+    expect(
+      describeTarget(el('<button class="lj-btn">Иван Петров, +7 900</button>', 'button')),
+    ).toBe('button')
+    const input = el('<input type="tel" name="phone" value="+7 900 000-00-00">', 'input')
+    expect(describeTarget(input)).toBe('input')
+    expect(describeTarget(el('<input aria-label="Телефон" value="+7 900">', 'input'))).toBe(
+      'input[aria-label="Телефон"]',
+    )
+  })
+
+  it('элемент вне интерактивных — тег в контексте ближайшего предка с id', () => {
+    expect(
+      describeTarget(
+        el('<section id="how-it-works"><div><h2 class="font-lj">Шаги</h2></div></section>', 'h2'),
+      ),
+    ).toBe('#how-it-works h2')
+    expect(describeTarget(el('<main><div class="text-xl">LCP-текст</div></main>', 'div'))).toBe(
+      'div',
+    )
+  })
+
+  it('текстовый узел — по родителю; нет узла — undefined (web-vitals возьмёт свой селектор)', () => {
+    const button = el('<button aria-label="В корзину">В корзину</button>', 'button')
+    expect(describeTarget(button.firstChild)).toBe('button[aria-label="В корзину"]')
+    expect(describeTarget(null)).toBeUndefined()
+  })
+
+  it('не длиннее 100 символов, кавычки в значениях не ломают описание', () => {
+    const long = `${'очень длинная подпись '.repeat(10)}"кавычки"`
+    const d = describeTarget(el(`<button aria-label='${long}'></button>`, 'button'))!
+    expect(d.length).toBeLessThanOrEqual(100)
+    expect(d).toMatch(/^button\[aria-label="[^"]*"\]$/)
+    const id = describeTarget(el(`<section id="${'x'.repeat(150)}"><p>t</p></section>`, 'p'))!
+    expect(id.length).toBeLessThanOrEqual(100)
+  })
+})
+
 describe('reportWebVital', () => {
   it('отправляет метрику через trackEvent с типом web_vital и страницей входа', async () => {
     goTo('/catalog')
@@ -382,9 +468,17 @@ describe('reportWebVital', () => {
 describe('startWebVitals', () => {
   it('подписывается на пять метрик с атрибуцией, только финальные значения', async () => {
     await startWebVitals()
-    for (const fn of [onCLS, onFCP, onINP, onLCP, onTTFB]) {
+    for (const fn of [onFCP, onTTFB]) {
       expect(fn).toHaveBeenCalledTimes(1)
       expect(fn).toHaveBeenCalledWith(reportWebVital, { reportAllChanges: false })
+    }
+    // У INP, LCP и CLS есть элемент — его описывает describeTarget, а не селектор web-vitals.
+    for (const fn of [onCLS, onINP, onLCP]) {
+      expect(fn).toHaveBeenCalledTimes(1)
+      expect(fn).toHaveBeenCalledWith(reportWebVital, {
+        reportAllChanges: false,
+        generateTarget: describeTarget,
+      })
     }
   })
 

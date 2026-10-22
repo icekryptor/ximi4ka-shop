@@ -112,6 +112,60 @@ function scriptInvoker(script: PerformanceScriptTiming): string | undefined {
 
 const ms = (value: number): number => Math.round(value)
 
+// Описание элемента для target метрик (generateTarget web-vitals). Селектор
+// по умолчанию бесполезен: «svg» для иконки внутри кнопки, хвост списка
+// Tailwind-классов для картинки. Берём ближайший интерактивный или размеченный
+// элемент и описываем его тегом и одной меткой: aria-label, путь ссылки, alt
+// картинки, id, data-testid или role. Текст и значения полей не берём никогда:
+// там могут быть имя и телефон покупателя.
+const DESCRIBABLE = 'button, a, input, select, textarea, summary, [role], img'
+const MAX_DESCRIPTOR_VALUE_CHARS = 40
+
+function descriptorValue(value: string): string {
+  return (
+    clip(value.replace(/\s+/g, ' ').trim().replace(/"/g, "'"), MAX_DESCRIPTOR_VALUE_CHARS) ?? ''
+  )
+}
+
+// Тег и одна метка; без меток — только тег.
+function describeElement(el: Element): string {
+  const tag = el.tagName.toLowerCase()
+  const label = el.getAttribute('aria-label')?.trim()
+  if (label) return `${tag}[aria-label="${descriptorValue(label)}"]`
+  if (tag === 'a') {
+    const href = shortUrl(el.getAttribute('href') ?? undefined)
+    if (href) return `a[href="${href}"]`
+  }
+  if (tag === 'img') {
+    const alt = el.getAttribute('alt')?.trim()
+    if (alt) return `img[alt="${descriptorValue(alt)}"]`
+  }
+  if (el.id) return `${tag}#${descriptorValue(el.id)}`
+  const testId = el.getAttribute('data-testid')?.trim()
+  if (testId) return `${tag}[data-testid="${descriptorValue(testId)}"]`
+  const role = el.getAttribute('role')?.trim()
+  if (role) return `${tag}[role="${descriptorValue(role)}"]`
+  return tag
+}
+
+/** generateTarget для web-vitals: компактное описание без персональных данных, ≤ 100 символов. */
+export function describeTarget(node: Node | null): string | undefined {
+  const el = node instanceof Element ? node : (node?.parentElement ?? null)
+  if (!el) return undefined
+  const target = el.closest(DESCRIBABLE) ?? el
+  const own = describeElement(target)
+  if (own !== target.tagName.toLowerCase()) return clip(own, MAX_TARGET_CHARS)
+  // Без меток — в контексте ближайшего размеченного предка или предка с id.
+  for (let cur = target.parentElement; cur; cur = cur.parentElement) {
+    const context = cur.matches(DESCRIBABLE) ? describeElement(cur) : ''
+    if (context && context !== cur.tagName.toLowerCase()) {
+      return clip(`${context} ${own}`, MAX_TARGET_CHARS)
+    }
+    if (cur.id) return clip(`#${descriptorValue(cur.id)} ${own}`, MAX_TARGET_CHARS)
+  }
+  return own
+}
+
 function dropUndefined(meta: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(meta).filter(([, v]) => v !== undefined))
 }
@@ -245,11 +299,13 @@ export async function startWebVitals(): Promise<void> {
   try {
     const { onCLS, onFCP, onINP, onLCP, onTTFB } = await import('web-vitals/attribution')
     const opts = { reportAllChanges: false }
+    // У INP, LCP и CLS есть элемент: описываем его сами (describeTarget).
+    const withTarget = { ...opts, generateTarget: describeTarget }
     onTTFB(reportWebVital, opts)
     onFCP(reportWebVital, opts)
-    onLCP(reportWebVital, opts)
-    onCLS(reportWebVital, opts)
-    onINP(reportWebVital, opts)
+    onLCP(reportWebVital, withTarget)
+    onCLS(reportWebVital, withTarget)
+    onINP(reportWebVital, withTarget)
   } catch {
     // см. выше
   }
