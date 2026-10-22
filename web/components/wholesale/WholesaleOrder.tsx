@@ -5,7 +5,7 @@ import type { SearchProductResult } from '@ximi4ka-shop/shared'
 import { getPublishedProduct } from '@/lib/api'
 import { suggestCombo, type ComboProduct } from '@/lib/comboSuggestion'
 import { KIT_COMBOS } from '@/lib/kitCombos'
-import { openCartDrawer, useCart } from '@/lib/cart'
+import { openCartDrawer, useCartActions } from '@/lib/cart'
 import { formatRub } from '@/lib/stockLabel'
 import {
   nextTierHint,
@@ -29,7 +29,7 @@ const SUMMARY_ROW =
  * живёт в памяти страницы. Цены считает тот же движок, что корзина и сервер.
  */
 export function WholesaleOrder({ catalogPerView }: { catalogPerView?: 4 | 6 }) {
-  const { add } = useCart()
+  const { add } = useCartActions()
   const [lines, setLines] = useState<StagedLine[]>([])
   const priced = useMemo(() => priceStaged(lines), [lines])
   const [offers, setOffers] = useState<ReadonlyMap<string, ComboProduct>>(() => new Map())

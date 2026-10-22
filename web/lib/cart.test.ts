@@ -12,6 +12,7 @@ import {
   saveCart,
   setQuantity,
   useCart,
+  useCartActions,
 } from './cart'
 
 const itemA: Omit<CartItem, 'quantity'> = {
@@ -344,6 +345,36 @@ describe('useCart: снапшот корзины', () => {
     for (const { result } of hooks) {
       expect(result.current.items).toEqual([{ ...itemB, quantity: 3 }])
     }
+  })
+})
+
+describe('useCartActions', () => {
+  it('отдаёт те же стабильные функции, что и useCart', () => {
+    const actions = renderHook(() => useCartActions())
+    const cart = renderHook(() => useCart())
+    const first = actions.result.current
+    actions.rerender()
+    for (const name of ['add', 'remove', 'setQty', 'clear'] as const) {
+      expect(actions.result.current[name]).toBe(first[name])
+      expect(cart.result.current[name]).toBe(first[name])
+    }
+  })
+
+  it('изменение корзины не перерисовывает компонент, которому нужны только действия', () => {
+    let renders = 0
+    const { result } = renderHook(() => {
+      renders += 1
+      return useCartActions()
+    })
+    const initial = renders
+    act(() => {
+      result.current.add(itemA)
+    })
+    act(() => {
+      saveCart([{ ...itemB, quantity: 2 }])
+    })
+    expect(renders).toBe(initial)
+    expect(loadCart()).toEqual([{ ...itemB, quantity: 2 }])
   })
 })
 
