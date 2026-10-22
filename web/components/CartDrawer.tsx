@@ -8,6 +8,7 @@ import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 import { GiftBanner } from '@/components/cart/GiftBanner'
 import { SHIPPING_RULES } from '@/lib/checkout'
 import { METRIKA_GOALS, reachGoal } from '@/lib/metrika'
+import { afterNextPaint } from '@/lib/afterPaint'
 import { formatRub } from '@/lib/stockLabel'
 
 // Порог бесплатной доставки для прогресс-бара. Единый источник — правила
@@ -30,7 +31,8 @@ export function CartDrawer() {
   useEffect(() => {
     function onOpen() {
       setOpen(true)
-      reachGoal(METRIKA_GOALS.openCart)
+      // Цель — после отрисовки открытого drawer, чтобы не тормозить отклик клика.
+      afterNextPaint(() => reachGoal(METRIKA_GOALS.openCart))
     }
     window.addEventListener(OPEN_CART_EVENT, onOpen)
     return () => window.removeEventListener(OPEN_CART_EVENT, onOpen)
