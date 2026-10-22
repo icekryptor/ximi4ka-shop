@@ -105,7 +105,7 @@ export default async function CategoriesListPage({ params }: Props) {
       {/* Pre-footer CTA */}
       <PreFooterCta
         title="Не нашли что искали?"
-        lead="Напишите нам — поможем подобрать набор под интересы и возраст."
+        lead="Напишите нам — поможем подобрать набор под вашу задачу."
         cta={{ label: 'Связаться с нами', href: '/kontakty' }}
       />
     </>

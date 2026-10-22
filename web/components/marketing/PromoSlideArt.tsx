@@ -105,7 +105,7 @@ function GiftArt() {
       </Layer>
       <Layer box={[546.45, -148.51, 1102.29, 1104.73]} size={[844.6, 849.03]} rotate={-22.14}>
         <Image
-          src="/img/promo/gift-box.webp"
+          src="/img/promo/gift-kit-oge.webp"
           alt=""
           fill
           // Кандидат в LCP первого экрана. Next 16: `priority` даёт только

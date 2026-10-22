@@ -270,10 +270,10 @@ describe('Header v3', () => {
   })
 
   it('splits comma-separated promo text into multiple ticker items', () => {
-    render(<Header headerPromoText="Доставка по России, Безопасно для детей" />)
+    render(<Header headerPromoText="Доставка по России, методичка к каждому опыту" />)
     const promo = screen.getByRole('region', { name: 'Промо' })
     expect(promo).toHaveTextContent('Доставка по России')
-    expect(promo).toHaveTextContent('Безопасно для детей')
+    expect(promo).toHaveTextContent('методичка к каждому опыту')
   })
 
   it('uses brand-purple for active route (v3)', () => {

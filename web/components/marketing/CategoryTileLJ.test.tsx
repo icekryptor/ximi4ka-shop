@@ -65,7 +65,7 @@ describe('<CategoryTileLJ>', () => {
   })
 
   it.each([
-    ['kits', '/img/categories/kits.webp'],
+    ['kits', '/img/categories/kits-oge.webp'],
     ['combo', '/img/categories/combo.webp'],
     ['reagents', '/img/categories/reagents.webp'],
     ['equipment', '/img/categories/equipment.webp'],

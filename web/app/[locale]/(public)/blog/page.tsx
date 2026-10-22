@@ -123,7 +123,7 @@ export default async function BlogListPage({ params, searchParams }: Props) {
       {/* Pre-footer CTA */}
       <PreFooterCta
         title="Проверьте теорию на практике"
-        lead="В каталоге собраны наборы для разных возрастов и научных направлений."
+        lead="В каталоге собраны наборы для разных научных направлений — от первых опытов до ОГЭ и электрохимии."
         cta={{ label: 'Открыть каталог', href: '/categories' }}
       />
     </>

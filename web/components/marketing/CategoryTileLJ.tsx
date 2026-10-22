@@ -30,13 +30,13 @@ const MOLECULE_BY_SLUG: Record<string, MoleculeVariant> = {
 // край фона, а не продукт. Ключи — те же слаги, что и в MOLECULE_BY_SLUG;
 // категория без картинки остаётся на градиенте с молекулой.
 const IMAGE_BY_SLUG: Record<string, string> = {
-  kits: '/img/categories/kits.webp',
+  kits: '/img/categories/kits-oge.webp',
   combo: '/img/categories/combo.webp',
   reagents: '/img/categories/reagents.webp',
   equipment: '/img/categories/equipment.webp',
   print: '/img/categories/print.webp',
   // legacy slugs (pre-import naming)
-  'nabory-dlya-opytov': '/img/categories/kits.webp',
+  'nabory-dlya-opytov': '/img/categories/kits-oge.webp',
   kombo: '/img/categories/combo.webp',
   reaktivy: '/img/categories/reagents.webp',
   'laboratornoe-oborudovanie': '/img/categories/equipment.webp',

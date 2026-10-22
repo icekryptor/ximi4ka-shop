@@ -53,11 +53,11 @@ export const TITLE_MAX_LENGTH = 65
 /** Длина description, выше которой сниппет обрезается. */
 export const DESCRIPTION_MAX_LENGTH = 160
 /** Title главной, когда в CMS-странице `home` нет своего metaTitle. */
-export const DEFAULT_HOME_TITLE = 'Химичка — наборы для химических опытов для детей'
+export const DEFAULT_HOME_TITLE = 'Химичка — наборы для химических опытов и лабораторные реактивы'
 
 // Описание сайта по умолчанию (layout.tsx и сгенерированный llms.txt).
 export const DEFAULT_SITE_DESCRIPTION =
-  'Химические наборы для детей и подростков. Научные эксперименты дома.'
+  'Наборы для химических опытов и реактивы для самостоятельной работы с 14 лет: методичка к каждому опыту, подготовка к ОГЭ и ЕГЭ, доставка СДЭК по России.'
 
 export function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? 'https://new.ximi4ka.ru'
