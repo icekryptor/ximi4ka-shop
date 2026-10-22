@@ -263,16 +263,15 @@ function getServerSnapshot(): CartItem[] {
   return EMPTY_SNAPSHOT
 }
 
+// Обработчик кэш не сбрасывает: getSnapshot сам сверяет сырую строку, и на одно
+// изменение строка разбирается один раз. Сброс здесь давал JSON.parse на каждого
+// подписчика — на /catalog их больше сотни, и клик «В корзину» долго обрабатывался.
 function subscribe(onChange: () => void): () => void {
-  const handler = () => {
-    invalidateSnapshot()
-    onChange()
-  }
-  window.addEventListener(EVENT_NAME, handler)
-  window.addEventListener('storage', handler)
+  window.addEventListener(EVENT_NAME, onChange)
+  window.addEventListener('storage', onChange)
   return () => {
-    window.removeEventListener(EVENT_NAME, handler)
-    window.removeEventListener('storage', handler)
+    window.removeEventListener(EVENT_NAME, onChange)
+    window.removeEventListener('storage', onChange)
   }
 }
 
