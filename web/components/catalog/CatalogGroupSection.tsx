@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ReactNode } from 'react'
+import { useDeferredValue, useState, type ReactNode } from 'react'
 import Link from 'next/link'
 
 export type CatalogGridLayout = 'kit' | 'compact'
@@ -36,10 +36,17 @@ type CatalogView = 'grid' | 'list'
  * ссылка на категорию и сетка карточек. Для длинных групп (реактивы) в строке
  * заголовка — переключатель вида из макета: плиткой или списком. Активная
  * кнопка — фиолетовая. Смонтирован только выбранный вид.
+ *
+ * Смена вида монтирует всю группу заново (у реактивов — десятки карточек,
+ * ~120 мс на телефоне). Кнопки показывают выбор сразу, а содержимое идёт за
+ * отложенным значением (useDeferredValue): клик отрисовывается до тяжёлого
+ * монтирования, и INP не ждёт группу.
  */
 export function CatalogGroupSection({ headingId, title, href, layout, list, children }: Props) {
   const [view, setView] = useState<CatalogView>(list ? 'list' : 'grid')
-  const showList = list != null && view === 'list'
+  const deferredView = useDeferredValue(view)
+  const pressedList = list != null && view === 'list'
+  const showList = list != null && deferredView === 'list'
 
   return (
     <section aria-labelledby={headingId}>
@@ -59,10 +66,10 @@ export function CatalogGroupSection({ headingId, title, href, layout, list, chil
           </Link>
           {list != null ? (
             <div role="group" aria-label="Вид карточек" className="flex gap-[5px]">
-              <ViewButton label="Плиткой" pressed={!showList} onClick={() => setView('grid')}>
+              <ViewButton label="Плиткой" pressed={!pressedList} onClick={() => setView('grid')}>
                 <GridIcon />
               </ViewButton>
-              <ViewButton label="Списком" pressed={showList} onClick={() => setView('list')}>
+              <ViewButton label="Списком" pressed={pressedList} onClick={() => setView('list')}>
                 <ListIcon />
               </ViewButton>
             </div>
