@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MetricWithAttribution } from 'web-vitals/attribution'
 
 vi.mock('web-vitals/attribution', () => ({
@@ -13,6 +13,7 @@ import { onCLS, onFCP, onINP, onLCP, onTTFB } from 'web-vitals/attribution'
 import { trackEvent } from './track'
 import {
   WEB_VITAL_META_MAX_CHARS,
+  notePage,
   reportWebVital,
   resetWebVitalsForTests,
   startWebVitals,
@@ -59,6 +60,14 @@ beforeEach(() => {
   for (const fn of [onCLS, onFCP, onINP, onLCP, onTTFB]) vi.mocked(fn).mockClear()
   resetWebVitalsForTests()
 })
+
+afterEach(() => {
+  window.history.replaceState(null, '', '/')
+})
+
+function goTo(path: string) {
+  window.history.pushState(null, '', path)
+}
 
 describe('vitalMeta', () => {
   it('INP: селектор, тип события, подфазы и главный скрипт LoAF', () => {
@@ -317,11 +326,56 @@ describe('vitalMeta', () => {
 })
 
 describe('reportWebVital', () => {
-  it('отправляет метрику через trackEvent с типом web_vital', () => {
+  it('отправляет метрику через trackEvent с типом web_vital и страницей входа', async () => {
+    goTo('/catalog')
+    await startWebVitals()
     const m = metric({ name: 'TTFB', value: 99.6 })
     reportWebVital(m)
     expect(trackEvent).toHaveBeenCalledTimes(1)
-    expect(trackEvent).toHaveBeenCalledWith('web_vital', vitalMeta(m))
+    expect(trackEvent).toHaveBeenCalledWith('web_vital', vitalMeta(m, '/catalog'))
+    expect(vi.mocked(trackEvent).mock.calls[0]![1]).toMatchObject({ page: '/catalog' })
+  })
+
+  it('TTFB, FCP, LCP и CLS относятся к странице входа, даже если сайт уже ушёл дальше', async () => {
+    goTo('/catalog')
+    await startWebVitals()
+    // Переход внутри сайта: trackEvent проставит path уже новой страницы.
+    goTo('/product/kit')
+    notePage('/product/kit', 1000)
+    for (const name of ['TTFB', 'FCP', 'LCP', 'CLS']) {
+      reportWebVital(metric({ name, value: 1, attribution: {} }))
+    }
+    const pages = vi.mocked(trackEvent).mock.calls.map(([, meta]) => meta?.page)
+    expect(pages).toEqual(['/catalog', '/catalog', '/catalog', '/catalog'])
+  })
+
+  it('INP — страница, открытая в момент взаимодействия', async () => {
+    goTo('/catalog')
+    await startWebVitals()
+    notePage('/product/kit', 1000)
+    notePage('/cart', 2000)
+    const pageOf = (interactionTime: number) => {
+      vi.mocked(trackEvent).mockClear()
+      reportWebVital(inp({ interactionTime }))
+      return vi.mocked(trackEvent).mock.calls[0]![1]?.page
+    }
+    expect(pageOf(500)).toBe('/catalog')
+    expect(pageOf(1500)).toBe('/product/kit')
+    expect(pageOf(2500)).toBe('/cart')
+  })
+
+  it('INP в админке не отправляется', async () => {
+    goTo('/catalog')
+    await startWebVitals()
+    notePage('/admin/orders', 1000)
+    reportWebVital(inp({ interactionTime: 1500 }))
+    expect(trackEvent).not.toHaveBeenCalled()
+    // Клик, сделанный ещё на витрине, уходит.
+    reportWebVital(inp({ interactionTime: 900 }))
+    expect(trackEvent).toHaveBeenCalledWith(
+      'web_vital',
+      expect.objectContaining({ name: 'INP', page: '/catalog' }),
+    )
   })
 })
 
@@ -338,6 +392,13 @@ describe('startWebVitals', () => {
     await startWebVitals()
     await startWebVitals()
     expect(onINP).toHaveBeenCalledTimes(1)
+  })
+
+  it('на входе в админку web-vitals не грузится и ничего не шлёт', async () => {
+    goTo('/admin/orders')
+    await startWebVitals()
+    expect(onINP).not.toHaveBeenCalled()
+    expect(onLCP).not.toHaveBeenCalled()
   })
 
   it('отчёт подписки уходит событием web_vital', async () => {

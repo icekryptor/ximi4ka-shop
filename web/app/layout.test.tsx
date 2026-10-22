@@ -21,6 +21,9 @@ vi.mock('@/lib/analytics', async (importOriginal) => ({
   Ga4Script: () => null,
   VkPixelScript: () => <i data-vk-pixel />,
 }))
+vi.mock('@/components/WebVitalsReporter', () => ({
+  WebVitalsReporter: () => <i data-web-vitals />,
+}))
 vi.mock('@/lib/api', () => ({
   getPublicSettings: vi.fn(),
 }))
@@ -82,6 +85,11 @@ describe('RootLayout verification tags', () => {
   it('mounts the VK pixel even when settings are unavailable', async () => {
     vi.mocked(getPublicSettings).mockRejectedValue(new Error('api down'))
     expect(await renderHtml()).toContain('data-vk-pixel')
+  })
+
+  it('собирает полевые Web Vitals на всех страницах (админку фильтрует сам сборщик)', async () => {
+    vi.mocked(getPublicSettings).mockRejectedValue(new Error('api down'))
+    expect(await renderHtml()).toContain('data-web-vitals')
   })
 
   // GTM снят 23.10.2026: контейнер был пуст, а gtm.js стоил ~100 мс главного потока.

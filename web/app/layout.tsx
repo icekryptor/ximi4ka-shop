@@ -3,6 +3,7 @@ import './globals.css'
 import { fontVariables } from './fonts'
 import { getPublicSettings, type PublicSettings } from '@/lib/api'
 import { MetrikaScript, VarioqubScript, Ga4Script, VkPixelScript } from '@/lib/analytics'
+import { WebVitalsReporter } from '@/components/WebVitalsReporter'
 import { DEFAULT_SITE_DESCRIPTION, siteUrl } from '@/lib/metadata'
 
 export const metadata: Metadata = {
@@ -55,6 +56,8 @@ export default async function RootLayout({
         {settings?.metrikaId ? <VarioqubScript counterId={settings.metrikaId} /> : null}
         {settings?.ga4Id ? <Ga4Script measurementId={settings.ga4Id} /> : null}
         <VkPixelScript />
+        {/* Полевые Web Vitals (RUM): страницы витрины; админку сборщик отбрасывает. */}
+        <WebVitalsReporter />
       </body>
     </html>
   )

@@ -7,8 +7,8 @@ import { trackEvent } from './track'
 // и скрипты тормозят клики у реальных посетителей на телефонах: CrUX даёт только
 // общую цифру по сайту.
 //
-// Сама библиотека грузится динамическим импортом из WebVitalsReporter после
-// гидратации — в первый бандл она не попадает. reportAllChanges: false — значения
+// Сама библиотека грузится динамическим импортом из WebVitalsReporter (root
+// layout) после гидратации — в первый бандл она не попадает. Админка не меряется. reportAllChanges: false — значения
 // финальные: LCP, CLS и INP приходят при уходе со страницы (вкладка скрыта),
 // FCP и TTFB — сразу, как известны.
 
@@ -170,28 +170,65 @@ function details(metric: MetricWithAttribution): Record<string, unknown> {
 }
 
 /** Компактная meta события web_vital; всегда укладывается в лимит API. */
-export function vitalMeta(metric: MetricWithAttribution): Record<string, unknown> {
-  const base = {
+export function vitalMeta(metric: MetricWithAttribution, page?: string): Record<string, unknown> {
+  const base = dropUndefined({
     name: metric.name,
     // CLS — доля без единиц, остальные — миллисекунды.
     value: metric.name === 'CLS' ? Math.round(metric.value * 1000) / 1000 : ms(metric.value),
     rating: metric.rating,
     navigationType: metric.navigationType,
-  }
+    page: clip(page, MAX_PAGE_CHARS),
+  })
   const meta = dropUndefined({ ...base, ...details(metric) })
   // Подстраховка: экранирование в JSON раздувает управляющие символы вшестеро.
   return JSON.stringify(meta).length <= WEB_VITAL_META_MAX_CHARS ? meta : base
 }
 
+// Страница метрики. path события trackEvent ставит в момент отправки, а LCP, CLS
+// и INP уходят позже — часто когда сайт уже перешёл на другую страницу без
+// перезагрузки. Поэтому TTFB, FCP, LCP и CLS относим к странице входа (их
+// меряет только она), а INP — к странице, открытой в момент взаимодействия:
+// WebVitalsReporter отмечает каждую смену адреса (notePage).
+const MAX_PAGE_CHARS = 100
+const MAX_PAGE_MARKS = 200
+let landingPage = ''
+let pageMarks: Array<{ t: number; page: string }> = []
+
+/** Отметка смены страницы (время — по часам performance.now, как interactionTime). */
+export function notePage(pathname: string, t: number = performance.now()): void {
+  const current = pageMarks.length > 0 ? pageMarks[pageMarks.length - 1].page : landingPage
+  if (pathname === current) return
+  pageMarks.push({ t, page: pathname })
+  if (pageMarks.length > MAX_PAGE_MARKS) pageMarks = pageMarks.slice(-MAX_PAGE_MARKS)
+}
+
+function pageAt(t: number): string {
+  let page = landingPage
+  for (const mark of pageMarks) {
+    if (mark.t > t) break
+    page = mark.page
+  }
+  return page
+}
+
+// Админку не меряем: это не витрина, и её клики исказили бы INP магазина.
+function isAdminPage(page: string): boolean {
+  return page === '/admin' || page.startsWith('/admin/')
+}
+
 export function reportWebVital(metric: MetricWithAttribution): void {
-  trackEvent('web_vital', vitalMeta(metric))
+  const page = metric.name === 'INP' ? pageAt(metric.attribution.interactionTime) : landingPage
+  if (isAdminPage(page)) return
+  trackEvent('web_vital', vitalMeta(metric, page))
 }
 
 let started = false
 
-/** Только для тестов: флаг запуска модульный. */
+/** Только для тестов: состояние модульное. */
 export function resetWebVitalsForTests(): void {
   started = false
+  landingPage = ''
+  pageMarks = []
 }
 
 /**
@@ -201,7 +238,10 @@ export function resetWebVitalsForTests(): void {
  */
 export async function startWebVitals(): Promise<void> {
   if (started || typeof window === 'undefined') return
+  // Вход сразу в админку — библиотеку не грузим вовсе.
+  if (isAdminPage(window.location.pathname)) return
   started = true
+  landingPage = window.location.pathname
   try {
     const { onCLS, onFCP, onINP, onLCP, onTTFB } = await import('web-vitals/attribution')
     const opts = { reportAllChanges: false }
