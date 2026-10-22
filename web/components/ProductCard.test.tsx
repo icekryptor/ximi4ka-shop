@@ -40,7 +40,7 @@ describe('<ProductCard> v3', () => {
         emphasisWord="Химичка"
         stats={{ reagents: 18, instruments: 12, reactions: 161 }}
         statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
-        chips={['безопасно', 'ярко', 'от 10 лет']}
+        chips={['по методичке', 'ярко', '14+']}
         images={images}
       />,
     )

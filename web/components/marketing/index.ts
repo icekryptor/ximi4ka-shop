@@ -2,7 +2,7 @@ export { Hero } from './Hero'
 export { TrustStrip } from './TrustStrip'
 export { PreFooterCta } from './PreFooterCta'
 export { Manifesto } from './Manifesto'
-export { DEFAULT_TRUST_STRIP, DEFAULT_TESTIMONIALS } from './defaults'
+export { DEFAULT_TRUST_STRIP } from './defaults'
 
 // v3 Lab Journal marketing surfaces
 export { CategoryTileLJ } from './CategoryTileLJ'

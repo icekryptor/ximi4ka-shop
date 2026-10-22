@@ -97,7 +97,7 @@ describe('<PromoSlider>', () => {
     )
     expect(srcs).toEqual(
       expect.arrayContaining([
-        '/img/promo/gift-box.webp',
+        '/img/promo/gift-kit-oge.webp',
         '/img/promo/oge-box.webp',
         '/img/promo/learn-tablet-1.webp',
       ]),
@@ -112,7 +112,7 @@ describe('<PromoSlider>', () => {
     const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
     // Скрытые слайды лежат в той же ячейке сетки, так что lazy-картинки в них
     // «видны» браузеру и качались до LCP, деля канал с главной картинкой.
-    expect(container.querySelector('img[src*="gift-box.webp"]')).not.toBeNull()
+    expect(container.querySelector('img[src*="gift-kit-oge.webp"]')).not.toBeNull()
     expect(container.querySelector('img[src*="oge-box.webp"]')).toBeNull()
     expect(container.querySelector('img[src*="learn-tablet"]')).toBeNull()
     // Каркас слайда на месте: высота не прыгает, когда картинки подгрузятся.
@@ -141,13 +141,13 @@ describe('<PromoSlider>', () => {
 
   it('loads the first banner hero (the LCP image) eagerly with high fetch priority', () => {
     const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
-    const hero = container.querySelector('img[src*="gift-box.webp"]')
+    const hero = container.querySelector('img[src*="gift-kit-oge.webp"]')
     expect(hero).not.toBeNull()
     expect(hero).toHaveAttribute('fetchpriority', 'high')
     expect(hero).toHaveAttribute('loading', 'eager')
     // остальные иллюстрации не должны отбирать у неё канал
     container
-      .querySelectorAll('img[src*="/img/promo/"]:not([src*="gift-box.webp"])')
+      .querySelectorAll('img[src*="/img/promo/"]:not([src*="gift-kit-oge.webp"])')
       .forEach((img) => {
         expect(img).not.toHaveAttribute('fetchpriority')
       })

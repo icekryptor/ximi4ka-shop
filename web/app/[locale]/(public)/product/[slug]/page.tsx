@@ -335,7 +335,7 @@ export default async function ProductPage({ params }: Props) {
       {/* SECTION 3 — Pre-footer dark CTA. Already migrated to ink LJ. */}
       <PreFooterCta
         title="Не нашли подходящий набор?"
-        lead="В каталоге собраны наборы для разных возрастов и научных направлений."
+        lead="В каталоге собраны наборы для разных научных направлений — от первых опытов до ОГЭ и электрохимии."
         cta={{ label: 'Все категории', href: '/categories' }}
       />
 

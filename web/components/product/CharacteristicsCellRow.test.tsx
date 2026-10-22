@@ -8,9 +8,9 @@ describe('<CharacteristicsCellRow>', () => {
       {
         key: 'age' as const,
         label: 'возраст',
-        big: '10+',
-        bottomLeft: 'от 10 лет',
-        bottomRight: 'рекомендуется',
+        big: '14+',
+        bottomLeft: 'самостоятельно',
+        bottomRight: 'по инструкции',
       },
       {
         key: 'time' as const,

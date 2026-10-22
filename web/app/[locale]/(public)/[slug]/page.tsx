@@ -141,7 +141,7 @@ export default async function CmsPage({ params }: Props) {
       {/* Pre-footer CTA */}
       <PreFooterCta
         title="Готовы начать эксперимент?"
-        lead="В каталоге собраны наборы для разных возрастов и научных направлений."
+        lead="В каталоге собраны наборы для разных научных направлений — от первых опытов до ОГЭ и электрохимии."
         cta={{ label: 'Открыть каталог', href: '/categories' }}
       />
 
