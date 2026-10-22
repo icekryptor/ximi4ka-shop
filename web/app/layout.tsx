@@ -2,14 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { fontVariables } from './fonts'
 import { getPublicSettings, type PublicSettings } from '@/lib/api'
-import {
-  MetrikaScript,
-  VarioqubScript,
-  Ga4Script,
-  VkPixelScript,
-  GtmScript,
-  GtmNoscript,
-} from '@/lib/analytics'
+import { MetrikaScript, VarioqubScript, Ga4Script, VkPixelScript } from '@/lib/analytics'
 import { DEFAULT_SITE_DESCRIPTION, siteUrl } from '@/lib/metadata'
 
 export const metadata: Metadata = {
@@ -57,9 +50,7 @@ export default async function RootLayout({
         ) : null}
       </head>
       <body className="min-h-screen flex flex-col text-brand-text bg-background">
-        <GtmNoscript />
         {children}
-        <GtmScript />
         {settings?.metrikaId ? <MetrikaScript counterId={settings.metrikaId} /> : null}
         {settings?.metrikaId ? <VarioqubScript counterId={settings.metrikaId} /> : null}
         {settings?.ga4Id ? <Ga4Script measurementId={settings.ga4Id} /> : null}
