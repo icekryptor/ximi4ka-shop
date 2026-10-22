@@ -52,4 +52,46 @@ describe('afterNextPaint', () => {
     vi.advanceTimersByTime(0)
     expect(fn).toHaveBeenCalledTimes(1)
   })
+
+  it('кадр не пришёл (вкладку скрыли) — событие уходит не позже чем через 100 мс', () => {
+    // Скрытая вкладка не рисует кадры: rAF ждал бы возвращения посетителя.
+    vi.stubGlobal('requestAnimationFrame', vi.fn())
+    const fn = vi.fn()
+    afterNextPaint(fn)
+    vi.advanceTimersByTime(99)
+    expect(fn).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('событие после скрытия вкладки не обгоняет застрявшее раньше', () => {
+    vi.stubGlobal('requestAnimationFrame', vi.fn())
+    const calls: string[] = []
+    afterNextPaint(() => calls.push('a')) // вкладка ещё видна, кадр так и не пришёл
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    afterNextPaint(() => calls.push('b')) // уже скрыта — свой таймер на 0 мс
+    vi.advanceTimersByTime(0)
+    expect(calls).toEqual([])
+    vi.advanceTimersByTime(100)
+    expect(calls).toEqual(['a', 'b'])
+  })
+
+  it('кадр и запасной таймер вместе вызывают fn один раз', () => {
+    const fn = vi.fn()
+    afterNextPaint(fn)
+    vi.advanceTimersByTime(1000)
+    expect(fn).toHaveBeenCalledTimes(1)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('ошибка в одном событии не теряет следующие', () => {
+    const calls: string[] = []
+    afterNextPaint(() => {
+      throw new Error('сбой аналитики')
+    })
+    afterNextPaint(() => calls.push('b'))
+    // Ошибка всплывает отдельным таймером, как раньше из своего setTimeout.
+    expect(() => vi.runAllTimers()).toThrow('сбой аналитики')
+    expect(calls).toEqual(['b'])
+  })
 })
