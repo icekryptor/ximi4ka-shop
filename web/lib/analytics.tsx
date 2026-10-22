@@ -18,11 +18,14 @@ import { MetrikaCounterId } from '@/components/MetrikaCounterId'
 // гидратации и отбирали канал у главной картинки (PSI mobile: LCP 8,9 с).
 // Ранние события не теряются: reachGoal (lib/metrika.ts) складывает вызовы в
 // очередь ym, а стаб ниже её подхватывает.
+// window.dataLayer создаётся до счётчика (так советует Яндекс для
+// ecommerce:"dataLayer"); раньше его заводил GTM.
 export function MetrikaScript({ counterId }: { counterId: string }) {
   return (
     <>
       <MetrikaCounterId counterId={counterId} />
       <Script id="metrika" strategy="lazyOnload">{`
+        window.dataLayer = window.dataLayer || [];
         (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
         m[i].l=1*new Date();
         for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}

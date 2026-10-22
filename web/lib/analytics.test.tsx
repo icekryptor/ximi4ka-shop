@@ -34,6 +34,12 @@ describe('MetrikaScript', () => {
     expect(code).not.toContain('webvisor')
   })
 
+  it('создаёт window.dataLayer до счётчика — раньше это делал GTM', () => {
+    const { getByTestId } = render(<MetrikaScript counterId="12345" />)
+    const code = (getByTestId('metrika').textContent ?? '').trim()
+    expect(code.startsWith('window.dataLayer = window.dataLayer || [];')).toBe(true)
+  })
+
   it('отдаёт ID счётчика хелперам: reachGoal начинает работать', () => {
     const ym = vi.fn()
     ;(window as Window & { ym?: unknown }).ym = ym
