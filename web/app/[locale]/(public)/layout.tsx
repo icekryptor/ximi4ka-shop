@@ -2,6 +2,7 @@ import { Header } from '@/components/Header'
 import { Footer } from '@/components/Footer'
 import { CartDrawer } from '@/components/CartDrawer'
 import { AttributionTracker } from '@/components/AttributionTracker'
+import { WebVitalsReporter } from '@/components/WebVitalsReporter'
 import { getPublicSettings } from '@/lib/api'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
@@ -25,6 +26,8 @@ export default async function PublicLayout({ children }: Readonly<{ children: Re
       <Footer />
       <CartDrawer />
       <AttributionTracker />
+      {/* Полевые Web Vitals (RUM) — только витрина, админка не нужна. */}
+      <WebVitalsReporter />
     </>
   )
 }

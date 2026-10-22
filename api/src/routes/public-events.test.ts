@@ -54,6 +54,31 @@ describe('POST /api/public/events', () => {
     expect((await rows())[0]).toMatchObject({ meta: null })
   })
 
+  it('принимает полевую метрику web_vital с компактной meta', async () => {
+    const meta = {
+      name: 'INP',
+      value: 312,
+      rating: 'poor',
+      navigationType: 'navigate',
+      target: 'button.lj-btn.lj-btn-outline',
+      type: 'pointerup',
+      inputDelay: 48,
+      processing: 190,
+      presentation: 74,
+      loadState: 'complete',
+      scriptUrl: '/_next/static/chunks/app.js',
+      scriptInvoker: 'BUTTON.onclick',
+      scriptDuration: 176,
+    }
+    const res = await request(app)
+      .post('/api/public/events')
+      .send({ ...valid, type: 'web_vital', path: '/catalog', meta })
+    expect(res.status).toBe(204)
+    expect(await rows()).toEqual([
+      { type: 'web_vital', visitor_id: VISITOR, path: '/catalog', meta },
+    ])
+  })
+
   it('чужой тип события — 400, ничего не пишется', async () => {
     const res = await request(app)
       .post('/api/public/events')
