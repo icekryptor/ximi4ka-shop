@@ -2,11 +2,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 
 vi.mock('./fonts', () => ({ fontVariables: '' }))
-// next/script в SSR-рендере теста — обычный <script> с тем же src и телом:
-// так в разметке видно, какие внешние скрипты подключает layout.
+// next/script в SSR-рендере теста — <script> с тем же телом и адресом в data-src
+// (настоящий src линтер принял бы за синхронный скрипт): так в разметке видно,
+// какие внешние скрипты подключает layout.
 vi.mock('next/script', () => ({
   default: ({ id, src, children }: { id?: string; src?: string; children?: string }) => (
-    <script id={id} src={src}>
+    <script id={id} data-src={src}>
       {children}
     </script>
   ),
