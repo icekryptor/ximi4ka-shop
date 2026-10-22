@@ -113,8 +113,9 @@ export function loadCart(): CartItem[] {
 
 export function saveCart(items: CartItem[]): void {
   if (typeof window === 'undefined') return
+  // Кэш снапшота не сбрасываем: getSnapshot сверяет сырую строку, и запись того
+  // же JSON (например, докачка категорий без изменений) не перерисует подписчиков.
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-  invalidateSnapshot()
   window.dispatchEvent(new CustomEvent(EVENT_NAME))
 }
 
@@ -253,11 +254,6 @@ function getSnapshot(): CartItem[] {
     cachedSnapshot = raw === null ? EMPTY_SNAPSHOT : loadCart()
   }
   return cachedSnapshot
-}
-
-function invalidateSnapshot() {
-  cachedSnapshot = null
-  cachedRaw = null
 }
 
 function getServerSnapshot(): CartItem[] {

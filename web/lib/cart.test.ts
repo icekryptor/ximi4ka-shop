@@ -336,6 +336,24 @@ describe('useCart: снапшот корзины', () => {
     }
   })
 
+  it('запись той же корзины (тот же JSON) не перерисовывает подписчиков', () => {
+    let renders = 0
+    const { result } = renderHook(() => {
+      renders += 1
+      return useCart()
+    })
+    act(() => {
+      result.current.add(itemA)
+    })
+    const before = renders
+    const items = result.current.items
+    act(() => {
+      saveCart(loadCart())
+    })
+    expect(renders).toBe(before)
+    expect(result.current.items).toBe(items)
+  })
+
   it('прямая запись в localStorage мимо saveCart + событие storage обновляет подписчиков', () => {
     const hooks = Array.from({ length: 2 }, () => renderHook(() => useCart()))
     act(() => {
