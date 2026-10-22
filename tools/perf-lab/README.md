@@ -34,6 +34,9 @@ STEPS=catalog node tools/perf-lab/inp-lab.mjs https://ximi4ka.ru/catalog 6 on ea
 STEPS=home    node tools/perf-lab/inp-lab.mjs https://ximi4ka.ru/ 4 on settled 3
 ```
 
+Против локальной сборки: в одном терминале `tools/perf-lab/serve.sh <build>`, в другом — тот же запуск с
+`UPSTREAM=127.0.0.1:8443`.
+
 `early` — тапы сразу после DOMContentLoaded (гидратация, старт счётчиков), `settled` — через 6 с после load.
 `thirdParty=off` обрывает сторонние скрипты: так видна их доля. Скрипт печатает длительность каждого взаимодействия
 и её части (задержка ввода / обработчики / до отрисовки) и сводку Long Animation Frames по скриптам.

@@ -5,7 +5,8 @@
 // не-скрипты обрываются (маяки Метрики/VK, sendBeacon событий витрины).
 //
 // usage: node tools/perf-lab/inp-lab.mjs <url> <cpuRate> <thirdParty:on|off> <mode:settled|early> [runs]
-// env:   STEPS=home|product|catalog|nav (набор тапов), GAP (мс между тапами в settled), CHROME.
+// env:   STEPS=home|product|catalog|nav (набор тапов), GAP (мс между тапами в settled), CHROME,
+//        UPSTREAM=127.0.0.1:8443 — ходить на ximi4ka.ru в локальную сборку (bench.sh поднимает её на этом порту).
 // mode=early — тапы сразу после DOMContentLoaded (гидратация и старт счётчиков),
 // settled — через 6 с после load. Без GPU растёт presentation delay, поэтому
 // Chrome запускается с GPU-флагами.
@@ -182,6 +183,12 @@ const browser = await chromium.launch({
     '--enable-gpu',
     '--ignore-gpu-blocklist',
     '--enable-gpu-rasterization',
+    ...(process.env.UPSTREAM
+      ? [
+          `--host-resolver-rules=MAP ximi4ka.ru:443 ${process.env.UPSTREAM}`,
+          '--ignore-certificate-errors',
+        ]
+      : []),
   ],
 })
 const all = []
