@@ -105,30 +105,83 @@ describe('vitalMeta', () => {
     expect(meta).not.toHaveProperty('scriptInvoker')
   })
 
-  it('усекает селектор до 80, url скрипта до 80 без query, invoker до 60', () => {
+  it('селектор — хвост до 100 символов целыми звеньями: сам элемент важнее предков', () => {
+    // web-vitals строит селектор как «предок>…>элемент».
+    const chain = `html>body>${'section.long-class-name>'.repeat(20)}button.lj-btn`
+    const meta = vitalMeta(inp({ interactionTarget: chain }))
+    const target = meta.target as string
+    expect(target.length).toBeLessThanOrEqual(100)
+    expect(target).toMatch(/^(section\.long-class-name>)+button\.lj-btn$/)
+    const cls = vitalMeta(
+      metric({ name: 'CLS', value: 0.2, attribution: { largestShiftTarget: chain } }),
+    )
+    expect(cls.target).toBe(target)
+    const lcp = vitalMeta(
+      metric({
+        name: 'LCP',
+        value: 1000,
+        attribution: {
+          target: `${'div.wrap>'.repeat(20)}img.hero`,
+          timeToFirstByte: 0,
+          resourceLoadDelay: 0,
+          resourceLoadDuration: 0,
+          elementRenderDelay: 0,
+        },
+      }),
+    )
+    expect(lcp.target).toMatch(/^(div\.wrap>)+img\.hero$/)
+    expect((lcp.target as string).length).toBeLessThanOrEqual(100)
+    // Короткий селектор — как есть.
+    expect(vitalMeta(inp({ interactionTarget: 'main>button' })).target).toBe('main>button')
+  })
+
+  it('url скрипта до 80 без query, invoker-не-адрес до 60', () => {
     const meta = vitalMeta(
       inp({
-        interactionTarget: `div>${'section.long-class-name>'.repeat(20)}button`,
         longestScript: {
           entry: {
             sourceURL: `https://mc.yandex.ru/${'a'.repeat(200)}.js?token=secret`,
-            invoker: `https://example.com/${'b'.repeat(200)}`,
+            invokerType: 'event-listener',
+            invoker: `BUTTON#${'b'.repeat(200)}.onclick`,
             duration: 50,
           },
         },
       }),
     )
-    expect((meta.target as string).length).toBe(80)
     expect((meta.scriptUrl as string).length).toBe(80)
     expect(meta.scriptUrl).toMatch(/^https:\/\/mc\.yandex\.ru\/a+$/)
     expect((meta.scriptInvoker as string).length).toBe(60)
   })
 
+  it('invoker-адрес скрипта — без query и hash: токены заказа и метки не уходят', () => {
+    const invokerOf = (invokerType: string, invoker: string) =>
+      vitalMeta(
+        inp({ longestScript: { entry: { sourceURL: '', invokerType, invoker, duration: 60 } } }),
+      ).scriptInvoker
+    // Инлайн-скрипт: invoker — адрес самой страницы.
+    expect(invokerOf('classic-script', `${origin}/order/77?new=1#t=secret-token`)).toBe('/order/77')
+    expect(invokerOf('module-script', 'https://cdn.example.com/m.js?utm_source=ya&yclid=123')).toBe(
+      'https://cdn.example.com/m.js',
+    )
+    // Любой invoker, который сам по себе http(s)-адрес.
+    expect(invokerOf('user-callback', 'https://example.com/x.js?yclid=1#h')).toBe(
+      'https://example.com/x.js',
+    )
+    // Адрес в [src=…] у обработчика события элемента.
+    expect(invokerOf('event-listener', 'IMG[src=https://example.com/a.png?token=abc].onload')).toBe(
+      'IMG[src=https://example.com/a.png].onload',
+    )
+    expect(invokerOf('event-listener', 'IMG[src=/img/x.png?v=1#y].onerror')).toBe(
+      'IMG[src=/img/x.png].onerror',
+    )
+    expect(invokerOf('user-callback', 'Window.setTimeout')).toBe('Window.setTimeout')
+  })
+
   it('не рвёт суррогатную пару при усечении и выкидывает NUL и одиночные суррогаты', () => {
     // API отвергает одиночные суррогаты и NUL (jsonb) — всё событие пропало бы.
-    const target = `${'a'.repeat(79)}🧪tail`
+    const target = `tail🧪${'a'.repeat(99)}`
     const meta = vitalMeta(inp({ interactionTarget: target }))
-    expect(meta.target).toBe('a'.repeat(79))
+    expect(meta.target).toBe('a'.repeat(99))
     const dirty = vitalMeta(inp({ interactionTarget: 'a\u0000b\ud83dc' }))
     expect(dirty.target).toBe('abc')
   })

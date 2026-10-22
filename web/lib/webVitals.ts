@@ -15,7 +15,8 @@ import { trackEvent } from './track'
 /** Потолок meta на стороне API (api/src/routes/public/events.ts, MAX_META_CHARS). */
 export const WEB_VITAL_META_MAX_CHARS = 1000
 
-const MAX_TARGET_CHARS = 80
+// Селектор web-vitals — «предок>…>элемент»; бюджет meta позволяет 100 символов.
+const MAX_TARGET_CHARS = 100
 const MAX_URL_CHARS = 80
 const MAX_INVOKER_CHARS = 60
 
@@ -24,14 +25,34 @@ const MAX_INVOKER_CHARS = 60
 // Целая пара (эмодзи) совпадает первой альтернативой и остаётся.
 const PAIR_OR_UNSTORABLE = /[\ud800-\udbff][\udc00-\udfff]|[\ud800-\udfff]|\u0000/g
 
+function storable(value: string): string {
+  return value.replace(PAIR_OR_UNSTORABLE, (m) => (m.length === 2 ? m : ''))
+}
+
+const isHighSurrogate = (code: number): boolean => code >= 0xd800 && code <= 0xdbff
+const isLowSurrogate = (code: number): boolean => code >= 0xdc00 && code <= 0xdfff
+
+// Начало строки до max символов.
 function clip(value: string | undefined, max: number): string | undefined {
   if (!value) return undefined
-  const clean = value.replace(PAIR_OR_UNSTORABLE, (m) => (m.length === 2 ? m : ''))
+  const clean = storable(value)
   if (clean.length <= max) return clean || undefined
   const cut = clean.slice(0, max)
   // Усечение не должно рвать суррогатную пару (эмодзи) на границе.
-  const last = cut.charCodeAt(cut.length - 1)
-  return last >= 0xd800 && last <= 0xdbff ? cut.slice(0, -1) : cut
+  return isHighSurrogate(cut.charCodeAt(cut.length - 1)) ? cut.slice(0, -1) : cut
+}
+
+// Селектор усекаем с головы: сам элемент и ближние предки важнее, чем html>body.
+// Хвост начинается с целого звена, если в нём есть «>».
+function clipSelector(value: string | undefined): string | undefined {
+  if (!value) return undefined
+  const clean = storable(value)
+  if (clean.length <= MAX_TARGET_CHARS) return clean || undefined
+  const tail = clean.slice(-MAX_TARGET_CHARS)
+  if (clean[clean.length - MAX_TARGET_CHARS - 1] === '>') return tail
+  const boundary = tail.indexOf('>')
+  if (boundary !== -1 && boundary < tail.length - 1) return tail.slice(boundary + 1)
+  return isLowSurrogate(tail.charCodeAt(0)) ? tail.slice(1) : tail
 }
 
 // Адрес без query и hash: в query бывают токены и метки, а длину мы бережём.
@@ -60,6 +81,35 @@ function shortUrl(raw: string | undefined): string | undefined {
   return clip(base, MAX_URL_CHARS)
 }
 
+// Адрес внутри invoker («IMG[src=…?token=…].onload»): query и hash отрезаем.
+function withoutQueries(value: string): string {
+  return value
+    .replace(/\[src=([^\]?#]*)[?#][^\]]*\]/gi, '[src=$1]')
+    .replace(/(https?:\/\/[^\s\]?#]*)[?#][^\s\]]*/gi, '$1')
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const { protocol } = new URL(value)
+    return protocol === 'http:' || protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+// У скриптов (classic-script, module-script) invoker — их адрес, у инлайн-скрипта —
+// адрес самой страницы вместе с query и hash (/order/N?new=1#t=…, utm, yclid).
+// Такие invoker идут через shortUrl, остальные (BUTTON.onclick,
+// Window.setTimeout) — как есть, с отрезанными query у адресов внутри.
+function scriptInvoker(script: PerformanceScriptTiming): string | undefined {
+  const { invoker, invokerType } = script
+  if (!invoker) return undefined
+  if (invokerType === 'classic-script' || invokerType === 'module-script' || isHttpUrl(invoker)) {
+    return shortUrl(invoker)
+  }
+  return clip(withoutQueries(invoker), MAX_INVOKER_CHARS)
+}
+
 const ms = (value: number): number => Math.round(value)
 
 function dropUndefined(meta: Record<string, unknown>): Record<string, unknown> {
@@ -84,7 +134,7 @@ function details(metric: MetricWithAttribution): Record<string, unknown> {
       const a = metric.attribution
       const script = a.longestScript?.entry
       return {
-        target: clip(a.interactionTarget, MAX_TARGET_CHARS),
+        target: clipSelector(a.interactionTarget),
         type: heaviestEventType(metric.entries) ?? a.interactionType,
         inputDelay: ms(a.inputDelay),
         processing: ms(a.processingDuration),
@@ -94,7 +144,7 @@ function details(metric: MetricWithAttribution): Record<string, unknown> {
         ...(script
           ? {
               scriptUrl: shortUrl(script.sourceURL),
-              scriptInvoker: clip(script.invoker, MAX_INVOKER_CHARS),
+              scriptInvoker: scriptInvoker(script),
               scriptDuration: ms(script.duration),
             }
           : {}),
@@ -103,7 +153,7 @@ function details(metric: MetricWithAttribution): Record<string, unknown> {
     case 'LCP': {
       const a = metric.attribution
       return {
-        target: clip(a.target, MAX_TARGET_CHARS),
+        target: clipSelector(a.target),
         url: shortUrl(a.url),
         ttfb: ms(a.timeToFirstByte),
         loadDelay: ms(a.resourceLoadDelay),
@@ -112,7 +162,7 @@ function details(metric: MetricWithAttribution): Record<string, unknown> {
       }
     }
     case 'CLS':
-      return { target: clip(metric.attribution.largestShiftTarget, MAX_TARGET_CHARS) }
+      return { target: clipSelector(metric.attribution.largestShiftTarget) }
     default:
       // FCP и TTFB: хватает значения и типа навигации.
       return {}
