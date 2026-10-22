@@ -1,6 +1,7 @@
 import 'reflect-metadata'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
+import { AGE_FORMULA } from '@ximi4ka-shop/shared/content/kidsPositioning'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Product } from '../../entities/Product.js'
 import { ProductImage } from '../../entities/ProductImage.js'
@@ -59,6 +60,17 @@ describe('данные карточки «Химичка ОГЭ»', () => {
     const blocks = buildOgeLongDescription()
     expect(JSON.stringify(blocks)).not.toContain('31 реактив')
     expect(blocks.some((b) => b.type === 'faq')).toBe(true)
+  })
+
+  it('позиционирование 14+: формула возраста после мер предосторожности и в ответе FAQ', () => {
+    const blocks = buildOgeLongDescription()
+    const html = paragraphHtml(blocks)
+    const safety = html.indexOf('<h2>Меры предосторожности</h2>')
+    expect(safety).toBeGreaterThanOrEqual(0)
+    expect(html[safety + 2]).toBe(`<p>${AGE_FORMULA}</p>`)
+    const faq = blocks.find((b) => b.type === 'faq')
+    const answers = faq?.type === 'faq' ? faq.items.map((i) => i.answer) : []
+    expect(answers.some((a) => a.startsWith(AGE_FORMULA))).toBe(true)
   })
 })
 
