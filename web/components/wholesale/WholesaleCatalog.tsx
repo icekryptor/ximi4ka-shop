@@ -89,8 +89,6 @@ export function WholesaleCatalog({ perView = 4, onPick, stagedIds }: Props) {
 
   const state = tabs[active]
 
-  // Нет записи — вкладка ещё грузится. Ошибка сбрасывает запись (кнопка
-  // «Повторить»), и эффект стартует загрузку заново.
   useEffect(() => {
     const el = rootRef.current
     if (started || !el) return
@@ -106,6 +104,8 @@ export function WholesaleCatalog({ perView = 4, onPick, stagedIds }: Props) {
     return () => observer.disconnect()
   }, [started])
 
+  // Нет записи — вкладка ещё грузится. Ошибка сбрасывает запись (кнопка
+  // «Повторить»), и эффект стартует загрузку заново.
   useEffect(() => {
     if (!started || state) return
     let cancelled = false
