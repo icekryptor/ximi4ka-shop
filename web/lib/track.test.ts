@@ -56,6 +56,47 @@ describe('buildEvent', () => {
     expect(buildEvent('open_cart')?.visitorId).toMatch(UUID_RE)
   })
 
+  it('web_vital на первом визите без целей не создаёт visitorId в localStorage', () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    const a = buildEvent('web_vital', { name: 'LCP' })
+    const b = buildEvent('web_vital', { name: 'CLS' })
+    expect(a?.visitorId).toMatch(UUID_RE)
+    // Одна загрузка страницы — один временный id.
+    expect(b?.visitorId).toBe(a?.visitorId)
+    expect(setItem).not.toHaveBeenCalled()
+    expect(window.localStorage.length).toBe(0)
+  })
+
+  it('web_vital берёт уже сохранённый visitorId, если он есть', () => {
+    const stored = '3f2b8c1e-5a4d-4e6f-9a7b-1c2d3e4f5a6b'
+    window.localStorage.setItem('ximi4ka-visitor-id', stored)
+    expect(buildEvent('web_vital')?.visitorId).toBe(stored)
+  })
+
+  it('web_vital после цели на той же странице — тот же visitorId, что у цели', () => {
+    const goal = buildEvent('add_to_cart')
+    expect(buildEvent('web_vital')?.visitorId).toBe(goal?.visitorId)
+  })
+
+  it('цель после web_vital по-прежнему заводит постоянный visitorId', () => {
+    buildEvent('web_vital')
+    const goal = buildEvent('open_cart')
+    expect(goal?.visitorId).toMatch(UUID_RE)
+    expect(window.localStorage.getItem('ximi4ka-visitor-id')).toBe(goal?.visitorId)
+  })
+
+  it('web_vital без crypto.randomUUID — запасной uuid v4', () => {
+    vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) })
+    expect(buildEvent('web_vital')?.visitorId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    )
+    vi.stubGlobal('crypto', undefined)
+    resetTrackerForTests()
+    expect(buildEvent('web_vital')?.visitorId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    )
+  })
+
   it('недоступный localStorage: id всё равно стабилен в рамках страницы', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('blocked')

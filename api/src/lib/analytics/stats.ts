@@ -1,4 +1,5 @@
 import type { StatsDay, StatsResponse, StatsTotals } from '@ximi4ka-shop/shared'
+import { ANALYTICS_GOAL_TYPES } from '@ximi4ka-shop/shared/types/analytics'
 import { AppDataSource } from '../../config/dataSource.js'
 
 const TZ = 'Europe/Moscow'
@@ -25,7 +26,8 @@ export async function getStats(from: string, to: string): Promise<StatsResponse>
       `${PERIOD_CTE}
        SELECT
          (SELECT COUNT(*) FROM analytics_events x, b
-           WHERE x.occurred_at >= b.s AND x.occurred_at < b.e) AS clicks,
+           WHERE x.type = ANY($3::text[])
+             AND x.occurred_at >= b.s AND x.occurred_at < b.e) AS clicks,
          (SELECT COUNT(DISTINCT x.visitor_id) FROM analytics_events x, b
            WHERE x.type = 'add_to_cart' AND x.occurred_at >= b.s AND x.occurred_at < b.e) AS carts,
          (SELECT COUNT(*) FROM orders o, b
@@ -37,7 +39,8 @@ export async function getStats(from: string, to: string): Promise<StatsResponse>
            WHERE c.created_at >= b.s AND c.created_at < b.e) AS logins,
          (SELECT COUNT(*) FROM customers c, b
            WHERE c.created_at >= b.s AND c.created_at < b.e) AS new_users`,
-      [from, to],
+      // clicks — только цели: полевые Web Vitals (web_vital) в той же таблице не клики.
+      [from, to, [...ANALYTICS_GOAL_TYPES]],
     ) as Promise<TotalsRow[]>,
     AppDataSource.query(
       `${PERIOD_CTE}

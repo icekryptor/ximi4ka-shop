@@ -136,7 +136,7 @@ describe('ecommerce packages (dataLayer)', () => {
     ])
   })
 
-  it('resets ecommerce before every package so GTM does not merge events', () => {
+  it('resets ecommerce before every package so tag managers do not merge events', () => {
     ecommerceDetail(product)
     ecommerceAdd(product, 1)
     const layer = w.dataLayer as { ecommerce: unknown }[]

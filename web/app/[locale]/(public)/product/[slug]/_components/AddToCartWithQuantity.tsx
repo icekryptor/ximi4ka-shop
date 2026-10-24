@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import type { Product } from '@ximi4ka-shop/shared'
-import { useCart } from '@/lib/cart'
+import { useCartActions } from '@/lib/cart'
 import { AddToCartBurst } from '@/components/AddToCartBurst'
 import { QuantityStepperLJ } from '@/components/product/QuantityStepperLJ'
 
@@ -25,7 +25,7 @@ export function AddToCartWithQuantity({ product }: Props) {
   const [quantity, setQuantity] = useState(1)
   const [confirmed, setConfirmed] = useState(false)
   const [burstKey, setBurstKey] = useState(0)
-  const { add } = useCart()
+  const { add } = useCartActions()
   const isOutOfStock = product.stockStatus === 'out_of_stock'
 
   const handleAdd = () => {

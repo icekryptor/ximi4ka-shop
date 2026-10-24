@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest'
 import { afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
+import { resetAfterPaintForTests } from '@/lib/afterPaint'
 
 // The storefront tracker POSTs to the API on every trackEvent. Tests that run
 // useCart().add / CartDrawer / checkout without mocking it would fire a real
@@ -15,8 +16,12 @@ vi.mock('@/lib/track', async (importActual) => ({
 // With vitest's globals: false, @testing-library/react doesn't auto-register
 // its afterEach cleanup. Unmount rendered components between tests or
 // getBy* queries see duplicates from the previous case.
+// Очередь afterNextPaint модульная и держит порядок событий: событие,
+// поставленное тестом на настоящих таймерах, иначе задержало бы следующий тест
+// на поддельных.
 afterEach(() => {
   cleanup()
+  resetAfterPaintForTests()
 })
 
 // jsdom doesn't implement Range#getClientRects or Element#getClientRects
