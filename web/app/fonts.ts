@@ -24,14 +24,17 @@ import localFont from 'next/font/local'
 //     wins, the value resolves to the same family;
 //   - skips the generated metric fallback: the '<Family> Fallback' faces live
 //     in globals.css with the numbers next/font/google computed.
-// Only IBM Plex Sans (body copy) is preloaded, and only its latin + cyrillic
-// subsets: it is the one family every first screen paints. Inter, Roboto Mono
-// and Unbounded are used further down the page; preloading them (196 KB at
-// "high" priority) starved the hero image on a slow 4G connection — the PSI
-// mobile run measured LCP 8.9 s. They still load as soon as a page uses them,
-// font-display: swap + the metric fallbacks in globals.css hide the swap. The
-// other subsets download only when a page contains such characters (₽ is
-// latin-ext, for instance).
+// No font is preloaded (app/fonts-preload.test.ts keeps it that way). Caddy's
+// HTTP/2 (Go) shares the connection between streams round-robin and ignores
+// browser priorities, so every preloaded font steals bandwidth from the
+// render-blocking CSS. Preloading all families (196 KB) once starved the hero
+// image (PSI mobile LCP 8.9 s); preloading only IBM Plex Sans latin + cyrillic
+// (65 KB) still delayed FCP and LCP by 0.33–0.42 s on a slow-4G bench
+// (tools/perf-lab, RTT 250 ms, 1.6 Mbit/s) on home, catalog and product pages,
+// with the same CLS. Fonts load as soon as a page uses them, font-display: swap
+// + the metric fallbacks in globals.css hide the swap. The other subsets
+// download only when a page contains such characters (₽ is latin-ext, for
+// instance).
 //
 // ₽ (U+20BD) sits in Google's latin-ext subset, and prices put it on the home
 // page: that alone pulled Inter latin-ext (84 KB) and IBM Plex Sans latin-ext
@@ -109,7 +112,7 @@ const plexSansCyrillic = localFont({
   variable: '--font-plex',
   fallback: ["'IBM Plex Sans'", "'IBM Plex Sans Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 const plexSansGreek = localFont({
   src: [
@@ -289,7 +292,7 @@ const plexSansLatin = localFont({
   variable: '--font-plex',
   fallback: ["'IBM Plex Sans'", "'IBM Plex Sans Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 
 // Roboto Mono — Tailwind's `font-mono` (globals.css: --font-mono → --font-mono-google).
