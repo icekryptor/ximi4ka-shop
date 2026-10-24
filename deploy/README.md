@@ -129,6 +129,40 @@ docker exec ximishop-web wget -qO- http://ximishop-api:3001/health
 docker exec ximishop-api wget -qO- http://ximishop-web:3000/ru | head -c 300
 ```
 
+### 5а. Сжатие и HSTS
+
+**Сжатие делает Caddy, не Next.** В блоках `ximi4ka.ru` и `new.ximi4ka.ru` стоит
+`encode zstd gzip`, а в `web/next.config.ts` — `compress: false`. Встроенный в Next
+gzip сбрасывает поток после каждой порции HTML с `Z_FULL_FLUSH` (словарь
+обнуляется): главная уходила 57 КБ gzip против 37 КБ zstd от Caddy. Пока Next
+сжимал сам, Caddy пропускал уже сжатый ответ. **Не убирать `encode` из блоков**:
+без него витрина пойдёт несжатой. Проверка после выкатки:
+
+```bash
+curl -s -o /dev/null -D - -H 'accept-encoding: gzip, deflate, br, zstd' https://ximi4ka.ru/ | grep -i content-encoding   # zstd
+curl -s -o /dev/null -w '%{size_download}\n' -H 'accept-encoding: gzip, deflate, br, zstd' https://ximi4ka.ru/            # ~37 000, было ~57 000
+```
+
+**HSTS** (выполняет владелец). Браузер запоминает, что сайт только по https, и
+перестаёт ходить на http:// с редиректом 308 (лишние круги на мобильной сети).
+`includeSubDomains` и `preload` не ставим: на поддоменах живут другие сервисы.
+
+```bash
+cd /opt/supabase-src/docker/volumes/proxy/caddy
+cp Caddyfile Caddyfile.bak-$(date +%F-%H%M)
+sed -i 's/^ximi4ka\.ru {$/ximi4ka.ru {\n    header Strict-Transport-Security "max-age=31536000"/; s/^www\.ximi4ka\.ru {$/www.ximi4ka.ru {\n    header Strict-Transport-Security "max-age=31536000"/' Caddyfile
+grep -n -A1 '^ximi4ka.ru {\|^www.ximi4ka.ru {' Caddyfile   # под каждым — строка header Strict-Transport-Security
+docker exec supabase-caddy sh -c 'PROXY_AUTH_PASSWORD=$(caddy hash-password --plaintext "$PROXY_AUTH_PASSWORD") caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile'
+docker exec supabase-caddy sh -c 'PROXY_AUTH_PASSWORD=$(caddy hash-password --plaintext "$PROXY_AUTH_PASSWORD") caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile'
+curl -sI https://ximi4ka.ru/ | grep -i strict-transport      # max-age=31536000
+curl -sI https://www.ximi4ka.ru/ | grep -i strict-transport  # то же, вместе с 301 на апекс
+```
+
+Reload Caddy — только через обёртку с `PROXY_AUTH_PASSWORD`: голый `caddy reload`
+падает на чужом `basic_auth` в общем Caddyfile. Откат: вернуть
+`Caddyfile.bak-…` и тот же reload. Браузеры, уже получившие заголовок, помнят его
+`max-age` — это безопасно, пока сайт работает по https.
+
 ### 6. DNS-переключение
 
 `new.ximi4ka.ru`: CNAME на `cname.vercel-dns.com` → **A на `201.34.149.163`**.
