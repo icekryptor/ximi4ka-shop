@@ -107,9 +107,16 @@ const EXCLUDED_EXACT = new Set([
 // и должен отдаваться как есть, без локального префикса.
 const YANDEX_VERIFICATION_FILE_RE = /^\/yandex_[0-9a-f]+\.html$/
 
+// SVG из `web/public` (логотип в JSON-LD Organization) тоже отдаёт статика:
+// middleware работает раньше неё, и rewrite на /ru/… давал 404. Страниц и
+// старых адресов Tilda с расширением .svg нет; редирект из админки с такого
+// адреса не сработает.
+const SVG_FILE_RE = /\.svg$/
+
 function isExcluded(path: string): boolean {
   if (EXCLUDED_EXACT.has(path)) return true
   if (YANDEX_VERIFICATION_FILE_RE.test(path)) return true
+  if (SVG_FILE_RE.test(path)) return true
   return EXCLUDED_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))
 }
 
@@ -215,11 +222,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
 export const config = {
   // Exclude Next internals, API proxying, admin panel, uploaded static
-  // files, bundled font assets, AMP variant routes, and root-level feeds
-  // (robots/sitemap/yml/turbo/llms). Everything else is public,
-  // localizable, and potentially redirect-targeted.
+  // files, bundled font assets, AMP variant routes, root-level feeds
+  // (robots/sitemap/yml/turbo/llms) and SVG files from public/ (the logo).
+  // Everything else is public, localizable, and potentially redirect-targeted.
   matcher: [
-    '/((?!_next|api|admin|fonts|img/|uploads|amp|v3-preview-e|v3-preview-d|v3-preview-c|v3-preview-b|v3-preview|favicon\\.ico|icon\\.png|apple-icon\\.png|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml|blog/rss\\.xml|yandex_[0-9a-f]+\\.html).*)',
+    '/((?!_next|api|admin|fonts|img/|uploads|amp|v3-preview-e|v3-preview-d|v3-preview-c|v3-preview-b|v3-preview|favicon\\.ico|icon\\.png|apple-icon\\.png|robots\\.txt|llms\\.txt|sitemap\\.xml|yml\\.xml|turbo\\.xml|blog/rss\\.xml|yandex_[0-9a-f]+\\.html|.*\\.svg$).*)',
   ],
 }
 
