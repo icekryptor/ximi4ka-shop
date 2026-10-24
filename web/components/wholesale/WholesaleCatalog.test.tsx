@@ -237,12 +237,13 @@ describe('WholesaleCatalog', () => {
 
   it('не грузит товары, пока блок вне экрана, и стартует при появлении', async () => {
     let onIntersect: IntersectionObserverCallback = () => {}
+    const observe = vi.fn()
     const disconnect = vi.fn()
     class FakeObserver {
       constructor(cb: IntersectionObserverCallback) {
         onIntersect = cb
       }
-      observe() {}
+      observe = observe
       unobserve() {}
       disconnect = disconnect
       takeRecords() {
@@ -251,8 +252,11 @@ describe('WholesaleCatalog', () => {
     }
     vi.stubGlobal('IntersectionObserver', FakeObserver)
 
-    render(<WholesaleCatalog onPick={vi.fn()} stagedIds={new Set()} />)
+    const { container } = render(<WholesaleCatalog onPick={vi.fn()} stagedIds={new Set()} />)
     expect(listProductsByCategory).not.toHaveBeenCalled()
+    // Наблюдают за самим блоком, а не за страницей целиком.
+    expect(observe).toHaveBeenCalledTimes(1)
+    expect(observe).toHaveBeenCalledWith(container.firstElementChild)
 
     act(() => {
       onIntersect(
@@ -270,6 +274,24 @@ describe('WholesaleCatalog', () => {
     expect(await screen.findByText('Химичка 30')).toBeInTheDocument()
     expect(listProductsByCategory).toHaveBeenCalledTimes(1)
     expect(disconnect).toHaveBeenCalled()
+  })
+
+  it('уход со страницы до появления блока отключает наблюдатель, запросов нет', () => {
+    const disconnect = vi.fn()
+    class FakeObserver {
+      observe() {}
+      unobserve() {}
+      disconnect = disconnect
+      takeRecords() {
+        return []
+      }
+    }
+    vi.stubGlobal('IntersectionObserver', FakeObserver)
+
+    const { unmount } = render(<WholesaleCatalog onPick={vi.fn()} stagedIds={new Set()} />)
+    unmount()
+    expect(disconnect).toHaveBeenCalled()
+    expect(listProductsByCategory).not.toHaveBeenCalled()
   })
 
   it.each([
