@@ -7,8 +7,7 @@
 // usage: node tools/perf-lab/fcp-lab.mjs <path> <label> [runs]
 // env:   UPSTREAM=127.0.0.1:8443 — локальный стенд (bench.sh); без него — прод.
 //        RTT (мс, 250), DOWN_KBPS (1600), UP_KBPS (750), CPU (4), SETTLE (мс, 300),
-//        VARIANT=nojs|nofontimg|nojs+nofontimg|nothird — обрывать часть запросов;
-//        VARIANT=zstdhtml — HTML в zstd от Caddy вместо gzip от Next.
+//        VARIANT=nojs|nofontimg|nojs+nofontimg|nothird — обрывать часть запросов.
 // Все не-GET запросы и сторонние не-скрипты обрываются: стенд не пишет в
 // Метрику, VK и analytics_events.
 import net from 'node:net'
@@ -99,10 +98,6 @@ for (let attempt = 0; res.length < Number(runsArg) && attempt < Number(runsArg) 
       return VARIANT.includes('nothird') || r.resourceType() !== 'script'
         ? route.abort()
         : route.continue()
-    // zstdhtml: HTML просим только в zstd — Next (умеет лишь gzip) не сжимает, и
-    // сжимает Caddy, как будет при compress: false в next.config.ts.
-    if (VARIANT.includes('zstdhtml') && r.resourceType() === 'document')
-      return route.continue({ headers: { ...r.headers(), 'accept-encoding': 'zstd' } })
     if (VARIANT.includes('nojs') && u.pathname.endsWith('.js')) return route.abort()
     if (
       VARIANT.includes('nofontimg') &&
