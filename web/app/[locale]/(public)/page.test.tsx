@@ -46,6 +46,20 @@ vi.mock('@/lib/api', async () => {
   }
 })
 
+vi.mock('@/components/marketing', async () => {
+  const actual =
+    await vi.importActual<typeof import('@/components/marketing')>('@/components/marketing')
+  return { ...actual, Hero: () => null, Manifesto: () => null, PreFooterCta: () => null }
+})
+vi.mock('@/components/ProductCard', () => ({ ProductCard: () => null }))
+vi.mock('@/components/wholesale/WholesaleHomeSection', () => ({
+  WholesaleHomeSection: () => <section id="wholesale" />,
+}))
+vi.mock('@/components/ui', async () => {
+  const actual = await vi.importActual<typeof import('@/components/ui')>('@/components/ui')
+  return { ...actual, Ticker: () => null }
+})
+
 import HomePage, { generateMetadata, revalidate } from './page'
 import * as api from '@/lib/api'
 
@@ -82,13 +96,21 @@ describe('HomePage generateMetadata', () => {
   it('без metaTitle и с title «Главная» берёт дефолт с брендом', async () => {
     getPageSpy = vi.spyOn(api, 'getPage').mockResolvedValue(homePage())
     const meta = await generateMetadata({ params })
-    expect(meta.title).toBe('Химичка — наборы для химических опытов для детей')
+    expect(meta.title).toBe('Химичка — наборы для химических опытов и лабораторные реактивы')
   })
 
   it('берёт дефолт, когда страница home недоступна', async () => {
     getPageSpy = vi.spyOn(api, 'getPage').mockRejectedValue(new Error('down'))
     const meta = await generateMetadata({ params })
-    expect(meta.title).toBe('Химичка — наборы для химических опытов для детей')
+    expect(meta.title).toBe('Химичка — наборы для химических опытов и лабораторные реактивы')
+  })
+
+  it('описание по умолчанию — самостоятельная работа с 14 лет, без «для детей»', async () => {
+    getPageSpy = vi.spyOn(api, 'getPage').mockResolvedValue(homePage())
+    const meta = await generateMetadata({ params })
+    expect(meta.description).toBe(
+      'Наборы для химических опытов и реактивы для самостоятельной работы с 14 лет: методичка к каждому опыту, подготовка к ОГЭ и ЕГЭ, доставка СДЭК по России.',
+    )
   })
 
   it('metaTitle из CMS важнее дефолта', async () => {
@@ -119,6 +141,16 @@ describe('SITE_CATALOG', () => {
   })
 })
 
+describe('SITE_CATALOG: возраст', () => {
+  it('у трёх флагманов на плашке возраст 14+', async () => {
+    const { SITE_CATALOG } = await import('./page')
+    for (const sku of ['X-30', 'X-MINI', 'X-EL']) {
+      const card = SITE_CATALOG.find((c) => c.sku === sku)
+      expect(card?.chips, sku).toContain('14+')
+    }
+  })
+})
+
 describe('SITE_CATALOG drift', () => {
   it('every flagship slug resolves to a published mock product', async () => {
     const { SITE_CATALOG } = await import('./page')
@@ -130,5 +162,72 @@ describe('SITE_CATALOG drift', () => {
         `Slug "${entry.slug}" did not resolve in the mock DB — either fix the slug in SITE_CATALOG or update the \`known\` set in this test file (and seed the DB).`,
       ).not.toBeNull()
     }
+  })
+})
+
+describe('HomePage: блок «Заказ и доставка»', () => {
+  it('показывает блок между «Как это работает» и «Оптом» со ссылкой на /order-process', async () => {
+    const { render, screen } = await import('@testing-library/react')
+    vi.spyOn(api, 'getPage').mockRejectedValue(new Error('down'))
+    vi.spyOn(api, 'listPublishedProducts').mockRejectedValue(new Error('down'))
+    vi.spyOn(api, 'getPublicSettings').mockRejectedValue(new Error('down'))
+    vi.spyOn(api, 'listCategories').mockRejectedValue(new Error('down'))
+
+    render(await HomePage({ params: Promise.resolve({ locale: 'ru' }) }))
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Заказ и доставка' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Подробнее о заказе и доставке' })).toHaveAttribute(
+      'href',
+      '/order-process',
+    )
+    const how = document.getElementById('how-it-works')
+    const order = document.getElementById('order-process')
+    const wholesale = document.getElementById('wholesale')
+    expect(how && order && wholesale).toBeTruthy()
+    // how-it-works → order-process → wholesale
+    expect(how!.compareDocumentPosition(order!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(
+      order!.compareDocumentPosition(wholesale!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+})
+
+describe('HomePage: отзывы', () => {
+  // restoreAllMocks сбросил бы и vi.fn из vi.mock выше — восстанавливаем только свои spy.
+  let spies: { mockRestore: () => void }[] = []
+  afterEach(() => {
+    spies.forEach((s) => s.mockRestore())
+    spies = []
+  })
+
+  const renderHome = async (testimonials: unknown[]) => {
+    const { render } = await import('@testing-library/react')
+    spies = [
+      vi.spyOn(api, 'getPage').mockRejectedValue(new Error('down')),
+      vi.spyOn(api, 'listPublishedProducts').mockRejectedValue(new Error('down')),
+      vi.spyOn(api, 'listCategories').mockRejectedValue(new Error('down')),
+      vi
+        .spyOn(api, 'getPublicSettings')
+        .mockResolvedValue({ testimonials } as unknown as Awaited<
+          ReturnType<typeof api.getPublicSettings>
+        >),
+    ]
+    render(await HomePage({ params: Promise.resolve({ locale: 'ru' }) }))
+  }
+
+  it('без отзывов в настройках блок не показывается (заглушек нет)', async () => {
+    const { screen } = await import('@testing-library/react')
+    await renderHome([])
+    expect(screen.queryByRole('heading', { name: /Отзывы покупателей/ })).toBeNull()
+    expect(document.body.textContent).not.toMatch(/родител/i)
+  })
+
+  it('настоящие отзывы из настроек показываются под заголовком «Отзывы покупателей»', async () => {
+    const { screen } = await import('@testing-library/react')
+    await renderHome([
+      { quote: 'Опыты получились с первого раза.', author: 'Ирина', location: 'Томск' },
+    ])
+    expect(screen.getByRole('heading', { name: /Отзывы покупателей/ })).toBeInTheDocument()
+    expect(screen.getByText('Опыты получились с первого раза.')).toBeInTheDocument()
   })
 })

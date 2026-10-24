@@ -87,13 +87,17 @@ describe('<PromoSlider>', () => {
   })
 
   it('draws the banner illustrations from /img/promo, hidden from assistive tech', () => {
+    vi.useFakeTimers()
     const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    act(() => {
+      vi.advanceTimersByTime(10)
+    })
     const srcs = Array.from(container.querySelectorAll('img[src*="/img/promo/"]')).map((img) =>
       img.getAttribute('src'),
     )
     expect(srcs).toEqual(
       expect.arrayContaining([
-        '/img/promo/gift-box.webp',
+        '/img/promo/gift-kit-oge.webp',
         '/img/promo/oge-box.webp',
         '/img/promo/learn-tablet-1.webp',
       ]),
@@ -103,9 +107,112 @@ describe('<PromoSlider>', () => {
     })
   })
 
+  it('до загрузки страницы рисует иллюстрации только активного слайда', () => {
+    vi.useFakeTimers()
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    // Скрытые слайды лежат в той же ячейке сетки, так что lazy-картинки в них
+    // «видны» браузеру и качались до LCP, деля канал с главной картинкой.
+    expect(container.querySelector('img[src*="gift-kit-oge.webp"]')).not.toBeNull()
+    expect(container.querySelector('img[src*="oge-box.webp"]')).toBeNull()
+    expect(container.querySelector('img[src*="learn-tablet"]')).toBeNull()
+    // Каркас слайда на месте: высота не прыгает, когда картинки подгрузятся.
+    expect(container.querySelectorAll('[aria-roledescription="слайд"]')).toHaveLength(3)
+    act(() => {
+      vi.advanceTimersByTime(10)
+    })
+    expect(container.querySelector('img[src*="oge-box.webp"]')).not.toBeNull()
+  })
+
+  it('рисует иллюстрации скрытых слайдов, когда страница уже загружена', () => {
+    vi.useFakeTimers()
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    act(() => {
+      vi.advanceTimersByTime(10)
+    })
+    expect(container.querySelector('img[src*="learn-tablet-1.webp"]')).not.toBeNull()
+  })
+
+  it('показывает иллюстрацию слайда сразу, если на него переключились до загрузки', () => {
+    vi.useFakeTimers()
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Следующий слайд' }))
+    expect(container.querySelector('img[src*="oge-box.webp"]')).not.toBeNull()
+  })
+
+  it('loads the first banner hero (the LCP image) eagerly with high fetch priority', () => {
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    const hero = container.querySelector('img[src*="gift-kit-oge.webp"]')
+    expect(hero).not.toBeNull()
+    expect(hero).toHaveAttribute('fetchpriority', 'high')
+    expect(hero).toHaveAttribute('loading', 'eager')
+    // остальные иллюстрации не должны отбирать у неё канал
+    container
+      .querySelectorAll('img[src*="/img/promo/"]:not([src*="gift-kit-oge.webp"])')
+      .forEach((img) => {
+        expect(img).not.toHaveAttribute('fetchpriority')
+      })
+  })
+
+  it('не листает сам, пока посетитель ничего не сделал: иначе второй баннер становится LCP', () => {
+    vi.useFakeTimers()
+    render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+    expect(screen.getByText('1 / 3')).toBeInTheDocument()
+
+    act(() => {
+      fireEvent.scroll(window)
+    })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(screen.getByText('2 / 3')).toBeInTheDocument()
+  })
+
+  it.each([
+    ['касание', () => fireEvent.pointerDown(window)],
+    ['клавиша', () => fireEvent.keyDown(window, { key: 'Tab' })],
+    ['тач', () => fireEvent.touchStart(window)],
+  ])('запускает автопрокрутку после первого действия: %s', (_, interact) => {
+    vi.useFakeTimers()
+    render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      interact()
+    })
+    act(() => {
+      vi.advanceTimersByTime(1000)
+    })
+    expect(screen.getByText('2 / 3')).toBeInTheDocument()
+  })
+
+  it('движение мыши автопрокрутку не запускает: оно не завершает поиск LCP', () => {
+    vi.useFakeTimers()
+    render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      fireEvent.mouseMove(window)
+      vi.advanceTimersByTime(2500)
+    })
+    expect(screen.getByText('1 / 3')).toBeInTheDocument()
+  })
+
+  it('не использует backdrop-filter: на серверах PSI без GPU размытие задерживает первый кадр', () => {
+    vi.useFakeTimers()
+    const { container } = render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
+    // jsdom уже в readyState=complete: иллюстрации всех слайдов подключаются по таймеру
+    act(() => {
+      vi.advanceTimersByTime(10)
+    })
+    expect(container.querySelectorAll('img[src*="gift-naoh-2"]')).toHaveLength(1)
+    expect(container.innerHTML).not.toMatch(/backdrop/)
+  })
+
   it('restarts the autoplay countdown after a manual switch', () => {
     vi.useFakeTimers()
     render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      fireEvent.scroll(window)
+    })
     act(() => {
       vi.advanceTimersByTime(900)
     })
@@ -141,6 +248,9 @@ describe('<PromoSlider>', () => {
     vi.useFakeTimers()
     const { unmount } = render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
     act(() => {
+      fireEvent.scroll(window)
+    })
+    act(() => {
       vi.advanceTimersByTime(1000)
     })
     expect(screen.getByText('2 / 3')).toBeInTheDocument()
@@ -155,6 +265,9 @@ describe('<PromoSlider>', () => {
 
     reducedMotion = true
     render(<PromoSlider slides={SLIDES} autoPlayMs={1000} />)
+    act(() => {
+      fireEvent.scroll(window)
+    })
     act(() => {
       vi.advanceTimersByTime(5000)
     })

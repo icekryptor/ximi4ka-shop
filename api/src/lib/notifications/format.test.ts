@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  ALL_REAGENTS_SKU,
   SHEET_HEADER,
   TELEGRAM_TEXT_LIMIT,
   sheetRow,
@@ -42,6 +43,18 @@ const order: NotifiableOrder = {
 }
 
 describe('sheetRow', () => {
+  it('«Товары» учитывает промокод: Товары + Доставка = Итого', () => {
+    const row = sheetRow({
+      ...order,
+      subtotalRub: 1000,
+      promoCode: 'RENATA2026',
+      promoDiscountRub: 50,
+      shippingRub: 350,
+      totalRub: 1300,
+    })
+    expect(row.slice(-4, -1)).toEqual([950, 350, 1300])
+  })
+
   it('строка заказа по колонкам листа', () => {
     expect(sheetRow(order)).toEqual([
       'XM-2026-00042',
@@ -165,6 +178,20 @@ describe('telegramCard', () => {
     })
     expect(card).toContain(
       'Товары 15 495 ₽ · оптовая скидка −1 495 ₽ · доставка бесплатно · итого 14 000 ₽',
+    )
+  })
+
+  it('промокод — отдельной частью итоговой строки, доставка без него', () => {
+    const card = telegramCard({
+      ...order,
+      subtotalRub: 3099,
+      promoCode: 'RENATA2026',
+      promoDiscountRub: 155,
+      shippingRub: 0,
+      totalRub: 2944,
+    })
+    expect(card).toContain(
+      'Товары 3 099 ₽ · промокод RENATA2026 −155 ₽ · доставка бесплатно · итого 2 944 ₽',
     )
   })
 
@@ -307,5 +334,102 @@ describe('telegramCard', () => {
     expect(card).not.toMatch(
       /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
     )
+  })
+})
+
+describe('telegramCard: «Запас всех реактивов»', () => {
+  const reserve = (quantity: number): NotifiableOrder => ({
+    ...order,
+    items: [
+      {
+        productSnapshot: { name: 'Запас всех реактивов', sku: ALL_REAGENTS_SKU, priceRub: 7599 },
+        quantity,
+        unitPriceRub: 7599,
+      },
+    ],
+  })
+
+  it('под строкой товара — реактивы каталога по 2 шт', () => {
+    const card = telegramCard(reserve(1), ['Сульфат алюминия 5%, 35 мл', 'Хлорид бария 3%, 35 мл'])
+    expect(card).toContain(
+      'Запас всех реактивов · RRR · 1 × 7 599 ₽\n— Сульфат алюминия 5%, 35 мл — 2 шт\n— Хлорид бария 3%, 35 мл — 2 шт',
+    )
+  })
+
+  it('количество умножается на число комплектов', () => {
+    expect(telegramCard(reserve(3), ['Хлорид бария 3%, 35 мл'])).toContain(
+      '— Хлорид бария 3%, 35 мл — 6 шт',
+    )
+  })
+
+  it('без списка реактивов карточка прежняя', () => {
+    expect(telegramCard(reserve(1))).not.toContain('— ')
+  })
+
+  it('другие товары состава не получают', () => {
+    expect(telegramCard(order, ['Хлорид бария 3%, 35 мл'])).not.toContain('Хлорид бария')
+  })
+
+  it('длинный список не выводит карточку за лимит Telegram', () => {
+    const many = Array.from({ length: 400 }, (_, i) => `Реактив номер ${i} с длинным названием`)
+    const card = telegramCard(reserve(1), many)
+    expect(card.length).toBeLessThanOrEqual(TELEGRAM_TEXT_LIMIT)
+    expect(card).toMatch(/…и ещё \d+ реактивов/)
+  })
+})
+
+describe('доставка в страны ЕАЭС (cdek_manual_cis)', () => {
+  const cisOrder: NotifiableOrder = {
+    ...order,
+    deliveryMethod: 'cdek_manual_cis',
+    deliveryAddress: {
+      address: 'Минск, ул. Ленина, 5, ПВЗ СДЭК',
+      comment: null,
+      country: 'BY',
+      city: 'Минск',
+      quote: null,
+    },
+    customerPhone: '+375291234567',
+  }
+
+  it('в таблице — не «Курьер», а страна и адрес', () => {
+    expect(sheetRow(cisOrder)[6]).toBe(
+      'Доставка в Беларусь (СДЭК, адрес вручную) · Минск, ул. Ленина, 5, ПВЗ СДЭК',
+    )
+  })
+
+  it('в карточке Telegram — страна и адрес, телефон без маски +7', () => {
+    const card = telegramCard(cisOrder)
+    expect(card).toContain(
+      'Адрес: Доставка в Беларусь (СДЭК, адрес вручную): Минск, ул. Ленина, 5, ПВЗ СДЭК',
+    )
+    expect(card).toContain('Телефон: +375291234567')
+    expect(card).not.toContain('Курьер')
+  })
+
+  // Страна в винительном падеже: «Доставка в Армению», а не «в Армения».
+  it.each([
+    ['BY', 'Беларусь'],
+    ['KZ', 'Казахстан'],
+    ['AM', 'Армению'],
+    ['KG', 'Киргизию'],
+  ] as const)('%s: «Доставка в %s» и в таблице, и в карточке', (country, accusative) => {
+    const o: NotifiableOrder = {
+      ...cisOrder,
+      deliveryAddress: { ...cisOrder.deliveryAddress, country },
+    }
+    const label = `Доставка в ${accusative} (СДЭК, адрес вручную)`
+    expect(sheetRow(o)[6]).toContain(label)
+    expect(telegramCard(o)).toContain(`Адрес: ${label}`)
+  })
+
+  it('без страны в заказе — «другую страну»', () => {
+    const o: NotifiableOrder = {
+      ...cisOrder,
+      deliveryAddress: { ...cisOrder.deliveryAddress, country: undefined },
+    }
+    const label = 'Доставка в другую страну (СДЭК, адрес вручную)'
+    expect(sheetRow(o)[6]).toContain(label)
+    expect(telegramCard(o)).toContain(`Адрес: ${label}`)
   })
 })

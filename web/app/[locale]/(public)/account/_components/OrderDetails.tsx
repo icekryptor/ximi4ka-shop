@@ -1,10 +1,11 @@
 import Link from 'next/link'
-import type { AccountOrderSummary, DeliveryMethod } from '@ximi4ka-shop/shared'
+import type { AccountOrderSummary, OrderDeliveryMethod } from '@ximi4ka-shop/shared'
 import { formatRub } from '@/lib/stockLabel'
 
-const DELIVERY_LABEL: Record<DeliveryMethod, string> = {
+const DELIVERY_LABEL: Record<OrderDeliveryMethod, string> = {
   cdek_pvz: 'ПВЗ СДЭК',
   cdek_courier: 'Курьер СДЭК',
+  cdek_manual_cis: 'Доставка СДЭК в другую страну',
 }
 
 const LINK_BUTTON_CLASS =
@@ -66,6 +67,11 @@ export function OrderDetails({ order }: Readonly<{ order: AccountOrderSummary }>
         <TotalRow label="Товары">{formatRub(order.subtotalRub)}</TotalRow>
         {order.discountRub > 0 && (
           <TotalRow label="Скидка">{`−${formatRub(order.discountRub)}`}</TotalRow>
+        )}
+        {order.promoDiscountRub > 0 && (
+          <TotalRow label={`Промокод ${order.promoCode ?? ''}`.trim()}>
+            {`−${formatRub(order.promoDiscountRub)}`}
+          </TotalRow>
         )}
         <TotalRow label="Доставка">
           {order.shippingRub === 0 ? 'бесплатно' : formatRub(order.shippingRub)}

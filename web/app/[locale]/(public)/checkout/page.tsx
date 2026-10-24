@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CheckoutRequest } from '@ximi4ka-shop/shared'
+import { findPromo, promoDiscountRub, type Promo } from '@ximi4ka-shop/shared/types/promo'
 import { getMeOrNull } from '@/lib/accountApi'
 import { loadAttribution, safeLocalStorage } from '@/lib/attribution'
 import { useCart } from '@/lib/cart'
@@ -13,16 +14,21 @@ import { ApiError, quoteShipping, submitCheckout, type ShippingQuoteResponse } f
 import { formatRub } from '@/lib/stockLabel'
 import { METRIKA_GOALS, reachGoal, rememberPendingPurchase } from '@/lib/metrika'
 import { CdekDelivery } from '@/components/checkout/CdekDelivery'
+import { CisDelivery } from '@/components/checkout/CisDelivery'
+import { PromoCodeField } from '@/components/checkout/PromoCodeField'
 import { ERROR_CLASS, FIELD_CLASS, LABEL_CLASS } from '@/components/checkout/fieldStyles'
 import { useCdekDelivery } from '@/components/checkout/useCdekDelivery'
+import { useCisDelivery } from '@/components/checkout/useCisDelivery'
 import {
   clearIdempotencyKey,
   formatPhoneInput,
   getOrCreateIdempotencyKey,
+  internationalPhoneDigits,
   normalizeTelegramHandle,
   phoneDigits,
   redirectTo,
   validateCheckoutForm,
+  validateCisCheckoutForm,
   type CheckoutFormErrors,
   type CheckoutFormFields,
 } from '@/lib/checkout'
@@ -55,6 +61,8 @@ export default function CheckoutPage() {
     reachGoal(METRIKA_GOALS.beginCheckout, { items_count: itemCount, cart_total: totals.totalRub })
   }, [hydrated, items.length, itemCount, totals.totalRub])
 
+  const [promo, setPromo] = useState<Promo | null>(null)
+  const [promoError, setPromoError] = useState<string | null>(null)
   const [fields, setFields] = useState<CheckoutFormFields>(INITIAL_FIELDS)
   const [errors, setErrors] = useState<CheckoutFormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
@@ -80,6 +88,11 @@ export default function CheckoutPage() {
 
   // Город, способ, пункт или адрес курьера и цены — в блоке доставки (спека §5).
   const delivery = useCdekDelivery(items)
+  // Куда везём: Россия (виджет и пикеры СДЭК) или Беларусь, Казахстан, Армения,
+  // Киргизия (город из списка, адрес пункта вручную; отправку оформляет оператор).
+  const [region, setRegion] = useState<'ru' | 'cis'>('ru')
+  const cis = useCisDelivery()
+  const isCis = region === 'cis'
 
   // Вошедшему покупателю — контакты и доставка из профиля; гостю — подсказка
   // войти. undefined — ещё не знаем (подсказку не мигаем).
@@ -95,7 +108,11 @@ export default function CheckoutPage() {
       setFields((prev) => ({
         ...prev,
         name: prev.name || me.name || '',
-        phone: prev.phone || (me.phone ? formatPhoneInput(me.phone) : ''),
+        // Маска телефона — российская: чужой номер из профиля не подставляем,
+        // иначе formatPhoneInput исказит его до неверного +7.
+        phone:
+          prev.phone ||
+          (me.phone && /^\+7\d{10}$/.test(me.phone) ? formatPhoneInput(me.phone) : ''),
         email: prev.email || me.email || '',
         telegram: prev.telegram || (me.telegramUsername ? `@${me.telegramUsername}` : ''),
       }))
@@ -131,8 +148,30 @@ export default function CheckoutPage() {
   }, [hydrated, cartKey])
 
   const quote = delivery.quote
-  const shippingRub = quote?.customerPriceRub ?? 0
-  const totalRub = totals.totalRub + shippingRub
+  const cisShippingRub = isCis ? cis.shippingRub(totals.totalRub) : null
+  const hasShippingPrice = isCis ? cisShippingRub !== null : quote !== null
+  const shippingRub = isCis ? (cisShippingRub ?? 0) : (quote?.customerPriceRub ?? 0)
+  // Промо — с суммы товаров после скидок. Доставка (и порог бесплатной) выше
+  // считаются от суммы до промокода, как на сервере.
+  const promoRub = promo ? promoDiscountRub(totals.totalRub, promo.percent) : 0
+  const totalRub = totals.totalRub - promoRub + shippingRub
+
+  // Маска и проверка телефона у регионов разные: введённый номер при смене
+  // региона не переносим (иначе чужой номер молча превратится в +7…), а
+  // сообщения прежнего региона сбрасываем.
+  function changeRegion(next: 'ru' | 'cis') {
+    if (next === region) return
+    setRegion(next)
+    setField('phone', '')
+    setErrors((prev) => ({ ...prev, phone: undefined, email: undefined }))
+    setServerError(null)
+  }
+
+  function applyPromo(code: string) {
+    const found = findPromo(code)
+    setPromo(found)
+    setPromoError(found ? null : 'Промокод не найден')
+  }
 
   function setField<K extends keyof CheckoutFormFields>(key: K, value: CheckoutFormFields[K]) {
     setFields((prev) => ({ ...prev, [key]: value }))
@@ -142,15 +181,21 @@ export default function CheckoutPage() {
     e.preventDefault()
     if (submitting) return
 
-    const validation = validateCheckoutForm(fields, {
-      city: delivery.city,
-      method: delivery.method,
-      point: delivery.point,
-      courier: delivery.courier,
-      quoteStatus: delivery.quotes[delivery.method].status,
-    })
+    const validation = isCis
+      ? validateCisCheckoutForm(fields, {
+          country: cis.country,
+          city: cis.city,
+          address: cis.address,
+        })
+      : validateCheckoutForm(fields, {
+          city: delivery.city,
+          method: delivery.method,
+          point: delivery.point,
+          courier: delivery.courier,
+          quoteStatus: delivery.quotes[delivery.method].status,
+        })
     setErrors(validation)
-    const destination = delivery.destination
+    const destination = isCis ? cis.destination : delivery.destination
     if (Object.keys(validation).length > 0 || !destination) return
 
     const email = fields.email.trim()
@@ -160,9 +205,10 @@ export default function CheckoutPage() {
     const payload: CheckoutRequest = {
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       ...(gift ? { giftProductId: gift.productId } : {}),
+      ...(promo ? { promoCode: promo.code } : {}),
       customer: {
         name: fields.name.trim(),
-        phone: `+${phoneDigits(fields.phone)}`,
+        phone: `+${isCis ? internationalPhoneDigits(fields.phone) : phoneDigits(fields.phone)}`,
         ...(email !== '' ? { email } : {}),
         ...(telegram ? { telegram } : {}),
       },
@@ -215,10 +261,18 @@ export default function CheckoutPage() {
           setServerError(
             'Слишком много попыток оформить заказ. Подождите несколько минут и попробуйте снова.',
           )
+        } else if (err.code === 'promo_invalid') {
+          // Сервер не знает код (список разошёлся с витриной): снимаем скидку,
+          // чтобы покупатель увидел настоящую сумму до повторной отправки.
+          setPromo(null)
+          setPromoError(`${err.message}. Скидка снята, проверьте сумму и оформите заказ ещё раз.`)
         } else if (err.code === 'delivery_point_unknown') {
           // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
           // «Пункт получения», выбор сброшен, список города грузится заново.
           delivery.rejectPoint(err.message)
+        } else if (err.code === 'delivery_city_unavailable' || err.code === 'email_required') {
+          // Список городов или правило про email разошлись с сервером: показываем его текст.
+          setServerError(`${err.message}.`)
         } else if (err.status === 409) {
           // Наличие/доступность товаров изменились между корзиной и сабмитом.
           setServerError(`${err.message}. Обновите корзину и попробуйте ещё раз.`)
@@ -319,9 +373,16 @@ export default function CheckoutPage() {
                   type="tel"
                   inputMode="tel"
                   autoComplete="tel"
-                  placeholder="+7 (___) ___-__-__"
+                  placeholder={isCis ? '+375 29 123-45-67' : '+7 (___) ___-__-__'}
                   value={fields.phone}
-                  onChange={(e) => setField('phone', formatPhoneInput(e.target.value))}
+                  onChange={(e) =>
+                    setField(
+                      'phone',
+                      isCis
+                        ? e.target.value.replace(/[^\d+()\-\s]/g, '')
+                        : formatPhoneInput(e.target.value),
+                    )
+                  }
                   aria-invalid={errors.phone ? true : undefined}
                   className={FIELD_CLASS}
                 />
@@ -330,7 +391,7 @@ export default function CheckoutPage() {
 
               <div className="flex flex-col gap-2">
                 <label htmlFor="checkout-email" className={LABEL_CLASS}>
-                  Email
+                  Email{isCis ? ' *' : ''}
                 </label>
                 <input
                   id="checkout-email"
@@ -361,7 +422,36 @@ export default function CheckoutPage() {
                 {errors.telegram && <p className={ERROR_CLASS}>{errors.telegram}</p>}
               </div>
 
-              <CdekDelivery delivery={delivery} shipping={shipping} errors={errors} />
+              <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+                <legend className={`${LABEL_CLASS} mb-2`}>Куда доставить</legend>
+                {(
+                  [
+                    ['ru', 'Россия'],
+                    ['cis', 'Беларусь, Казахстан, Армения, Киргизия'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className="flex cursor-pointer items-center gap-3 font-lj-body text-base text-[var(--color-lj-ink)]"
+                  >
+                    <input
+                      type="radio"
+                      name="checkout-region"
+                      value={value}
+                      checked={region === value}
+                      onChange={() => changeRegion(value)}
+                      className="accent-[var(--color-lj-ink)]"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </fieldset>
+
+              {isCis ? (
+                <CisDelivery delivery={cis} errors={errors} />
+              ) : (
+                <CdekDelivery delivery={delivery} shipping={shipping} errors={errors} />
+              )}
 
               <div className="flex flex-col gap-2">
                 <label htmlFor="checkout-comment" className={LABEL_CLASS}>
@@ -420,12 +510,35 @@ export default function CheckoutPage() {
                 )}
               </ul>
 
+              <PromoCodeField
+                applied={promo}
+                error={promoError}
+                onApply={applyPromo}
+                onRemove={() => {
+                  setPromo(null)
+                  setPromoError(null)
+                }}
+              />
+
               <div className="flex flex-col gap-2">
                 <CartSummaryRows totals={totals} itemCount={itemCount} />
+                {promo && promoRub > 0 && (
+                  <div
+                    data-testid="summary-promo"
+                    className="flex justify-between gap-4 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)]"
+                  >
+                    <span>Промокод {promo.code}</span>
+                    <span className="whitespace-nowrap">−{formatRub(promoRub)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                   <span>Доставка</span>
                   <span data-testid="summary-shipping">
-                    {quote ? (shippingRub === 0 ? 'Бесплатно' : formatRub(shippingRub)) : '—'}
+                    {hasShippingPrice
+                      ? shippingRub === 0
+                        ? 'Бесплатно'
+                        : formatRub(shippingRub)
+                      : '—'}
                   </span>
                 </div>
                 <div className="flex justify-between border-t border-[var(--color-lj-rule)] pt-4 font-lj-display font-[900] text-2xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
@@ -442,7 +555,7 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={submitting || delivery.quoting}
+                disabled={submitting || (!isCis && delivery.quoting)}
                 className="inline-flex items-center justify-center gap-3 px-8 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Оформляем…' : 'Оформить заказ →'}

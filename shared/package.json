@@ -8,13 +8,16 @@
   "exports": {
     ".": "./src/index.ts",
     "./types/order": "./src/types/order.ts",
+    "./types/cis": "./src/types/cis.ts",
+    "./types/promo": "./src/types/promo.ts",
     "./types/product": "./src/types/product.ts",
     "./types/category": "./src/types/category.ts",
     "./types/page": "./src/types/page.ts",
     "./types/blogPost": "./src/types/blogPost.ts",
     "./types/blocks": "./src/types/blocks.ts",
     "./types/materialLead": "./src/types/materialLead.ts",
-    "./types/analytics": "./src/types/analytics.ts"
+    "./types/analytics": "./src/types/analytics.ts",
+    "./content/kidsPositioning": "./src/content/kidsPositioning.ts"
   },
   "scripts": {
     "test": "tsc --noEmit && vitest run",

@@ -5,6 +5,7 @@ import { Order } from '../../entities/Order.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { enqueueCdekShipment } from '../cdek/queue.js'
 import { enqueueMetrikaConversion } from '../metrika/queue.js'
+import { grantMaterialsForOrder } from '../materials/grants.js'
 
 // Куда сообщаем о каждом событии заказа.
 export const CHANNELS: NotificationChannel[] = ['sheets', 'telegram']
@@ -59,7 +60,7 @@ export async function enqueueOrderEvent(
 }
 
 // Пишет смену статуса заказа и, если статус изменился, ставит событие и, при
-// оплате, заказ в очередь СДЭК — внутри переданной транзакции. Пишем только
+// оплате, заказ в очередь СДЭК и выдачу материалов — внутри переданной транзакции. Пишем только
 // колонки, которые эти вызовы меняют (status, paid_at, status_history и
 // привязку платежа), а не всю сущность: save() записал бы и устаревший
 // telegram_message_id из памяти поверх id карточки, который обработчик
@@ -82,6 +83,7 @@ export async function writeOrderStatusEvent(
   if (order.status === 'paid' && previousStatus !== 'paid') {
     await enqueueCdekShipment(em, order)
     await enqueueMetrikaConversion(em, order)
+    await grantMaterialsForOrder(em, order)
   }
 }
 

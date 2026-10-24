@@ -88,9 +88,18 @@ export class Order {
   @Column({ type: 'integer', name: 'subtotal_rub' })
   subtotalRub!: number
 
-  // Оптовая скидка (наборы, проценты на реагенты, цены партий); total = subtotal − discount + shipping.
+  // Оптовая скидка (наборы, проценты на реагенты, цены партий).
   @Column({ type: 'integer', name: 'discount_rub', default: 0 })
   discountRub!: number
+
+  // Промокод (shared/types/promo): скидка с суммы товаров после оптовых, поэтому
+  // total = subtotal − discount − promo_discount + shipping. Доставку и порог
+  // бесплатной доставки промокод не трогает.
+  @Column({ type: 'varchar', length: 64, name: 'promo_code', nullable: true })
+  promoCode!: string | null
+
+  @Column({ type: 'integer', name: 'promo_discount_rub', default: 0 })
+  promoDiscountRub!: number
 
   @Column({ type: 'integer', name: 'shipping_rub', default: 0 })
   shippingRub!: number

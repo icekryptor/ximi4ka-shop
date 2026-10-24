@@ -83,11 +83,32 @@ function normalizePhone(raw: string): string | null {
 }
 
 // Банк принимает Email чека не длиннее 64 символов.
-const MAX_EMAIL_LENGTH = 64
+export const MAX_EMAIL_LENGTH = 64
 
 // По символам, а не по кодовым единицам UTF-16: эмодзи не режется пополам.
 function cut(name: string): string {
   return Array.from(name).slice(0, MAX_NAME_LENGTH).join('')
+}
+
+// Скидка по промокоду режет только товарные позиции, доставка остаётся целой.
+// Делим пропорционально сумме строки в целых рублях; остаток от округления вниз
+// отдаём по рублю тем строкам, где ещё есть что снимать, начиная с самой крупной.
+function spreadDiscount(lineRub: number[], discountRub: number): number[] {
+  const goodsRub = lineRub.reduce((sum, v) => sum + v, 0)
+  if (discountRub <= 0 || goodsRub <= 0) return lineRub
+  const capped = Math.min(discountRub, goodsRub)
+  const shares = lineRub.map((v) => Math.floor((capped * v) / goodsRub))
+  let rest = capped - shares.reduce((sum, v) => sum + v, 0)
+  const bySize = lineRub.map((_, i) => i).sort((a, b) => lineRub[b] - lineRub[a])
+  while (rest > 0) {
+    for (const i of bySize) {
+      if (rest > 0 && shares[i] < lineRub[i]) {
+        shares[i] += 1
+        rest -= 1
+      }
+    }
+  }
+  return lineRub.map((v, i) => v - shares[i])
 }
 
 export function buildReceipt(order: Order, config: ReceiptConfig): TBankReceipt {
@@ -97,40 +118,43 @@ export function buildReceipt(order: Order, config: ReceiptConfig): TBankReceipt 
 
   // Подарок покупатель не оплачивает: нулевую позицию банк не принимает, а
   // сумма чека от неё не меняется.
-  const items: ReceiptItem[] = order.items
-    .filter((line) => !line.isGift)
-    .flatMap((line) => {
-      const name = cut(line.productSnapshot.name)
-      const totalKop = (line.lineTotalRub ?? line.unitPriceRub * line.quantity) * 100
-      const base = { Name: name, Tax: config.tax, PaymentMethod: 'full_payment' as const }
-      const object = 'commodity' as const
-      const price = Math.floor(totalKop / line.quantity)
-      if (price * line.quantity === totalKop) {
-        return [
-          {
-            ...base,
-            Price: price,
-            Quantity: line.quantity,
-            Amount: totalKop,
-            PaymentObject: object,
-          },
-        ]
-      }
-      // Цена партии не делится на целые копейки за штуку (313 ₽ за 21 пробирку).
-      // Две строки: N−1 штук по округлённой цене и одна штука на остаток —
-      // количество в чеке верное, а Price × Quantity = Amount в каждой строке.
-      const head = price * (line.quantity - 1)
+  const paid = order.items.filter((line) => !line.isGift)
+  const lineRub = paid.map((line) => line.lineTotalRub ?? line.unitPriceRub * line.quantity)
+  const afterPromoRub = spreadDiscount(lineRub, order.promoDiscountRub ?? 0)
+  const items: ReceiptItem[] = paid.flatMap((line, index) => {
+    const totalRub = afterPromoRub[index]
+    if (totalRub <= 0) return []
+    const name = cut(line.productSnapshot.name)
+    const totalKop = totalRub * 100
+    const base = { Name: name, Tax: config.tax, PaymentMethod: 'full_payment' as const }
+    const object = 'commodity' as const
+    const price = Math.floor(totalKop / line.quantity)
+    if (price * line.quantity === totalKop) {
       return [
-        { ...base, Price: price, Quantity: line.quantity - 1, Amount: head, PaymentObject: object },
         {
           ...base,
-          Price: totalKop - head,
-          Quantity: 1,
-          Amount: totalKop - head,
+          Price: price,
+          Quantity: line.quantity,
+          Amount: totalKop,
           PaymentObject: object,
         },
       ]
-    })
+    }
+    // Цена партии не делится на целые копейки за штуку (313 ₽ за 21 пробирку).
+    // Две строки: N−1 штук по округлённой цене и одна штука на остаток —
+    // количество в чеке верное, а Price × Quantity = Amount в каждой строке.
+    const head = price * (line.quantity - 1)
+    return [
+      { ...base, Price: price, Quantity: line.quantity - 1, Amount: head, PaymentObject: object },
+      {
+        ...base,
+        Price: totalKop - head,
+        Quantity: 1,
+        Amount: totalKop - head,
+        PaymentObject: object,
+      },
+    ]
+  })
 
   if (order.shippingRub > 0) {
     const shippingKop = order.shippingRub * 100

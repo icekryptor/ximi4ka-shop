@@ -54,6 +54,31 @@ describe('POST /api/public/events', () => {
     expect((await rows())[0]).toMatchObject({ meta: null })
   })
 
+  it('принимает полевую метрику web_vital с компактной meta', async () => {
+    const meta = {
+      name: 'INP',
+      value: 312,
+      rating: 'poor',
+      navigationType: 'navigate',
+      target: 'button.lj-btn.lj-btn-outline',
+      type: 'pointerup',
+      inputDelay: 48,
+      processing: 190,
+      presentation: 74,
+      loadState: 'complete',
+      scriptUrl: '/_next/static/chunks/app.js',
+      scriptInvoker: 'BUTTON.onclick',
+      scriptDuration: 176,
+    }
+    const res = await request(app)
+      .post('/api/public/events')
+      .send({ ...valid, type: 'web_vital', path: '/catalog', meta })
+    expect(res.status).toBe(204)
+    expect(await rows()).toEqual([
+      { type: 'web_vital', visitor_id: VISITOR, path: '/catalog', meta },
+    ])
+  })
+
   it('чужой тип события — 400, ничего не пишется', async () => {
     const res = await request(app)
       .post('/api/public/events')
@@ -165,5 +190,36 @@ describe('POST /api/public/events', () => {
     const blocked = await request(limited).post('/api/public/events').send(valid)
     expect(blocked.status).toBe(429)
     expect(blocked.body.error.code).toBe('rate_limited')
+  })
+
+  describe('web_vital — своя корзина лимита', () => {
+    const vital = { ...valid, type: 'web_vital', meta: { name: 'LCP', value: 1200 } }
+
+    it('исчерпанный лимит web_vital не даёт 429 целям', async () => {
+      vi.stubEnv('WEB_VITALS_RATE_LIMIT', '2')
+      vi.stubEnv('EVENTS_RATE_LIMIT', '2')
+      const limited = createApp()
+      expect((await request(limited).post('/api/public/events').send(vital)).status).toBe(204)
+      expect((await request(limited).post('/api/public/events').send(vital)).status).toBe(204)
+      expect((await request(limited).post('/api/public/events').send(vital)).status).toBe(429)
+      // Цели считаются отдельно: их лимит (2) не тронут.
+      expect((await request(limited).post('/api/public/events').send(valid)).status).toBe(204)
+      expect((await request(limited).post('/api/public/events').send(valid)).status).toBe(204)
+      expect((await request(limited).post('/api/public/events').send(valid)).status).toBe(429)
+      expect((await rows()).map((r) => r.type)).toEqual([
+        'web_vital',
+        'web_vital',
+        'add_to_cart',
+        'add_to_cart',
+      ])
+    })
+
+    it('исчерпанный лимит целей не глушит web_vital', async () => {
+      vi.stubEnv('EVENTS_RATE_LIMIT', '1')
+      const limited = createApp()
+      expect((await request(limited).post('/api/public/events').send(valid)).status).toBe(204)
+      expect((await request(limited).post('/api/public/events').send(valid)).status).toBe(429)
+      expect((await request(limited).post('/api/public/events').send(vital)).status).toBe(204)
+    })
   })
 })

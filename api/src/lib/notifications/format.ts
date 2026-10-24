@@ -1,4 +1,5 @@
 import type { DeliveryAddress, OrderEventKey, OrderStatus } from '@ximi4ka-shop/shared'
+import type { CisCountry } from '@ximi4ka-shop/shared/types/cis'
 
 // Что показываем людям в таблице и в чате. Чистые функции без сети — вся
 // логика вида уведомлений тестируется здесь.
@@ -15,6 +16,9 @@ export interface NotifiableOrder {
   deliveryAddress: DeliveryAddress
   subtotalRub: number
   discountRub: number
+  /** Промокод и его скидка; нет у заказов до промокодов. */
+  promoCode?: string | null
+  promoDiscountRub?: number
   shippingRub: number
   totalRub: number
   items: {
@@ -52,6 +56,11 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
 }
 
 export const TELEGRAM_TEXT_LIMIT = 4096
+
+// «Запас всех реактивов» — товар без собственного состава: это все реактивы
+// каталога по 2 шт. Сборщику в чате нужен список, а не одна строка.
+export const ALL_REAGENTS_SKU = 'RRR'
+export const ALL_REAGENTS_PER_SET = 2
 
 // Дата и время по Москве. Собираем из частей сами: у Intl в ru-RU между
 // датой и временем запятая, а нам нужен пробел.
@@ -136,11 +145,27 @@ function isPickupPoint(order: NotifiableOrder): boolean {
   return order.deliveryMethod === 'cdek_pvz'
 }
 
+// Страны в винительном падеже для фразы «Доставка в …» (CIS_COUNTRY_NAMES — именительный).
+const CIS_COUNTRY_ACCUSATIVE: Record<CisCountry, string> = {
+  BY: 'Беларусь',
+  KZ: 'Казахстан',
+  AM: 'Армению',
+  KG: 'Киргизию',
+}
+
+// Доставка в страну ЕАЭС: адрес ПВЗ покупатель написал сам, отправку оформляет оператор.
+function cisLabel(order: NotifiableOrder): string {
+  const country = order.deliveryAddress.country
+  const name = country ? CIS_COUNTRY_ACCUSATIVE[country] : 'другую страну'
+  return `Доставка в ${name} (СДЭК, адрес вручную)`
+}
+
 function deliveryCell(order: NotifiableOrder): string {
   const { address, deliveryPointCode } = order.deliveryAddress
   if (isPickupPoint(order)) {
     return deliveryPointCode ? `ПВЗ ${deliveryPointCode} · ${address}` : `ПВЗ · ${address}`
   }
+  if (order.deliveryMethod === 'cdek_manual_cis') return `${cisLabel(order)} · ${address}`
   return `Курьер · ${address}`
 }
 
@@ -154,23 +179,32 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
     order.customerTelegram ?? '',
     deliveryCell(order),
     giftLast(order.items).map(itemLine).join('\n'),
-    // «Товары» — со скидкой: колонки таблицы не менялись, Товары + Доставка = Итого.
-    order.subtotalRub - order.discountRub,
+    // «Товары» — со всеми скидками: колонки таблицы не менялись, Товары + Доставка = Итого.
+    order.subtotalRub - order.discountRub - (order.promoDiscountRub ?? 0),
     order.shippingRub,
     order.totalRub,
     STATUS_LABELS[order.status],
   ]
 }
 
-export function telegramCard(order: NotifiableOrder): string {
+// Состав комплекта под строкой товара: реактив — количество в заказе.
+function compositionLines(names: string[], sets: number): string[] {
+  return names.map((name) => `— ${name} — ${ALL_REAGENTS_PER_SET * sets} шт`)
+}
+
+// `reagentNames` — реактивы каталога; нужны только заказу с «Запасом всех реактивов».
+export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []): string {
   const { deliveryPointCode } = order.deliveryAddress
   const address = clip(order.deliveryAddress.address, CARD_TEXT_LIMIT)
   const comment = order.deliveryAddress.comment
     ? clip(order.deliveryAddress.comment, CARD_TEXT_LIMIT)
     : order.deliveryAddress.comment
-  const where = isPickupPoint(order)
-    ? `ПВЗ${deliveryPointCode ? ` ${deliveryPointCode}` : ''}: ${address}`
-    : `Курьер: ${address}`
+  const where =
+    order.deliveryMethod === 'cdek_manual_cis'
+      ? `${cisLabel(order)}: ${address}`
+      : isPickupPoint(order)
+        ? `ПВЗ${deliveryPointCode ? ` ${deliveryPointCode}` : ''}: ${address}`
+        : `Курьер: ${address}`
   const shipping =
     order.shippingRub === 0 ? 'доставка бесплатно' : `доставка ${rub(order.shippingRub)}`
 
@@ -186,6 +220,9 @@ export function telegramCard(order: NotifiableOrder): string {
 
   const goods = [`Товары ${rub(order.subtotalRub)}`]
   if (order.discountRub > 0) goods.push(`оптовая скидка −${rub(order.discountRub)}`)
+  if (order.promoCode && (order.promoDiscountRub ?? 0) > 0) {
+    goods.push(`промокод ${escapeHtml(order.promoCode)} −${rub(order.promoDiscountRub ?? 0)}`)
+  }
   const totals = `${goods.join(' · ')} · ${shipping} · итого ${rub(order.totalRub)}`
 
   // Позиции добавляем, пока влезает в лимит, оставляя место на хвост и на
@@ -193,13 +230,27 @@ export function telegramCard(order: NotifiableOrder): string {
   const reserve = 40
   let length = [title, ...client, 'Товары:', totals].join('\n').length + 4 + reserve
   const lines: string[] = []
+  let shown = 0
   for (const item of giftLast(order.items)) {
     const line = escapeHtml(itemLine(item))
     if (length + line.length + 1 > TELEGRAM_TEXT_LIMIT) break
     lines.push(line)
     length += line.length + 1
+    shown += 1
+    if (item.productSnapshot.sku === ALL_REAGENTS_SKU && reagentNames.length > 0) {
+      // Состав — сколько влезет: хвост, который не поместился, считаем строкой.
+      const parts = compositionLines(reagentNames, item.quantity).map(escapeHtml)
+      let added = 0
+      for (const part of parts) {
+        if (length + part.length + 1 > TELEGRAM_TEXT_LIMIT) break
+        lines.push(part)
+        length += part.length + 1
+        added += 1
+      }
+      if (added < parts.length) lines.push(`…и ещё ${parts.length - added} реактивов`)
+    }
   }
-  const hidden = order.items.length - lines.length
+  const hidden = order.items.length - shown
   if (hidden > 0) lines.push(`…и ещё ${hidden} ${pluralPositions(hidden)}`)
 
   return [title, client.join('\n'), ['Товары:', ...lines].join('\n'), totals].join('\n\n')

@@ -310,14 +310,21 @@ describe('CartDrawer: Метрика', () => {
   afterEach(() => {
     setMetrikaCounterId(null)
     delete w.ym
+    vi.useRealTimers()
   })
 
-  it('цель open_cart при открытии drawer', () => {
+  it('цель open_cart при открытии drawer — после отрисовки, не в обработчике', () => {
+    vi.useFakeTimers({
+      toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'],
+    })
     const ym = vi.fn()
     w.ym = ym
     setMetrikaCounterId('777')
     render(<CartDrawer />)
     act(() => openDrawer())
+    expect(screen.getByRole('dialog', { name: 'Корзина' })).toBeInTheDocument()
+    expect(ym).not.toHaveBeenCalled()
+    act(() => vi.runAllTimers())
     expect(ym).toHaveBeenCalledTimes(1)
     expect(ym).toHaveBeenCalledWith('777', 'reachGoal', 'open_cart')
   })

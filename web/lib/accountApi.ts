@@ -1,4 +1,5 @@
 import type {
+  AccountMaterial,
   AccountOrdersPage,
   AuthConfig,
   CustomerProfile,
@@ -75,6 +76,7 @@ export const getOrders = (cursor?: string | null) =>
   call<AccountOrdersPage>(
     `/api/account/orders${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
   )
+export const getMaterials = () => call<AccountMaterial[]>('/api/account/materials')
 
 export const startLinkEmail = (email: string) =>
   post<void>('/api/account/link/email/start', { email })

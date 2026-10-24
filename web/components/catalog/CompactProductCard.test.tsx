@@ -55,6 +55,19 @@ describe('CompactProductCard', () => {
     expect(cart[0]?.productId).toBe('r1')
   })
 
+  it('кладёт в корзину категории товара — drawer не докачивает их вторым запросом', () => {
+    const { container } = render(
+      <CompactProductCard
+        product={{ ...base, categorySlugs: ['reagents'] } as Product}
+        images={images}
+      />,
+    )
+    act(() => {
+      fireEvent.click(within(container).getByRole('button', { name: /В корзину/ }))
+    })
+    expect(loadCart()[0]?.categories).toEqual(['reagents'])
+  })
+
   it('hides the stepper and shows out-of-stock label for out_of_stock products', () => {
     const { container } = render(
       <CompactProductCard

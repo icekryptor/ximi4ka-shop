@@ -9,7 +9,7 @@ describe('extractKeyFacts', () => {
   it('picks up to 4 priority keys in priority order', () => {
     const facts = extractKeyFacts({
       ГОСТ: '4165-78',
-      Возраст: '10+',
+      Возраст: '14+',
       'Химическая формула': 'CuSO4',
       Концентрация: '5%',
       Объем: '35 мл',
@@ -17,7 +17,7 @@ describe('extractKeyFacts', () => {
     })
     // Priority order is: Возраст, Концентрация, Объем, Масса, Хим. формула, ...
     expect(facts).toEqual([
-      { label: 'Возраст', value: '10+' },
+      { label: 'Возраст', value: '14+' },
       { label: 'Концентрация', value: '5%' },
       { label: 'Объем', value: '35 мл' },
       { label: 'Химическая формула', value: 'CuSO4' },
@@ -43,7 +43,7 @@ import type { Product, ProductImage } from '@ximi4ka-shop/shared'
 describe('extractUseFacts', () => {
   it('returns up to 4 use-facts in priority order', () => {
     const chars = {
-      Возраст: '10+',
+      Возраст: '14+',
       'Время опыта': '5–20 минут',
       'Срок изготовления': '1 день',
       Гарантия: '12 месяцев',
@@ -54,9 +54,9 @@ describe('extractUseFacts', () => {
       {
         key: 'age',
         label: 'возраст',
-        big: '10+',
-        bottomLeft: 'от 10 лет',
-        bottomRight: 'рекомендуется',
+        big: '14+',
+        bottomLeft: 'самостоятельно',
+        bottomRight: 'по инструкции',
       },
       {
         key: 'time',
@@ -83,10 +83,16 @@ describe('extractUseFacts', () => {
   })
 
   it('hides individual cells when characteristic is missing', () => {
-    const chars = { Возраст: '8+', Гарантия: '6 месяцев' }
+    const chars = { Возраст: '14+', Гарантия: '6 месяцев' }
     const result = extractUseFacts(chars)
     expect(result).toHaveLength(2)
     expect(result.map((f) => f.key)).toEqual(['age', 'warranty'])
+  })
+
+  it('скрывает ячейку возраста младше 14: подпись «самостоятельно» ей не подходит', () => {
+    expect(extractUseFacts({ Возраст: '10+' }).map((f) => f.key)).toEqual([])
+    expect(extractUseFacts({ Возраст: 'от 8 лет' }).map((f) => f.key)).toEqual([])
+    expect(extractUseFacts({ Возраст: 'с 14 лет' }).map((f) => f.key)).toEqual(['age'])
   })
 
   it('returns empty array when no use-facts present', () => {

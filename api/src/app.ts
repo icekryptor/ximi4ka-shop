@@ -124,9 +124,25 @@ export function createApp(): Express {
   app.use('/api/public/material-leads', createMaterialLeadsRouter())
   // Аналитика витрины: анонимный публичный POST. 300 событий за 10 минут с IP
   // хватает живому посетителю (и школе за одним NAT), но не даёт забить таблицу.
+  // Полевые Web Vitals (web_vital, до 5 за загрузку страницы) считаются в своей
+  // корзине: за общим NAT они не должны съедать лимит целей (add_to_cart,
+  // begin_checkout…). Тело к этому моменту уже разобрано express.json выше;
+  // неразобранное или чужое тело считается по лимиту целей.
+  const eventsWindowMs = 10 * 60 * 1000
+  const goalsLimiter = rateLimit({
+    limit: envLimit('EVENTS_RATE_LIMIT', 300),
+    windowMs: eventsWindowMs,
+  })
+  const webVitalsLimiter = rateLimit({
+    limit: envLimit('WEB_VITALS_RATE_LIMIT', 150),
+    windowMs: eventsWindowMs,
+  })
   app.use(
     '/api/public/events',
-    guard('/', rateLimit({ limit: envLimit('EVENTS_RATE_LIMIT', 300), windowMs: 10 * 60 * 1000 })),
+    guard('/', (req, res, next) => {
+      const type = (req.body as { type?: unknown } | undefined)?.type
+      return (type === 'web_vital' ? webVitalsLimiter : goalsLimiter)(req, res, next)
+    }),
   )
   app.use('/api/public/events', createEventsRouter())
   app.use('/api/webhooks/tbank', tbankWebhookRouter)

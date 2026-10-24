@@ -24,8 +24,25 @@ import localFont from 'next/font/local'
 //     wins, the value resolves to the same family;
 //   - skips the generated metric fallback: the '<Family> Fallback' faces live
 //     in globals.css with the numbers next/font/google computed.
-// Only latin + cyrillic are preloaded, as before; the other subsets download
-// only when a page contains such characters (₽ is latin-ext, for instance).
+// No font is preloaded (app/fonts-preload.test.ts keeps it that way). Caddy's
+// HTTP/2 (Go) shares the connection between streams round-robin and ignores
+// browser priorities, so every preloaded font steals bandwidth from the
+// render-blocking CSS. Preloading all families (196 KB) once starved the hero
+// image (PSI mobile LCP 8.9 s); preloading only IBM Plex Sans latin + cyrillic
+// (65 KB) still delayed FCP and LCP by 0.33–0.42 s on a slow-4G bench
+// (tools/perf-lab, RTT 250 ms, 1.6 Mbit/s) on home, catalog and product pages,
+// with the same CLS. Fonts load as soon as a page uses them, font-display: swap
+// + the metric fallbacks in globals.css hide the swap. The other subsets
+// download only when a page contains such characters (₽ is latin-ext, for
+// instance).
+//
+// ₽ (U+20BD) sits in Google's latin-ext subset, and prices put it on the home
+// page: that alone pulled Inter latin-ext (84 KB) and IBM Plex Sans latin-ext
+// (26 KB). The glyph is cut into <family>-ruble.woff2 files of ~1 KB (pyftsubset
+// --unicodes=U+20BD on the very same latin-ext file, so the outline is
+// unchanged) and U+20BD is removed from every latin-ext range. Roboto Mono
+// has no ₽ at all, so it only loses the range. Re-cut the files if the
+// latin-ext sources are ever replaced.
 
 // IBM Plex Sans — body copy (globals.css: --font-sans → --font-plex).
 const plexSansCyrillicExt = localFont({
@@ -95,7 +112,7 @@ const plexSansCyrillic = localFont({
   variable: '--font-plex',
   fallback: ["'IBM Plex Sans'", "'IBM Plex Sans Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 const plexSansGreek = localFont({
   src: [
@@ -199,8 +216,41 @@ const plexSansLatinExt = localFont({
     {
       prop: 'unicode-range',
       value:
-        'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF',
+        'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20BC, U+20BE-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF',
     },
+  ],
+  variable: '--font-plex',
+  fallback: ["'IBM Plex Sans'", "'IBM Plex Sans Fallback'"],
+  adjustFontFallback: false,
+  preload: false,
+})
+const plexSansRuble = localFont({
+  src: [
+    {
+      path: '../public/fonts/ibm-plex-sans/ibm-plex-sans-ruble.woff2',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/ibm-plex-sans/ibm-plex-sans-ruble.woff2',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/ibm-plex-sans/ibm-plex-sans-ruble.woff2',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/ibm-plex-sans/ibm-plex-sans-ruble.woff2',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
+  declarations: [
+    { prop: 'font-family', value: 'IBM Plex Sans' },
+    { prop: 'font-stretch', value: '100%' },
+    { prop: 'unicode-range', value: 'U+20BD' },
   ],
   variable: '--font-plex',
   fallback: ["'IBM Plex Sans'", "'IBM Plex Sans Fallback'"],
@@ -242,7 +292,7 @@ const plexSansLatin = localFont({
   variable: '--font-plex',
   fallback: ["'IBM Plex Sans'", "'IBM Plex Sans Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 
 // Roboto Mono — Tailwind's `font-mono` (globals.css: --font-mono → --font-mono-google).
@@ -301,7 +351,7 @@ const robotoMonoCyrillic = localFont({
   variable: '--font-mono-google',
   fallback: ["'Roboto Mono'", "'Roboto Mono Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 const robotoMonoGreek = localFont({
   src: [
@@ -375,7 +425,7 @@ const robotoMonoLatinExt = localFont({
     {
       prop: 'unicode-range',
       value:
-        'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF',
+        'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20BC, U+20BE-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF',
     },
   ],
   variable: '--font-mono-google',
@@ -400,7 +450,7 @@ const robotoMonoLatin = localFont({
   variable: '--font-mono-google',
   fallback: ["'Roboto Mono'", "'Roboto Mono Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 
 // Unbounded — lj display headings (--font-lj-display).
@@ -447,7 +497,7 @@ const unboundedCyrillic = localFont({
   variable: '--font-lj-display',
   fallback: ["'Unbounded'", "'Unbounded Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 const unboundedVietnamese = localFont({
   src: [
@@ -491,8 +541,23 @@ const unboundedLatinExt = localFont({
     {
       prop: 'unicode-range',
       value:
-        'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF',
+        'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20BC, U+20BE-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF',
     },
+  ],
+  variable: '--font-lj-display',
+  fallback: ["'Unbounded'", "'Unbounded Fallback'"],
+  adjustFontFallback: false,
+  preload: false,
+})
+const unboundedRuble = localFont({
+  src: [
+    { path: '../public/fonts/unbounded/unbounded-ruble.woff2', weight: '400', style: 'normal' },
+    { path: '../public/fonts/unbounded/unbounded-ruble.woff2', weight: '700', style: 'normal' },
+    { path: '../public/fonts/unbounded/unbounded-ruble.woff2', weight: '900', style: 'normal' },
+  ],
+  declarations: [
+    { prop: 'font-family', value: 'Unbounded' },
+    { prop: 'unicode-range', value: 'U+20BD' },
   ],
   variable: '--font-lj-display',
   fallback: ["'Unbounded'", "'Unbounded Fallback'"],
@@ -516,7 +581,7 @@ const unboundedLatin = localFont({
   variable: '--font-lj-display',
   fallback: ["'Unbounded'", "'Unbounded Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 
 // Inter — lj body copy (--font-lj-body).
@@ -551,7 +616,7 @@ const interCyrillic = localFont({
   variable: '--font-lj-body',
   fallback: ["'Inter'", "'Inter Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 const interGreekExt = localFont({
   src: [
@@ -616,8 +681,23 @@ const interLatinExt = localFont({
     {
       prop: 'unicode-range',
       value:
-        'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF',
+        'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20BC, U+20BE-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF',
     },
+  ],
+  variable: '--font-lj-body',
+  fallback: ["'Inter'", "'Inter Fallback'"],
+  adjustFontFallback: false,
+  preload: false,
+})
+const interRuble = localFont({
+  src: [
+    { path: '../public/fonts/inter/inter-ruble.woff2', weight: '400', style: 'normal' },
+    { path: '../public/fonts/inter/inter-ruble.woff2', weight: '500', style: 'normal' },
+    { path: '../public/fonts/inter/inter-ruble.woff2', weight: '700', style: 'normal' },
+  ],
+  declarations: [
+    { prop: 'font-family', value: 'Inter' },
+    { prop: 'unicode-range', value: 'U+20BD' },
   ],
   variable: '--font-lj-body',
   fallback: ["'Inter'", "'Inter Fallback'"],
@@ -641,7 +721,7 @@ const interLatin = localFont({
   variable: '--font-lj-body',
   fallback: ["'Inter'", "'Inter Fallback'"],
   adjustFontFallback: false,
-  preload: true,
+  preload: false,
 })
 
 export const fontVariables = [
@@ -650,6 +730,7 @@ export const fontVariables = [
   plexSansGreek,
   plexSansVietnamese,
   plexSansLatinExt,
+  plexSansRuble,
   plexSansLatin,
   robotoMonoCyrillicExt,
   robotoMonoCyrillic,
@@ -661,6 +742,7 @@ export const fontVariables = [
   unboundedCyrillic,
   unboundedVietnamese,
   unboundedLatinExt,
+  unboundedRuble,
   unboundedLatin,
   interCyrillicExt,
   interCyrillic,
@@ -668,6 +750,7 @@ export const fontVariables = [
   interGreek,
   interVietnamese,
   interLatinExt,
+  interRuble,
   interLatin,
 ]
   .map((font) => font.variable)

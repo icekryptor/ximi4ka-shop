@@ -28,6 +28,11 @@ import {
 import { ProductCard } from '@/components/ProductCard'
 import { PreFooterCta } from '@/components/marketing/PreFooterCta'
 import { parseCharacteristics } from '@/lib/parseCharacteristics'
+import {
+  ALL_REAGENTS_SKU,
+  fetchReagentsForContents,
+  withAllReagentsContents,
+} from '@/lib/allReagents'
 import { primaryCategory, productBreadcrumbs } from '@/lib/breadcrumbs'
 import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
@@ -184,8 +189,13 @@ export default async function ProductPage({ params }: Props) {
   // translating them is out of scope for Phase 8.
   const name = pickField<string>(product, 'name', locale) ?? product.name
   const shortDescription = pickField<string>(product, 'shortDescription', locale)
-  const longDescriptionBlocks = (pickField<unknown[]>(product, 'longDescriptionBlocks', locale) ??
+  const ownDescriptionBlocks = (pickField<unknown[]>(product, 'longDescriptionBlocks', locale) ??
     product.longDescriptionBlocks) as unknown[]
+  // У «Запаса всех реактивов» состав — весь каталог реактивов, его собираем.
+  const longDescriptionBlocks =
+    product.sku === ALL_REAGENTS_SKU && Array.isArray(ownDescriptionBlocks)
+      ? withAllReagentsContents(ownDescriptionBlocks, await fetchReagentsForContents())
+      : ownDescriptionBlocks
 
   const characteristics = parseCharacteristics(longDescriptionBlocks)
   const contentsHtml = extractContentsHtml(longDescriptionBlocks)
@@ -325,7 +335,7 @@ export default async function ProductPage({ params }: Props) {
       {/* SECTION 3 — Pre-footer dark CTA. Already migrated to ink LJ. */}
       <PreFooterCta
         title="Не нашли подходящий набор?"
-        lead="В каталоге собраны наборы для разных возрастов и научных направлений."
+        lead="В каталоге собраны наборы для разных научных направлений — от первых опытов до ОГЭ и электрохимии."
         cta={{ label: 'Все категории', href: '/categories' }}
       />
 

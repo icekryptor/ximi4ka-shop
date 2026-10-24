@@ -1,4 +1,10 @@
-import type { DeliveryMethod, OrderStatus, PaymentProvider, PublicOrderShipment } from './order.js'
+import type {
+  DeliveryMethod,
+  OrderDeliveryMethod,
+  OrderStatus,
+  PaymentProvider,
+  PublicOrderShipment,
+} from './order.js'
 
 /** Какие способы входа включены на сервере (GET /api/account/auth/config). */
 export interface AuthConfig {
@@ -52,8 +58,11 @@ export interface AccountOrderSummary {
   }>
   subtotalRub: number
   discountRub: number
+  /** Промокод заказа и его скидка (0 — без промокода). */
+  promoCode: string | null
+  promoDiscountRub: number
   shippingRub: number
-  deliveryMethod: DeliveryMethod
+  deliveryMethod: OrderDeliveryMethod
   /** Адрес доставки одной строкой: «<город>, <ПВЗ или улица>». */
   deliveryAddress: string
   shipment: PublicOrderShipment | null

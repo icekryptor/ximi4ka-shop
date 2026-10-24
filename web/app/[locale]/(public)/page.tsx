@@ -12,14 +12,16 @@ import type { Block, Page, Product, ProductCategory } from '@ximi4ka-shop/shared
 import { ProductCard } from '@/components/ProductCard'
 import { BlockRenderer } from '@/components/blocks/BlockRenderer'
 import { JsonLd } from '@/components/seo/JsonLd'
-import { buildMetadata, DEFAULT_HOME_TITLE } from '@/lib/metadata'
+import { buildMetadata, DEFAULT_HOME_TITLE, DEFAULT_SITE_DESCRIPTION } from '@/lib/metadata'
 import { itemListJsonLd } from '@/lib/jsonLd'
 import { LabSection } from '@/components/ui/LabSection'
 import { WholesaleHomeSection } from '@/components/wholesale/WholesaleHomeSection'
 import { Ticker } from '@/components/ui'
-import { Hero, PreFooterCta, Manifesto, DEFAULT_TESTIMONIALS } from '@/components/marketing'
+import { Hero, PreFooterCta, Manifesto } from '@/components/marketing'
 import { CategoryTileLJ } from '@/components/marketing/CategoryTileLJ'
 import { HowItWorksStepLJ } from '@/components/marketing/HowItWorksStepLJ'
+import { OrderProcessSection } from '@/components/marketing/OrderProcessSection'
+import { orderProcessPath } from '@/lib/orderProcess'
 import { TestimonialQuoteLJ } from '@/components/marketing/TestimonialQuoteLJ'
 import { buildPromoSlides } from '@/lib/promoSlides'
 import { DEFAULT_LOCALE, isLocale, pickField, type Locale } from '@/lib/i18n'
@@ -47,7 +49,7 @@ export const SITE_CATALOG = [
     priceRub: 3399,
     emphasisWord: 'Химичка',
     hoverFormula: 'Cu + 2 AgNO₃ → Cu(NO₃)₂ + 2 Ag↓',
-    chips: ['безопасно', 'ярко', 'от 10 лет'],
+    chips: ['по методичке', 'ярко', '14+'],
     stats: { reagents: 18, instruments: 12, reactions: 161 },
     staggerOffset: 0,
   },
@@ -60,7 +62,7 @@ export const SITE_CATALOG = [
     priceRub: 1799,
     emphasisWord: 'Мини-',
     hoverFormula: 'Pocket lab · 18 реактивов',
-    chips: ['подарок', 'от 8 лет'],
+    chips: ['подарок', '14+'],
     stats: { reagents: 18, instruments: 4, reactions: 161 },
     staggerOffset: 4, // rem
   },
@@ -72,7 +74,7 @@ export const SITE_CATALOG = [
     priceRub: 3299,
     emphasisWord: 'Электро',
     hoverFormula: '2 H₂O → 2 H₂↑ + O₂↑',
-    chips: ['ток', 'гальваника', 'от 12 лет'],
+    chips: ['ток', 'гальваника', '14+'],
     stats: { reagents: 14, instruments: 20, reactions: 74 },
     staggerOffset: 8, // rem
   },
@@ -152,7 +154,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // title CMS-страницы `home` — служебное «Главная», в выдачу его не отдаём:
     // без своего metaTitle у главной остаётся осмысленный дефолт с брендом.
     title: DEFAULT_HOME_TITLE,
-    description: 'Химические наборы для детей и подростков. Научные эксперименты дома.',
+    description: DEFAULT_SITE_DESCRIPTION,
     metaTitle,
     metaDescription,
     ogImage: home?.ogImage ?? null,
@@ -169,7 +171,7 @@ const FACTS_TICKER = [
   '161 опыт',
   '62 реактива',
   'доставка СДЭК',
-  'от 10 лет',
+  'с 14 лет',
   '4,9 из 5 на WB и Ozon',
   '30 000+ покупателей',
 ]
@@ -195,13 +197,11 @@ export default async function HomePage({ params }: Props) {
   const faqBlocks = allBlocks.filter((b) => b && (b as Block).type === 'faq')
   const otherBlocks = allBlocks.filter((b) => b && (b as Block).type !== 'faq')
 
-  const testimonials =
-    settings?.testimonials && settings.testimonials.length > 0
-      ? settings.testimonials
-      : DEFAULT_TESTIMONIALS
+  // Только настоящие отзывы из настроек: заглушек нет (правило 6 docs/seo/WORKFLOW.md).
+  const testimonials = settings?.testimonials ?? []
 
-  // First six categories featured on the homepage; full list lives at /categories.
-  const featuredCategories = categories.slice(0, 6)
+  // Первые пять категорий — ряд из пяти плиток на десктопе; полный список — на /categories.
+  const featuredCategories = categories.slice(0, 5)
 
   // Hybrid resolution: SITE_CATALOG keeps the marketing decoration (stats,
   // chips, hover formulas) in code, but each flagship slug resolves to
@@ -238,10 +238,8 @@ export default async function HomePage({ params }: Props) {
         <div className="max-w-[var(--max-lj-content)] mx-auto">
           <div className="flex justify-between items-end mb-24 gap-8 flex-wrap">
             <div>
-              <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.75rem)] leading-[0.92] tracking-[-0.045em]">
-                Готовые
-                <br />
-                <em className="italic text-[var(--color-lj-brand)] font-[900]">наборы</em>
+              <h2 className="font-lj-display font-[900] text-[clamp(1.5rem,8vw,2.5rem)] sm:text-[clamp(2.5rem,5vw,4.75rem)] whitespace-nowrap leading-[0.92] tracking-[-0.045em]">
+                Готовые <em className="italic text-[var(--color-lj-brand)] font-[900]">наборы</em>
               </h2>
             </div>
           </div>
@@ -304,7 +302,7 @@ export default async function HomePage({ params }: Props) {
           { text: 'химия', emphasis: true },
           { text: '.' },
         ]}
-        body="Каждый набор — запечатанный комплект: реагенты, лабораторная посуда, протокол к каждому опыту. Никаких «представьте, что произойдёт» — ребёнок смешивает, смотрит на реакцию и записывает вывод."
+        body="Каждый набор — запечатанный комплект: реагенты, лабораторная посуда, протокол к каждому опыту. Никаких «представьте, что произойдёт» — вы смешиваете, смотрите на реакцию и записываете вывод."
       />
 
       {/* 4. Каталог по интересам (LAB CREAM) — v3 LJ tiles with molecule motifs */}
@@ -316,11 +314,12 @@ export default async function HomePage({ params }: Props) {
             <em className="italic text-[var(--color-lj-brand)] font-[900]">интересам</em>
           </h2>
           {featuredCategories.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-5">
               {featuredCategories.map((cat) => (
                 <CategoryTileLJ
                   key={cat.id}
                   category={cat}
+                  compact
                   // TODO(productCount): public /api/public/categories does not
                   // currently return productCount. Stage 8.C.2 (categories
                   // rewrite) will plumb the count through; for now show 0.
@@ -348,53 +347,58 @@ export default async function HomePage({ params }: Props) {
               index={1}
               verb="ВЫБРАТЬ"
               title="Выберите набор"
-              body="Подберите набор по возрасту и интересам ребёнка. Для каждого указано, с какого возраста и что понадобится дома."
+              body="Подберите набор под задачу: первые опыты, подготовка к ОГЭ или электрохимия. Для каждого указано, что понадобится дома."
             />
             <HowItWorksStepLJ
               index={2}
               verb="СОБРАТЬ"
               title="Распакуйте и проведите"
-              body="Внутри — все необходимые реактивы и понятная инструкция. Можно проводить дома вместе с детьми."
+              body="Внутри — все необходимые реактивы и понятная инструкция. Работайте по ней, в защитных очках и перчатках."
             />
             <HowItWorksStepLJ
               index={3}
               verb="ВЕСТИ"
               title="Получите знания"
-              body="Каждый набор сопровождается методическими материалами — научите детей думать как учёные."
+              body="Каждый набор сопровождается методическими материалами — учитесь думать как учёные."
             />
           </div>
         </div>
       </LabSection>
 
+      {/* 5а. Заказ и доставка (LAB CREAM) — шаги, условия по странам, сроки СДЭК */}
+      <OrderProcessSection href={orderProcessPath(locale)} />
+
       {/* 5б. Оптом (LAB CREAM) — тот же блок заказа, что на /opt */}
       <WholesaleHomeSection href={locale === DEFAULT_LOCALE ? '/opt' : `/${locale}/opt`} />
 
-      {/* 6. Что говорят родители (LAB CREAM) — v3 LJ lab-citation quotes */}
-      <LabSection variant="cream" className="px-6 py-32">
-        <div className="max-w-[var(--max-lj-content)] mx-auto">
-          <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
-            Что говорят
-            <br />
-            <em className="italic text-[var(--color-lj-brand)] font-[900]">родители</em>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {testimonials.slice(0, 3).map((t, i) => {
-              // PublicTestimonial has shape { quote, author, location, rating? }.
-              // Map to TestimonialQuoteLJ's { body, author, meta[] } —
-              // location goes into the citation meta line.
-              const meta = [t.location].filter(Boolean) as string[]
-              return (
-                <TestimonialQuoteLJ
-                  key={`${t.author}-${i}`}
-                  body={t.quote}
-                  author={t.author.toUpperCase()}
-                  meta={meta}
-                />
-              )
-            })}
+      {/* 6. Отзывы покупателей (LAB CREAM) — v3 LJ lab-citation quotes; без отзывов блока нет */}
+      {testimonials.length > 0 && (
+        <LabSection variant="cream" className="px-6 py-32">
+          <div className="max-w-[var(--max-lj-content)] mx-auto">
+            <h2 className="font-lj-display font-[900] text-[clamp(2.5rem,5vw,4.5rem)] leading-[0.92] tracking-[-0.045em] mb-16">
+              Отзывы
+              <br />
+              <em className="italic text-[var(--color-lj-brand)] font-[900]">покупателей</em>
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              {testimonials.slice(0, 3).map((t, i) => {
+                // PublicTestimonial has shape { quote, author, location, rating? }.
+                // Map to TestimonialQuoteLJ's { body, author, meta[] } —
+                // location goes into the citation meta line.
+                const meta = [t.location].filter(Boolean) as string[]
+                return (
+                  <TestimonialQuoteLJ
+                    key={`${t.author}-${i}`}
+                    body={t.quote}
+                    author={t.author.toUpperCase()}
+                    meta={meta}
+                  />
+                )
+              })}
+            </div>
           </div>
-        </div>
-      </LabSection>
+        </LabSection>
+      )}
 
       {/* 7. Частые вопросы (LAB CREAM) — v3 LabSection wrapper */}
       {faqBlocks.length > 0 && (
@@ -408,10 +412,13 @@ export default async function HomePage({ params }: Props) {
         </LabSection>
       )}
 
-      {/* 8. Other CMS blocks (LAB CREAM) — v3 LabSection wrapper */}
+      {/* 8. Other CMS blocks (LAB CREAM) — v3 LabSection wrapper.
+          Основной сюжет — вводный абзац «Ximi4ka — наборы для…»: он нужен и людям, и
+          поисковикам, поэтому стоит аккуратным центрированным лидом, а не левым
+          «сиротой». Призыв «Открыть каталог» уже есть в PreFooterCta ниже. */}
       {otherBlocks.length > 0 && (
-        <LabSection variant="cream" className="px-6 py-24">
-          <div className="max-w-[var(--max-lj-narrow)] mx-auto">
+        <LabSection variant="cream" className="px-6 py-16">
+          <div className="max-w-[var(--max-lj-narrow)] mx-auto text-center [&_[data-block=paragraph]]:mx-auto [&_[data-block=paragraph]]:text-[1.125rem] [&_[data-block=paragraph]]:max-w-[52ch] [&_[data-block=paragraph]]:[--lj-prose-color:color-mix(in_srgb,var(--color-lj-ink)_78%,transparent)]">
             <BlockRenderer blocks={otherBlocks} />
           </div>
         </LabSection>

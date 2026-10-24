@@ -57,6 +57,22 @@ function checkoutBody(items: Array<{ productId: string; quantity: number }>) {
   }
 }
 
+function cisBody(
+  items: Array<{ productId: string; quantity: number }>,
+  delivery: Record<string, unknown> = {},
+) {
+  const body = checkoutBody(items)
+  body.customer = { name: 'Алесь Новик', phone: '+375291234567', email: 'ales@example.com' }
+  body.delivery = {
+    method: 'cdek_manual_cis',
+    country: 'BY',
+    city: 'Минск',
+    address: 'ул. Ленина, 5, ПВЗ СДЭК',
+    ...delivery,
+  }
+  return body
+}
+
 // Список пунктов города 44 так, как его отдаёт СДЭК (урезан). Калькулятор
 // «не отвечает» — цена фиксированная, как в соседних тестах.
 function stubCityPoints(codes: string[]) {
@@ -289,6 +305,229 @@ describe('POST /api/checkout', () => {
     })
     expect(order.shippingRub).toBe(500)
     expect(order.totalRub).toBe(4500)
+  })
+
+  describe('промокод', () => {
+    async function orderFor(res: request.Response): Promise<Order> {
+      return AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: res.body.data.orderNumber,
+      })
+    }
+
+    it('RENATA2026: 5% с товаров, доставка по сумме до промокода остаётся бесплатной', async () => {
+      const p = await seedProduct({ priceRub: 3099 })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({ ...checkoutBody([{ productId: p.id, quantity: 1 }]), promoCode: 'RENATA2026' })
+      expect(res.status).toBe(201)
+      const order = await orderFor(res)
+      expect(order.promoCode).toBe('RENATA2026')
+      expect(order.promoDiscountRub).toBe(155)
+      expect(order.subtotalRub).toBe(3099)
+      expect(order.discountRub).toBe(0)
+      expect(order.shippingRub).toBe(0) // 2944 ₽ после скидки, но порог — от 3099
+      expect(order.totalRub).toBe(2944)
+    })
+
+    it('код принимается без учёта регистра и пробелов', async () => {
+      const p = await seedProduct({ priceRub: 3000 })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({ ...checkoutBody([{ productId: p.id, quantity: 1 }]), promoCode: ' renata2026 ' })
+      expect(res.status).toBe(201)
+      const order = await orderFor(res)
+      expect(order.promoCode).toBe('RENATA2026')
+      expect(order.promoDiscountRub).toBe(150)
+    })
+
+    it('ниже порога доставка платная, скидка её не уменьшает', async () => {
+      const p = await seedProduct({ priceRub: 1000 })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({ ...checkoutBody([{ productId: p.id, quantity: 1 }]), promoCode: 'RENATA2026' })
+      expect(res.status).toBe(201)
+      const order = await orderFor(res)
+      expect(order.shippingRub).toBe(350)
+      expect(order.totalRub).toBe(1000 - 50 + 350)
+    })
+
+    it('суммируется с оптовой скидкой: промо берётся с суммы после неё', async () => {
+      // 10 реактивов со скидкой 20% = 800 ₽, из них промо 5% = 40 ₽.
+      const reagent = await seedProduct({ slug: 'copper-sulfate', priceRub: 100, sku: 'CU-9' })
+      await seedCategory('reagents', [reagent])
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({
+          ...checkoutBody([{ productId: reagent.id, quantity: 10 }]),
+          promoCode: 'RENATA2026',
+        })
+      expect(res.status).toBe(201)
+      const order = await orderFor(res)
+      expect(order.subtotalRub).toBe(1000)
+      expect(order.discountRub).toBe(200)
+      expect(order.promoDiscountRub).toBe(40)
+      expect(order.totalRub).toBe(1000 - 200 - 40 + order.shippingRub)
+    })
+
+    it('для ЕАЭС порог тоже считается до промокода', async () => {
+      const p = await seedProduct({ priceRub: 3100 })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({ ...cisBody([{ productId: p.id, quantity: 1 }]), promoCode: 'RENATA2026' })
+      expect(res.status).toBe(201)
+      const order = await orderFor(res)
+      expect(order.shippingRub).toBe(0) // Беларусь: бесплатно от 3000 ₽
+      expect(order.totalRub).toBe(3100 - 155)
+    })
+
+    it('без промокода и с пустой строкой заказ как раньше', async () => {
+      const p = await seedProduct({ priceRub: 3000 })
+      for (const promoCode of [undefined, '', '  ']) {
+        const res = await request(app)
+          .post('/api/checkout')
+          .send({ ...checkoutBody([{ productId: p.id, quantity: 1 }]), promoCode })
+        expect(res.status).toBe(201)
+        const order = await orderFor(res)
+        expect(order.promoCode).toBeNull()
+        expect(order.promoDiscountRub).toBe(0)
+        expect(order.totalRub).toBe(3000)
+      }
+    })
+
+    it('400 promo_invalid на неизвестный код, заказ не создаётся', async () => {
+      const p = await seedProduct({ priceRub: 3000 })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send({ ...checkoutBody([{ productId: p.id, quantity: 1 }]), promoCode: 'WRONG' })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('promo_invalid')
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
+  })
+
+  describe('доставка в страны ЕАЭС: адрес ПВЗ вручную', () => {
+    function noCdek() {
+      const get = vi.fn()
+      setCdekClientForTests({ get, post: vi.fn(), raw: vi.fn() })
+      return get
+    }
+
+    async function placeCis(price: number, delivery: Record<string, unknown> = {}) {
+      const p = await seedProduct({ priceRub: price })
+      const res = await request(app)
+        .post('/api/checkout')
+        .send(cisBody([{ productId: p.id, quantity: 1 }], delivery))
+      return res
+    }
+
+    it('Беларусь: 700 ₽ ниже 3000 ₽, адрес с городом, без калькулятора СДЭК', async () => {
+      const get = noCdek()
+      const res = await placeCis(2000)
+      expect(res.status).toBe(201)
+      const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: res.body.data.orderNumber,
+      })
+      expect(order.deliveryMethod).toBe('cdek_manual_cis')
+      expect(order.shippingRub).toBe(700)
+      expect(order.totalRub).toBe(2700)
+      expect(order.deliveryAddress).toMatchObject({
+        address: 'Минск, ул. Ленина, 5, ПВЗ СДЭК',
+        country: 'BY',
+        city: 'Минск',
+        quote: null,
+      })
+      expect(get).not.toHaveBeenCalled()
+    })
+
+    it('Беларусь: бесплатно от 3000 ₽', async () => {
+      noCdek()
+      const res = await placeCis(3000)
+      expect(res.status).toBe(201)
+      const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: res.body.data.orderNumber,
+      })
+      expect(order.shippingRub).toBe(0)
+      expect(order.totalRub).toBe(3000)
+    })
+
+    it.each([
+      ['KZ', 'Алматы', 900],
+      ['KG', 'Бишкек', 900],
+      ['AM', 'Ереван', 1200],
+    ])('%s: %i ₽ ниже 5000 ₽ и бесплатно от 5000 ₽', async (country, city, price) => {
+      noCdek()
+      const below = await placeCis(4000, { country, city })
+      expect(below.status).toBe(201)
+      const belowOrder = await AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: below.body.data.orderNumber,
+      })
+      expect(belowOrder.shippingRub).toBe(price)
+
+      const free = await placeCis(5000, { country, city })
+      expect(free.status).toBe(201)
+      const freeOrder = await AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: free.body.data.orderNumber,
+      })
+      expect(freeOrder.shippingRub).toBe(0)
+    })
+
+    it('400 email_required: без email чек не выписать — заказ не создаётся', async () => {
+      noCdek()
+      const p = await seedProduct()
+      const body = cisBody([{ productId: p.id, quantity: 1 }])
+      body.customer = { name: 'Алесь', phone: '+375291234567' } as typeof body.customer
+      const res = await request(app).post('/api/checkout').send(body)
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('email_required')
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
+
+    it('400 email_required: email длиннее 64 символов — чек Т-Кассы его не примет', async () => {
+      noCdek()
+      const p = await seedProduct()
+      const body = cisBody([{ productId: p.id, quantity: 1 }])
+      body.customer.email = `${'a'.repeat(65 - '@example.com'.length)}@example.com`
+      expect(body.customer.email.length).toBe(65)
+      const res = await request(app).post('/api/checkout').send(body)
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('email_required')
+      expect(res.body.error.message).toBe('Укажите email до 64 символов — на него придёт чек')
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
+
+    it('email ровно 64 символа проходит', async () => {
+      noCdek()
+      const p = await seedProduct()
+      const body = cisBody([{ productId: p.id, quantity: 1 }])
+      body.customer.email = `${'a'.repeat(64 - '@example.com'.length)}@example.com`
+      expect(body.customer.email.length).toBe(64)
+      const res = await request(app).post('/api/checkout').send(body)
+      expect(res.status).toBe(201)
+    })
+
+    it('400 delivery_city_unavailable: города нет в списке страны', async () => {
+      noCdek()
+      const res = await placeCis(2000, { city: 'Атлантида' })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('delivery_city_unavailable')
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
+
+    it('400 delivery_city_unavailable: город другой страны', async () => {
+      noCdek()
+      const res = await placeCis(2000, { country: 'KZ', city: 'Минск' })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('delivery_city_unavailable')
+    })
+
+    it('400: страна вне списка и пустой адрес не проходят схему', async () => {
+      noCdek()
+      const ru = await placeCis(2000, { country: 'RU' })
+      expect(ru.status).toBe(400)
+      const noAddress = await placeCis(2000, { address: '   ' })
+      expect(noAddress.status).toBe(400)
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
   })
 
   it('берёт цену доставки у калькулятора СДЭК ниже порога', async () => {
@@ -573,6 +812,52 @@ describe('POST /api/checkout', () => {
     expect(Items).toContainEqual(
       expect.objectContaining({ Price: 8000, Quantity: 10, Amount: 80000 }),
     )
+  })
+
+  it('sends a Receipt that adds up to Amount when a promo code is applied', async () => {
+    vi.stubEnv('PAYMENT_PROVIDER', 'tbank')
+    vi.stubEnv('TBANK_TERMINAL_KEY', 'TestTerminal')
+    vi.stubEnv('TBANK_PASSWORD', 'secret')
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        Success: true,
+        PaymentId: 8,
+        PaymentURL: 'https://securepay.tinkoff.ru/pay/8',
+      }),
+    }))
+    tbankFetchMock.mockImplementation(fetchMock)
+
+    // Товары 1000 + 333 ₽, промо 5% = 67 ₽ (66,65 округляется), доставка 350 ₽.
+    const a = await seedProduct({ slug: 'a', priceRub: 1000, sku: 'A-1' })
+    const b = await seedProduct({ slug: 'b', priceRub: 111, sku: 'B-1' })
+    const res = await request(app)
+      .post('/api/checkout')
+      .send({
+        ...checkoutBody([
+          { productId: a.id, quantity: 1 },
+          { productId: b.id, quantity: 3 },
+        ]),
+        promoCode: 'RENATA2026',
+      })
+
+    expect(res.status).toBe(201)
+    expect(res.body.data.paymentUrl).toBe('https://securepay.tinkoff.ru/pay/8')
+    const sent = JSON.parse(
+      (fetchMock.mock.calls[0] as unknown as [URL, RequestInit])[1].body as string,
+    ) as {
+      Amount: number
+      Receipt: {
+        Items: Array<{ Name: string; Price: number; Quantity: number; Amount: number }>
+      }
+    }
+    expect(sent.Amount).toBe((1333 - 67 + 350) * 100)
+    const { Items } = sent.Receipt
+    expect(Items.reduce((sum, i) => sum + i.Amount, 0)).toBe(sent.Amount)
+    for (const line of Items) expect(line.Price * line.Quantity).toBe(line.Amount)
+    // Доставка в чеке без скидки.
+    expect(Items.find((i) => i.Name.startsWith('Доставка'))?.Amount).toBe(35000)
   })
 
   it('keeps the order pending when tbank Init fails', async () => {
@@ -896,6 +1181,22 @@ describe('checkout и личный кабинет', () => {
     })
     expect(order.customerId).toBeNull()
     expect(await AppDataSource.getRepository(Customer).count()).toBe(0)
+  })
+
+  it('с сессией: чужой не +7 телефон из заказа в страну ЕАЭС в профиль не попадает', async () => {
+    const app = createApp()
+    const auth = await loginAsCustomer(app, 'buyer@test.local')
+    const product = await seedProduct()
+    const res = await request(app)
+      .post('/api/checkout')
+      .set('Cookie', auth.cookie)
+      .send(cisBody([{ productId: product.id, quantity: 1 }]))
+    expect(res.status).toBe(201)
+    const c = await AppDataSource.getRepository(Customer).findOneByOrFail({
+      email: 'buyer@test.local',
+    })
+    expect(c.name).toBe('Алесь Новик')
+    expect(c.phone).toBeNull()
   })
 
   it('с сессией профиль с уже заполненным именем не перетирается', async () => {

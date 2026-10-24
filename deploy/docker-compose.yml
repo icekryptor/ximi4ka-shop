@@ -25,6 +25,8 @@ services:
     volumes:
       # Аплоады из админки переживают пересборку образа (в отличие от Railway).
       - ximishop-uploads:/app/api/uploads
+      # Закрытые материалы (PDF методичек и т. п.): вне /uploads, наружу не раздаются.
+      - ximishop-materials:/app/api/materials
     networks:
       supabase:
         # Маршрут по умолчанию для IPv4 остаётся здесь.
@@ -83,6 +85,7 @@ services:
 
 volumes:
   ximishop-uploads:
+  ximishop-materials:
 
 networks:
   supabase:

@@ -57,8 +57,8 @@ function RawSlugsEditor({
         />
       </label>
       <p className="text-xs text-brand-text-secondary">
-        Пример: <code>nabor-yunogo-himika, vulkan-lavy</code>. Несуществующие slug будут пропущены
-        при рендере.
+        Пример: <code>himichka-30, mini-himichka</code>. Несуществующие slug будут пропущены при
+        рендере.
       </p>
     </div>
   )

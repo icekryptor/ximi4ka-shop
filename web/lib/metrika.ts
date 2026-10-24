@@ -80,6 +80,9 @@ function pushEcommerce(action: string, payload: Record<string, unknown>): void {
   if (!w) return
   try {
     const layer = (w.dataLayer = w.dataLayer || [])
+    // Обнуление перед каждым пакетом — привычка из GTM (он склеивал ecommerce-объекты
+    // соседних событий). GTM снят, но пуш безвреден и бережёт от склейки, если его вернут.
+    layer.push({ ecommerce: null })
     layer.push({ ecommerce: { currencyCode: CURRENCY, [action]: payload } })
   } catch {
     // см. выше

@@ -196,6 +196,17 @@ async function fillValidForm() {
   await choosePoint()
 }
 
+async function chooseCisRegion() {
+  fireEvent.click(screen.getByRole('radio', { name: /беларусь, казахстан, армения, киргизия/i }))
+  await screen.findByLabelText(/страна/i)
+}
+
+function fillCis(country: string, city: string, address = 'ул. Ленина, 5') {
+  fireEvent.change(screen.getByLabelText(/страна/i), { target: { value: country } })
+  fireEvent.change(screen.getByLabelText(/город/i), { target: { value: city } })
+  fireEvent.change(screen.getByLabelText(/адрес пункта/i), { target: { value: address } })
+}
+
 function submit() {
   fireEvent.click(screen.getByRole('button', { name: /оформить заказ/i }))
 }
@@ -326,6 +337,118 @@ describe('/checkout page', () => {
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
       const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
       expect(JSON.parse(init.body as string)).not.toHaveProperty('giftProductId')
+    })
+  })
+
+  describe('промокод', () => {
+    // 3099 ₽: ПВЗ бесплатно от 3000 ₽; с промокодом 5% будет 2944 ₽, а доставка — по-прежнему бесплатно.
+    const kit: CartItem[] = [{ ...seed[0]!, priceRub: 3099, quantity: 1 }]
+
+    function errorResponse(status: number, code: string, message: string) {
+      return new Response(JSON.stringify({ error: { code, message } }), { status })
+    }
+
+    function applyPromo(code: string) {
+      fireEvent.change(screen.getByLabelText(/промокод/i), { target: { value: code } })
+      fireEvent.click(screen.getByRole('button', { name: /применить/i }))
+    }
+
+    it('применённый код показывает скидку и новый итог', () => {
+      seedCart(kit)
+      render(<CheckoutPage />)
+      expect(screen.queryByTestId('summary-promo')).not.toBeInTheDocument()
+
+      applyPromo(' renata2026 ')
+
+      expect(screen.getByTestId('summary-promo')).toHaveTextContent('155')
+      expect(screen.getByTestId('summary-promo')).toHaveTextContent('RENATA2026')
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('2 944')
+    })
+
+    it('доставка остаётся бесплатной, хотя сумма после скидки ниже порога', async () => {
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('RENATA2026')
+      await chooseCity()
+      expect(screen.getByTestId('summary-shipping')).toHaveTextContent(/бесплатно/i)
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('2 944')
+    })
+
+    it('неизвестный код — ошибка у поля, скидки нет', () => {
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('WRONG')
+      expect(screen.getByText(/промокод не найден/i)).toBeInTheDocument()
+      expect(screen.queryByTestId('summary-promo')).not.toBeInTheDocument()
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('3 099')
+    })
+
+    it('«Убрать» снимает промокод', () => {
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('RENATA2026')
+      fireEvent.click(screen.getByRole('button', { name: /убрать/i }))
+      expect(screen.queryByTestId('summary-promo')).not.toBeInTheDocument()
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('3 099')
+    })
+
+    it('Enter в поле применяет код, а не отправляет форму заказа', () => {
+      seedCart(kit)
+      render(<CheckoutPage />)
+      const input = screen.getByLabelText(/промокод/i)
+      fireEvent.change(input, { target: { value: 'RENATA2026' } })
+      // false — обработчик отменил стандартное действие (отправку формы).
+      expect(fireEvent.keyDown(input, { key: 'Enter' })).toBe(false)
+      expect(screen.getByTestId('summary-promo')).toHaveTextContent('155')
+    })
+
+    it('код уходит в заказ', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('renata2026')
+
+      await fillValidForm()
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string).promoCode).toBe('RENATA2026')
+    })
+
+    it('без промокода в запросе его нет', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(kit)
+      render(<CheckoutPage />)
+
+      await fillValidForm()
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      expect(JSON.parse(init.body as string)).not.toHaveProperty('promoCode')
+    })
+
+    it('promo_invalid с сервера снимает промокод и объясняет почему', async () => {
+      mapMock.available = false
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => errorResponse(400, 'promo_invalid', 'Промокод не найден')),
+      )
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('RENATA2026')
+
+      await fillValidForm()
+      submit()
+
+      await screen.findByText(/промокод не найден/i)
+      expect(screen.queryByTestId('summary-promo')).not.toBeInTheDocument()
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('3 099')
     })
   })
 
@@ -461,6 +584,154 @@ describe('/checkout page', () => {
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
       const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
       expect(JSON.parse(init.body as string)).not.toHaveProperty('attribution')
+    })
+  })
+
+  describe('доставка в Беларусь, Казахстан, Армению, Киргизию', () => {
+    function cisContacts(phone = '+375 29 123-45-67', email = 'ales@example.com') {
+      fireEvent.change(screen.getByLabelText(/имя/i), { target: { value: 'Алесь' } })
+      fireEvent.change(screen.getByLabelText(/телефон/i), { target: { value: phone } })
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: email } })
+    }
+
+    it('заказ: страна, город из списка, адрес, телефон +375 без маски +7, цена 700 ₽', async () => {
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed) // 2000 ₽ — ниже порога Беларуси
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      cisContacts()
+      expect(screen.getByLabelText(/телефон/i)).toHaveValue('+375 29 123-45-67')
+      fillCis('BY', 'Минск')
+      expect(screen.getByTestId('summary-shipping')).toHaveTextContent('700')
+      expect(screen.getByTestId('summary-total')).toHaveTextContent('2 700')
+
+      submit()
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      const body = JSON.parse(init.body as string)
+      expect(body.delivery).toEqual({
+        method: 'cdek_manual_cis',
+        country: 'BY',
+        city: 'Минск',
+        address: 'ул. Ленина, 5',
+      })
+      expect(body.customer.phone).toBe('+375291234567')
+      expect(body.customer.email).toBe('ales@example.com')
+    })
+
+    it('от порога Казахстана доставка бесплатна', async () => {
+      seedCart([{ ...seed[0]!, quantity: 5 }]) // 5000 ₽
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      fillCis('KZ', 'Алматы')
+      expect(screen.getByTestId('summary-shipping')).toHaveTextContent('Бесплатно')
+    })
+
+    it('без email, города или адреса — ошибки у полей, ничего не отправляется', async () => {
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      cisContacts('+375 29 123-45-67', '')
+      submit()
+      expect(await screen.findByText('Укажите email — на него придёт чек')).toBeInTheDocument()
+      expect(screen.getByText('Выберите страну')).toBeInTheDocument()
+      expect(screen.getByText('Укажите адрес пункта выдачи СДЭК')).toBeInTheDocument()
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('возврат на «Россия» снова показывает российский блок СДЭК', async () => {
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      fireEvent.click(screen.getByRole('radio', { name: /^россия$/i }))
+      expect(await screen.findByRole('combobox', { name: /город/i })).toBeInTheDocument()
+      expect(screen.queryByLabelText(/страна/i)).not.toBeInTheDocument()
+    })
+
+    it('сервер отклонил город (400 delivery_city_unavailable) — сообщение сервера на экране', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({
+                error: {
+                  code: 'delivery_city_unavailable',
+                  message: 'Доставка в этот город недоступна',
+                },
+              }),
+              { status: 400 },
+            ),
+        ),
+      )
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      cisContacts()
+      fillCis('BY', 'Минск')
+      submit()
+      const alert = await screen.findByRole('alert')
+      // Точный текст сервера, без общей обёртки «Не удалось оформить заказ: …».
+      expect(alert.textContent).toBe('Доставка в этот город недоступна.')
+    })
+
+    it('сервер потребовал email (400 email_required) — его текст на экране', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({
+                error: { code: 'email_required', message: 'Укажите email — на него придёт чек' },
+              }),
+              { status: 400 },
+            ),
+        ),
+      )
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      cisContacts()
+      fillCis('BY', 'Минск')
+      submit()
+      const alert = await screen.findByRole('alert')
+      expect(alert.textContent).toBe('Укажите email — на него придёт чек.')
+    })
+
+    it('в режиме CIS кнопка доступна, пока российский расчёт СДЭК не готов', async () => {
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      cisContacts()
+      fillCis('BY', 'Минск')
+      expect(screen.getByRole('button', { name: /оформить заказ/i })).toBeEnabled()
+    })
+
+    it('смена региона очищает телефон: +375 из «Россия» не превращается в +7 в CIS', async () => {
+      seedCart(seed)
+      render(<CheckoutPage />)
+      fireEvent.change(screen.getByLabelText(/телефон/i), {
+        target: { value: '+375 29 123 45 67' },
+      })
+      await chooseCisRegion()
+      expect(screen.getByLabelText(/телефон/i)).toHaveValue('')
+    })
+
+    it('возврат с CIS на «Россия» очищает телефон и сообщения об ошибках', async () => {
+      vi.stubGlobal('fetch', vi.fn())
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await chooseCisRegion()
+      cisContacts('+375 29 123-45-67', '')
+      submit()
+      expect(await screen.findByText('Укажите email — на него придёт чек')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('radio', { name: /^россия$/i }))
+      expect(screen.getByLabelText(/телефон/i)).toHaveValue('')
+      expect(screen.queryByText('Укажите email — на него придёт чек')).not.toBeInTheDocument()
     })
   })
 
@@ -848,6 +1119,14 @@ describe('чекаут для вошедшего покупателя', () => {
     expect(screen.getByLabelText(/email/i)).toHaveValue('ivan@example.com')
     expect(screen.getByLabelText(/^telegram/i)).toHaveValue('@ivan_tg')
     expect(screen.queryByText(/чтобы заказ сохранился/)).toBeNull()
+  })
+
+  it('номер не из России в профиле не подставляется (маска +7 его исказила бы)', async () => {
+    accountMock.me = { ...profile, phone: '+375291234567' }
+    seedCart(seed)
+    render(<CheckoutPage />)
+    expect(await screen.findByDisplayValue('Иван')).toBeInTheDocument()
+    expect(screen.getByLabelText(/телефон/i)).toHaveValue('')
   })
 
   it('гостю — подсказка войти со ссылкой назад на чекаут', async () => {

@@ -27,13 +27,23 @@ const CTA_CLASS = 'lj-btn lj-btn-white rounded-[4px] px-7 py-4 max-sm:w-full'
  * Все слайды лежат в одной ячейке сетки — высота задаётся самым высоким и
  * при переключении ничего не прыгает. Неактивные скрыты (opacity + visibility
  * + inert), но остаются в DOM — их текст виден поисковикам. Управление:
- * стрелки ‹ ›, точки, свайп, клавиши ← →. Автопрокрутка встаёт на паузу при
- * наведении и фокусе и отключается при prefers-reduced-motion.
+ * стрелки ‹ ›, точки, свайп, клавиши ← →. Автопрокрутка начинается после
+ * первого действия посетителя, встаёт на паузу при наведении и фокусе и
+ * отключается при prefers-reduced-motion.
  */
 export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
   const [index, setIndex] = useState(0)
   const [reduced, setReduced] = useState(false)
   const [paused, setPaused] = useState(false)
+  // Иллюстрации скрытых слайдов подключаются после загрузки страницы: они лежат
+  // в той же ячейке сетки, что и активный слайд, поэтому браузер считает их
+  // «видимыми» и качает до LCP (≈100 КБ), деля канал с главной картинкой.
+  const [artReady, setArtReady] = useState(false)
+  // Автопрокрутка ждёт первого действия посетителя: скролла, касания, клавиши.
+  // До него браузер ещё ищет LCP, и перелистнутый сам собой баннер с крупной
+  // картинкой становится новым LCP (PSI десктоп ловил второй слайд на ~8 с).
+  // Движение мыши не в счёт: оно поиск LCP не завершает.
+  const [engaged, setEngaged] = useState(false)
   const touchStartX = useRef<number | null>(null)
 
   const count = slides.length
@@ -51,12 +61,32 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
   }, [])
 
   useEffect(() => {
-    if (reduced || paused || count < 2 || autoPlayMs <= 0) return
+    const arm = () => setArtReady(true)
+    if (document.readyState === 'complete') {
+      const id = window.setTimeout(arm, 0)
+      return () => window.clearTimeout(id)
+    }
+    window.addEventListener('load', arm, { once: true })
+    return () => window.removeEventListener('load', arm)
+  }, [])
+
+  useEffect(() => {
+    if (engaged || count < 2 || autoPlayMs <= 0) return
+    const engage = () => setEngaged(true)
+    const events = ['pointerdown', 'keydown', 'touchstart', 'scroll'] as const
+    for (const type of events) window.addEventListener(type, engage, { once: true, passive: true })
+    return () => {
+      for (const type of events) window.removeEventListener(type, engage)
+    }
+  }, [engaged, count, autoPlayMs])
+
+  useEffect(() => {
+    if (!engaged || reduced || paused || count < 2 || autoPlayMs <= 0) return
     // index в зависимостях: ручное переключение начинает отсчёт заново, и слайд
     // не перескакивает сразу после клика.
     const id = window.setInterval(next, autoPlayMs)
     return () => window.clearInterval(id)
-  }, [reduced, paused, count, autoPlayMs, next, index])
+  }, [engaged, reduced, paused, count, autoPlayMs, next, index])
 
   if (count === 0) return null
 
@@ -121,7 +151,7 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
                   slide.leadWidth ? ({ '--lead-w': slide.leadWidth } as CSSProperties) : undefined
                 }
               >
-                <h2 className="font-lj-mazzard text-[clamp(2.25rem,9vw,4.5rem)] font-light italic leading-[1.1] tracking-[-0.045em] xl:whitespace-nowrap xl:text-[length:calc(var(--u)*72)]">
+                <h2 className="font-lj-mazzard text-[clamp(1.625rem,7.6vw,4.5rem)] font-light italic leading-[1.1] tracking-[-0.045em] xl:whitespace-nowrap xl:text-[length:calc(var(--u)*72)]">
                   {slide.titleLines.map((line, n) => (
                     <Fragment key={line}>
                       {n > 0 && (
@@ -160,7 +190,7 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
               </div>
 
               <div className="relative z-[1] mx-auto mt-10 aspect-[900/760] w-full max-w-[640px] xl:absolute xl:inset-0 xl:mt-0 xl:aspect-auto xl:max-w-none">
-                <PromoSlideArt visual={slide.visual} />
+                {active || artReady ? <PromoSlideArt visual={slide.visual} /> : null}
               </div>
             </div>
           )
@@ -183,7 +213,7 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
             >
               {index + 1} / {count}
             </span>
-            <div className="flex items-center gap-2" role="tablist" aria-label="Выбор слайда">
+            <div className="flex items-center" role="tablist" aria-label="Выбор слайда">
               {slides.map((s, i) => (
                 <button
                   key={s.id}
@@ -192,10 +222,15 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
                   aria-selected={i === index}
                   aria-label={`Слайд ${i + 1}: ${slideTitle(s)}`}
                   onClick={() => setIndex(i)}
-                  className={`rounded-[4px] bg-[var(--color-lj-on-bright)] transition-all duration-300 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                    i === index ? 'h-1.5 w-[18px]' : 'size-[5px] hover:opacity-80'
-                  }`}
-                />
+                  className="group/dot flex size-6 items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-white"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`block rounded-[4px] bg-[var(--color-lj-on-bright)] transition-all duration-300 motion-reduce:transition-none ${
+                      i === index ? 'h-1.5 w-[18px]' : 'size-[5px] group-hover/dot:opacity-80'
+                    }`}
+                  />
+                </button>
               ))}
             </div>
             <button

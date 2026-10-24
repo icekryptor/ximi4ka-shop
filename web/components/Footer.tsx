@@ -13,6 +13,7 @@ const ROW_STRANITSY: ColophonItem[] = [
   { label: 'оптом', href: '/opt' },
   'о нас',
   { label: 'доставка', href: '/delivery' },
+  { label: 'как проходит заказ', href: '/order-process' },
   { label: 'оплата', href: '/payment' },
   { label: 'возврат', href: '/return' },
   { label: 'отследить заказ', href: '/orders/track' },
@@ -30,7 +31,7 @@ interface ColophonRowProps {
 function ColophonRow({ label, items, className = '' }: ColophonRowProps) {
   return (
     <div className={`grid grid-cols-[5rem_1fr] gap-6 items-baseline ${className}`}>
-      <span className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-brand)]">
+      <span className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] text-[var(--color-lj-brand-deep)]">
         {label}
       </span>
       <div className="flex flex-wrap gap-x-3 gap-y-1 font-lj-mono text-[length:var(--text-lj-mono-sm)] tracking-[0.04em] text-[var(--color-lj-ink)] opacity-80">
@@ -43,7 +44,7 @@ function ColophonRow({ label, items, className = '' }: ColophonRowProps) {
               ) : (
                 <Link
                   href={item.href}
-                  className="hover:text-[var(--color-lj-brand-deep)] underline-offset-4 hover:underline"
+                  className="inline-flex min-h-6 items-center hover:text-[var(--color-lj-brand-deep)] underline-offset-4 hover:underline"
                 >
                   {item.label}
                 </Link>

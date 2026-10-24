@@ -8,6 +8,8 @@ export type {
   PaymentProvider,
   DeliveryAddress,
   DeliveryMethod,
+  OrderDeliveryMethod,
+  CheckoutDelivery,
   CheckoutRequest,
   CheckoutResponse,
   AttributionTouch,
@@ -24,6 +26,8 @@ export type {
 } from './types/notifications.js'
 
 export type { MaterialLeadRequest, MaterialLeadSource } from './types/materialLead.js'
+
+export type { AccountMaterial, MaterialKind, PublicOrderMaterial } from './types/materials.js'
 
 export type { CdekShipmentDto, CdekShipmentState } from './types/cdek.js'
 
@@ -79,3 +83,4 @@ export type {
 //   import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 
 export type { AnalyticsEventType, StatsTotals, StatsDay, StatsResponse } from './types/analytics.js'
+export type { CisCountry, CisDeliveryDestination } from './types/cis.js'

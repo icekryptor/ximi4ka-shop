@@ -13,6 +13,10 @@ import { breadcrumbJsonLd, itemListJsonLd, type BreadcrumbItem } from '@/lib/jso
 import { fetchCatalog, densityForSlug, hasViewToggle } from '@/lib/catalogApi'
 import { firstScreenCardLoading } from '@/lib/imageLoading'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
+import { EAEU_GUIDE_ID, orderProcessPath } from '@/lib/orderProcess'
+import { SHIPPING_RULES } from '@/lib/checkout'
+import { formatRub } from '@/lib/stockLabel'
+import { CIS_DELIVERY_RULES } from '@ximi4ka-shop/shared/types/cis'
 
 export const revalidate = 60
 
@@ -82,9 +86,13 @@ export default async function CatalogPage({ params }: Props) {
           {/* Промо-баннер */}
           <div className="mb-16">
             <CatalogPromoBanner
-              eyebrow="Доставка"
-              headline="Бесплатная доставка СДЭК от 3000 ₽"
-              sub="Собираем и отправляем в день заказа. До пункта выдачи — по всей России."
+              eyebrow="Доставка СДЭК"
+              headline={`Бесплатно по России от ${formatRub(SHIPPING_RULES.cdek_pvz.freeFromRub)}, в страны ЕАЭС от ${formatRub(CIS_DELIVERY_RULES.KZ.freeFromRub)}`}
+              sub={`Собираем и отправляем в день заказа. В Беларусь бесплатно уже от ${formatRub(CIS_DELIVERY_RULES.BY.freeFromRub)}.`}
+              link={{
+                label: 'Как заказать в Беларусь, Казахстан, Армению и Киргизию',
+                href: `${orderProcessPath(locale)}#${EAEU_GUIDE_ID}`,
+              }}
             />
           </div>
 
@@ -140,7 +148,7 @@ export default async function CatalogPage({ params }: Props) {
 
       <PreFooterCta
         title="Не нашли что искали?"
-        lead="Напишите нам — поможем подобрать набор под интересы и возраст."
+        lead="Напишите нам — поможем подобрать набор под вашу задачу."
         cta={{ label: 'Связаться с нами', href: '/kontakty' }}
       />
     </>

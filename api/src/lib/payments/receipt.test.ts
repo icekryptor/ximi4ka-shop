@@ -177,6 +177,62 @@ describe('buildReceipt', () => {
     )
   })
 
+  describe('промокод', () => {
+    const two = [
+      item({ quantity: 1, unitPriceRub: 1000, lineTotalRub: 1000 }),
+      item({
+        quantity: 3,
+        unitPriceRub: 111,
+        lineTotalRub: 333,
+        productSnapshot: { name: 'Реактив', sku: null, priceRub: 111 },
+      }),
+    ]
+
+    it('spreads the discount over the goods lines, delivery stays whole', () => {
+      // 1333 − 67 (5%) + 350 доставка = 1616
+      const receipt = buildReceipt(
+        order({ items: two, promoDiscountRub: 67, shippingRub: 350, totalRub: 1616 }),
+        CFG,
+      )
+      const sum = receipt.Items.reduce((s, i) => s + i.Amount, 0)
+      expect(sum).toBe(1616 * 100)
+      for (const line of receipt.Items) expect(line.Price * line.Quantity).toBe(line.Amount)
+      expect(receipt.Items.at(-1)).toMatchObject({ Name: 'Доставка', Amount: 35000 })
+      const goods = receipt.Items.filter((i) => i.PaymentObject === 'commodity')
+      expect(goods.reduce((s, i) => s + i.Amount, 0)).toBe((1333 - 67) * 100)
+    })
+
+    it('keeps the discount off the free gift line', () => {
+      const gift = item({
+        isGift: true,
+        quantity: 1,
+        unitPriceRub: 0,
+        lineTotalRub: 0,
+        productSnapshot: { name: 'Йодат калия', sku: 'KIO3', priceRub: 249 },
+      })
+      const receipt = buildReceipt(
+        order({
+          items: [item({ quantity: 1, unitPriceRub: 3000, lineTotalRub: 3000 }), gift],
+          promoDiscountRub: 150,
+          shippingRub: 0,
+          totalRub: 2850,
+        }),
+        CFG,
+      )
+      expect(receipt.Items).toHaveLength(1)
+      expect(receipt.Items[0].Amount).toBe(285000)
+    })
+
+    it('still throws when order total ignores the discount', () => {
+      expect(() =>
+        buildReceipt(
+          order({ items: two, promoDiscountRub: 67, shippingRub: 350, totalRub: 1683 }),
+          CFG,
+        ),
+      ).toThrow(/sum/i)
+    })
+  })
+
   it('throws when the lines do not add up to the order total', () => {
     expect(() => buildReceipt(order({ totalRub: 9999 }), CFG)).toThrow(/sum/i)
   })

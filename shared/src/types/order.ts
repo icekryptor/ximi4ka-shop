@@ -1,6 +1,8 @@
 import type { DeliveryDestination, ShippingPackage } from './shipping.js'
 import type { OrderNotificationDto } from './notifications.js'
 import type { CdekShipmentDto } from './cdek.js'
+import type { CisCountry, CisDeliveryDestination } from './cis.js'
+import type { PublicOrderMaterial } from './materials.js'
 
 export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
 
@@ -14,6 +16,10 @@ export type PaymentProvider = 'manual' | 'tbank' | 'ycp'
 export type OrderSource = 'site' | 'ycp'
 
 export type DeliveryMethod = 'cdek_pvz' | 'cdek_courier'
+
+// Способ в сохранённом заказе: к двум способам СДЭК добавлена доставка в страны
+// ЕАЭС с адресом ПВЗ вручную (cdek_manual_cis). Оформляется только через чекаут.
+export type OrderDeliveryMethod = DeliveryMethod | 'cdek_manual_cis'
 
 export interface OrderItemSnapshot {
   name: string
@@ -41,6 +47,9 @@ export interface DeliveryAddress {
   cityCode?: number | null
   deliveryPointCode?: string | null
   postalCode?: string | null
+  // Доставка в страну ЕАЭС (cdek_manual_cis): страна и город из списка городов с ПВЗ.
+  country?: CisCountry | null
+  city?: string | null
   // Расчёт доставки на момент заказа. source: 'fallback' — калькулятор СДЭК
   // не ответил, взята фиксированная ставка: такой заказ стоит проверить.
   quote?: {
@@ -125,6 +134,9 @@ export interface OrderDto {
   subtotalRub: number
   /** Оптовая скидка (наборы, проценты на реагенты, цены партий); totalRub = subtotalRub − discountRub + shippingRub. */
   discountRub: number
+  /** Промокод заказа (null — без промокода) и его скидка; totalRub = subtotalRub − discountRub − promoDiscountRub + shippingRub. */
+  promoCode?: string | null
+  promoDiscountRub?: number
   shippingRub: number
   totalRub: number
   paymentProvider: PaymentProvider
@@ -153,13 +165,20 @@ export interface OrderDto {
 
 // --- checkout API contract ---
 
+// Куда везём в чекауте: Россия (виджет и пикеры СДЭК) или страна ЕАЭС (адрес вручную).
+export type CheckoutDelivery = (DeliveryDestination | CisDeliveryDestination) & {
+  comment?: string
+}
+
 export interface CheckoutRequest {
   items: Array<{ productId: string; quantity: number }>
   /** Подарок на выбор (реактив из списка); сервер проверяет порог, наличие и список. */
   giftProductId?: string
+  /** Промокод; сервер сверяет его сам и отвечает 400 promo_invalid на неизвестный. */
+  promoCode?: string
   customer: { name: string; phone: string; email?: string; telegram?: string }
   // Куда везём — из виджета СДЭК (см. DeliveryDestination) + комментарий.
-  delivery: DeliveryDestination & { comment?: string }
+  delivery: CheckoutDelivery
   /** Ловушка для ботов: скрытое поле формы. Люди его не видят, поэтому живой клиент не шлёт его вовсе. */
   hp_check?: string
   /** Откуда пришёл покупатель (метки из URL и referrer); необязательно, кривое значение сервер отбрасывает. */
@@ -195,4 +214,9 @@ export interface PublicOrderStatus {
    * (флаг выключен, не оплачен или доставка не СДЭК).
    */
   shipment?: PublicOrderShipment | null
+  /**
+   * Только при верном секрете заказа (?t=): материалы, выданные этому заказу и
+   * не отозванные. Выдачи появляются при оплате, поэтому до неё список пуст.
+   */
+  materials?: PublicOrderMaterial[]
 }

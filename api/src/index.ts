@@ -9,6 +9,7 @@ import { startPickupPointsJob } from './lib/ycp/pickupPoints.js'
 import { startMetrikaConversionWorker } from './lib/metrika/worker.js'
 import { startLoginBotPolling } from './lib/telegram/loginPoller.js'
 import { flagDefaultPasswordUsers } from './lib/auth/passwordMaintenance.js'
+import { startWebVitalsRetentionJob } from './lib/analytics/retention.js'
 
 const logger = pino()
 const port = Number(process.env.PORT ?? 3001)
@@ -50,6 +51,10 @@ async function bootstrap() {
   if (startMetrikaConversionWorker()) {
     logger.info('metrika offline conversions worker started')
   }
+
+  // Полевые Web Vitals (web_vital) старше 90 дней удаляются раз в сутки.
+  startWebVitalsRetentionJob()
+  logger.info('web vitals retention job started')
 
   // Кто из пользователей админки ещё живёт с паролем по умолчанию из сида:
   // помечаем (баннер в админке) и пишем в лог. Не блокирует старт.

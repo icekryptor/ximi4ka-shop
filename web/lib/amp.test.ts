@@ -9,7 +9,7 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     slug: 'nabor',
     sku: null,
     name: 'Набор Юного Химика',
-    shortDescription: 'Опыты для детей от 8 лет',
+    shortDescription: 'Опыты по методичке, с 14 лет',
     longDescriptionBlocks: [
       { type: 'paragraph', html: '<p>Первый параграф.</p>' },
       {

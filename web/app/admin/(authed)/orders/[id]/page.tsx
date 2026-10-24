@@ -3,6 +3,7 @@ import { AdminOnly } from '@/components/admin/AdminOnly'
 import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
 import type { OrderDto } from '@ximi4ka-shop/shared'
+import { CIS_COUNTRY_NAMES } from '@ximi4ka-shop/shared/types/cis'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import { OrderStatusActions } from './OrderStatusActions'
 import { OrderNotifications } from './OrderNotifications'
@@ -126,6 +127,19 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
                     </td>
                   </tr>
                 )}
+                {(order.promoDiscountRub ?? 0) > 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-2 text-right text-brand-text-secondary">
+                      Промокод {order.promoCode}
+                    </td>
+                    <td
+                      data-testid="order-promo"
+                      className="px-4 py-2 text-right tabular-nums text-brand-accent"
+                    >
+                      −{formatRub(order.promoDiscountRub ?? 0)}
+                    </td>
+                  </tr>
+                )}
                 <tr>
                   <td colSpan={4} className="px-4 py-2 text-right text-brand-text-secondary">
                     Доставка
@@ -235,6 +249,14 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
                   {DELIVERY_METHOD_LABELS[order.deliveryMethod] ?? order.deliveryMethod}
                 </dd>
               </div>
+              {order.deliveryMethod === 'cdek_manual_cis' && order.deliveryAddress.country && (
+                <div>
+                  <dt className="text-xs text-brand-text-secondary">Страна</dt>
+                  <dd className="text-brand-text">
+                    {CIS_COUNTRY_NAMES[order.deliveryAddress.country]}
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt className="text-xs text-brand-text-secondary">Адрес</dt>
                 <dd className="text-brand-text">{order.deliveryAddress.address}</dd>
