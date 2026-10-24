@@ -13,7 +13,18 @@ describe('visibleTexts', () => {
   it('берёт строки атрибутов и шаблонных строк', () => {
     const src =
       'export const A = ({ x }) => <img alt="для детей" title={`наборы для детей ${x}`} />'
-    expect(texts(src)).toEqual(expect.arrayContaining(['для детей', 'наборы для детей ']))
+    expect(texts(src)).toContain('для детей')
+    expect(texts(src).join('|')).toContain('наборы для детей')
+  })
+
+  it('склеивает строки, соединённые через «+», и части шаблонной строки', () => {
+    const src = [
+      `const a = 'Работайте вместе со ' + 'взрослыми.'`,
+      'const b = `под присмотром ${who} взрослых`',
+    ].join('\n')
+    const all = texts(src, 'x.ts')
+    expect(all).toContain('Работайте вместе со взрослыми.')
+    expect(all.some((t) => /под присмотром\s+взрослых/.test(t))).toBe(true)
   })
 
   it('не берёт комментарии', () => {
@@ -35,6 +46,7 @@ describe('visibleTexts', () => {
     const src = [
       `export const DEFAULT_HOME_TITLE = 'Набор юного химика'`,
       `export const metadata = { description: 'Описание' }`,
+      `export const product = { name: 'Название товара' }`,
       `export const A = () => <h1>Заголовок</h1>`,
       `export const B = () => <p>Текст</p>`,
     ].join('\n')
@@ -42,6 +54,7 @@ describe('visibleTexts', () => {
     expect(byText).toEqual({
       'Набор юного химика': 'meta',
       Описание: 'meta',
+      'Название товара': 'meta',
       Заголовок: 'meta',
       Текст: 'body',
     })

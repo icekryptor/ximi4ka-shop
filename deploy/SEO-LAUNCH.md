@@ -27,7 +27,6 @@
 | `import:seo-product-texts`          | `node api/dist/seeds/import-seo-product-texts.js`   | `seo-product-texts.json`   |
 | `import:seo-blog-drafts`            | `node api/dist/seeds/import-seo-blog-drafts.js`     | `seo-blog-drafts.json`     |
 | `import:seo-article-refresh`        | `node api/dist/seeds/import-seo-article-refresh.js` | `seo-article-refresh.json` |
-| `import:seo-landings`               | `node api/dist/seeds/import-seo-landings.js`        | `seo-landings.json`        |
 | `import:seo-category-texts`         | `node api/dist/seeds/import-seo-category-texts.js`  | `seo-category-texts.json`  |
 | `import:tilda-redirects` (не нужен) | `node api/dist/seeds/import-tilda-redirects.js`     | `tilda-redirects.csv`      |
 
@@ -277,7 +276,7 @@ curl -s https://new.ximi4ka.ru/product/himichka-30 | grep -o '<meta name="descri
 ```
 
 Ожидаем `filledProducts: 0`, нули в запросе и `<title>`, содержащий
-`Купить набор Химичка 3.0 161 в 1 | Набор юного химика` (это `metaTitle` из
+`Купить набор химика Химичка 3.0 «161 в 1» для химических опытов` (это `metaTitle` из
 `seo-product-texts.json`; сейчас у товара `metaTitle` пуст и title другой:
 «Набор химика для опытов Химичка 3.0 161 в 1»; суффикс бренда по шаблону
 витрины, если он есть, может добавиться). Первые два пункта **[проверено локально]**, третий — только по
@@ -307,13 +306,13 @@ $C exec -T ximishop-api node api/dist/seeds/import-seo-blog-drafts.js --set-auth
   | tee -a /root/backups/seo-launch.log | tail -n 20
 ```
 
-**[проверено локально на первых 10 статьях; для 15 число в выводе — 15, логика не менялась, тест сида не зависит от числа статей]**: dry-run — 10 строк `would create  /blog/<slug>` и
+**[проверено локально на первых 10 статьях; для 13 число в выводе — 13, логика не менялась, тест сида не зависит от числа статей]**: dry-run — 10 строк `would create  /blog/<slug>` и
 `"created":10,"skipped":0,"authorFilled":0,"dryRun":true`; боевой —
 `"created":10`; повтор — `"created":0,"skipped":10`. Сценарий «черновики есть,
 автор пуст» (у двух статей обнулён `author_name`): dry-run и боевой запуск с
 флагом печатают `would set author` / `author set` для этих двух и
 `"authorFilled":2`. После запуска в БД 10 новых статей с `is_published = f` и
-автором «Василий Аистов» (в файле сейчас 15), 4 прежние опубликованные не тронуты.
+автором «Василий Аистов» (в файле сейчас 13), 4 прежние опубликованные не тронуты.
 
 Проверка:
 
@@ -370,35 +369,18 @@ $C exec -T ximishop-api node api/dist/seeds/import-seo-article-refresh.js --incl
 **[проверено локально через `tsx`]** (в PR): dry-run, боевой запуск, повтор, снимок и откат. **[не
 проверено]**: запуск скомпилированным `node api/dist/seeds/…` и `docker`-команды.
 
-## 5б. Лендинги (`import:seo-landings`)
+## 5б. Лендинги — шаг отменён
 
-Создаёт отсутствующие страницы `opyty-dlya-detej` (хаб), `opyty-dlya-detej-v-nachalnoj-shkole`
-и `khimicheskie-opyty-dlya-detej` **неопубликованными**: на сайте и в sitemap их нет, пока
-владелец не опубликует в админке. Существующие и мягко удалённые страницы не трогаются.
-Записи помечены `draft: true`, нужен `--include-drafts`. Ссылки хаба на статьи блога
-(`eksperimenty-dlya-detej-doma`, `chem-zanyat-rebenka-doma`) дают 404, пока эти статьи не
-опубликованы: публиковать лендинги и статьи вместе.
+Отменён 22.10.2026: три лендинга (`opyty-dlya-detej`, `opyty-dlya-detej-v-nachalnoj-shkole`,
+`khimicheskie-opyty-dlya-detej`) позиционировали наборы как детские, а магазин позиционируется только 14+
+(план `docs/superpowers/plans/2026-10-22-reposition-14-plus.md`). Сид `import-seo-landings` и данные удалены.
 
-```bash
-docker exec -u 0 ximishop-api mkdir -p /app/api/data
-docker cp api/data/seo-landings.json ximishop-api:/app/api/data/seo-landings.json
-
-# dry-run: ждём 3 строки would create
-$C exec -T ximishop-api node api/dist/seeds/import-seo-landings.js --dry-run --include-drafts
-# боевой запуск
-$C exec -T ximishop-api node api/dist/seeds/import-seo-landings.js --include-drafts \
-  | tee -a /root/backups/seo-launch.log | tail -n 10
-```
-
-Проверка:
+Если сид уже запускали на проде, страницы лежат неопубликованными. Проверить и, если они есть, удалить в админке
+(раздел «Страницы») или запросом из таблицы отката (строка «5б»):
 
 ```bash
-$P -c "SELECT slug, is_published FROM pages WHERE slug IN ('opyty-dlya-detej','opyty-dlya-detej-v-nachalnoj-shkole','khimicheskie-opyty-dlya-detej');"   # три строки, is_published = f
-curl -s -o /dev/null -w "%{http_code}\n" https://new.ximi4ka.ru/opyty-dlya-detej   # 404: страница не опубликована, это норма
+$P -c "SELECT slug, is_published FROM pages WHERE slug IN ('opyty-dlya-detej','opyty-dlya-detej-v-nachalnoj-shkole','khimicheskie-opyty-dlya-detej');"
 ```
-
-Дальше в админке: вычитать три страницы, решить вопрос с набором для 1–4 классов (в PR),
-опубликовать. **[проверено локально через `tsx`]** (в PR); `docker` и скомпилированный запуск **[не проверено]**.
 
 ## 5в. Тексты категорий (`import:seo-category-texts`): только после мёржа PR #43
 
@@ -459,7 +441,8 @@ exec`. Второй запрос **[проверено только по син�
      правки — в админке, повторный сид их не перезапишет;
    - CMS-страницы `policy` и `oferta` — юридические тексты, перенесённые с Tilda:
      сверить реквизиты, контакты и актуальность; страницы уже опубликованы;
-   - 15 статей-черновиков: прочитать, поправить и опубликовать вручную в админке
+   - 13 статей-черновиков (две детские статьи удалены из данных 22.10.2026, позиционирование 14+): прочитать, поправить и
+     опубликовать вручную в админке
      (сид ничего не публикует). Автор в них — «Василий Аистов»; должность, био,
      фото и ссылку на автора в данные не вписаны, их при желании заполнить в
      админке (E-E-A-T).
@@ -471,12 +454,11 @@ exec`. Второй запрос **[проверено только по син�
 3. **`llms.txt` заполнять не нужно.** Если поле «llms.txt» в настройках пустое
    (так по умолчанию), `/llms.txt` строится сам из каталога, блога и CMS-страниц.
    Заполнять вручную только если нужен собственный текст: он отдаётся как есть.
-4. **Освежённые статьи, лендинги и категории (шаги 5а–5в).** Вычитать до запуска сидов; в PR #41
+4. **Освежённые статьи и категории (шаги 5а и 5в; 5б с лендингами отменён).** Вычитать до запуска сидов; в PR #41
    перечислено сомнительное в старых статьях: две почти одинаковые статьи
    (`nabory-dlya-opytov-himichka` и `podhodyat-li-nabory-dlya-oge`) конкурируют за одни запросы, в
    `himiya-8-klass-programma` потеряны абзацы, в статьях противоречивые цифры и формулировки без
-   подтверждения; у `nabory-dlya-opytov-himichka` нужна обложка. Лендинги публиковать вместе со статьями,
-   на которые они ссылаются.
+   подтверждения; у `nabory-dlya-opytov-himichka` нужна обложка.
 5. **Яндекс.Метрика.** В интерфейсе счётчика:
    - Цели → Добавить цель → «JavaScript-событие», идентификаторы ровно такие:
      `add_to_cart`, `open_cart`, `begin_checkout`, `purchase`
