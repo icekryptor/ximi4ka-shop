@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getSettings } from '../../lib/settings.js'
+import { publicYandexPay, yandexPayConfigFrom } from '../../lib/payments/yandexPay/config.js'
 
 // Public subset of the settings. Analytics IDs and SEO content must
 // round-trip to the browser (for the <script> tags and the /robots.txt /
@@ -35,6 +36,9 @@ publicSettingsRouter.get('/', async (_req, res, next) => {
         headerPromoText: s.headerPromoText,
         trustStripItems: s.trustStripItems,
         testimonials: s.testimonials,
+        // Яндекс Пэй для витрины: null — недоступен; Merchant ID — только в боевом
+        // режиме. Рубильник и режим сами по-прежнему не отдаются.
+        yandexPay: publicYandexPay(yandexPayConfigFrom(s)),
       },
     })
   } catch (err) {

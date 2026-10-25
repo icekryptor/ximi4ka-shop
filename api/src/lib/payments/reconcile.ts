@@ -1,6 +1,8 @@
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { getPaymentProvider } from './index.js'
+import { getYandexOrderStatus } from './yandexPay/client.js'
+import { hasYandexPayMerchant } from './yandexPay/config.js'
 import { applyPaymentStatus } from './orderStatus.js'
 import { saveOrderWithStatusEvent } from '../notifications/outbox.js'
 import type { PaymentProvider } from './types.js'
@@ -41,7 +43,11 @@ export async function reconcilePendingOrders(
 
   let updated = 0
   for (const order of pending) {
-    const status = await provider.getStatus(order.paymentIntentId!)
+    // Заказ Яндекс Пэй сверяется у Яндекса по номеру заказа, остальные — как раньше.
+    const status =
+      order.paymentProvider === 'yandex_pay'
+        ? await getYandexOrderStatus(order.orderNumber)
+        : await provider.getStatus(order.paymentIntentId!)
     if (status === 'unknown') continue
     const previousStatus = order.status
     if (applyPaymentStatus(order, status, 'reconcile')) {
@@ -56,8 +62,10 @@ export async function reconcilePendingOrders(
 // actually create online payments — in manual mode there is nothing to poll.
 export function startReconciliationJob(
   provider: PaymentProvider = getPaymentProvider(),
+  env: NodeJS.ProcessEnv = process.env,
 ): NodeJS.Timeout | null {
-  if (provider.name !== 'tbank') return null
+  // Т-Касса — как раньше; Яндекс досверяется, пока задан его Merchant ID.
+  if (provider.name !== 'tbank' && !hasYandexPayMerchant(env)) return null
   const timer = setInterval(() => {
     reconcilePendingOrders(provider).catch((err) => {
       console.error('payments: reconciliation run failed', err)
