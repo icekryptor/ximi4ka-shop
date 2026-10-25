@@ -4,6 +4,12 @@ import { CartDrawer } from './CartDrawer'
 import { OPEN_CART_EVENT, loadCart, saveCart, type CartItem } from '@/lib/cart'
 import { setMetrikaCounterId } from '@/lib/metrika'
 
+import { resetPublicYandexPayCacheForTests } from '@/lib/yandexPay'
+
+vi.mock('next/script', () => ({ default: () => null }))
+
+const settingsMock = vi.hoisted(() => ({ yandexPay: null as unknown }))
+
 const GIFT_PRODUCTS: Record<string, string> = {
   'azotnaya-kislota-10': 'Азотная кислота',
   'solyanaya-kislota': 'Соляная кислота',
@@ -13,6 +19,7 @@ const GIFT_PRODUCTS: Record<string, string> = {
 // Реактивы-подарки отдаём, остальное — как при недоступном api.
 vi.mock('@/lib/api', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/api')>()),
+  getPublicSettings: async () => ({ yandexPay: settingsMock.yandexPay }),
   getPublishedProduct: async (slug: string) => {
     const name = GIFT_PRODUCTS[slug]
     if (!name) throw new Error('not found')
@@ -28,6 +35,8 @@ vi.mock('next/navigation', () => ({
 
 beforeEach(() => {
   window.localStorage.clear()
+  resetPublicYandexPayCacheForTests()
+  settingsMock.yandexPay = null
   mockPrefetch.mockClear()
 })
 
@@ -300,6 +309,20 @@ describe('CartDrawer', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Закрыть корзину' }))
     })
     expect(screen.queryByRole('dialog', { name: 'Корзина' })).not.toBeInTheDocument()
+  })
+  it('плашка Сплита — только в открытой корзине, на сумму «Итого»', async () => {
+    settingsMock.yandexPay = { split: true, merchantId: 'merchant-public-id' }
+    act(() => {
+      saveCart(seed)
+    })
+    render(<CartDrawer />)
+    expect(document.querySelector('yandex-pay-badge')).toBeNull()
+    act(() => {
+      openDrawer()
+    })
+    const dialog = screen.getByRole('dialog', { name: 'Корзина' })
+    await within(dialog).findByTestId('split-badge')
+    expect(dialog.querySelector('yandex-pay-badge')).toHaveAttribute('amount', '4500.00')
   })
 })
 

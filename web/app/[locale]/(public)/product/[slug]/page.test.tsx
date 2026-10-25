@@ -17,10 +17,18 @@ vi.mock('@/lib/api', () => ({
   getPublishedProduct: vi.fn(),
   listPublishedProducts: vi.fn(),
   listCategories: vi.fn(),
+  getPublicSettings: vi.fn(),
 }))
 
+vi.mock('next/script', () => ({ default: () => null }))
+
 import ProductPage, { generateMetadata, generateStaticParams, revalidate } from './page'
-import { getPublishedProduct, listCategories, listPublishedProducts } from '@/lib/api'
+import {
+  getPublicSettings,
+  getPublishedProduct,
+  listCategories,
+  listPublishedProducts,
+} from '@/lib/api'
 
 describe('ProductPage', () => {
   beforeEach(() => {
@@ -343,6 +351,63 @@ describe('ProductPage', () => {
       const { container } = render(await ProductPage(props))
 
       expect(chain(container).visible).toEqual(['Главная', 'Каталог', 'Набор Кит'])
+    })
+  })
+
+  describe('плашка Сплита', () => {
+    const product: Product = {
+      id: 'p1',
+      slug: 'kit',
+      sku: 'K-1',
+      name: 'Набор Кит',
+      shortDescription: null,
+      longDescriptionBlocks: [],
+      priceRub: 100,
+      compareAtPriceRub: null,
+      stockStatus: 'in_stock',
+      isPublished: true,
+      sortOrder: 0,
+      metaTitle: null,
+      metaDescription: null,
+      ogImage: null,
+      canonicalUrl: null,
+      noindex: false,
+      translations: {},
+      images: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    const props = { params: Promise.resolve({ locale: 'ru', slug: 'kit' }) }
+    const empty = { data: [], pagination: { limit: 100, offset: 0, total: 0 } }
+    type Settings = Awaited<ReturnType<typeof getPublicSettings>>
+
+    beforeEach(() => {
+      vi.mocked(getPublishedProduct).mockResolvedValue(product)
+      vi.mocked(listPublishedProducts).mockResolvedValue(empty)
+      vi.mocked(listCategories).mockResolvedValue(empty)
+    })
+
+    it('под ценой и кнопкой — бейдж на цену товара', async () => {
+      vi.mocked(getPublicSettings).mockResolvedValue({
+        yandexPay: { split: true, merchantId: 'merchant-public-id' },
+      } as Settings)
+      const { container } = render(await ProductPage(props))
+      const badge = container.querySelector('yandex-pay-badge')
+      expect(badge).toHaveAttribute('amount', '100.00')
+      expect(badge).toHaveAttribute('source', 'item')
+    })
+
+    it('Яндекс недоступен — бейджа нет', async () => {
+      vi.mocked(getPublicSettings).mockResolvedValue({ yandexPay: null } as Settings)
+      const { container } = render(await ProductPage(props))
+      expect(container.querySelector('yandex-pay-badge')).toBeNull()
+    })
+
+    it('api настроек лежит — карточка рендерится без бейджа', async () => {
+      vi.mocked(getPublicSettings).mockRejectedValue(new Error('down'))
+      const { container } = render(await ProductPage(props))
+      expect(container.querySelector('h1')).toHaveTextContent('Набор Кит')
+      expect(container.querySelector('yandex-pay-badge')).toBeNull()
     })
   })
 })

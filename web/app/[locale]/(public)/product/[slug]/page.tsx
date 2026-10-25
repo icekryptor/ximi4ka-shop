@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
+import type { Product, ProductCategory, PublicYandexPay } from '@ximi4ka-shop/shared'
 import {
   ApiError,
+  getPublicSettings,
   getPublishedProduct,
   listCategories,
   listPublishedProducts,
@@ -37,6 +38,7 @@ import { primaryCategory, productBreadcrumbs } from '@/lib/breadcrumbs'
 import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
 import { ProductViewTracker } from './_components/ProductViewTracker'
+import { SplitBadge } from '@/components/payments/SplitBadge'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -170,6 +172,16 @@ async function fetchPrimaryCategory(
   }
 }
 
+// Яндекс Пэй для плашки Сплита. Api недоступен — плашки нет, карточка как обычно.
+// Не импортировать lib/yandexPay: там клиентский хук.
+async function fetchYandexPaySafe(): Promise<PublicYandexPay | null> {
+  try {
+    return (await getPublicSettings())?.yandexPay ?? null
+  } catch {
+    return null
+  }
+}
+
 export default async function ProductPage({ params }: Props) {
   const { locale: rawLocale, slug } = await params
   if (!isLocale(rawLocale)) notFound()
@@ -236,9 +248,10 @@ export default async function ProductPage({ params }: Props) {
     })
   }
 
-  const [related, category] = await Promise.all([
+  const [related, category, yandexPay] = await Promise.all([
     fetchRelatedProducts(product.id),
     fetchPrimaryCategory(product.id),
+    fetchYandexPaySafe(),
   ])
   const crumbs = productBreadcrumbs({ locale, name, slug: product.slug, category })
 
@@ -291,6 +304,11 @@ export default async function ProductPage({ params }: Props) {
                 />
                 <AddToCartWithQuantity product={product} />
               </div>
+              <SplitBadge
+                merchantId={yandexPay?.merchantId}
+                amountRub={product.priceRub}
+                source="item"
+              />
             </div>
 
             <ProductTabsLJ tabs={tabs} />

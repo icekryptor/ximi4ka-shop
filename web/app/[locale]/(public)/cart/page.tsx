@@ -8,6 +8,7 @@ import { formatRub } from '@/lib/stockLabel'
 import { pluralizeRu } from '@/lib/i18n'
 import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 import { GiftBanner } from '@/components/cart/GiftBanner'
+import { SplitBadgeAuto } from '@/components/payments/SplitBadge'
 
 export default function CartPage() {
   const { items, setQty, remove, totals, itemCount } = useCart()
@@ -102,6 +103,7 @@ export default function CartPage() {
                 <span>Итого</span>
                 <span data-testid="cart-total">{formatRub(totals.totalRub)}</span>
               </div>
+              <SplitBadgeAuto amountRub={totals.totalRub} source="cart" />
             </div>
 
             <div className="flex justify-end">
