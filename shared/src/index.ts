@@ -6,6 +6,8 @@ export type {
   OrderStatusHistoryEntry,
   OrderSource,
   PaymentProvider,
+  CheckoutPaymentMethod,
+  PublicYandexPay,
   DeliveryAddress,
   DeliveryMethod,
   OrderDeliveryMethod,

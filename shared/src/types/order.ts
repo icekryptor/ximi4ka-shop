@@ -10,7 +10,22 @@ export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled
 // the order stays pending and a manager contacts the customer. `tbank` —
 // Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring. `ycp` — оплату принял
 // Яндекс (Яндекс Пэй, Сплит) в «Купить в 1 клик»; в Т-Кассу такие заказы не идут.
-export type PaymentProvider = 'manual' | 'tbank' | 'ycp'
+// `yandex_pay` — Яндекс Пэй на чекауте сайта (картой или Сплитом): заказ в Яндексе
+// создаёт наш сервер, статус приходит вебхуком и сверкой.
+export type PaymentProvider = 'manual' | 'tbank' | 'ycp' | 'yandex_pay'
+
+/**
+ * Способ оплаты на чекауте. Оба способа Яндекса создают заказ провайдера
+ * yandex_pay; yandex_split открывает форму Яндекса сразу на Сплите.
+ */
+export type CheckoutPaymentMethod = 'tbank' | 'yandex_pay' | 'yandex_split'
+
+/** Яндекс Пэй в публичных настройках; null — недоступен. */
+export interface PublicYandexPay {
+  split: true
+  /** Только в боевом режиме: в песочнице Merchant ID служит ключом API. */
+  merchantId?: string
+}
 
 // Откуда пришёл заказ: витрина или «Купить в 1 клик» в Яндексе (YCP).
 export type OrderSource = 'site' | 'ycp'
@@ -70,7 +85,7 @@ export interface OrderStatusHistoryEntry {
   from: OrderStatus | null
   to: OrderStatus
   at: string
-  by: 'tbank' | 'admin' | 'reconcile' | 'ycp'
+  by: 'tbank' | 'admin' | 'reconcile' | 'ycp' | 'yandex_pay'
   comment?: string
 }
 
@@ -176,6 +191,8 @@ export interface CheckoutRequest {
   giftProductId?: string
   /** Промокод; сервер сверяет его сам и отвечает 400 promo_invalid на неизвестный. */
   promoCode?: string
+  /** Способ оплаты; не указан или tbank — как раньше. Недоступный Яндекс сервер отклоняет 400. */
+  paymentMethod?: CheckoutPaymentMethod
   customer: { name: string; phone: string; email?: string; telegram?: string }
   // Куда везём — из виджета СДЭК (см. DeliveryDestination) + комментарий.
   delivery: CheckoutDelivery
@@ -219,4 +236,9 @@ export interface PublicOrderStatus {
    * не отозванные. Выдачи появляются при оплате, поэтому до неё список пуст.
    */
   materials?: PublicOrderMaterial[]
+  /**
+   * Только при верном секрете заказа (?t=) и только у неоплаченного заказа
+   * Яндекс Пэй: ссылка на форму Яндекса для кнопки «Оплатить».
+   */
+  paymentUrl?: string | null
 }
