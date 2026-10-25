@@ -6,7 +6,8 @@ import { SplitBadge } from '@/components/payments/SplitBadge'
 import { SPLIT_FALLBACK_TEXT, SplitWidget } from '@/components/payments/SplitWidget'
 import { PAYMENT_METHOD_LABELS } from '@/lib/yandexPay'
 
-const METHODS: CheckoutPaymentMethod[] = ['tbank', 'yandex_pay', 'yandex_split']
+// Отдельного «Яндекс Пэй» нет — нужен именно Сплит; карта остаётся запасной в форме Яндекса.
+const METHODS: CheckoutPaymentMethod[] = ['tbank', 'yandex_split']
 
 interface Props {
   value: CheckoutPaymentMethod

@@ -311,3 +311,26 @@ describe('ProductCard images behavior', () => {
     expect(container.querySelector('a[href^="/product/"] span')).toBeNull()
   })
 })
+
+describe('ProductCard: плашка Сплита', () => {
+  const STATS = {
+    stats: { reagents: 18, instruments: 12, reactions: 161 },
+    statMaxes: { reagents: 18, instruments: 20, reactions: 161 },
+  }
+
+  it('у набора под ценой — место под бейдж Сплита (по умолчанию для каталога)', () => {
+    render(<ProductCard product={baseProduct} images={[]} {...STATS} />)
+    const slot = screen.getByTestId('split-badge-slot')
+    expect(slot).toHaveAttribute('data-source', 'listing')
+  })
+
+  it('на главной — место «main»', () => {
+    render(<ProductCard product={baseProduct} images={[]} splitSource="main" {...STATS} />)
+    expect(screen.getByTestId('split-badge-slot')).toHaveAttribute('data-source', 'main')
+  })
+
+  it('у компактной карточки реактива бейджа нет', () => {
+    render(<ProductCard product={baseProduct} images={[]} density="compact" {...STATS} />)
+    expect(screen.queryByTestId('split-badge-slot')).toBeNull()
+  })
+})

@@ -6,6 +6,7 @@ import { StatBar } from '@/components/ui/StatBar'
 import { SpecimenCard } from './ui/SpecimenCard'
 import { CompactProductCard } from './catalog/CompactProductCard'
 import { imageLoadingProps, type ImageLoading } from '@/lib/imageLoading'
+import { SplitBadgeLazy } from '@/components/payments/SplitBadge'
 
 interface Stats {
   reagents: number
@@ -37,6 +38,8 @@ interface Props {
   // виден в первом экране; 'priority' — главный кадр страницы (LCP). См.
   // lib/imageLoading.ts. Вторая картинка (подмена при наведении) всегда ленива.
   imageLoading?: ImageLoading
+  // Место плашки Сплита для Яндекса: listing — каталог и категории, main — главная.
+  splitSource?: 'listing' | 'main'
 }
 
 // Ширина фото на телефоне — экран минус поля страницы (px-6 = 48px). С «100vw»
@@ -58,6 +61,7 @@ export function ProductCard({
   featured = false,
   density = 'kit',
   imageLoading = 'lazy',
+  splitSource = 'listing',
 }: Props) {
   // Компактная плотность — отдельная клиентская карточка со степпером.
   // Возврат до вычислений «kit»-разметки: у compact своя структура.
@@ -143,6 +147,7 @@ export function ProductCard({
               Заказать набор →
             </Link>
           </div>
+          <SplitBadgeLazy amountRub={product.priceRub} source={splitSource} />
         </div>
 
         {product.shortDescription && (

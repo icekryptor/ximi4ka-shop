@@ -1129,20 +1129,18 @@ describe('/checkout page', () => {
       expect(sentBody(fetchMock)).not.toHaveProperty('paymentMethod')
     })
 
-    it('три способа — Т-Банк по умолчанию, выбранный уходит в заказ', async () => {
+    it('два способа — Т-Банк по умолчанию и Сплит, отдельного «Яндекс Пэй» нет', async () => {
       mockGetPublicSettings.mockImplementation(async () => ON)
-      mapMock.available = false
-      const fetchMock = vi.fn(async () => okCheckoutResponse())
-      vi.stubGlobal('fetch', fetchMock)
       seedCart(seed)
       render(<CheckoutPage />)
       const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      expect(
+        within(group)
+          .getAllByRole('radio')
+          .map((r) => r.getAttribute('value')),
+      ).toEqual(['tbank', 'yandex_split'])
       expect(within(group).getByRole('radio', { name: 'Картой — Т-Банк' })).toBeChecked()
-      fireEvent.click(within(group).getByRole('radio', { name: 'Яндекс Пэй' }))
-      await fillValidForm()
-      submit()
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-      expect(sentBody(fetchMock).paymentMethod).toBe('yandex_pay')
+      expect(within(group).queryByRole('radio', { name: 'Яндекс Пэй' })).toBeNull()
     })
 
     it('Сплит: плашка на сумму заказа, место виджета, paymentMethod=yandex_split', async () => {
@@ -1199,7 +1197,7 @@ describe('/checkout page', () => {
       seedCart(seed)
       render(<CheckoutPage />)
       const group = await screen.findByRole('group', { name: /способ оплаты/i })
-      fireEvent.click(within(group).getByRole('radio', { name: 'Яндекс Пэй' }))
+      fireEvent.click(within(group).getByRole('radio', { name: 'Сплит — оплата частями' }))
       await fillValidForm()
       submit()
       expect(await screen.findByRole('alert')).toHaveTextContent(

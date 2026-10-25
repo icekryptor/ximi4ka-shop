@@ -158,7 +158,7 @@ describe('POST /api/checkout: Яндекс Пэй', () => {
     expect(yandexCalls(yandex)).toEqual([])
   })
 
-  it('yandex_pay — заказ в Яндексе без preferredPaymentMethod, ссылка сохранена', async () => {
+  it('yandex_pay (старая вкладка) — заказ в Яндексе тоже на Сплите, ссылка сохранена', async () => {
     const yandex = stubYandex()
     const p = await seedProduct()
     const res = await checkout(
@@ -179,7 +179,7 @@ describe('POST /api/checkout: Яндекс Пэй', () => {
       orderId: order.orderNumber,
       cart: { total: { amount: '2350.00' } },
     })
-    expect(call.body).not.toHaveProperty('preferredPaymentMethod')
+    expect(call.body).toMatchObject({ preferredPaymentMethod: 'SPLIT' })
   })
 
   it('yandex_split — тот же провайдер, форма на Сплите', async () => {

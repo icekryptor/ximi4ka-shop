@@ -28,7 +28,7 @@ export const PAYMENT_PROVIDER_LABELS: Record<PaymentProvider, string> = {
   manual: 'Вручную',
   tbank: 'Т-Касса',
   ycp: 'Яндекс',
-  yandex_pay: 'Яндекс Пэй',
+  yandex_pay: 'Сплит (Яндекс Пэй)',
 }
 
 export const DELIVERY_METHOD_LABELS: Record<string, string> = {
@@ -42,7 +42,7 @@ export const HISTORY_ACTOR_LABELS: Record<string, string> = {
   admin: 'Менеджер',
   reconcile: 'Сверка платежей',
   ycp: 'Яндекс',
-  yandex_pay: 'Яндекс Пэй',
+  yandex_pay: 'Сплит (Яндекс Пэй)',
 }
 
 export function formatDateTime(iso: string | null | undefined): string {
