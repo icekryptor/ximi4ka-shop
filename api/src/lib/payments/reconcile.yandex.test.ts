@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { ManualProvider } from './manual.js'
-import { reconcilePendingOrders, startReconciliationJob } from './reconcile.js'
+import { reconcilePendingOrders, skipWhileRunning, startReconciliationJob } from './reconcile.js'
 import type { PaymentProvider } from './types.js'
 
 const yandex = vi.hoisted(() => ({ getYandexOrderStatus: vi.fn() }))
@@ -86,6 +86,27 @@ describe('сверка: заказы Яндекс Пэй', () => {
     })
   })
 
+  it('заказ Яндекса старше 8 суток больше не опрашивается, старый заказ Т-Кассы — как раньше', async () => {
+    const oldYandex = await seedOrder({
+      orderNumber: 'XM-2026-81004',
+      paymentProvider: 'yandex_pay',
+      paymentIntentId: 'XM-2026-81004',
+    })
+    const oldTbank = await seedOrder({
+      orderNumber: 'XM-2026-81005',
+      paymentProvider: 'tbank',
+      paymentIntentId: '9005',
+    })
+    await AppDataSource.query(
+      `UPDATE orders SET created_at = now() - interval '9 days' WHERE id IN ($1, $2)`,
+      [oldYandex.id, oldTbank.id],
+    )
+    const calls: string[] = []
+    expect(await reconcilePendingOrders(tbankProvider(calls))).toEqual({ checked: 1, updated: 1 })
+    expect(calls).toEqual(['9005'])
+    expect(yandex.getYandexOrderStatus).not.toHaveBeenCalled()
+  })
+
   it('Яндекс ответил unknown — заказ не трогаем', async () => {
     const order = await seedOrder({
       orderNumber: 'XM-2026-81003',
@@ -111,5 +132,26 @@ describe('startReconciliationJob: Яндекс', () => {
     )
     expect(timer).not.toBeNull()
     clearInterval(timer!)
+  })
+})
+
+describe('skipWhileRunning', () => {
+  it('новый запуск не стартует, пока не закончился предыдущий', async () => {
+    let finish: () => void = () => {}
+    const run = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
+    )
+    const tick = skipWhileRunning(run)
+    void tick()
+    void tick()
+    expect(run).toHaveBeenCalledTimes(1)
+    finish()
+    await Promise.resolve()
+    await Promise.resolve()
+    void tick()
+    expect(run).toHaveBeenCalledTimes(2)
   })
 })

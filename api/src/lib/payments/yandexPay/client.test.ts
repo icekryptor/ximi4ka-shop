@@ -113,6 +113,12 @@ describe('createYandexOrder', () => {
     })
   })
 
+  it('ttl заказа — 3 суток: потом Яндекс сам переводит его в FAILED и сверка его отпускает', async () => {
+    const fetchMock = created()
+    await createYandexOrder(order(), {}, { config: cfg(), fetch: fetchMock, env: ENV })
+    expect(sent(fetchMock).body).toMatchObject({ ttl: 259200 })
+  })
+
   it('Сплит — preferredPaymentMethod = SPLIT', async () => {
     const fetchMock = created()
     await createYandexOrder(

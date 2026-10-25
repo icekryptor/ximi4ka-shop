@@ -11,6 +11,11 @@ import { getYandexPayConfig, type YandexPayConfig } from './config.js'
 // Яндекс знает заказ по orderId, он же ключ идемпотентности создания.
 
 // Чекаут ждёт ответ — запрос к Яндексу не должен висеть.
+// Срок жизни ссылки на оплату (сек, Яндекс допускает 120…604800). По истечении Яндекс
+// сам переводит заказ в FAILED и шлёт вебхук — брошенные заказы уходят из сверки.
+// Трое суток: покупатель успевает вернуться к «Оплатить» со страницы заказа.
+export const YANDEX_ORDER_TTL_SEC = 3 * 24 * 60 * 60
+
 export const YANDEX_REQUEST_TIMEOUT_MS = 15_000
 const MAX_LOG_TEXT = 300
 
@@ -131,6 +136,7 @@ export async function createYandexOrder(
       redirectUrls: { onSuccess: `${page}?new=1#t=${t}`, onError, onAbort: onError },
       fiscalContact,
       purpose: `Заказ ${order.orderNumber} на ximi4ka.ru`,
+      ttl: YANDEX_ORDER_TTL_SEC,
     }
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err)
