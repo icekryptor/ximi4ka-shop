@@ -75,7 +75,7 @@ export function parseReceiptConfig(env: NodeJS.ProcessEnv = process.env): Receip
 // Телефон покупателя вводится как угодно; для чека нужен вид +7XXXXXXXXXX.
 // Принимаем только российский номер ровно из 11 цифр: «доб. 12» или два номера
 // в одном поле дали бы в кассу чужой номер, а не отказ.
-function normalizePhone(raw: string): string | null {
+export function normalizePhone(raw: string): string | null {
   let digits = raw.replace(/\D/g, '')
   if (digits.length === 10) digits = `7${digits}`
   if (digits.length === 11 && digits.startsWith('8')) digits = `7${digits.slice(1)}`
@@ -86,14 +86,14 @@ function normalizePhone(raw: string): string | null {
 export const MAX_EMAIL_LENGTH = 64
 
 // По символам, а не по кодовым единицам UTF-16: эмодзи не режется пополам.
-function cut(name: string): string {
+export function cut(name: string): string {
   return Array.from(name).slice(0, MAX_NAME_LENGTH).join('')
 }
 
 // Скидка по промокоду режет только товарные позиции, доставка остаётся целой.
 // Делим пропорционально сумме строки в целых рублях; остаток от округления вниз
 // отдаём по рублю тем строкам, где ещё есть что снимать, начиная с самой крупной.
-function spreadDiscount(lineRub: number[], discountRub: number): number[] {
+export function spreadDiscount(lineRub: number[], discountRub: number): number[] {
   const goodsRub = lineRub.reduce((sum, v) => sum + v, 0)
   if (discountRub <= 0 || goodsRub <= 0) return lineRub
   const capped = Math.min(discountRub, goodsRub)

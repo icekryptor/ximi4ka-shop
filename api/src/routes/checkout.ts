@@ -12,6 +12,8 @@ import { isKnownDeliveryPoint } from '../lib/cdek/locations.js'
 import { enqueueOrderEvent } from '../lib/notifications/outbox.js'
 import { getPaymentProvider } from '../lib/payments/index.js'
 import { MAX_EMAIL_LENGTH } from '../lib/payments/receipt.js'
+import { createYandexOrder } from '../lib/payments/yandexPay/client.js'
+import { isYandexPayAvailable } from '../lib/payments/yandexPay/config.js'
 import { loadGift } from '../lib/gift.js'
 import { loadCart } from '../lib/shipping/cart.js'
 import { packCart, type PackLine } from '../lib/shipping/pack.js'
@@ -126,6 +128,23 @@ checkoutRouter.post('/', async (req, res, next) => {
           'delivery_city_unavailable',
           'Доставка в этот город недоступна — выберите город из списка',
         )
+      }
+    }
+
+    // Яндекс Пэй / Сплит: проверяем до расчёта доставки и до заказа — недоступный
+    // способ даёт 400 без заказа. При доставке в ЕАЭС пунктов Яндекса нет (спека),
+    // правило проверяет и сервер. Без paymentMethod или с tbank — всё как раньше.
+    const yandexMethod =
+      parsed.paymentMethod === 'yandex_pay' || parsed.paymentMethod === 'yandex_split'
+    if (yandexMethod) {
+      if (parsed.delivery.method === 'cdek_manual_cis') {
+        throw badRequest(
+          'payment_method_unavailable',
+          'Яндекс Пэй и Сплит недоступны при доставке в страны ЕАЭС',
+        )
+      }
+      if (!(await isYandexPayAvailable())) {
+        throw badRequest('payment_method_unavailable', 'Яндекс Пэй сейчас недоступен')
       }
     }
 
@@ -246,7 +265,7 @@ checkoutRouter.post('/', async (req, res, next) => {
             promoDiscountRub: promoRub,
             shippingRub,
             totalRub,
-            paymentProvider: provider.name,
+            paymentProvider: yandexMethod ? 'yandex_pay' : provider.name,
             idempotencyKey,
             attribution: (parsed.attribution as OrderAttribution | undefined) ?? null,
             clientIp: req.ip?.replace(/^::ffff:/, '').slice(0, 45) || null,
@@ -317,7 +336,9 @@ checkoutRouter.post('/', async (req, res, next) => {
     // provider must never roll back an already-taken order. createPayment
     // returning null (manual mode / Init failure) leaves the order pending
     // for manager follow-up.
-    const payment = await provider.createPayment(order)
+    const payment = yandexMethod
+      ? await createYandexOrder(order, { preferSplit: parsed.paymentMethod === 'yandex_split' })
+      : await provider.createPayment(order)
     if (payment) {
       order.paymentIntentId = payment.externalId
       order.paymentUrl = payment.paymentUrl

@@ -17,7 +17,7 @@ free_ports() {
 }
 free_ports
 [ -x "$DIR/h2proxy/h2proxy" ] || (cd "$DIR/h2proxy" && go build -o h2proxy .)
-(cd "$OUT/builds/$B" && PORT=3100 HOSTNAME=localhost NODE_ENV=production API_URL=https://ximi4ka.ru \
+(cd "$OUT/builds/$B" && PORT=3100 HOSTNAME=localhost NODE_ENV=production API_URL=${PERF_API_URL:-https://ximi4ka.ru} \
   node web/server.js >"$OUT/server-$B.log" 2>&1) &
 "$DIR/h2proxy/h2proxy" 127.0.0.1:8443 http://localhost:3100 >"$OUT/h2-$B.log" 2>&1 &
 for _ in $(seq 60); do curl -sk -o /dev/null https://127.0.0.1:8443/ -H 'host: ximi4ka.ru' && break; sleep 0.5; done

@@ -23,10 +23,10 @@ async function bootstrap() {
     logger.info({ port }, 'api listening')
   })
 
-  // Polls Т-Касса for pending orders whose webhook never arrived.
-  // No-op unless PAYMENT_PROVIDER=tbank.
+  // Polls Т-Касса (PAYMENT_PROVIDER=tbank) and Яндекс Пэй (YANDEX_PAY_MERCHANT_ID)
+  // for pending orders whose webhook never arrived. No-op otherwise.
   if (startReconciliationJob()) {
-    logger.info('payment reconciliation job started (tbank)')
+    logger.info('payment reconciliation job started')
   }
 
   // Очередь уведомлений о заказах → Google Таблица и Telegram.

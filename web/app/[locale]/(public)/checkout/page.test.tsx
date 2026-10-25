@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { resetPublicYandexPayCacheForTests } from '@/lib/yandexPay'
 import type {
   CdekCity,
   CdekCityPoints,
@@ -124,6 +125,12 @@ const mockQuoteShipping = vi.fn(async ({ destination }: { destination?: QuoteDes
   }
 })
 
+// Публичные настройки идут мимо fetch: тесты чекаута считают вызовы fetch.
+const mockGetPublicSettings = vi.fn(async () => ({ yandexPay: null as unknown }))
+
+// Виджет Сплита грузит pay.js — в тестах скрипта нет, остаётся текст.
+vi.mock('next/script', () => ({ default: () => null }))
+
 vi.mock('@/lib/api', async (importActual) => {
   const actual = await importActual<typeof import('@/lib/api')>()
   return {
@@ -131,10 +138,14 @@ vi.mock('@/lib/api', async (importActual) => {
     quoteShipping: (payload: never) => mockQuoteShipping(payload),
     suggestCdekCities: (q: string) => mockSuggest(q),
     getCdekPoints: (cityCode: number) => mockGetPoints(cityCode),
+    getPublicSettings: () => mockGetPublicSettings(),
   }
 })
 
 beforeEach(() => {
+  mockGetPublicSettings.mockReset()
+  mockGetPublicSettings.mockImplementation(async () => ({ yandexPay: null }))
+  resetPublicYandexPayCacheForTests()
   window.localStorage.clear()
   window.sessionStorage.clear()
   mockPush.mockReset()
@@ -1096,6 +1107,111 @@ describe('/checkout page', () => {
     // Cart is preserved so the user can adjust it.
     expect(loadCart()).toHaveLength(1)
     expect(mockPush).not.toHaveBeenCalled()
+  })
+  describe('способ оплаты', () => {
+    const ON = { yandexPay: { split: true, merchantId: 'merchant-public-id' } }
+
+    function sentBody(fetchMock: ReturnType<typeof vi.fn>) {
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      return JSON.parse(init.body as string) as Record<string, unknown>
+    }
+
+    it('Яндекс недоступен — блока нет, paymentMethod не уходит', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+      expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull()
+      submit()
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      expect(sentBody(fetchMock)).not.toHaveProperty('paymentMethod')
+    })
+
+    it('три способа — Т-Банк по умолчанию, выбранный уходит в заказ', async () => {
+      mockGetPublicSettings.mockImplementation(async () => ON)
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      expect(within(group).getByRole('radio', { name: 'Картой — Т-Банк' })).toBeChecked()
+      fireEvent.click(within(group).getByRole('radio', { name: 'Яндекс Пэй' }))
+      await fillValidForm()
+      submit()
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      expect(sentBody(fetchMock).paymentMethod).toBe('yandex_pay')
+    })
+
+    it('Сплит: плашка на сумму заказа, место виджета, paymentMethod=yandex_split', async () => {
+      mockGetPublicSettings.mockImplementation(async () => ON)
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      const { container } = render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      const badge = container.querySelector('yandex-pay-badge')
+      expect(badge).toHaveAttribute('source', 'checkout')
+      expect(badge).toHaveAttribute('amount', '2000.00')
+      expect(screen.queryByTestId('split-widget')).toBeNull()
+      fireEvent.click(within(group).getByRole('radio', { name: 'Сплит — оплата частями' }))
+      expect(screen.getByTestId('split-widget')).toBeInTheDocument()
+      await fillValidForm()
+      submit()
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      expect(sentBody(fetchMock).paymentMethod).toBe('yandex_split')
+    })
+
+    it('доставка в ЕАЭС скрывает Яндекс, выбор сбрасывается на Т-Банк', async () => {
+      mockGetPublicSettings.mockImplementation(async () => ON)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      fireEvent.click(within(group).getByRole('radio', { name: 'Сплит — оплата частями' }))
+      await chooseCisRegion()
+      expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull()
+      fireEvent.click(screen.getByRole('radio', { name: 'Россия' }))
+      const back = await screen.findByRole('group', { name: /способ оплаты/i })
+      expect(within(back).getByRole('radio', { name: 'Картой — Т-Банк' })).toBeChecked()
+    })
+
+    it('Яндекс выключили до отправки: 400 — сообщение, сброс на Т-Банк, блок пропал, корзина цела', async () => {
+      mockGetPublicSettings
+        .mockImplementationOnce(async () => ON)
+        .mockImplementation(async () => ({ yandexPay: null }))
+      mapMock.available = false
+      const fetchMock = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: {
+                code: 'payment_method_unavailable',
+                message: 'Яндекс Пэй сейчас недоступен',
+              },
+            }),
+            { status: 400 },
+          ),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      fireEvent.click(within(group).getByRole('radio', { name: 'Яндекс Пэй' }))
+      await fillValidForm()
+      submit()
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        /яндекс пэй сейчас недоступен.*картой/i,
+      )
+      await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(2))
+      await vi.waitFor(() =>
+        expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull(),
+      )
+      expect(loadCart()).toHaveLength(1)
+      expect(mockRedirectTo).not.toHaveBeenCalled()
+    })
   })
 })
 

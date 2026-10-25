@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { CheckoutRequest } from '@ximi4ka-shop/shared'
+import type { CheckoutPaymentMethod, CheckoutRequest, PublicYandexPay } from '@ximi4ka-shop/shared'
 import { findPromo, promoDiscountRub, type Promo } from '@ximi4ka-shop/shared/types/promo'
 import { getMeOrNull } from '@/lib/accountApi'
 import { loadAttribution, safeLocalStorage } from '@/lib/attribution'
@@ -16,6 +16,8 @@ import { METRIKA_GOALS, reachGoal, rememberPendingPurchase } from '@/lib/metrika
 import { CdekDelivery } from '@/components/checkout/CdekDelivery'
 import { CisDelivery } from '@/components/checkout/CisDelivery'
 import { PromoCodeField } from '@/components/checkout/PromoCodeField'
+import { PaymentMethodField } from '@/components/checkout/PaymentMethodField'
+import { loadPublicYandexPay, reloadPublicYandexPay } from '@/lib/yandexPay'
 import { ERROR_CLASS, FIELD_CLASS, LABEL_CLASS } from '@/components/checkout/fieldStyles'
 import { useCdekDelivery } from '@/components/checkout/useCdekDelivery'
 import { useCisDelivery } from '@/components/checkout/useCisDelivery'
@@ -67,6 +69,19 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<CheckoutFormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Яндекс Пэй из публичных настроек: null — недоступен, блока выбора нет и чекаут как
+  // раньше. По умолчанию — Т-Банк.
+  const [yandexPay, setYandexPay] = useState<PublicYandexPay | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>('tbank')
+  useEffect(() => {
+    let cancelled = false
+    void loadPublicYandexPay().then((value) => {
+      if (!cancelled) setYandexPay(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
   // Ловушка для ботов: людям поле не видно, формы-спамеры заполняют всё подряд.
   const [trap, setTrap] = useState('')
   // Заказ создан, браузер уходит на шлюз или на страницу заказа. Корзина к этому
@@ -93,6 +108,9 @@ export default function CheckoutPage() {
   const [region, setRegion] = useState<'ru' | 'cis'>('ru')
   const cis = useCisDelivery()
   const isCis = region === 'cis'
+  // Доставка в ЕАЭС — без Яндекс Пэй и Сплита: блок скрыт, оплата картой.
+  const showPaymentChoice = yandexPay !== null && !isCis
+  const selectedMethod: CheckoutPaymentMethod = showPaymentChoice ? paymentMethod : 'tbank'
 
   // Вошедшему покупателю — контакты и доставка из профиля; гостю — подсказка
   // войти. undefined — ещё не знаем (подсказку не мигаем).
@@ -162,6 +180,7 @@ export default function CheckoutPage() {
   function changeRegion(next: 'ru' | 'cis') {
     if (next === region) return
     setRegion(next)
+    if (next === 'cis') setPaymentMethod('tbank')
     setField('phone', '')
     setErrors((prev) => ({ ...prev, phone: undefined, email: undefined }))
     setServerError(null)
@@ -206,6 +225,7 @@ export default function CheckoutPage() {
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       ...(gift ? { giftProductId: gift.productId } : {}),
       ...(promo ? { promoCode: promo.code } : {}),
+      ...(showPaymentChoice ? { paymentMethod: selectedMethod } : {}),
       customer: {
         name: fields.name.trim(),
         phone: `+${isCis ? internationalPhoneDigits(fields.phone) : phoneDigits(fields.phone)}`,
@@ -266,6 +286,12 @@ export default function CheckoutPage() {
           // чтобы покупатель увидел настоящую сумму до повторной отправки.
           setPromo(null)
           setPromoError(`${err.message}. Скидка снята, проверьте сумму и оформите заказ ещё раз.`)
+        } else if (err.code === 'payment_method_unavailable') {
+          // Яндекс выключили, пока покупатель заполнял форму: объясняем, переключаем на
+          // карту и перечитываем настройки — блок выбора пропадёт сам.
+          setServerError(`${err.message}. Выбрана оплата картой — оформите заказ ещё раз.`)
+          setPaymentMethod('tbank')
+          void reloadPublicYandexPay().then(setYandexPay)
         } else if (err.code === 'delivery_point_unknown') {
           // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
           // «Пункт получения», выбор сброшен, список города грузится заново.
@@ -465,6 +491,15 @@ export default function CheckoutPage() {
                   className={`${FIELD_CLASS} resize-y`}
                 />
               </div>
+
+              {showPaymentChoice && (
+                <PaymentMethodField
+                  value={selectedMethod}
+                  onChange={setPaymentMethod}
+                  merchantId={yandexPay?.merchantId ?? null}
+                  totalRub={totalRub}
+                />
+              )}
             </div>
 
             {/* ---- Правая колонка: сводка заказа ---- */}

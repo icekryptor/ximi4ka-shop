@@ -1,6 +1,8 @@
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { getPaymentProvider } from './index.js'
+import { getYandexOrderStatus } from './yandexPay/client.js'
+import { hasYandexPayMerchant } from './yandexPay/config.js'
 import { applyPaymentStatus } from './orderStatus.js'
 import { saveOrderWithStatusEvent } from '../notifications/outbox.js'
 import type { PaymentProvider } from './types.js'
@@ -13,6 +15,23 @@ import type { PaymentProvider } from './types.js'
 // payment form and the webhook will arrive on its own.
 export const RECONCILE_MIN_AGE_MS = 2 * 60 * 1000
 export const RECONCILE_INTERVAL_MS = 60 * 1000
+
+export const YANDEX_RECONCILE_MAX_AGE_DAYS = 8
+
+// Запуск по таймеру не наслаивается на незаконченный предыдущий: иначе два прогона
+// могут применить один и тот же статус и дважды поставить в очередь исходящие события.
+export function skipWhileRunning(run: () => Promise<unknown>): () => Promise<void> {
+  let running = false
+  return async () => {
+    if (running) return
+    running = true
+    try {
+      await run()
+    } finally {
+      running = false
+    }
+  }
+}
 
 export interface ReconcileResult {
   checked: number
@@ -33,6 +52,12 @@ export async function reconcilePendingOrders(
     .andWhere('o.payment_intent_id IS NOT NULL')
     // Заказы из Яндекса оплачены у Яндекса: Т-Касса о них не знает.
     .andWhere("o.payment_provider <> 'ycp'")
+    // Заказ Яндекса живёт YANDEX_ORDER_TTL_SEC (3 суток), потом Яндекс сам ставит FAILED.
+    // Страховка, если статус так и не пришёл: старше 8 суток не опрашиваем.
+    .andWhere(
+      "(o.payment_provider <> 'yandex_pay' OR o.created_at > now() - make_interval(days => :maxDays))",
+      { maxDays: YANDEX_RECONCILE_MAX_AGE_DAYS },
+    )
     .andWhere('o.created_at < now() - make_interval(secs => :ageSec)', {
       ageSec: minAgeMs / 1000,
     })
@@ -41,7 +66,11 @@ export async function reconcilePendingOrders(
 
   let updated = 0
   for (const order of pending) {
-    const status = await provider.getStatus(order.paymentIntentId!)
+    // Заказ Яндекс Пэй сверяется у Яндекса по номеру заказа, остальные — как раньше.
+    const status =
+      order.paymentProvider === 'yandex_pay'
+        ? await getYandexOrderStatus(order.orderNumber)
+        : await provider.getStatus(order.paymentIntentId!)
     if (status === 'unknown') continue
     const previousStatus = order.status
     if (applyPaymentStatus(order, status, 'reconcile')) {
@@ -56,13 +85,16 @@ export async function reconcilePendingOrders(
 // actually create online payments — in manual mode there is nothing to poll.
 export function startReconciliationJob(
   provider: PaymentProvider = getPaymentProvider(),
+  env: NodeJS.ProcessEnv = process.env,
 ): NodeJS.Timeout | null {
-  if (provider.name !== 'tbank') return null
-  const timer = setInterval(() => {
+  // Т-Касса — как раньше; Яндекс досверяется, пока задан его Merchant ID.
+  if (provider.name !== 'tbank' && !hasYandexPayMerchant(env)) return null
+  const tick = skipWhileRunning(() =>
     reconcilePendingOrders(provider).catch((err) => {
       console.error('payments: reconciliation run failed', err)
-    })
-  }, RECONCILE_INTERVAL_MS)
+    }),
+  )
+  const timer = setInterval(() => void tick(), RECONCILE_INTERVAL_MS)
   // Never keep the process alive just for the poller.
   timer.unref()
   return timer

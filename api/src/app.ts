@@ -23,6 +23,7 @@ import { createAccountRouter } from './routes/account/index.js'
 import { createTelegramWebhookRouter } from './routes/telegram/loginWebhook.js'
 import { checkoutRouter } from './routes/checkout.js'
 import { tbankWebhookRouter } from './routes/webhooks/tbank.js'
+import { yandexPayWebhookErrors, yandexPayWebhookRouter } from './routes/webhooks/yandexPay.js'
 import { publicOrdersRouter } from './routes/public/orders.js'
 import { adminOrdersRouter } from './routes/admin/orders.js'
 import { adminStatsRouter } from './routes/admin/stats.js'
@@ -73,6 +74,14 @@ export function createApp(): Express {
     }),
   )
 
+  // Вебхук Яндекс Пэй: тело — JWT в application/octet-stream, нужны сырые байты.
+  // Стоит ДО express.json; лимит 64 КБ — событие весит меньше килобайта.
+  app.use(
+    '/api/webhooks/yandex-pay',
+    express.raw({ type: '*/*', limit: '64kb' }),
+    yandexPayWebhookRouter,
+    yandexPayWebhookErrors,
+  )
   app.use(express.json({ limit: '1mb' }))
   app.use(cookieParser())
 
