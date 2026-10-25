@@ -336,8 +336,10 @@ checkoutRouter.post('/', async (req, res, next) => {
     // provider must never roll back an already-taken order. createPayment
     // returning null (manual mode / Init failure) leaves the order pending
     // for manager follow-up.
+    // Через Яндекс продаём именно Сплит: форма всегда открывается на нём (yandex_pay от старых
+    // вкладок — тоже); карта в форме остаётся запасной, если Сплит не одобрили.
     const payment = yandexMethod
-      ? await createYandexOrder(order, { preferSplit: parsed.paymentMethod === 'yandex_split' })
+      ? await createYandexOrder(order, { preferSplit: true })
       : await provider.createPayment(order)
     if (payment) {
       order.paymentIntentId = payment.externalId

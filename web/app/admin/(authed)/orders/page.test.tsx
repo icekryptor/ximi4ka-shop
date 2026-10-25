@@ -59,8 +59,8 @@ describe('order UI helpers', () => {
   })
 
   it('Яндекс Пэй подписан отдельно от «Купить в 1 клик» (YCP)', () => {
-    expect(PAYMENT_PROVIDER_LABELS.yandex_pay).toBe('Яндекс Пэй')
+    expect(PAYMENT_PROVIDER_LABELS.yandex_pay).toBe('Сплит (Яндекс Пэй)')
     expect(PAYMENT_PROVIDER_LABELS.yandex_pay).not.toBe(PAYMENT_PROVIDER_LABELS.ycp)
-    expect(HISTORY_ACTOR_LABELS.yandex_pay).toBe('Яндекс Пэй')
+    expect(HISTORY_ACTOR_LABELS.yandex_pay).toBe('Сплит (Яндекс Пэй)')
   })
 })
