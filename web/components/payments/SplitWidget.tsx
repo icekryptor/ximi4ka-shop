@@ -34,6 +34,9 @@ interface YaPaySdk {
   WidgetType: { Ultimate: unknown }
 }
 
+const SDK_POLL_MS = 200
+const SDK_WAIT_MS = 30_000
+
 function getYaPay(): YaPaySdk | null {
   const sdk = (window as Window & { YaPay?: YaPaySdk }).YaPay
   return sdk && typeof sdk.createSession === 'function' ? sdk : null
@@ -46,6 +49,20 @@ export function SplitWidget({ merchantId, totalRub }: { merchantId: string; tota
   const key = `${merchantId}:${amount}`
   // Для какой суммы виджет смонтирован; сменилась сумма — снова текст до новой сессии.
   const [mountedFor, setMountedFor] = useState<string | null>(null)
+
+  // onReady приходит не всегда: если pay.js уже грузит плашка с тем же id, next/script
+  // второму экземпляру onReady не вызывает. Поэтому сами ждём window.YaPay (до 30 с).
+  useEffect(() => {
+    if (sdkReady) return
+    const startedAt = Date.now()
+    let timer = 0
+    const check = () => {
+      if (getYaPay()) setSdkReady(true)
+      else if (Date.now() - startedAt < SDK_WAIT_MS) timer = window.setTimeout(check, SDK_POLL_MS)
+    }
+    timer = window.setTimeout(check, 0)
+    return () => window.clearTimeout(timer)
+  }, [sdkReady])
 
   useEffect(() => {
     const element = ref.current
@@ -86,8 +103,13 @@ export function SplitWidget({ merchantId, totalRub }: { merchantId: string; tota
     return () => {
       cancelled = true
       if (session) {
-        session.unmountWidget(element)
-        session.destroy?.()
+        // Чужой скрипт может бросить (элемент уже отсоединён) — чекаут из-за этого не падает.
+        try {
+          session.unmountWidget(element)
+          session.destroy?.()
+        } catch {
+          // ignore
+        }
       }
     }
   }, [sdkReady, merchantId, amount])

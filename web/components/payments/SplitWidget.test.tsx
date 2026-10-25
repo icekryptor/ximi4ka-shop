@@ -2,12 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 
 // next/script: в jsdom скрипт не грузится — сразу сообщаем «готов», как onReady.
+// callOnReady=false — как у next/script, когда тот же id (плашка) уже грузит pay.js:
+// второй экземпляр onReady не получает.
+const scriptMock = vi.hoisted(() => ({ callOnReady: true }))
 vi.mock('next/script', async () => {
   const { useEffect } = await import('react')
   // Именованный компонент: правило react-hooks не пускает хук в анонимной функции.
   function MockScript({ onReady }: { onReady?: () => void }) {
     useEffect(() => {
-      onReady?.()
+      if (scriptMock.callOnReady) onReady?.()
     }, [onReady])
     return null
   }
@@ -34,6 +37,7 @@ function stubYaPay() {
 
 beforeEach(() => {
   delete (window as W).YaPay
+  scriptMock.callOnReady = true
 })
 afterEach(() => {
   delete (window as W).YaPay
@@ -89,5 +93,27 @@ describe('SplitWidget', () => {
     view.unmount()
     expect(session.unmountWidget).toHaveBeenCalledTimes(2)
     expect(session.destroy).toHaveBeenCalledTimes(2)
+  })
+
+  it('pay.js догрузился уже после выбора Сплита, onReady не пришёл — виджет всё равно монтируется', async () => {
+    scriptMock.callOnReady = false
+    render(<SplitWidget merchantId="merchant-public-id" totalRub={2390} />)
+    await act(async () => {})
+    expect(screen.getByText(SPLIT_FALLBACK_TEXT)).toBeInTheDocument()
+    const { session } = stubYaPay()
+    await vi.waitFor(() => expect(session.mountWidget).toHaveBeenCalledTimes(1), { timeout: 2000 })
+  })
+
+  it('SDK бросает при размонтировании — чекаут не падает', async () => {
+    const { session } = stubYaPay()
+    session.unmountWidget.mockImplementation(() => {
+      throw new Error('detached')
+    })
+    session.destroy.mockImplementation(() => {
+      throw new Error('destroyed')
+    })
+    const view = render(<SplitWidget merchantId="merchant-public-id" totalRub={2390} />)
+    await vi.waitFor(() => expect(session.mountWidget).toHaveBeenCalledTimes(1))
+    expect(() => view.unmount()).not.toThrow()
   })
 })
