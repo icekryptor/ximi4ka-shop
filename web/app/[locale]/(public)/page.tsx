@@ -287,6 +287,7 @@ export default async function HomePage({ params }: Props) {
                     stats={entry.stats}
                     statMaxes={SITE_CATALOG_STAT_MAXES}
                     images={entry.dbProduct?.images ?? []}
+                    splitSource="main"
                   />
                 </div>
               )
