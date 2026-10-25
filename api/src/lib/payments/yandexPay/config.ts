@@ -42,11 +42,14 @@ export function yandexPayConfigFrom(
   if (!merchantId) return null
   const apiKey = (env.YANDEX_PAY_API_KEY ?? '').trim()
   const mode: YandexPayMode = settings.yandexPayMode === 'production' ? 'production' : 'sandbox'
-  const baseUrl = YANDEX_PAY_HOSTS[mode]
+  // Хост для API, вебхука и сверки. На проде — всегда боевой: режим Sandbox в админке
+  // там лишь прячет способ с чекаута (isCheckoutAvailable), но не ломает зачёт оплат.
+  const hostMode: YandexPayMode = env.NODE_ENV === 'production' ? 'production' : mode
+  const baseUrl = YANDEX_PAY_HOSTS[hostMode]
   return {
     merchantId,
     apiKey,
-    authKey: mode === 'production' ? apiKey : merchantId,
+    authKey: hostMode === 'production' ? apiKey : merchantId,
     mode,
     enabled: settings.yandexPayEnabled,
     baseUrl,

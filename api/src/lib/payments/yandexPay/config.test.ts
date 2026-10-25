@@ -82,4 +82,15 @@ describe('isCheckoutAvailable и publicYandexPay', () => {
     expect(isCheckoutAvailable(sandboxProd, prod)).toBe(false)
     expect(publicYandexPay(sandboxProd, prod)).toBeNull()
   })
+
+  it('на проде режим Sandbox в админке не уводит вебхук и сверку в песочницу', () => {
+    const cfg = yandexPayConfigFrom(on('sandbox'), prod)
+    expect(cfg).toMatchObject({
+      mode: 'sandbox',
+      baseUrl: 'https://pay.yandex.ru',
+      jwksUrl: 'https://pay.yandex.ru/api/jwks',
+      authKey: 'k',
+    })
+    expect(isCheckoutAvailable(cfg, prod)).toBe(false)
+  })
 })
