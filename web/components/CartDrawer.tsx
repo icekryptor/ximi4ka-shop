@@ -10,7 +10,7 @@ import { SHIPPING_RULES } from '@/lib/checkout'
 import { METRIKA_GOALS, reachGoal } from '@/lib/metrika'
 import { afterNextPaint } from '@/lib/afterPaint'
 import { formatRub } from '@/lib/stockLabel'
-import { SplitBadgeAuto } from '@/components/payments/SplitBadge'
+import { SplitInstallmentLineAuto } from '@/components/payments/SplitInstallmentLineAuto'
 
 // Порог бесплатной доставки для прогресс-бара. Единый источник — правила
 // доставки СДЭК ПВЗ (3000 ₽), те же, что показывает чекаут.
@@ -217,8 +217,7 @@ export function CartDrawer() {
               <span>Итого</span>
               <span data-testid="drawer-total">{formatRub(totals.totalRub)}</span>
             </div>
-            {/* Только в открытой корзине: закрытая возвращает null, и pay.js не грузится на каждой странице сайта. */}
-            <SplitBadgeAuto amountRub={totals.totalRub} source="cart" />
+            <SplitInstallmentLineAuto priceRub={totals.totalRub} />
             <Link
               href="/checkout"
               onClick={() => setOpen(false)}

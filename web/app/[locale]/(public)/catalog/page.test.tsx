@@ -108,7 +108,7 @@ describe('CatalogPage', () => {
       const { getByTestId } = render(
         await CatalogPage({ params: Promise.resolve({ locale: 'ru' }) }),
       )
-      expect(getByTestId('split-installments')).toHaveTextContent(/4 платежа по 775/)
+      expect(getByTestId('split-installments')).toHaveTextContent(/775\s₽\s*× 4 платежа в Сплит/)
     })
 
     it('Сплит выключен — строки нет', async () => {

@@ -319,11 +319,13 @@ describe('ProductCard: «4 платежа» в Сплит', () => {
   }
   const kit = { ...baseProduct, priceRub: 3099 }
 
-  it('Сплит включён — под ценой строка с платежом, провайдером и оговоркой об одобрении', () => {
+  it('Сплит включён — под ценой чип по макету: значок, платёж, «× 4 платежа в Сплит»', () => {
     render(<ProductCard product={kit} images={[]} splitInstallments {...STATS} />)
-    expect(screen.getByTestId('split-installments')).toHaveTextContent(
-      /Сплит от Яндекса: 4 платежа по 775\s₽, при одобрении/,
-    )
+    const chip = screen.getByTestId('split-installments')
+    expect(chip).toHaveTextContent(/775\s₽\s*× 4 платежа в Сплит/)
+    // Значок Сплита — официальный файл из макета, локально, без скриптов Яндекса.
+    expect(chip.querySelector('img')).toHaveAttribute('src', '/img/brand/yandex-split-icon.svg')
+    expect(chip.querySelector('img')).toHaveAttribute('alt', 'Сплит')
   })
 
   it('Сплит выключен — строки нет; плашки Яндекса в карточке нет вовсе', () => {
