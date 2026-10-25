@@ -7,8 +7,8 @@ import { splitBadgeAmount, usePublicYandexPay } from '@/lib/yandexPay'
 // Плашка Сплита от Яндекса (Web SDK, тег yandex-pay-badge type="bnpl"). pay.js
 // грузится lazyOnload — в простое браузера после загрузки страницы, как счётчики в
 // lib/analytics.tsx; Next подключает его один раз на страницу (общий id). Оплата от
-// скрипта не зависит. Сплит покупателю недоступен — плашку прячет сам Яндекс,
-// остаётся зарезервированная строка.
+// скрипта не зависит. Плашка персональная: Яндекс рисует её только вошедшему в Яндекс
+// посетителю с лимитом Сплита, остальным — пусто; поэтому место под неё не резервируем.
 
 export const YANDEX_PAY_SDK_URL = 'https://pay.yandex.ru/sdk/v1/pay.js'
 
@@ -24,7 +24,7 @@ interface SplitBadgeProps {
   merchantId: string | null | undefined
   amountRub: number
   source: SplitBadgeSource
-  /** m — карточка, корзина, чекаут; s — карточки в списках (высоту держит слот снаружи). */
+  /** m — корзина, чекаут; s — карточки в списках. */
   size?: 's' | 'm'
   className?: string
 }
@@ -40,10 +40,7 @@ export function SplitBadge({
   const amount = splitBadgeAmount(amountRub)
   if (!id || !amount) return null
   return (
-    <div
-      data-testid="split-badge"
-      className={`${size === 'm' ? 'min-h-[40px] ' : ''}${className ?? ''}`.trim()}
-    >
+    <div data-testid="split-badge" className={className}>
       <yandex-pay-badge
         type="bnpl"
         amount={amount}
@@ -65,8 +62,8 @@ export function SplitBadgeAuto(props: Omit<SplitBadgeProps, 'merchantId'>) {
 
 /**
  * Плашка для карточек в каталоге и на главной: настройки, pay.js и бейдж — только когда
- * карточка подходит к экрану (за 200 px), как мини-каталог опта. До того — пустой слот
- * той же высоты, чтобы карточки не прыгали. Без IntersectionObserver — сразу.
+ * карточка подходит к экрану (за 200 px), как мини-каталог опта: если Яндекс плашку нарисует,
+ * низ карточки сдвинется ещё вне экрана. Без IntersectionObserver — сразу.
  */
 export function SplitBadgeLazy({
   amountRub,
@@ -93,12 +90,7 @@ export function SplitBadgeLazy({
   }, [visible])
 
   return (
-    <div
-      ref={ref}
-      data-testid="split-badge-slot"
-      data-source={source}
-      className={`min-h-[28px] ${className ?? ''}`.trim()}
-    >
+    <div ref={ref} data-testid="split-badge-slot" data-source={source} className={className}>
       {visible && <SplitBadgeAuto amountRub={amountRub} source={source} size="s" />}
     </div>
   )

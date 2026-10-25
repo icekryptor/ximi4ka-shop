@@ -26,7 +26,7 @@ beforeEach(() => {
 })
 
 describe('SplitBadge', () => {
-  it('бейдж Сплита с суммой, Merchant ID и местом; скрипт — lazyOnload; высота зарезервирована', () => {
+  it('бейдж Сплита с суммой, Merchant ID и местом; скрипт — lazyOnload; место не резервируется', () => {
     const { container } = render(
       <SplitBadge merchantId="merchant-public-id" amountRub={2490} source="item" />,
     )
@@ -38,7 +38,8 @@ describe('SplitBadge', () => {
     const script = screen.getByTestId('yandex-pay-sdk')
     expect(script).toHaveAttribute('data-src', YANDEX_PAY_SDK_URL)
     expect(script).toHaveAttribute('data-strategy', 'lazyOnload')
-    expect(screen.getByTestId('split-badge').className).toContain('min-h-[40px]')
+    // Место не резервируем: Яндекс рисует плашку не всем (нужен вход в Яндекс и лимит Сплита).
+    expect(screen.getByTestId('split-badge').className).not.toMatch(/min-h-/)
   })
 
   it.each([null, undefined, '', '  '])(
@@ -101,11 +102,11 @@ describe('SplitBadgeLazy (карточки в каталоге и на глав�
     )
   })
 
-  it('до появления карточки на экране — ни настроек, ни скрипта, только место под строку', async () => {
+  it('до появления карточки на экране — ни настроек, ни скрипта, и место не занято', async () => {
     api.yandexPay = { split: true, merchantId: 'merchant-public-id' }
     const { container } = render(<SplitBadgeLazy amountRub={3099} source="listing" />)
     await act(async () => {})
-    expect(screen.getByTestId('split-badge-slot')).toHaveClass('min-h-[28px]')
+    expect(screen.getByTestId('split-badge-slot').className).not.toMatch(/min-h-/)
     expect(container.querySelector('yandex-pay-badge')).toBeNull()
     expect(screen.queryByTestId('yandex-pay-sdk')).toBeNull()
     expect(api.calls).toBe(0)
