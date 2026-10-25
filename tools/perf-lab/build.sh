@@ -8,7 +8,7 @@ ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 OUT=${PERF_LAB_DIR:-/tmp/perf-lab}
 mkdir -p "$OUT"
 cd "$ROOT"
-NEXT_PUBLIC_SITE_URL=https://ximi4ka.ru NEXT_PUBLIC_API_URL=https://ximi4ka.ru API_URL=https://ximi4ka.ru \
+NEXT_PUBLIC_SITE_URL=https://ximi4ka.ru NEXT_PUBLIC_API_URL=https://ximi4ka.ru API_URL=${PERF_API_URL:-https://ximi4ka.ru} \
   NEXT_TELEMETRY_DISABLED=1 npm run build -w web >"$OUT/build-$NAME.log" 2>&1 || {
   tail -30 "$OUT/build-$NAME.log"
   exit 1
