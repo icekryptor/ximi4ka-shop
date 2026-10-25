@@ -398,6 +398,22 @@ describe('ProductPage', () => {
       expect(container.querySelector('yandex-pay-badge')).toBeNull()
     })
 
+    it('«Смотрите также»: при включённом Сплите у карточек строка «4 платежа»', async () => {
+      vi.mocked(getPublicSettings).mockResolvedValue({
+        yandexPay: { split: true, merchantId: 'merchant-public-id' },
+      } as Settings)
+      const related = { ...product, id: 'p2', slug: 'kit-2', name: 'Набор Два', priceRub: 3099 }
+      vi.mocked(listPublishedProducts).mockResolvedValue({
+        data: [
+          { ...product, categoryIds: ['c1'] },
+          { ...related, categoryIds: ['c1'] },
+        ],
+        pagination: { limit: 100, offset: 0, total: 2 },
+      } as unknown as Awaited<ReturnType<typeof listPublishedProducts>>)
+      render(await ProductPage(props))
+      expect(screen.getByTestId('split-installments')).toHaveTextContent(/4 платежа по 775/)
+    })
+
     it('Яндекс недоступен — бейджа нет', async () => {
       vi.mocked(getPublicSettings).mockResolvedValue({ yandexPay: null } as Settings)
       const { container } = render(await ProductPage(props))

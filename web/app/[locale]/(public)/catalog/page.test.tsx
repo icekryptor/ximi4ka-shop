@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import CatalogPage, { generateMetadata, revalidate } from './page'
 import * as catalogApi from '@/lib/catalogApi'
+import * as splitInstallments from '@/lib/splitInstallments'
 
 describe('CatalogPage', () => {
   it('is an async Server Component', () => {
@@ -71,6 +72,52 @@ describe('CatalogPage', () => {
       for (const img of lower) {
         expect(img).not.toHaveAttribute('fetchpriority')
       }
+    })
+  })
+
+  describe('«4 платежа» в Сплит', () => {
+    afterEach(() => {
+      cleanup()
+      vi.restoreAllMocks()
+    })
+    const kits = {
+      groups: [
+        {
+          category: { id: 'c-kits', slug: 'kits', name: 'kits' },
+          products: [
+            {
+              id: 'k1',
+              slug: 'k1',
+              name: 'Набор 1',
+              priceRub: 3099,
+              compareAtPriceRub: null,
+              stockStatus: 'in_stock',
+              isPublished: true,
+              images: [],
+            },
+          ],
+        },
+      ],
+      counts: {},
+      totalProducts: 1,
+    } as unknown as Awaited<ReturnType<typeof catalogApi.fetchCatalog>>
+
+    it('Сплит включён — строка у карточек набора', async () => {
+      vi.spyOn(catalogApi, 'fetchCatalog').mockResolvedValue(kits)
+      vi.spyOn(splitInstallments, 'fetchSplitAvailable').mockResolvedValue(true)
+      const { getByTestId } = render(
+        await CatalogPage({ params: Promise.resolve({ locale: 'ru' }) }),
+      )
+      expect(getByTestId('split-installments')).toHaveTextContent(/4 платежа по 775/)
+    })
+
+    it('Сплит выключен — строки нет', async () => {
+      vi.spyOn(catalogApi, 'fetchCatalog').mockResolvedValue(kits)
+      vi.spyOn(splitInstallments, 'fetchSplitAvailable').mockResolvedValue(false)
+      const { queryByTestId } = render(
+        await CatalogPage({ params: Promise.resolve({ locale: 'ru' }) }),
+      )
+      expect(queryByTestId('split-installments')).toBeNull()
     })
   })
 })

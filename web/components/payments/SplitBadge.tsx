@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import Script from 'next/script'
 import { splitBadgeAmount, usePublicYandexPay } from '@/lib/yandexPay'
 
@@ -12,7 +11,7 @@ import { splitBadgeAmount, usePublicYandexPay } from '@/lib/yandexPay'
 
 export const YANDEX_PAY_SDK_URL = 'https://pay.yandex.ru/sdk/v1/pay.js'
 
-export type SplitBadgeSource = 'main' | 'listing' | 'item' | 'cart' | 'checkout'
+export type SplitBadgeSource = 'item' | 'cart' | 'checkout'
 
 export function YandexPaySdkScript({ onReady }: { onReady?: () => void }) {
   return (
@@ -24,7 +23,6 @@ interface SplitBadgeProps {
   merchantId: string | null | undefined
   amountRub: number
   source: SplitBadgeSource
-  /** m — корзина, чекаут; s — карточки в списках. */
   size?: 's' | 'm'
   className?: string
 }
@@ -58,40 +56,4 @@ export function SplitBadge({
 export function SplitBadgeAuto(props: Omit<SplitBadgeProps, 'merchantId'>) {
   const yandexPay = usePublicYandexPay()
   return <SplitBadge merchantId={yandexPay?.merchantId} {...props} />
-}
-
-/**
- * Плашка для карточек в каталоге и на главной: настройки, pay.js и бейдж — только когда
- * карточка подходит к экрану (за 200 px), как мини-каталог опта: если Яндекс плашку нарисует,
- * низ карточки сдвинется ещё вне экрана. Без IntersectionObserver — сразу.
- */
-export function SplitBadgeLazy({
-  amountRub,
-  source,
-  className,
-}: Omit<SplitBadgeProps, 'merchantId' | 'size'>) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(() => typeof IntersectionObserver === 'undefined')
-
-  useEffect(() => {
-    const element = ref.current
-    if (visible || !element) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setVisible(true)
-          observer.disconnect()
-        }
-      },
-      { rootMargin: '200px' },
-    )
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [visible])
-
-  return (
-    <div ref={ref} data-testid="split-badge-slot" data-source={source} className={className}>
-      {visible && <SplitBadgeAuto amountRub={amountRub} source={source} size="s" />}
-    </div>
-  )
 }

@@ -312,25 +312,28 @@ describe('ProductCard images behavior', () => {
   })
 })
 
-describe('ProductCard: плашка Сплита', () => {
+describe('ProductCard: «4 платежа» в Сплит', () => {
   const STATS = {
     stats: { reagents: 18, instruments: 12, reactions: 161 },
     statMaxes: { reagents: 18, instruments: 20, reactions: 161 },
   }
+  const kit = { ...baseProduct, priceRub: 3099 }
 
-  it('у набора под ценой — место под бейдж Сплита (по умолчанию для каталога)', () => {
-    render(<ProductCard product={baseProduct} images={[]} {...STATS} />)
-    const slot = screen.getByTestId('split-badge-slot')
-    expect(slot).toHaveAttribute('data-source', 'listing')
+  it('Сплит включён — под ценой строка с платежом, провайдером и оговоркой об одобрении', () => {
+    render(<ProductCard product={kit} images={[]} splitInstallments {...STATS} />)
+    expect(screen.getByTestId('split-installments')).toHaveTextContent(
+      /Сплит от Яндекса: 4 платежа по 775\s₽, при одобрении/,
+    )
   })
 
-  it('на главной — место «main»', () => {
-    render(<ProductCard product={baseProduct} images={[]} splitSource="main" {...STATS} />)
-    expect(screen.getByTestId('split-badge-slot')).toHaveAttribute('data-source', 'main')
+  it('Сплит выключен — строки нет; плашки Яндекса в карточке нет вовсе', () => {
+    const { container } = render(<ProductCard product={kit} images={[]} {...STATS} />)
+    expect(screen.queryByTestId('split-installments')).toBeNull()
+    expect(container.querySelector('yandex-pay-badge')).toBeNull()
   })
 
-  it('у компактной карточки реактива бейджа нет', () => {
-    render(<ProductCard product={baseProduct} images={[]} density="compact" {...STATS} />)
-    expect(screen.queryByTestId('split-badge-slot')).toBeNull()
+  it('у компактной карточки реактива строки нет', () => {
+    render(<ProductCard product={kit} images={[]} density="compact" splitInstallments {...STATS} />)
+    expect(screen.queryByTestId('split-installments')).toBeNull()
   })
 })
