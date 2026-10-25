@@ -30,6 +30,19 @@ tools/perf-lab/bench.sh candidate 9
 Прямо по проду, без сборки: `node tools/perf-lab/fcp-lab.mjs / prod 9`. Чтобы понять, кто отбирает полосу, обрывайте
 части запросов: `VARIANT=nojs`, `nofontimg`, `nojs+nofontimg`.
 
+## Прод через локальный прокси (A/B заголовков без выкатки)
+
+`h2proxy` проксирует и сам прод; Chrome ходит в него через `UPSTREAM`. С `DOC_ACCEPT_ENCODING=zstd` HTML у прода
+просится только в zstd — так проверяли `compress: false` (сжимает Caddy, а не Next). Подменить `Accept-Encoding` из
+Playwright нельзя: Chrome выставляет его сам.
+
+```bash
+tools/perf-lab/h2proxy/h2proxy 127.0.0.1:9443 https://ximi4ka.ru &
+DOC_ACCEPT_ENCODING=zstd tools/perf-lab/h2proxy/h2proxy 127.0.0.1:9444 https://ximi4ka.ru &
+UPSTREAM=127.0.0.1:9443 node tools/perf-lab/fcp-lab.mjs / next-gzip 9
+UPSTREAM=127.0.0.1:9444 node tools/perf-lab/fcp-lab.mjs / caddy-zstd 9
+```
+
 ## INP: тапы на замедленном CPU
 
 ```bash
