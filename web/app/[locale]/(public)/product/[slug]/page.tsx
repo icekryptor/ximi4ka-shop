@@ -38,7 +38,7 @@ import { primaryCategory, productBreadcrumbs } from '@/lib/breadcrumbs'
 import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
 import { ProductViewTracker } from './_components/ProductViewTracker'
-import { SplitBadge } from '@/components/payments/SplitBadge'
+import { SplitWidget } from '@/components/payments/SplitWidget'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -304,11 +304,14 @@ export default async function ProductPage({ params }: Props) {
                 />
                 <AddToCartWithQuantity product={product} />
               </div>
-              <SplitBadge
-                merchantId={yandexPay?.merchantId}
-                amountRub={product.priceRub}
-                source="item"
-              />
+              {yandexPay?.merchantId && (
+                <SplitWidget
+                  merchantId={yandexPay.merchantId}
+                  totalRub={product.priceRub}
+                  fallback={null}
+                  indent={false}
+                />
+              )}
             </div>
 
             <ProductTabsLJ tabs={tabs} />

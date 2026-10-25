@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { cleanup, render, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 
 const ORIGINAL_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
@@ -21,6 +21,7 @@ vi.mock('@/lib/api', () => ({
 }))
 
 vi.mock('next/script', () => ({ default: () => null }))
+import { SPLIT_FALLBACK_TEXT } from '@/components/payments/SplitWidget'
 
 import ProductPage, { generateMetadata, generateStaticParams, revalidate } from './page'
 import {
@@ -387,20 +388,21 @@ describe('ProductPage', () => {
       vi.mocked(listCategories).mockResolvedValue(empty)
     })
 
-    it('под ценой и кнопкой — бейдж на цену товара', async () => {
+    it('под ценой и кнопкой — виджет Сплита с графиком платежей, без текста-заглушки чекаута', async () => {
       vi.mocked(getPublicSettings).mockResolvedValue({
         yandexPay: { split: true, merchantId: 'merchant-public-id' },
       } as Settings)
       const { container } = render(await ProductPage(props))
-      const badge = container.querySelector('yandex-pay-badge')
-      expect(badge).toHaveAttribute('amount', '100.00')
-      expect(badge).toHaveAttribute('source', 'item')
+      expect(screen.getByTestId('split-widget')).toBeInTheDocument()
+      expect(screen.queryByText(SPLIT_FALLBACK_TEXT)).toBeNull()
+      expect(container.querySelector('yandex-pay-badge')).toBeNull()
     })
 
     it('Яндекс недоступен — бейджа нет', async () => {
       vi.mocked(getPublicSettings).mockResolvedValue({ yandexPay: null } as Settings)
       const { container } = render(await ProductPage(props))
       expect(container.querySelector('yandex-pay-badge')).toBeNull()
+      expect(screen.queryByTestId('split-widget')).toBeNull()
     })
 
     it('api настроек лежит — карточка рендерится без бейджа', async () => {

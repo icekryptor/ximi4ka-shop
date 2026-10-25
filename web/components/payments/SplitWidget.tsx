@@ -42,7 +42,21 @@ function getYaPay(): YaPaySdk | null {
   return sdk && typeof sdk.createSession === 'function' ? sdk : null
 }
 
-export function SplitWidget({ merchantId, totalRub }: { merchantId: string; totalRub: number }) {
+interface SplitWidgetProps {
+  merchantId: string
+  totalRub: number
+  /** Текст, пока виджета нет; null — без текста (карточка товара). По умолчанию — для чекаута. */
+  fallback?: string | null
+  /** Отступ слева — под радиокнопку чекаута; на карточке товара не нужен. */
+  indent?: boolean
+}
+
+export function SplitWidget({
+  merchantId,
+  totalRub,
+  fallback = SPLIT_FALLBACK_TEXT,
+  indent = true,
+}: SplitWidgetProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [sdkReady, setSdkReady] = useState(false)
   const amount = splitBadgeAmount(totalRub)
@@ -115,11 +129,9 @@ export function SplitWidget({ merchantId, totalRub }: { merchantId: string; tota
   }, [sdkReady, merchantId, amount])
 
   return (
-    <div className="flex flex-col gap-2 pl-7">
-      {mountedFor !== key && (
-        <p className="m-0 font-lj-body text-sm text-[var(--color-lj-ink)] opacity-70">
-          {SPLIT_FALLBACK_TEXT}
-        </p>
+    <div className={`flex flex-col gap-2${indent ? ' pl-7' : ''}`}>
+      {fallback && mountedFor !== key && (
+        <p className="m-0 font-lj-body text-sm text-[var(--color-lj-ink)] opacity-70">{fallback}</p>
       )}
       <div ref={ref} data-testid="split-widget" />
       <YandexPaySdkScript onReady={() => setSdkReady(true)} />

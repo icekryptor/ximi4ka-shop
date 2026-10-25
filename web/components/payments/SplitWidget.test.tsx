@@ -116,4 +116,11 @@ describe('SplitWidget', () => {
     await vi.waitFor(() => expect(session.mountWidget).toHaveBeenCalledTimes(1))
     expect(() => view.unmount()).not.toThrow()
   })
+
+  it('fallback={null} (карточка товара) — без текста-заглушки, пока виджета нет', async () => {
+    render(<SplitWidget merchantId="merchant-public-id" totalRub={2390} fallback={null} />)
+    await act(async () => {})
+    expect(screen.queryByText(SPLIT_FALLBACK_TEXT)).toBeNull()
+    expect(screen.getByTestId('split-widget')).toBeInTheDocument()
+  })
 })
