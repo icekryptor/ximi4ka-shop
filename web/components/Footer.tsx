@@ -15,6 +15,7 @@ const ROW_STRANITSY: ColophonItem[] = [
   { label: 'доставка', href: '/delivery' },
   { label: 'как проходит заказ', href: '/order-process' },
   { label: 'оплата', href: '/payment' },
+  { label: 'оплата в сплит', href: '/split' },
   { label: 'возврат', href: '/return' },
   { label: 'отследить заказ', href: '/orders/track' },
   { label: 'оферта', href: '/oferta' },

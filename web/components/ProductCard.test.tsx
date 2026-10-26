@@ -327,6 +327,8 @@ describe('ProductCard: «4 платежа» в Сплит', () => {
     expect(chip.querySelector('img')).toHaveAttribute('src', '/img/brand/yandex-split-icon.svg')
     // Слово «Сплит» уже есть в тексте чипа — значок декоративный, без повтора для скринридера.
     expect(chip.querySelector('img')).toHaveAttribute('alt', '')
+    // Чип ведёт на страницу «Как оплатить в Сплит».
+    expect(chip.closest('a')).toHaveAttribute('href', '/split')
   })
 
   it('Сплит выключен — строки нет; плашки Яндекса в карточке нет вовсе', () => {
