@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { YandexPaySdkScript } from '@/components/payments/SplitBadge'
+import { YandexPaySdkScript } from '@/components/payments/YandexPaySdkScript'
 import { splitBadgeAmount } from '@/lib/yandexPay'
 
 // Виджет Ultimate Яндекс Пэй с графиком платежей Сплита (Web SDK,
