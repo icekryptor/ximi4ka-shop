@@ -91,6 +91,17 @@ describe('GiftBanner', () => {
     }
   })
 
+  it('название подарка и кнопка «Выбрать» — обычной толщины, не жирные', async () => {
+    render(<GiftBanner totalRub={3000} />)
+    const name = await screen.findByText('Йодат калия')
+    expect(name.className).toContain('font-[400]')
+    expect(name.className).not.toContain('font-[700]')
+    for (const button of screen.getAllByText('Выбрать')) {
+      expect(button.className).toContain('font-[400]')
+      expect(button.className).not.toContain('font-[700]')
+    }
+  })
+
   it('выбор сохраняется и переключается', async () => {
     render(<GiftBanner totalRub={3500} />)
 
