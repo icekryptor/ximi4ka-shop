@@ -68,6 +68,11 @@ describe('<Footer> v3 colophon', () => {
     )
   })
 
+  it('links «оплата в сплит» to the Split guide in the СТРАНИЦЫ row', () => {
+    render(<Footer />)
+    expect(screen.getByRole('link', { name: 'оплата в сплит' })).toHaveAttribute('href', '/split')
+  })
+
   it('renders the methane molecule accent (preserved from Stage 5)', () => {
     const { container } = render(<Footer />)
     const svgs = container.querySelectorAll('svg')

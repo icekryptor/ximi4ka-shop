@@ -326,6 +326,8 @@ describe('ProductCard: «4 платежа» в Сплит', () => {
     // Значок Сплита — официальный файл из макета, локально, без скриптов Яндекса.
     expect(chip.querySelector('img')).toHaveAttribute('src', '/img/brand/yandex-split-icon.svg')
     expect(chip.querySelector('img')).toHaveAttribute('alt', 'Сплит')
+    // Чип ведёт на страницу «Как оплатить в Сплит».
+    expect(chip.closest('a')).toHaveAttribute('href', '/split')
   })
 
   it('Сплит выключен — строки нет; плашки Яндекса в карточке нет вовсе', () => {

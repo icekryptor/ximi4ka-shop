@@ -1143,6 +1143,16 @@ describe('/checkout page', () => {
       expect(within(group).queryByRole('radio', { name: 'Яндекс Пэй' })).toBeNull()
     })
 
+    it('у пункта «Сплит» — ссылка «Как оплатить в Сплит» в новой вкладке, форма не теряется', async () => {
+      mockGetPublicSettings.mockImplementation(async () => ON)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      const link = within(group).getByRole('link', { name: /как оплатить в сплит/i })
+      expect(link).toHaveAttribute('href', '/split')
+      expect(link).toHaveAttribute('target', '_blank')
+    })
+
     it('Сплит: плашка на сумму заказа, место виджета, paymentMethod=yandex_split', async () => {
       mockGetPublicSettings.mockImplementation(async () => ON)
       mapMock.available = false
