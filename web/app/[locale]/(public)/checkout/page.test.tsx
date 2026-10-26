@@ -522,7 +522,11 @@ describe('/checkout page', () => {
       render(<CheckoutPage />)
       // Браузеры заполняют поля той формы, где стоит курсор. Внутри формы YaBrowser принимал
       // ловушку за поле имени — первый клик «Оформить заказ» получал bot_suspected (лог прода 26.10).
-      expect(trapInput().closest('form')).toBeNull()
+      // Своя пустая форма: ловушка не в форме заказа и не в «бесформенной» группе с поиском шапки.
+      const own = trapInput().closest('form')
+      expect(own).not.toBeNull()
+      expect(own!.querySelector('button[type="submit"]')).toBeNull()
+      expect(own!.querySelectorAll('input')).toHaveLength(1)
     })
 
     it('пустое поле в заказ не попадает', async () => {
@@ -1179,6 +1183,9 @@ describe('/checkout page', () => {
       render(<CheckoutPage />)
       const group = await screen.findByRole('group', { name: /способ оплаты/i })
       expect(group.closest('aside')).not.toBeNull()
+      // Колонка липкая: выше экрана — прокручивается сама, кнопка не уезжает за край.
+      expect(group.closest('aside')!.className).toMatch(/lg:max-h-\[calc\(100dvh-7rem\)\]/)
+      expect(group.closest('aside')!.className).toContain('lg:overflow-y-auto')
       const button = screen.getByRole('button', { name: /оформить заказ/i })
       expect(group.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       expect(

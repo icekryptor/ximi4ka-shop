@@ -343,9 +343,13 @@ export default function CheckoutPage() {
           <>
             {/* Ловушка для ботов: вынесена за экран и не берёт фокус. Стоит ВНЕ формы: браузеры
                 заполняют поля той формы, где курсор, и YaBrowser принимал её за поле имени (первый
-                клик получал bot_suspected). Менеджеры паролей autocomplete="off" игнорируют,
+                клик получал bot_suspected); своя пустая форма отделяет её и от поиска в шапке. Менеджеры паролей autocomplete="off" игнорируют,
                 поэтому у поля нейтральное имя и data-атрибуты 1Password, LastPass, Bitwarden, Dashlane. */}
-            <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+            <form
+              aria-hidden="true"
+              onSubmit={(e) => e.preventDefault()}
+              className="absolute -left-[9999px] h-px w-px overflow-hidden"
+            >
               <input
                 type="text"
                 name="hp_check"
@@ -358,7 +362,7 @@ export default function CheckoutPage() {
                 value={trap}
                 onChange={(e) => setTrap(e.target.value)}
               />
-            </div>
+            </form>
             <form
               onSubmit={handleSubmit}
               noValidate
@@ -495,7 +499,7 @@ export default function CheckoutPage() {
               </div>
 
               {/* ---- Правая колонка: сводка заказа ---- */}
-              <aside className="border border-[var(--color-lj-rule)] p-6 flex flex-col gap-5 lg:sticky lg:top-24">
+              <aside className="border border-[var(--color-lj-rule)] p-6 flex flex-col gap-5 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
                 <h2 className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70 m-0">
                   Ваш заказ
                 </h2>

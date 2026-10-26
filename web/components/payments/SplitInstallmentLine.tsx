@@ -16,7 +16,7 @@ export function SplitInstallmentLine({ priceRub }: { priceRub: number }) {
       <span className="inline-flex h-[18px] items-center gap-1 rounded-full bg-[#EDEFF2] pl-0.5 pr-2">
         <Image
           src="/img/brand/yandex-split-icon.svg"
-          alt="Сплит"
+          alt=""
           width={14}
           height={14}
           unoptimized
