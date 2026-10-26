@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { BlogPost, Page, Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { generateLlmsTxt } from './llmsTxt'
+import { DEFAULT_SITE_DESCRIPTION } from './metadata'
 
 const BASE = 'https://example.test'
 
@@ -97,7 +98,7 @@ describe('generateLlmsTxt', () => {
   it('starts with H1 and blockquote with the default site description', () => {
     const out = generateLlmsTxt({ siteUrl: BASE, ...empty })
     expect(out.startsWith('# Химичка\n\n> ')).toBe(true)
-    expect(out).toContain('Химические наборы для детей и подростков. Научные эксперименты дома.')
+    expect(out).toContain(DEFAULT_SITE_DESCRIPTION)
   })
 
   it('omits sections without entries', () => {

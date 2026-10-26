@@ -91,6 +91,27 @@ describe('GiftBanner', () => {
     }
   })
 
+  it('название подарка и кнопка «Выбрать» — обычной толщины, не жирные', async () => {
+    render(<GiftBanner totalRub={3000} />)
+    const name = await screen.findByText('Йодат калия')
+    expect(name.className).toContain('font-[400]')
+    expect(name.className).not.toContain('font-[700]')
+    for (const button of screen.getAllByText('Выбрать')) {
+      expect(button.className).toContain('font-[400]')
+      expect(button.className).not.toContain('font-[700]')
+    }
+  })
+
+  it('на десктопе карточки подарков компактные (до 10rem), а не на всю ширину', async () => {
+    render(<GiftBanner totalRub={3000} />)
+    const group = await screen.findByRole('radiogroup', { name: 'Подарок на выбор' })
+    expect(group.className).toContain('grid-cols-3')
+    // minmax(0, …): в узкой боковой корзине карточки по-прежнему ужимаются.
+    expect(group.className).toContain('md:grid-cols-[repeat(3,minmax(0,10rem))]')
+    // И рамка по содержимому, без пустоты справа.
+    expect(screen.getByTestId('gift-banner').className).toContain('md:w-fit')
+  })
+
   it('выбор сохраняется и переключается', async () => {
     render(<GiftBanner totalRub={3500} />)
 

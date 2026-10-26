@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { CheckoutRequest } from '@ximi4ka-shop/shared'
+import type { CheckoutPaymentMethod, CheckoutRequest, PublicYandexPay } from '@ximi4ka-shop/shared'
 import { findPromo, promoDiscountRub, type Promo } from '@ximi4ka-shop/shared/types/promo'
 import { getMeOrNull } from '@/lib/accountApi'
 import { loadAttribution, safeLocalStorage } from '@/lib/attribution'
@@ -16,6 +16,8 @@ import { METRIKA_GOALS, reachGoal, rememberPendingPurchase } from '@/lib/metrika
 import { CdekDelivery } from '@/components/checkout/CdekDelivery'
 import { CisDelivery } from '@/components/checkout/CisDelivery'
 import { PromoCodeField } from '@/components/checkout/PromoCodeField'
+import { PaymentMethodField } from '@/components/checkout/PaymentMethodField'
+import { loadPublicYandexPay, reloadPublicYandexPay } from '@/lib/yandexPay'
 import { ERROR_CLASS, FIELD_CLASS, LABEL_CLASS } from '@/components/checkout/fieldStyles'
 import { useCdekDelivery } from '@/components/checkout/useCdekDelivery'
 import { useCisDelivery } from '@/components/checkout/useCisDelivery'
@@ -67,6 +69,19 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<CheckoutFormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // Яндекс Пэй из публичных настроек: null — недоступен, блока выбора нет и чекаут как
+  // раньше. По умолчанию — Т-Банк.
+  const [yandexPay, setYandexPay] = useState<PublicYandexPay | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod>('tbank')
+  useEffect(() => {
+    let cancelled = false
+    void loadPublicYandexPay().then((value) => {
+      if (!cancelled) setYandexPay(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
   // Ловушка для ботов: людям поле не видно, формы-спамеры заполняют всё подряд.
   const [trap, setTrap] = useState('')
   // Заказ создан, браузер уходит на шлюз или на страницу заказа. Корзина к этому
@@ -93,6 +108,9 @@ export default function CheckoutPage() {
   const [region, setRegion] = useState<'ru' | 'cis'>('ru')
   const cis = useCisDelivery()
   const isCis = region === 'cis'
+  // Доставка в ЕАЭС — без Яндекс Пэй и Сплита: блок скрыт, оплата картой.
+  const showPaymentChoice = yandexPay !== null && !isCis
+  const selectedMethod: CheckoutPaymentMethod = showPaymentChoice ? paymentMethod : 'tbank'
 
   // Вошедшему покупателю — контакты и доставка из профиля; гостю — подсказка
   // войти. undefined — ещё не знаем (подсказку не мигаем).
@@ -162,6 +180,7 @@ export default function CheckoutPage() {
   function changeRegion(next: 'ru' | 'cis') {
     if (next === region) return
     setRegion(next)
+    if (next === 'cis') setPaymentMethod('tbank')
     setField('phone', '')
     setErrors((prev) => ({ ...prev, phone: undefined, email: undefined }))
     setServerError(null)
@@ -206,6 +225,7 @@ export default function CheckoutPage() {
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       ...(gift ? { giftProductId: gift.productId } : {}),
       ...(promo ? { promoCode: promo.code } : {}),
+      ...(showPaymentChoice ? { paymentMethod: selectedMethod } : {}),
       customer: {
         name: fields.name.trim(),
         phone: `+${isCis ? internationalPhoneDigits(fields.phone) : phoneDigits(fields.phone)}`,
@@ -266,6 +286,12 @@ export default function CheckoutPage() {
           // чтобы покупатель увидел настоящую сумму до повторной отправки.
           setPromo(null)
           setPromoError(`${err.message}. Скидка снята, проверьте сумму и оформите заказ ещё раз.`)
+        } else if (err.code === 'payment_method_unavailable') {
+          // Яндекс выключили, пока покупатель заполнял форму: объясняем, переключаем на
+          // карту и перечитываем настройки — блок выбора пропадёт сам.
+          setServerError(`${err.message}. Выбрана оплата картой — оформите заказ ещё раз.`)
+          setPaymentMethod('tbank')
+          void reloadPublicYandexPay().then(setYandexPay)
         } else if (err.code === 'delivery_point_unknown') {
           // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
           // «Пункт получения», выбор сброшен, список города грузится заново.
@@ -314,15 +340,16 @@ export default function CheckoutPage() {
             </Link>
           </div>
         ) : (
-          <form
-            onSubmit={handleSubmit}
-            noValidate
-            className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 items-start"
-          >
-            {/* Ловушка для ботов: вынесена за экран и не берёт фокус. Менеджеры паролей
-                autocomplete="off" игнорируют, поэтому у поля нейтральное имя и data-атрибуты
-                1Password, LastPass, Bitwarden, Dashlane. */}
-            <div aria-hidden="true" className="absolute -left-[9999px] h-px w-px overflow-hidden">
+          <>
+            {/* Ловушка для ботов: вынесена за экран и не берёт фокус. Стоит ВНЕ формы: браузеры
+                заполняют поля той формы, где курсор, и YaBrowser принимал её за поле имени (первый
+                клик получал bot_suspected); своя пустая форма отделяет её и от поиска в шапке. Менеджеры паролей autocomplete="off" игнорируют,
+                поэтому у поля нейтральное имя и data-атрибуты 1Password, LastPass, Bitwarden, Dashlane. */}
+            <form
+              aria-hidden="true"
+              onSubmit={(e) => e.preventDefault()}
+              className="absolute -left-[9999px] h-px w-px overflow-hidden"
+            >
               <input
                 type="text"
                 name="hp_check"
@@ -335,237 +362,254 @@ export default function CheckoutPage() {
                 value={trap}
                 onChange={(e) => setTrap(e.target.value)}
               />
-            </div>
-
-            {/* ---- Левая колонка: данные покупателя и доставка ---- */}
-            <div className="flex flex-col gap-8">
-              {signedIn === false && (
-                <p className="text-sm opacity-70">
-                  <Link href="/account/login?next=/checkout" className="underline">
-                    Войдите
-                  </Link>
-                  , чтобы заказ сохранился в личном кабинете.
-                </p>
-              )}
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="checkout-name" className={LABEL_CLASS}>
-                  Имя *
-                </label>
-                <input
-                  id="checkout-name"
-                  type="text"
-                  autoComplete="name"
-                  value={fields.name}
-                  onChange={(e) => setField('name', e.target.value)}
-                  aria-invalid={errors.name ? true : undefined}
-                  className={FIELD_CLASS}
-                />
-                {errors.name && <p className={ERROR_CLASS}>{errors.name}</p>}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="checkout-phone" className={LABEL_CLASS}>
-                  Телефон *
-                </label>
-                <input
-                  id="checkout-phone"
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  placeholder={isCis ? '+375 29 123-45-67' : '+7 (___) ___-__-__'}
-                  value={fields.phone}
-                  onChange={(e) =>
-                    setField(
-                      'phone',
-                      isCis
-                        ? e.target.value.replace(/[^\d+()\-\s]/g, '')
-                        : formatPhoneInput(e.target.value),
-                    )
-                  }
-                  aria-invalid={errors.phone ? true : undefined}
-                  className={FIELD_CLASS}
-                />
-                {errors.phone && <p className={ERROR_CLASS}>{errors.phone}</p>}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="checkout-email" className={LABEL_CLASS}>
-                  Email{isCis ? ' *' : ''}
-                </label>
-                <input
-                  id="checkout-email"
-                  type="email"
-                  autoComplete="email"
-                  value={fields.email}
-                  onChange={(e) => setField('email', e.target.value)}
-                  aria-invalid={errors.email ? true : undefined}
-                  className={FIELD_CLASS}
-                />
-                {errors.email && <p className={ERROR_CLASS}>{errors.email}</p>}
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="checkout-telegram" className={LABEL_CLASS}>
-                  Telegram
-                </label>
-                <input
-                  id="checkout-telegram"
-                  type="text"
-                  autoComplete="off"
-                  placeholder="@username — если удобнее написать туда"
-                  value={fields.telegram}
-                  onChange={(e) => setField('telegram', e.target.value)}
-                  aria-invalid={errors.telegram ? true : undefined}
-                  className={FIELD_CLASS}
-                />
-                {errors.telegram && <p className={ERROR_CLASS}>{errors.telegram}</p>}
-              </div>
-
-              <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-                <legend className={`${LABEL_CLASS} mb-2`}>Куда доставить</legend>
-                {(
-                  [
-                    ['ru', 'Россия'],
-                    ['cis', 'Беларусь, Казахстан, Армения, Киргизия'],
-                  ] as const
-                ).map(([value, label]) => (
-                  <label
-                    key={value}
-                    className="flex cursor-pointer items-center gap-3 font-lj-body text-base text-[var(--color-lj-ink)]"
-                  >
-                    <input
-                      type="radio"
-                      name="checkout-region"
-                      value={value}
-                      checked={region === value}
-                      onChange={() => changeRegion(value)}
-                      className="accent-[var(--color-lj-ink)]"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </fieldset>
-
-              {isCis ? (
-                <CisDelivery delivery={cis} errors={errors} />
-              ) : (
-                <CdekDelivery delivery={delivery} shipping={shipping} errors={errors} />
-              )}
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="checkout-comment" className={LABEL_CLASS}>
-                  Комментарий к заказу
-                </label>
-                <textarea
-                  id="checkout-comment"
-                  rows={3}
-                  value={fields.comment}
-                  onChange={(e) => setField('comment', e.target.value)}
-                  className={`${FIELD_CLASS} resize-y`}
-                />
-              </div>
-            </div>
-
-            {/* ---- Правая колонка: сводка заказа ---- */}
-            <aside className="border border-[var(--color-lj-rule)] p-6 flex flex-col gap-5 lg:sticky lg:top-24">
-              <h2 className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70 m-0">
-                Ваш заказ
-              </h2>
-
-              <ul className="list-none p-0 m-0 flex flex-col">
-                {items.map((item) => (
-                  <li
-                    key={item.productId}
-                    className="flex items-baseline justify-between gap-4 py-3 border-b border-[var(--color-lj-rule)]"
-                  >
-                    <span className="font-lj-body text-base text-[var(--color-lj-ink)] min-w-0 truncate">
-                      {item.name}
-                      <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] opacity-60">
-                        {' '}
-                        × {item.quantity}
-                      </span>
-                    </span>
-                    <span className="font-lj-display font-[700] text-base tracking-[-0.02em] text-[var(--color-lj-ink)] whitespace-nowrap">
-                      {formatRub(item.priceRub * item.quantity)}
-                    </span>
-                  </li>
-                ))}
-                {gift && (
-                  <li
-                    data-testid="summary-gift"
-                    className="flex items-baseline justify-between gap-4 py-3 border-b border-[var(--color-lj-rule)]"
-                  >
-                    <span className="font-lj-body text-base text-[var(--color-lj-ink)] min-w-0 truncate">
-                      {gift.name}
-                      <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] opacity-60">
-                        {' '}
-                        × 1
-                      </span>
-                    </span>
-                    <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)] font-[700] whitespace-nowrap">
-                      🎁 подарок
-                    </span>
-                  </li>
+            </form>
+            <form
+              onSubmit={handleSubmit}
+              noValidate
+              className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 items-start"
+            >
+              {/* ---- Левая колонка: данные покупателя и доставка ---- */}
+              <div className="flex flex-col gap-8">
+                {signedIn === false && (
+                  <p className="text-sm opacity-70">
+                    <Link href="/account/login?next=/checkout" className="underline">
+                      Войдите
+                    </Link>
+                    , чтобы заказ сохранился в личном кабинете.
+                  </p>
                 )}
-              </ul>
 
-              <PromoCodeField
-                applied={promo}
-                error={promoError}
-                onApply={applyPromo}
-                onRemove={() => {
-                  setPromo(null)
-                  setPromoError(null)
-                }}
-              />
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="checkout-name" className={LABEL_CLASS}>
+                    Имя *
+                  </label>
+                  <input
+                    id="checkout-name"
+                    type="text"
+                    autoComplete="name"
+                    value={fields.name}
+                    onChange={(e) => setField('name', e.target.value)}
+                    aria-invalid={errors.name ? true : undefined}
+                    className={FIELD_CLASS}
+                  />
+                  {errors.name && <p className={ERROR_CLASS}>{errors.name}</p>}
+                </div>
 
-              <div className="flex flex-col gap-2">
-                <CartSummaryRows totals={totals} itemCount={itemCount} />
-                {promo && promoRub > 0 && (
-                  <div
-                    data-testid="summary-promo"
-                    className="flex justify-between gap-4 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)]"
-                  >
-                    <span>Промокод {promo.code}</span>
-                    <span className="whitespace-nowrap">−{formatRub(promoRub)}</span>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="checkout-phone" className={LABEL_CLASS}>
+                    Телефон *
+                  </label>
+                  <input
+                    id="checkout-phone"
+                    type="tel"
+                    inputMode="tel"
+                    autoComplete="tel"
+                    placeholder={isCis ? '+375 29 123-45-67' : '+7 (___) ___-__-__'}
+                    value={fields.phone}
+                    onChange={(e) =>
+                      setField(
+                        'phone',
+                        isCis
+                          ? e.target.value.replace(/[^\d+()\-\s]/g, '')
+                          : formatPhoneInput(e.target.value),
+                      )
+                    }
+                    aria-invalid={errors.phone ? true : undefined}
+                    className={FIELD_CLASS}
+                  />
+                  {errors.phone && <p className={ERROR_CLASS}>{errors.phone}</p>}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="checkout-email" className={LABEL_CLASS}>
+                    Email{isCis ? ' *' : ''}
+                  </label>
+                  <input
+                    id="checkout-email"
+                    type="email"
+                    autoComplete="email"
+                    value={fields.email}
+                    onChange={(e) => setField('email', e.target.value)}
+                    aria-invalid={errors.email ? true : undefined}
+                    className={FIELD_CLASS}
+                  />
+                  {errors.email && <p className={ERROR_CLASS}>{errors.email}</p>}
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="checkout-telegram" className={LABEL_CLASS}>
+                    Telegram
+                  </label>
+                  <input
+                    id="checkout-telegram"
+                    type="text"
+                    autoComplete="off"
+                    placeholder="@username — если удобнее написать туда"
+                    value={fields.telegram}
+                    onChange={(e) => setField('telegram', e.target.value)}
+                    aria-invalid={errors.telegram ? true : undefined}
+                    className={FIELD_CLASS}
+                  />
+                  {errors.telegram && <p className={ERROR_CLASS}>{errors.telegram}</p>}
+                </div>
+
+                <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
+                  <legend className={`${LABEL_CLASS} mb-2`}>Куда доставить</legend>
+                  {(
+                    [
+                      ['ru', 'Россия'],
+                      ['cis', 'Беларусь, Казахстан, Армения, Киргизия'],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <label
+                      key={value}
+                      className="flex cursor-pointer items-center gap-3 font-lj-body text-base text-[var(--color-lj-ink)]"
+                    >
+                      <input
+                        type="radio"
+                        name="checkout-region"
+                        value={value}
+                        checked={region === value}
+                        onChange={() => changeRegion(value)}
+                        className="accent-[var(--color-lj-ink)]"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </fieldset>
+
+                {isCis ? (
+                  <CisDelivery delivery={cis} errors={errors} />
+                ) : (
+                  <CdekDelivery delivery={delivery} shipping={shipping} errors={errors} />
+                )}
+
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="checkout-comment" className={LABEL_CLASS}>
+                    Комментарий к заказу
+                  </label>
+                  <textarea
+                    id="checkout-comment"
+                    rows={3}
+                    value={fields.comment}
+                    onChange={(e) => setField('comment', e.target.value)}
+                    className={`${FIELD_CLASS} resize-y`}
+                  />
+                </div>
+              </div>
+
+              {/* ---- Правая колонка: сводка заказа ---- */}
+              <aside className="border border-[var(--color-lj-rule)] p-6 flex flex-col gap-5 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto">
+                <h2 className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.08em] opacity-70 m-0">
+                  Ваш заказ
+                </h2>
+
+                <ul className="list-none p-0 m-0 flex flex-col">
+                  {items.map((item) => (
+                    <li
+                      key={item.productId}
+                      className="flex items-baseline justify-between gap-4 py-3 border-b border-[var(--color-lj-rule)]"
+                    >
+                      <span className="font-lj-body text-base text-[var(--color-lj-ink)] min-w-0 truncate">
+                        {item.name}
+                        <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] opacity-60">
+                          {' '}
+                          × {item.quantity}
+                        </span>
+                      </span>
+                      <span className="font-lj-display font-[700] text-base tracking-[-0.02em] text-[var(--color-lj-ink)] whitespace-nowrap">
+                        {formatRub(item.priceRub * item.quantity)}
+                      </span>
+                    </li>
+                  ))}
+                  {gift && (
+                    <li
+                      data-testid="summary-gift"
+                      className="flex items-baseline justify-between gap-4 py-3 border-b border-[var(--color-lj-rule)]"
+                    >
+                      <span className="font-lj-body text-base text-[var(--color-lj-ink)] min-w-0 truncate">
+                        {gift.name}
+                        <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] opacity-60">
+                          {' '}
+                          × 1
+                        </span>
+                      </span>
+                      <span className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)] font-[700] whitespace-nowrap">
+                        🎁 подарок
+                      </span>
+                    </li>
+                  )}
+                </ul>
+
+                <PromoCodeField
+                  applied={promo}
+                  error={promoError}
+                  onApply={applyPromo}
+                  onRemove={() => {
+                    setPromo(null)
+                    setPromoError(null)
+                  }}
+                />
+
+                <div className="flex flex-col gap-2">
+                  <CartSummaryRows totals={totals} itemCount={itemCount} />
+                  {promo && promoRub > 0 && (
+                    <div
+                      data-testid="summary-promo"
+                      className="flex justify-between gap-4 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)]"
+                    >
+                      <span>Промокод {promo.code}</span>
+                      <span className="whitespace-nowrap">−{formatRub(promoRub)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
+                    <span>Доставка</span>
+                    <span data-testid="summary-shipping">
+                      {hasShippingPrice
+                        ? shippingRub === 0
+                          ? 'Бесплатно'
+                          : formatRub(shippingRub)
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-[var(--color-lj-rule)] pt-4 font-lj-display font-[900] text-2xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
+                    <span>Итого</span>
+                    <span data-testid="summary-total">{formatRub(totalRub)}</span>
+                  </div>
+                </div>
+
+                {/* Способ оплаты — прямо над кнопкой: внизу левой колонки его было не найти. */}
+                {showPaymentChoice && (
+                  <div className="border-t border-[var(--color-lj-rule)] pt-5">
+                    <PaymentMethodField
+                      value={selectedMethod}
+                      onChange={setPaymentMethod}
+                      merchantId={yandexPay?.merchantId ?? null}
+                      totalRub={totalRub}
+                    />
                   </div>
                 )}
-                <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
-                  <span>Доставка</span>
-                  <span data-testid="summary-shipping">
-                    {hasShippingPrice
-                      ? shippingRub === 0
-                        ? 'Бесплатно'
-                        : formatRub(shippingRub)
-                      : '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between border-t border-[var(--color-lj-rule)] pt-4 font-lj-display font-[900] text-2xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
-                  <span>Итого</span>
-                  <span data-testid="summary-total">{formatRub(totalRub)}</span>
-                </div>
-              </div>
 
-              {serverError && (
-                <p role="alert" className={ERROR_CLASS}>
-                  {serverError}
+                {serverError && (
+                  <p role="alert" className={ERROR_CLASS}>
+                    {serverError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={submitting || (!isCis && delivery.quoting)}
+                  className="inline-flex items-center justify-center gap-3 px-8 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {submitting ? 'Оформляем…' : 'Оформить заказ →'}
+                </button>
+
+                <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-50 m-0">
+                  Нажимая кнопку, вы соглашаетесь с условиями обработки персональных данных
                 </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={submitting || (!isCis && delivery.quoting)}
-                className="inline-flex items-center justify-center gap-3 px-8 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {submitting ? 'Оформляем…' : 'Оформить заказ →'}
-              </button>
-
-              <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] opacity-50 m-0">
-                Нажимая кнопку, вы соглашаетесь с условиями обработки персональных данных
-              </p>
-            </aside>
-          </form>
+              </aside>
+            </form>
+          </>
         )}
       </div>
     </section>

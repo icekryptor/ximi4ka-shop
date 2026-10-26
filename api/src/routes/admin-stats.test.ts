@@ -147,6 +147,9 @@ describe('GET /api/admin/stats', () => {
     await seedEvent('begin_checkout', V3, '2026-10-06T10:00:00+03:00')
     await seedEvent('begin_checkout', V3, '2026-10-04T23:59:59+03:00') // до периода
     await seedEvent('add_to_cart', V4, '2026-10-08T00:00:00+03:00') // после периода
+    // Полевые Web Vitals — не клики посетителя: ни в clicks, ни в carts.
+    await seedEvent('web_vital', V1, '2026-10-05T12:02:00+03:00')
+    await seedEvent('web_vital', V3, '2026-10-06T10:01:00+03:00')
 
     const c1 = await seedCustomer('2026-10-05T09:00:00+03:00')
     await seedCustomer('2026-10-06T09:00:00+03:00')
@@ -164,7 +167,7 @@ describe('GET /api/admin/stats', () => {
     expect(data.from).toBe('2026-10-05')
     expect(data.to).toBe('2026-10-07')
     expect(data.totals).toEqual({
-      clicks: 5, // три add_to_cart, open_cart и begin_checkout (V3) внутри периода
+      clicks: 5, // три add_to_cart, open_cart и begin_checkout (V3) внутри периода; web_vital не в счёт
       carts: 2, // V1 и V2, V1 засчитан один раз; V3 только с begin_checkout — не считается
       orders: 4, // A, C, D, G
       revenueRub: 3500, // A 1000 + B 2500

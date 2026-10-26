@@ -16,7 +16,8 @@
     "./types/blogPost": "./src/types/blogPost.ts",
     "./types/blocks": "./src/types/blocks.ts",
     "./types/materialLead": "./src/types/materialLead.ts",
-    "./types/analytics": "./src/types/analytics.ts"
+    "./types/analytics": "./src/types/analytics.ts",
+    "./content/kidsPositioning": "./src/content/kidsPositioning.ts"
   },
   "scripts": {
     "test": "tsc --noEmit && vitest run",

@@ -39,6 +39,16 @@
     U+0000-024F, U+0400-04FF, U+1E00-1EFF, U+2000-206F, U+2100-214F, U+2190-21FF, U+2212;
 }
 
+/* YS Text — только для чипа Сплита (макет владельца). Подмножество: латиница, кириллица,
+   цифры, ₽, ×, пробелы — 10 КБ; грузится лишь там, где есть чип. */
+@font-face {
+  font-family: 'YS Text';
+  src: url('/fonts/ys-text/ys-text-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Metric-matched Arial stand-ins shown until the fonts from app/fonts.ts load
    (display: swap). Numbers are the ones next/font/google generated, so the
    pre-swap layout does not jump more than before the switch to local files. */
@@ -212,6 +222,7 @@
      карточек по макету Figma. Unbounded (--font-lj-display) остаётся за
      крупными заголовками страниц и цифрами статов. */
   --font-lj-mazzard: 'Mazzard H', var(--font-plex), 'IBM Plex Sans', system-ui, sans-serif;
+  --font-ys-text: 'YS Text', var(--font-plex), 'IBM Plex Sans', system-ui, sans-serif;
 
   /* Type scale (additive — old --text-* stay until Stage 5) */
   --text-lj-mega: clamp(2.75rem, 9vw, 9.5rem);

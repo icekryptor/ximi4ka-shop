@@ -3,6 +3,12 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import CartPage from './page'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
 
+import { resetPublicYandexPayCacheForTests } from '@/lib/yandexPay'
+
+vi.mock('next/script', () => ({ default: () => null }))
+
+const settingsMock = vi.hoisted(() => ({ yandexPay: null as unknown }))
+
 const GIFT_PRODUCTS: Record<string, string> = {
   'azotnaya-kislota-10': 'Азотная кислота',
   'solyanaya-kislota': 'Соляная кислота',
@@ -13,6 +19,7 @@ const GIFT_PRODUCTS: Record<string, string> = {
 // категорий корзины молча пропускается).
 vi.mock('@/lib/api', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/api')>()),
+  getPublicSettings: async () => ({ yandexPay: settingsMock.yandexPay }),
   getPublishedProduct: async (slug: string) => {
     const name = GIFT_PRODUCTS[slug]
     if (!name) throw new Error('not found')
@@ -22,6 +29,8 @@ vi.mock('@/lib/api', async (importActual) => ({
 
 beforeEach(() => {
   window.localStorage.clear()
+  resetPublicYandexPayCacheForTests()
+  settingsMock.yandexPay = null
 })
 
 afterEach(() => {
@@ -133,5 +142,24 @@ describe('/cart page v3 calm', () => {
     render(<CartPage />)
     expect(screen.queryByText('Вам подарок!')).not.toBeInTheDocument()
     expect(screen.getByTestId('gift-banner')).toHaveTextContent(/1\s000\s*₽/)
+  })
+  it('под «Итого» — чип «4 платежа в Сплит» на сумму корзины, без скрипта Яндекса', async () => {
+    settingsMock.yandexPay = { split: true, merchantId: 'merchant-public-id' }
+    act(() => {
+      saveCart(seed)
+    })
+    const { container } = render(<CartPage />)
+    const chip = await screen.findByTestId('split-installments')
+    expect(chip).toHaveTextContent(/1\s125\s₽\s*× 4 платежа в Сплит/)
+    expect(container.querySelector('yandex-pay-badge')).toBeNull()
+  })
+
+  it('Яндекс недоступен — плашки нет', async () => {
+    act(() => {
+      saveCart(seed)
+    })
+    render(<CartPage />)
+    await act(async () => {})
+    expect(screen.queryByTestId('split-badge')).toBeNull()
   })
 })

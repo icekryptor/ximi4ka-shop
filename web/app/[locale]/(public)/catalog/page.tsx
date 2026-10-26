@@ -11,6 +11,7 @@ import { JsonLd } from '@/components/seo/JsonLd'
 import { buildMetadata } from '@/lib/metadata'
 import { breadcrumbJsonLd, itemListJsonLd, type BreadcrumbItem } from '@/lib/jsonLd'
 import { fetchCatalog, densityForSlug, hasViewToggle } from '@/lib/catalogApi'
+import { fetchSplitAvailable } from '@/lib/splitInstallments'
 import { firstScreenCardLoading } from '@/lib/imageLoading'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, type Locale } from '@/lib/i18n'
 import { EAEU_GUIDE_ID, orderProcessPath } from '@/lib/orderProcess'
@@ -56,7 +57,10 @@ export default async function CatalogPage({ params }: Props) {
   if (!isLocale(rawLocale)) notFound()
   const locale: Locale = rawLocale
 
-  const { groups, totalProducts } = await fetchCatalog()
+  const [{ groups, totalProducts }, splitOn] = await Promise.all([
+    fetchCatalog(),
+    fetchSplitAvailable(),
+  ])
 
   const homePath = locale === DEFAULT_LOCALE ? '/' : `/${locale}`
   const catalogPath = pathForLocale(locale)
@@ -127,6 +131,7 @@ export default async function CatalogPage({ params }: Props) {
                         statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
                         images={p.images}
                         density={density}
+                        splitInstallments={splitOn}
                         // Только первая группа начинается в первом экране —
                         // остальные ниже, им хватает ленивой загрузки.
                         imageLoading={
@@ -148,7 +153,7 @@ export default async function CatalogPage({ params }: Props) {
 
       <PreFooterCta
         title="Не нашли что искали?"
-        lead="Напишите нам — поможем подобрать набор под интересы и возраст."
+        lead="Напишите нам — поможем подобрать набор под вашу задачу."
         cta={{ label: 'Связаться с нами', href: '/kontakty' }}
       />
     </>

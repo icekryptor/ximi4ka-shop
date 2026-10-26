@@ -1,9 +1,10 @@
 'use client'
 
-import { useCallback, useMemo, useSyncExternalStore } from 'react'
+import { useMemo, useSyncExternalStore } from 'react'
 import { wholesaleLineTotals } from './wholesale'
 import { getPublishedProduct } from './api'
 import { METRIKA_GOALS, ecommerceAdd, ecommerceRemove, reachGoal } from './metrika'
+import { afterNextPaint } from './afterPaint'
 
 export interface CartItem {
   productId: string
@@ -112,8 +113,9 @@ export function loadCart(): CartItem[] {
 
 export function saveCart(items: CartItem[]): void {
   if (typeof window === 'undefined') return
+  // Кэш снапшота не сбрасываем: getSnapshot сверяет сырую строку, и запись того
+  // же JSON (например, докачка категорий без изменений) не перерисует подписчиков.
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-  invalidateSnapshot()
   window.dispatchEvent(new CustomEvent(EVENT_NAME))
 }
 
@@ -254,25 +256,19 @@ function getSnapshot(): CartItem[] {
   return cachedSnapshot
 }
 
-function invalidateSnapshot() {
-  cachedSnapshot = null
-  cachedRaw = null
-}
-
 function getServerSnapshot(): CartItem[] {
   return EMPTY_SNAPSHOT
 }
 
+// Обработчик кэш не сбрасывает: getSnapshot сам сверяет сырую строку, и на одно
+// изменение строка разбирается один раз. Сброс здесь давал JSON.parse на каждого
+// подписчика — на /catalog их больше сотни, и клик «В корзину» долго обрабатывался.
 function subscribe(onChange: () => void): () => void {
-  const handler = () => {
-    invalidateSnapshot()
-    onChange()
-  }
-  window.addEventListener(EVENT_NAME, handler)
-  window.addEventListener('storage', handler)
+  window.addEventListener(EVENT_NAME, onChange)
+  window.addEventListener('storage', onChange)
   return () => {
-    window.removeEventListener(EVENT_NAME, handler)
-    window.removeEventListener('storage', handler)
+    window.removeEventListener(EVENT_NAME, onChange)
+    window.removeEventListener('storage', onChange)
   }
 }
 
@@ -281,43 +277,69 @@ function metrikaProduct(item: Pick<CartItem, 'productId' | 'name' | 'priceRub'>)
   return { id: item.productId, name: item.name, price: item.priceRub }
 }
 
-export function useCart() {
-  const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
-
-  // События Метрики шлёт хук, а не кнопки: так покрыты все места корзины
-  // (карточки, страница товара, drawer, страница корзины). clear() событий
-  // не шлёт — его зовёт чекаут после оформления заказа, это не удаление.
-  const add = useCallback((item: Omit<CartItem, 'quantity'>, qty?: number) => {
+// Действия корзины — функции модуля: ссылки стабильны без useCallback, и им не
+// нужна подписка на снапшот. События Метрики шлют действия, а не кнопки: так
+// покрыты все места корзины (карточки, страница товара, drawer, страница
+// корзины). clear() событий не шлёт — его зовёт чекаут после оформления заказа,
+// это не удаление.
+// Запись корзины синхронная, а события уходят после отрисовки кадра
+// (afterNextPaint): клик «В корзину» откликается, не дожидаясь dataLayer, ym и
+// sendBeacon. После этих действий посетитель остаётся на странице, событие не теряется.
+const CART_ACTIONS = {
+  add: (item: Omit<CartItem, 'quantity'>, qty?: number): void => {
     const current = loadCart()
     saveCart(addToCart(current, item, qty))
     const quantity = qty ?? 1
-    ecommerceAdd(metrikaProduct(item), quantity)
-    reachGoal(METRIKA_GOALS.addToCart, { product_id: item.productId, quantity })
-  }, [])
+    const product = metrikaProduct(item)
+    afterNextPaint(() => {
+      ecommerceAdd(product, quantity)
+      reachGoal(METRIKA_GOALS.addToCart, { product_id: product.id, quantity })
+    })
+  },
 
-  const remove = useCallback((productId: string) => {
+  remove: (productId: string): void => {
     const current = loadCart()
     const existing = current.find((i) => i.productId === productId)
     saveCart(removeFromCart(current, productId))
-    if (existing) ecommerceRemove(metrikaProduct(existing), existing.quantity)
-  }, [])
+    if (!existing) return
+    const product = metrikaProduct(existing)
+    afterNextPaint(() => ecommerceRemove(product, existing.quantity))
+  },
 
-  const setQty = useCallback((productId: string, qty: number) => {
+  setQty: (productId: string, qty: number): void => {
     const current = loadCart()
     const existing = current.find((i) => i.productId === productId)
     saveCart(setQuantity(current, productId, qty))
     if (!existing) return
     const delta = Math.max(qty, 0) - existing.quantity
-    if (delta > 0) ecommerceAdd(metrikaProduct(existing), delta)
-    else if (delta < 0) ecommerceRemove(metrikaProduct(existing), -delta)
-  }, [])
+    if (delta === 0) return
+    const product = metrikaProduct(existing)
+    afterNextPaint(() => {
+      if (delta > 0) ecommerceAdd(product, delta)
+      else ecommerceRemove(product, -delta)
+    })
+  },
 
-  const clear = useCallback(() => {
+  clear: (): void => {
     saveCart(clearCart())
-  }, [])
+  },
+}
 
+export type CartActions = typeof CART_ACTIONS
+
+/**
+ * Только действия корзины, без подписки на её содержимое: компонент не
+ * перерисовывается при каждом изменении корзины. Кнопкам «В корзину» больше
+ * ничего не нужно — на /catalog их больше сотни.
+ */
+export function useCartActions(): CartActions {
+  return CART_ACTIONS
+}
+
+export function useCart() {
+  const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
   const totals = useMemo(() => cartTotals(items), [items])
   const itemCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items])
 
-  return { items, add, remove, setQty, clear, subtotal: totals.subtotalRub, totals, itemCount }
+  return { items, ...CART_ACTIONS, subtotal: totals.subtotalRub, totals, itemCount }
 }

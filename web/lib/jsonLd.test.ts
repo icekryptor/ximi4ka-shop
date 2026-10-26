@@ -363,7 +363,7 @@ describe('JSON-LD helpers', () => {
     it('emits BlogPosting with description, absolute image and mainEntityOfPage', () => {
       const out = articleJsonLd(
         {
-          title: 'Опыты для детей',
+          title: 'Опыты дома',
           createdAt: '2026-05-01T00:00:00.000Z',
           updatedAt: '2026-05-02T00:00:00.000Z',
           description: 'Десять простых опытов',

@@ -54,11 +54,11 @@ describe('redirect middleware', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  // Картинки из web/public лежат под /img: без исключения /img/categories/kits.webp
+  // Картинки из web/public лежат под /img: без исключения /img/categories/kits-oge.webp
   // уехал бы в /ru/img/… (а /categories/… — вообще в роут страницы категории),
   // и next/image получил бы HTML 404 вместо картинки.
   it('skips /img/* without locale-rewriting (so public images hit the static handler)', async () => {
-    const res = await middleware(makeRequest('/img/categories/kits.webp'))
+    const res = await middleware(makeRequest('/img/categories/kits-oge.webp'))
     expect(res.headers.get('x-middleware-rewrite')).toBeNull()
     expect(res.headers.get('location')).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()

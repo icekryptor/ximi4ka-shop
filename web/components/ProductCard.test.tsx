@@ -40,7 +40,7 @@ describe('<ProductCard> v3', () => {
         emphasisWord="Химичка"
         stats={{ reagents: 18, instruments: 12, reactions: 161 }}
         statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
-        chips={['безопасно', 'ярко', 'от 10 лет']}
+        chips={['по методичке', 'ярко', '14+']}
         images={images}
       />,
     )
@@ -309,5 +309,36 @@ describe('ProductCard images behavior', () => {
       <ProductCard product={baseProduct} stats={stats} statMaxes={statMaxes} images={images} />,
     )
     expect(container.querySelector('a[href^="/product/"] span')).toBeNull()
+  })
+})
+
+describe('ProductCard: «4 платежа» в Сплит', () => {
+  const STATS = {
+    stats: { reagents: 18, instruments: 12, reactions: 161 },
+    statMaxes: { reagents: 18, instruments: 20, reactions: 161 },
+  }
+  const kit = { ...baseProduct, priceRub: 3099 }
+
+  it('Сплит включён — под ценой чип по макету: значок, платёж, «× 4 платежа в Сплит»', () => {
+    render(<ProductCard product={kit} images={[]} splitInstallments {...STATS} />)
+    const chip = screen.getByTestId('split-installments')
+    expect(chip).toHaveTextContent(/775\s₽\s*× 4 платежа в Сплит/)
+    // Значок Сплита — официальный файл из макета, локально, без скриптов Яндекса.
+    expect(chip.querySelector('img')).toHaveAttribute('src', '/img/brand/yandex-split-icon.svg')
+    // Слово «Сплит» уже есть в тексте чипа — значок декоративный, без повтора для скринридера.
+    expect(chip.querySelector('img')).toHaveAttribute('alt', '')
+    // Чип ведёт на страницу «Как оплатить в Сплит».
+    expect(chip.closest('a')).toHaveAttribute('href', '/split')
+  })
+
+  it('Сплит выключен — строки нет; плашки Яндекса в карточке нет вовсе', () => {
+    const { container } = render(<ProductCard product={kit} images={[]} {...STATS} />)
+    expect(screen.queryByTestId('split-installments')).toBeNull()
+    expect(container.querySelector('yandex-pay-badge')).toBeNull()
+  })
+
+  it('у компактной карточки реактива строки нет', () => {
+    render(<ProductCard product={kit} images={[]} density="compact" splitInstallments {...STATS} />)
+    expect(screen.queryByTestId('split-installments')).toBeNull()
   })
 })

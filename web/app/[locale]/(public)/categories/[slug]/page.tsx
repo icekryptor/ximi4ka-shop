@@ -4,6 +4,7 @@ import { ApiError, getCategory, listProductsByCategory } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { ProductCard } from '@/components/ProductCard'
+import { fetchSplitAvailable } from '@/lib/splitInstallments'
 import { LabSection } from '@/components/ui/LabSection'
 import { PaginationLJ } from '@/components/ui/PaginationLJ'
 import { PreFooterCta } from '@/components/marketing'
@@ -137,14 +138,13 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
   const pageRaw = sp.page
   const page = Math.max(1, parseInt(typeof pageRaw === 'string' ? pageRaw : '1', 10) || 1)
 
-  const {
-    category,
-    products: unsorted,
-    totalCount,
-  } = await fetchCategoryAndProducts(slug, {
-    limit: PAGE_SIZE,
-    offset: (page - 1) * PAGE_SIZE,
-  })
+  const [{ category, products: unsorted, totalCount }, splitOn] = await Promise.all([
+    fetchCategoryAndProducts(slug, {
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    }),
+    fetchSplitAvailable(),
+  ])
   // NOTE: sortProducts orders only the current page in memory. Once the public
   // products API supports a sort param, lift this into the API call so that
   // ordering applies across the full result set rather than just the page slice.
@@ -255,6 +255,7 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
                       images={p.images}
                       featured={isFeatured}
                       imageLoading={firstScreenCardLoading('kit', i)}
+                      splitInstallments={splitOn}
                     />
                   </div>
                 )

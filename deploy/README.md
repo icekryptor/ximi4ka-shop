@@ -129,6 +129,40 @@ docker exec ximishop-web wget -qO- http://ximishop-api:3001/health
 docker exec ximishop-api wget -qO- http://ximishop-web:3000/ru | head -c 300
 ```
 
+### 5а. Сжатие и HSTS
+
+**Сжатие делает Caddy, не Next.** В блоках `ximi4ka.ru` и `new.ximi4ka.ru` стоит
+`encode zstd gzip`, а в `web/next.config.ts` — `compress: false`. Встроенный в Next
+gzip сбрасывает поток после каждой порции HTML с `Z_FULL_FLUSH` (словарь
+обнуляется): главная уходила 57 КБ gzip против 37 КБ zstd от Caddy. Пока Next
+сжимал сам, Caddy пропускал уже сжатый ответ. **Не убирать `encode` из блоков**:
+без него витрина пойдёт несжатой. Проверка после выкатки:
+
+```bash
+curl -s -o /dev/null -D - -H 'accept-encoding: gzip, deflate, br, zstd' https://ximi4ka.ru/ | grep -i content-encoding   # zstd
+curl -s -o /dev/null -w '%{size_download}\n' -H 'accept-encoding: gzip, deflate, br, zstd' https://ximi4ka.ru/            # ~37 000, было ~57 000
+```
+
+**HSTS** (выполняет владелец). Браузер запоминает, что сайт только по https, и
+перестаёт ходить на http:// с редиректом 308 (лишние круги на мобильной сети).
+`includeSubDomains` и `preload` не ставим: на поддоменах живут другие сервисы.
+
+```bash
+cd /opt/supabase-src/docker/volumes/proxy/caddy
+cp Caddyfile Caddyfile.bak-$(date +%F-%H%M)
+sed -i 's/^ximi4ka\.ru {$/ximi4ka.ru {\n    header Strict-Transport-Security "max-age=31536000"/; s/^www\.ximi4ka\.ru {$/www.ximi4ka.ru {\n    header Strict-Transport-Security "max-age=31536000"/' Caddyfile
+grep -n -A1 '^ximi4ka.ru {\|^www.ximi4ka.ru {' Caddyfile   # под каждым — строка header Strict-Transport-Security
+docker exec supabase-caddy sh -c 'PROXY_AUTH_PASSWORD=$(caddy hash-password --plaintext "$PROXY_AUTH_PASSWORD") caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile'
+docker exec supabase-caddy sh -c 'PROXY_AUTH_PASSWORD=$(caddy hash-password --plaintext "$PROXY_AUTH_PASSWORD") caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile'
+curl -sI https://ximi4ka.ru/ | grep -i strict-transport      # max-age=31536000
+curl -sI https://www.ximi4ka.ru/ | grep -i strict-transport  # то же, вместе с 301 на апекс
+```
+
+Reload Caddy — только через обёртку с `PROXY_AUTH_PASSWORD`: голый `caddy reload`
+падает на чужом `basic_auth` в общем Caddyfile. Откат: вернуть
+`Caddyfile.bak-…` и тот же reload. Браузеры, уже получившие заголовок, помнят его
+`max-age` — это безопасно, пока сайт работает по https.
+
 ### 6. DNS-переключение
 
 `new.ximi4ka.ru`: CNAME на `cname.vercel-dns.com` → **A на `201.34.149.163`**.
@@ -425,6 +459,38 @@ docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
 docker exec -i supabase-db psql -U supabase_admin -d ximi4ka_shop \
   -c "UPDATE order_notifications SET failed_at = NULL, attempts = 0, last_error = NULL, next_attempt_at = now() WHERE failed_at IS NOT NULL AND last_error IS DISTINCT FROM 'пропущено при включении';"
 ```
+
+## Яндекс Пэй и Сплит
+
+Спек: `docs/superpowers/specs/2026-10-24-yandex-pay-split-design.md`. Т-Касса не меняется. Пока в `deploy/app.env`
+нет `YANDEX_PAY_MERCHANT_ID` или в админке выключен «Включить Яндекс.Pay», покупатели ничего не замечают.
+
+**Как устроено.** На чекауте три пункта: «Картой — Т-Банк» (по умолчанию), «Яндекс Пэй», «Сплит — оплата частями».
+Сервер создаёт заказ в Yandex Pay API и ведёт покупателя на форму Яндекса. Статус приходит вебхуком
+`POST /api/webhooks/yandex-pay/v1/webhook` (Caddy уже проксирует `/api/*` в api, на `new.ximi4ka.ru` путь
+`/api/webhooks/*` исключён из редиректа); потерянный вебхук добирает сверка раз в минуту. Чек 54-ФЗ пробивает облачная
+касса в кабинете Яндекса, ставка налога позиций — из `TBANK_RECEIPT_TAX` («без НДС» = код 6). При доставке в страны
+ЕАЭС пунктов Яндекса нет. Плашки Сплита — на карточке товара, в корзинах и на чекауте (только в боевом режиме).
+
+**Включение (владелец).**
+
+1. Кабинет Яндекса: подключить облачную кассу (АТОЛ Онлайн или CloudKassir); Callback URL —
+   `https://ximi4ka.ru/api/webhooks/yandex-pay` (без `/v1/webhook`, Яндекс дописывает сам); выпустить боевой ключ API.
+2. `deploy/app.env`: `YANDEX_PAY_MERCHANT_ID`, `YANDEX_PAY_API_KEY`; перезапустить api.
+3. Админка → «Настройки» → «Яндекс.Pay»: режим Production, включить.
+4. Проверка: `curl -s https://ximi4ka.ru/api/public/settings | grep -o '"yandexPay":{[^}]*}'` — есть `split` и
+   `merchantId`, ключа API нет.
+5. Первый настоящий платёж на небольшую сумму: статус «Оплачен», чек, карточка в Telegram; возврат — вручную в кабинете.
+6. Ключи, показанные в чате 11.10.2026, перевыпустить в кабинете и заменить в `deploy/app.env`.
+
+**Откат.** Снять «Включить Яндекс.Pay» в админке — мгновенно (публичные настройки кешируются до 60 секунд). Созданные
+заказы Яндекса досверяются, пока задан `YANDEX_PAY_MERCHANT_ID`.
+
+**Песочница — только локально.** На проде (`NODE_ENV=production`) режим Sandbox способов не включает.
+
+**Если что-то не так.** Заказ без ссылки на оплату — в логе api `yandex_pay: заказ … не принят: HTTP … reasonCode=…`.
+Вебхук отвечает 401/400 — смотреть `reasonCode` в ответе: `UNAUTHORIZED` (подпись или не задан Merchant ID),
+`TOKEN_EXPIRED`, `OTHER` (чужой `merchantId`).
 
 ## Конверсии оплаты в Яндекс.Метрику
 

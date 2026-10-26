@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import type { PublicOrderStatus } from '@ximi4ka-shop/shared'
+import type { PaymentProvider, PublicOrderStatus } from '@ximi4ka-shop/shared'
 import { MaterialsDownloads } from '@/components/MaterialsDownloads'
 import { ApiError, getOrderStatus } from '@/lib/api'
 import { orderMaterialDownloadUrl } from '@/lib/materialUrls'
@@ -37,6 +37,17 @@ function formatDate(iso: string): string {
     month: '2-digit',
     year: 'numeric',
   }).format(new Date(iso))
+}
+
+// Онлайн-оплата: статус приходит вебхуком провайдера, поэтому страница опрашивает
+// статус, а покупка в Метрику уходит только после подтверждения оплаты.
+function isOnlinePayment(provider: PaymentProvider): boolean {
+  return provider === 'tbank' || provider === 'yandex_pay'
+}
+
+// Ссылка «Оплатить» — только https: api отдаёт её для неоплаченного заказа Яндекс Пэй.
+function safePaymentUrl(url: string | null | undefined): string | null {
+  return typeof url === 'string' && /^https:\/\//.test(url) ? url : null
 }
 
 // Точка шага таймлайна: пройден — заполнена bone, активный — brand (или
@@ -120,15 +131,15 @@ export function OrderStatusView({
   }, [orderNumber, token])
 
   // Покупка для Метрики: после оформления (?new=1), когда заказ загружен.
-  // Онлайн-оплата (tbank) — только после подтверждения оплаты (paid/shipped;
-  // пока pending, поллинг ждёт webhook банка); ручной заказ — сразу (pending
-  // тоже). Повторов нет (отметка по номеру заказа), а без снимка состава из
-  // чекаута — страница открыта не тем браузером — ничего не уходит
+  // Онлайн-оплата (Т-Касса, Яндекс Пэй) — только после подтверждения оплаты
+  // (paid/shipped; пока pending, поллинг ждёт вебхук провайдера); ручной заказ —
+  // сразу (pending тоже). Повторов нет (отметка по номеру заказа), а без снимка
+  // состава из чекаута — страница открыта не тем браузером — ничего не уходит
   // (lib/metrika.ts). Провал/отмена — снимок больше не нужен.
   const status = order?.status
   const paid = status === 'paid' || status === 'shipped'
   const purchasable =
-    order !== null && (order.paymentProvider === 'tbank' ? paid : status === 'pending' || paid)
+    order !== null && (isOnlinePayment(order.paymentProvider) ? paid : status === 'pending' || paid)
   const totalRub = order?.totalRub
   useEffect(() => {
     if (status === 'failed' || status === 'cancelled') forgetPendingPurchase(orderNumber)
@@ -138,15 +149,16 @@ export function OrderStatusView({
     reportPurchaseOnce(orderNumber, totalRub)
   }, [celebrate, purchasable, totalRub, orderNumber])
 
-  // Поллинг каждые 5 секунд: пока tbank-платёж в полёте (максимум 5 минут)
+  // Поллинг каждые 5 секунд: пока онлайн-платёж в полёте (максимум 5 минут)
   // и пока СДЭК регистрирует оплаченный заказ и не выдал трек (до 15 минут).
   // Как только ждать нечего, pollMode → null и cleanup снимает интервал.
   const pollMode =
-    order?.status === 'pending' && order.paymentProvider === 'tbank'
+    order?.status === 'pending' && isOnlinePayment(order.paymentProvider)
       ? 'payment'
       : order?.shipment?.state === 'pending'
         ? 'track'
         : null
+  const payUrl = order?.status === 'pending' ? safePaymentUrl(order.paymentUrl) : null
   useEffect(() => {
     if (!pollMode) return
     const maxAttempts = pollMode === 'payment' ? ORDER_POLL_MAX_ATTEMPTS : TRACK_POLL_MAX_ATTEMPTS
@@ -322,14 +334,24 @@ export function OrderStatusView({
                 </div>
               )}
 
+              {payUrl && (
+                <a
+                  href={payUrl}
+                  data-testid="order-pay-link"
+                  className="inline-flex items-center gap-3 mb-8 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright"
+                >
+                  Оплатить →
+                </a>
+              )}
               <div aria-live="polite" className="flex flex-col gap-3">
                 {paymentFailed && order.status === 'pending' && (
                   <p
                     data-testid="order-payment-failed"
                     className="text-base text-[var(--color-stock-danger)] m-0 max-w-[52ch]"
                   >
-                    Оплата не прошла. Заказ сохранён — напишите нам, и мы пришлём новую ссылку на
-                    оплату.
+                    {payUrl
+                      ? 'Оплата не прошла. Заказ сохранён — нажмите «Оплатить», чтобы попробовать ещё раз.'
+                      : 'Оплата не прошла. Заказ сохранён — напишите нам, и мы пришлём новую ссылку на оплату.'}
                   </p>
                 )}
                 {order.shipment?.state === 'pending' && (
@@ -352,7 +374,7 @@ export function OrderStatusView({
                     договориться об оплате.
                   </p>
                 )}
-                {order.status === 'pending' && order.paymentProvider === 'tbank' && (
+                {order.status === 'pending' && isOnlinePayment(order.paymentProvider) && (
                   <p className="text-base text-[var(--color-lj-bone)] opacity-80 m-0 max-w-[52ch]">
                     Ожидаем подтверждение оплаты — страница обновится автоматически.
                   </p>

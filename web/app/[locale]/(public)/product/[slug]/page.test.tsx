@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { cleanup, render, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 
 const ORIGINAL_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL
@@ -17,10 +17,19 @@ vi.mock('@/lib/api', () => ({
   getPublishedProduct: vi.fn(),
   listPublishedProducts: vi.fn(),
   listCategories: vi.fn(),
+  getPublicSettings: vi.fn(),
 }))
 
+vi.mock('next/script', () => ({ default: () => null }))
+import { SPLIT_FALLBACK_TEXT } from '@/components/payments/SplitWidget'
+
 import ProductPage, { generateMetadata, generateStaticParams, revalidate } from './page'
-import { getPublishedProduct, listCategories, listPublishedProducts } from '@/lib/api'
+import {
+  getPublicSettings,
+  getPublishedProduct,
+  listCategories,
+  listPublishedProducts,
+} from '@/lib/api'
 
 describe('ProductPage', () => {
   beforeEach(() => {
@@ -343,6 +352,99 @@ describe('ProductPage', () => {
       const { container } = render(await ProductPage(props))
 
       expect(chain(container).visible).toEqual(['Главная', 'Каталог', 'Набор Кит'])
+    })
+  })
+
+  describe('плашка Сплита', () => {
+    const product: Product = {
+      id: 'p1',
+      slug: 'kit',
+      sku: 'K-1',
+      name: 'Набор Кит',
+      shortDescription: null,
+      longDescriptionBlocks: [],
+      priceRub: 100,
+      compareAtPriceRub: null,
+      stockStatus: 'in_stock',
+      isPublished: true,
+      sortOrder: 0,
+      metaTitle: null,
+      metaDescription: null,
+      ogImage: null,
+      canonicalUrl: null,
+      noindex: false,
+      translations: {},
+      images: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }
+    const props = { params: Promise.resolve({ locale: 'ru', slug: 'kit' }) }
+    const empty = { data: [], pagination: { limit: 100, offset: 0, total: 0 } }
+    type Settings = Awaited<ReturnType<typeof getPublicSettings>>
+
+    const related = { ...product, id: 'p2', slug: 'kit-2', name: 'Набор Два', priceRub: 3099 }
+    const ON = { yandexPay: { split: true, merchantId: 'merchant-public-id' } } as Settings
+    // Товар и похожий — в одной категории; её slug решает, набор это или мелкий товар.
+    function inCategory(slug: string) {
+      vi.mocked(listPublishedProducts).mockResolvedValue({
+        data: [
+          { ...product, categoryIds: ['c1'] },
+          { ...related, categoryIds: ['c1'] },
+        ],
+        pagination: { limit: 100, offset: 0, total: 2 },
+      } as unknown as Awaited<ReturnType<typeof listPublishedProducts>>)
+      vi.mocked(listCategories).mockResolvedValue({
+        data: [{ id: 'c1', slug, name: slug, translations: {} }],
+        pagination: { limit: 100, offset: 0, total: 1 },
+      } as unknown as Awaited<ReturnType<typeof listCategories>>)
+    }
+
+    beforeEach(() => {
+      vi.mocked(getPublishedProduct).mockResolvedValue(product)
+      vi.mocked(listPublishedProducts).mockResolvedValue(empty)
+      vi.mocked(listCategories).mockResolvedValue(empty)
+    })
+
+    it('набор: под ценой чип «4 платежа» и виджет Сплита, у похожих наборов — чип', async () => {
+      vi.mocked(getPublicSettings).mockResolvedValue(ON)
+      inCategory('kits')
+      const { container } = render(await ProductPage(props))
+      expect(screen.getByTestId('split-widget')).toBeInTheDocument()
+      expect(screen.queryByText(SPLIT_FALLBACK_TEXT)).toBeNull()
+      expect(container.querySelector('yandex-pay-badge')).toBeNull()
+      const chips = screen.getAllByTestId('split-installments')
+      expect(chips).toHaveLength(2)
+      expect(chips[0]).toHaveTextContent(/25\s₽\s*× 4 платежа в Сплит/)
+      expect(chips[1]).toHaveTextContent(/775\s₽\s*× 4 платежа в Сплит/)
+    })
+
+    it('мелкий товар (реактив) — ни чипа, ни виджета, ни у похожих', async () => {
+      vi.mocked(getPublicSettings).mockResolvedValue(ON)
+      inCategory('reagents')
+      render(await ProductPage(props))
+      expect(screen.queryByTestId('split-widget')).toBeNull()
+      expect(screen.queryAllByTestId('split-installments')).toHaveLength(0)
+    })
+
+    it('категорию узнать не удалось — Сплит не предлагаем', async () => {
+      vi.mocked(getPublicSettings).mockResolvedValue(ON)
+      render(await ProductPage(props))
+      expect(screen.queryByTestId('split-widget')).toBeNull()
+      expect(screen.queryAllByTestId('split-installments')).toHaveLength(0)
+    })
+
+    it('Яндекс недоступен — бейджа нет', async () => {
+      vi.mocked(getPublicSettings).mockResolvedValue({ yandexPay: null } as Settings)
+      const { container } = render(await ProductPage(props))
+      expect(container.querySelector('yandex-pay-badge')).toBeNull()
+      expect(screen.queryByTestId('split-widget')).toBeNull()
+    })
+
+    it('api настроек лежит — карточка рендерится без бейджа', async () => {
+      vi.mocked(getPublicSettings).mockRejectedValue(new Error('down'))
+      const { container } = render(await ProductPage(props))
+      expect(container.querySelector('h1')).toHaveTextContent('Набор Кит')
+      expect(container.querySelector('yandex-pay-badge')).toBeNull()
     })
   })
 })

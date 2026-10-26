@@ -4,6 +4,12 @@ import { CartDrawer } from './CartDrawer'
 import { OPEN_CART_EVENT, loadCart, saveCart, type CartItem } from '@/lib/cart'
 import { setMetrikaCounterId } from '@/lib/metrika'
 
+import { resetPublicYandexPayCacheForTests } from '@/lib/yandexPay'
+
+vi.mock('next/script', () => ({ default: () => null }))
+
+const settingsMock = vi.hoisted(() => ({ yandexPay: null as unknown }))
+
 const GIFT_PRODUCTS: Record<string, string> = {
   'azotnaya-kislota-10': 'Азотная кислота',
   'solyanaya-kislota': 'Соляная кислота',
@@ -13,6 +19,7 @@ const GIFT_PRODUCTS: Record<string, string> = {
 // Реактивы-подарки отдаём, остальное — как при недоступном api.
 vi.mock('@/lib/api', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/api')>()),
+  getPublicSettings: async () => ({ yandexPay: settingsMock.yandexPay }),
   getPublishedProduct: async (slug: string) => {
     const name = GIFT_PRODUCTS[slug]
     if (!name) throw new Error('not found')
@@ -28,6 +35,8 @@ vi.mock('next/navigation', () => ({
 
 beforeEach(() => {
   window.localStorage.clear()
+  resetPublicYandexPayCacheForTests()
+  settingsMock.yandexPay = null
   mockPrefetch.mockClear()
 })
 
@@ -301,6 +310,20 @@ describe('CartDrawer', () => {
     })
     expect(screen.queryByRole('dialog', { name: 'Корзина' })).not.toBeInTheDocument()
   })
+  it('чип «4 платежа в Сплит» — в открытой корзине, на сумму «Итого»', async () => {
+    settingsMock.yandexPay = { split: true, merchantId: 'merchant-public-id' }
+    act(() => {
+      saveCart(seed)
+    })
+    render(<CartDrawer />)
+    act(() => {
+      openDrawer()
+    })
+    const dialog = screen.getByRole('dialog', { name: 'Корзина' })
+    const chip = await within(dialog).findByTestId('split-installments')
+    expect(chip).toHaveTextContent(/1\s125\s₽\s*× 4 платежа в Сплит/)
+    expect(dialog.querySelector('yandex-pay-badge')).toBeNull()
+  })
 })
 
 describe('CartDrawer: Метрика', () => {
@@ -310,14 +333,21 @@ describe('CartDrawer: Метрика', () => {
   afterEach(() => {
     setMetrikaCounterId(null)
     delete w.ym
+    vi.useRealTimers()
   })
 
-  it('цель open_cart при открытии drawer', () => {
+  it('цель open_cart при открытии drawer — после отрисовки, не в обработчике', () => {
+    vi.useFakeTimers({
+      toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame'],
+    })
     const ym = vi.fn()
     w.ym = ym
     setMetrikaCounterId('777')
     render(<CartDrawer />)
     act(() => openDrawer())
+    expect(screen.getByRole('dialog', { name: 'Корзина' })).toBeInTheDocument()
+    expect(ym).not.toHaveBeenCalled()
+    act(() => vi.runAllTimers())
     expect(ym).toHaveBeenCalledTimes(1)
     expect(ym).toHaveBeenCalledWith('777', 'reachGoal', 'open_cart')
   })

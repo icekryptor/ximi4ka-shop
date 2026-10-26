@@ -53,8 +53,8 @@ const USE_FACT_DEFINITIONS: ReadonlyArray<{
   {
     key: 'age',
     label: 'возраст',
-    bottomLeft: 'от 10 лет',
-    bottomRight: 'рекомендуется',
+    bottomLeft: 'самостоятельно',
+    bottomRight: 'по инструкции',
     charKeys: ['Возраст', 'Age'],
   },
   {
@@ -85,10 +85,16 @@ const USE_FACT_DEFINITIONS: ReadonlyArray<{
  * Characteristics section's NumberCell row. Each cell hides individually
  * when its characteristic is missing — the row auto-collapses.
  */
+// Позиционирование 14+: подпись «самостоятельно» верна только для возраста от 14 лет;
+// младший возраст из данных не показываем вовсе (план 2026-10-22-reposition-14-plus).
+const MIN_SELF_USE_AGE = 14
+const ageOf = (value: string) => Number(value.match(/\d+/)?.[0] ?? NaN)
+
 export function extractUseFacts(characteristics: Record<string, string>): UseFact[] {
   const out: UseFact[] = []
   for (const def of USE_FACT_DEFINITIONS) {
     const value = def.charKeys.map((k) => characteristics[k]).find(Boolean)
+    if (def.key === 'age' && value && !(ageOf(value) >= MIN_SELF_USE_AGE)) continue
     if (value) {
       out.push({
         key: def.key,

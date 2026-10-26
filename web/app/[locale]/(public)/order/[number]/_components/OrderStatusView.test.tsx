@@ -313,6 +313,63 @@ describe('<OrderStatusView>', () => {
     expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toContain('status?t=frag123')
     window.history.replaceState(null, '', '/')
   })
+  it('Яндекс Пэй: опрашивает статус как онлайн-оплату и показывает «Оплатить»', async () => {
+    vi.useFakeTimers()
+    const fetchMock = fetchReturning(
+      statusPayload({ paymentProvider: 'yandex_pay', paymentUrl: 'https://pay.ya.ru/l/abc' }),
+      statusPayload({
+        paymentProvider: 'yandex_pay',
+        status: 'paid',
+        paidAt: '2026-10-24T12:00:00.000Z',
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} token="tok123" />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(screen.getByTestId('order-pay-link')).toHaveAttribute('href', 'https://pay.ya.ru/l/abc')
+    expect(screen.getByText(/Ожидаем подтверждение оплаты/)).toBeInTheDocument()
+    expect(screen.queryByText(/Менеджер свяжется/)).not.toBeInTheDocument()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(screen.getByTestId('order-status-label')).toHaveTextContent('Оплачен')
+    expect(screen.queryByTestId('order-pay-link')).toBeNull()
+  })
+
+  it('ссылку не на https кнопкой не показывает', async () => {
+    vi.stubGlobal(
+      'fetch',
+      fetchReturning(
+        statusPayload({ paymentProvider: 'yandex_pay', paymentUrl: 'javascript:alert(1)' }),
+      ),
+    )
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} token="tok123" />)
+    await screen.findByTestId('order-status-label')
+    expect(screen.queryByTestId('order-pay-link')).toBeNull()
+  })
+
+  it('возврат с неудачной оплатой при ссылке Яндекса — предлагает оплатить ещё раз', async () => {
+    vi.stubGlobal(
+      'fetch',
+      fetchReturning(
+        statusPayload({ paymentProvider: 'yandex_pay', paymentUrl: 'https://pay.ya.ru/l/abc' }),
+      ),
+    )
+    render(
+      <OrderStatusView
+        orderNumber="XM-2026-00042"
+        celebrate={false}
+        token="tok123"
+        paymentFailed
+      />,
+    )
+    expect(await screen.findByTestId('order-payment-failed')).toHaveTextContent(
+      /нажмите «Оплатить»/,
+    )
+  })
 })
 
 describe('<OrderStatusView>: покупка для Метрики', () => {
@@ -462,5 +519,28 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
     await screen.findByTestId('order-status-label')
     expect(packages()).toEqual([])
+  })
+  it('Яндекс Пэй: заказ ещё ждёт оплаты — покупка не уходит', async () => {
+    vi.stubGlobal('fetch', fetchReturning(statusPayload({ paymentProvider: 'yandex_pay' })))
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
+    await screen.findByTestId('order-status-label')
+    expect(packages()).toEqual([])
+    expect(w.ym).not.toHaveBeenCalled()
+  })
+
+  it('Яндекс Пэй: заказ уже оплачен при загрузке — покупка уходит', async () => {
+    vi.stubGlobal(
+      'fetch',
+      fetchReturning(
+        statusPayload({
+          paymentProvider: 'yandex_pay',
+          status: 'paid',
+          paidAt: '2026-10-24T12:00:00.000Z',
+        }),
+      ),
+    )
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
+    await screen.findByTestId('order-status-label')
+    expect(packages()).toHaveLength(1)
   })
 })

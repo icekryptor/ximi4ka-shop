@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
   // Self-hosted on our own VPS: `standalone` emits a minimal server bundle with
   // only the traced node_modules, which is what web/Dockerfile ships.
   output: 'standalone',
+  // Compression is Caddy's job (`encode zstd gzip` in deploy/Caddyfile*.snippet).
+  // Next's built-in gzip flushes streamed HTML with Z_FULL_FLUSH, resetting the
+  // dictionary on every chunk: the home page went out as 57 KB of gzip instead
+  // of 37 KB of zstd from Caddy, and Caddy passes already-encoded responses
+  // through untouched. Running without Caddy means uncompressed responses.
+  compress: false,
   // Required because @ximi4ka-shop/shared ships .ts source rather than compiled JS.
   transpilePackages: ['@ximi4ka-shop/shared'],
   images: {
