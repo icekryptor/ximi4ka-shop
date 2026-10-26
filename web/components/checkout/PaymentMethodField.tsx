@@ -14,15 +14,18 @@ const METHODS: CheckoutPaymentMethod[] = ['tbank', 'yandex_split']
 // официальный значок из макета владельца.
 function MethodIcon({ method }: { method: CheckoutPaymentMethod }) {
   if (method === 'yandex_split') {
+    // Обёртка шириной с иконку карты — подписи способов начинаются на одной линии.
     return (
-      <Image
-        src="/img/brand/yandex-split-icon.svg"
-        alt=""
-        width={18}
-        height={18}
-        unoptimized
-        className="h-[18px] w-[18px] shrink-0"
-      />
+      <span className="inline-flex w-6 shrink-0 justify-center">
+        <Image
+          src="/img/brand/yandex-split-icon.svg"
+          alt=""
+          width={18}
+          height={18}
+          unoptimized
+          className="h-[18px] w-[18px]"
+        />
+      </span>
     )
   }
   return (

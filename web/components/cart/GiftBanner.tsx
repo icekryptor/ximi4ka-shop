@@ -133,12 +133,12 @@ export function GiftBanner({ totalRub }: { totalRub: number }) {
                   />
                 )}
               </span>
-              <span className="font-lj-mazzard font-[700] text-[0.8125rem] leading-[1.15] tracking-[-0.01em]">
+              <span className="font-lj-mazzard font-[400] text-[0.8125rem] leading-[1.15] tracking-[-0.01em]">
                 {option.name}
               </span>
               <span
                 aria-hidden="true"
-                className={`mt-auto inline-flex items-center justify-center rounded-[14px] border-2 border-[var(--color-lj-brand-deep)] px-2 py-1.5 font-lj-mazzard font-[700] text-sm leading-none transition-colors ${
+                className={`mt-auto inline-flex items-center justify-center rounded-[14px] border-2 border-[var(--color-lj-brand-deep)] px-2 py-1.5 font-lj-mazzard font-[400] text-sm leading-none transition-colors ${
                   checked
                     ? 'bg-[var(--color-lj-brand-deep)] text-[var(--color-lj-on-bright)]'
                     : 'text-[var(--color-lj-brand-deep)] group-hover:bg-[var(--color-lj-brand-deep)]/10'
