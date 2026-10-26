@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
 import { SPLIT_FALLBACK_TEXT, SplitWidget } from '@/components/payments/SplitWidget'
 import { PAYMENT_METHOD_LABELS } from '@/lib/yandexPay'
+import { SPLIT_GUIDE_PATH } from '@/lib/splitGuide'
 
 // Отдельного «Яндекс Пэй» нет — нужен именно Сплит; карта остаётся запасной в форме Яндекса.
 const METHODS: CheckoutPaymentMethod[] = ['tbank', 'yandex_split']
@@ -75,8 +76,19 @@ export function PaymentMethodField({ value, onChange, merchantId, totalRub }: Pr
           </label>
           {method === 'yandex_split' && (
             <span className="pl-7">
-              <SplitInstallmentLine priceRub={totalRub} />
+              <SplitInstallmentLine priceRub={totalRub} linked={false} />
             </span>
+          )}
+          {method === 'yandex_split' && (
+            // В новой вкладке: заполненная форма чекаута не теряется.
+            <a
+              href={SPLIT_GUIDE_PATH}
+              target="_blank"
+              rel="noopener"
+              className="pl-7 font-lj-body text-sm text-[var(--color-lj-ink)] underline underline-offset-4 opacity-70"
+            >
+              Как оплатить в Сплит
+            </a>
           )}
           {method === 'yandex_split' &&
             value === 'yandex_split' &&
