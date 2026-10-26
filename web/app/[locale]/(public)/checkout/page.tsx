@@ -492,15 +492,6 @@ export default function CheckoutPage() {
                     className={`${FIELD_CLASS} resize-y`}
                   />
                 </div>
-
-                {showPaymentChoice && (
-                  <PaymentMethodField
-                    value={selectedMethod}
-                    onChange={setPaymentMethod}
-                    merchantId={yandexPay?.merchantId ?? null}
-                    totalRub={totalRub}
-                  />
-                )}
               </div>
 
               {/* ---- Правая колонка: сводка заказа ---- */}
@@ -582,6 +573,18 @@ export default function CheckoutPage() {
                     <span data-testid="summary-total">{formatRub(totalRub)}</span>
                   </div>
                 </div>
+
+                {/* Способ оплаты — прямо над кнопкой: внизу левой колонки его было не найти. */}
+                {showPaymentChoice && (
+                  <div className="border-t border-[var(--color-lj-rule)] pt-5">
+                    <PaymentMethodField
+                      value={selectedMethod}
+                      onChange={setPaymentMethod}
+                      merchantId={yandexPay?.merchantId ?? null}
+                      totalRub={totalRub}
+                    />
+                  </div>
+                )}
 
                 {serverError && (
                   <p role="alert" className={ERROR_CLASS}>

@@ -1151,7 +1151,7 @@ describe('/checkout page', () => {
       expect(within(group).queryByRole('radio', { name: 'Яндекс Пэй' })).toBeNull()
     })
 
-    it('Сплит: плашка на сумму заказа, место виджета, paymentMethod=yandex_split', async () => {
+    it('Сплит: чип на сумму заказа, место виджета, paymentMethod=yandex_split', async () => {
       mockGetPublicSettings.mockImplementation(async () => ON)
       mapMock.available = false
       const fetchMock = vi.fn(async () => okCheckoutResponse())
@@ -1159,9 +1159,11 @@ describe('/checkout page', () => {
       seedCart(seed)
       const { container } = render(<CheckoutPage />)
       const group = await screen.findByRole('group', { name: /способ оплаты/i })
-      const badge = container.querySelector('yandex-pay-badge')
-      expect(badge).toHaveAttribute('source', 'checkout')
-      expect(badge).toHaveAttribute('amount', '2000.00')
+      // Чип «N ₽ × 4 платежа в Сплит» вместо персональной плашки Яндекса — виден всем.
+      expect(within(group).getByTestId('split-installments')).toHaveTextContent(
+        /500\s₽\s*× 4 платежа в Сплит/,
+      )
+      expect(container.querySelector('yandex-pay-badge')).toBeNull()
       expect(screen.queryByTestId('split-widget')).toBeNull()
       fireEvent.click(within(group).getByRole('radio', { name: 'Сплит — оплата частями' }))
       expect(screen.getByTestId('split-widget')).toBeInTheDocument()
@@ -1169,6 +1171,26 @@ describe('/checkout page', () => {
       submit()
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
       expect(sentBody(fetchMock).paymentMethod).toBe('yandex_split')
+    })
+
+    it('способ оплаты — в правой колонке под «Итого», прямо над кнопкой, со значками', async () => {
+      mockGetPublicSettings.mockImplementation(async () => ON)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      expect(group.closest('aside')).not.toBeNull()
+      const button = screen.getByRole('button', { name: /оформить заказ/i })
+      expect(group.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        screen.getByTestId('summary-total').compareDocumentPosition(group) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      const tbank = within(group).getByRole('radio', { name: 'Картой — Т-Банк' }).closest('label')!
+      expect(within(tbank).getByTestId('payment-icon-card')).toBeInTheDocument()
+      const split = within(group)
+        .getByRole('radio', { name: 'Сплит — оплата частями' })
+        .closest('label')!
+      expect(split.querySelector('img')).toHaveAttribute('src', '/img/brand/yandex-split-icon.svg')
     })
 
     it('доставка в ЕАЭС скрывает Яндекс, выбор сбрасывается на Т-Банк', async () => {
