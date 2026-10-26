@@ -310,19 +310,19 @@ describe('CartDrawer', () => {
     })
     expect(screen.queryByRole('dialog', { name: 'Корзина' })).not.toBeInTheDocument()
   })
-  it('плашка Сплита — только в открытой корзине, на сумму «Итого»', async () => {
+  it('чип «4 платежа в Сплит» — в открытой корзине, на сумму «Итого»', async () => {
     settingsMock.yandexPay = { split: true, merchantId: 'merchant-public-id' }
     act(() => {
       saveCart(seed)
     })
     render(<CartDrawer />)
-    expect(document.querySelector('yandex-pay-badge')).toBeNull()
     act(() => {
       openDrawer()
     })
     const dialog = screen.getByRole('dialog', { name: 'Корзина' })
-    await within(dialog).findByTestId('split-badge')
-    expect(dialog.querySelector('yandex-pay-badge')).toHaveAttribute('amount', '4500.00')
+    const chip = await within(dialog).findByTestId('split-installments')
+    expect(chip).toHaveTextContent(/1\s125\s₽\s*× 4 платежа в Сплит/)
+    expect(dialog.querySelector('yandex-pay-badge')).toBeNull()
   })
 })
 

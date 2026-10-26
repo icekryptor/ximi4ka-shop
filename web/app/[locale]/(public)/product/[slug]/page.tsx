@@ -39,6 +39,8 @@ import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
 import { ProductViewTracker } from './_components/ProductViewTracker'
 import { SplitWidget } from '@/components/payments/SplitWidget'
+import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
+import { densityForSlug } from '@/lib/catalogApi'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -253,6 +255,10 @@ export default async function ProductPage({ params }: Props) {
     fetchPrimaryCategory(product.id),
     fetchYandexPaySafe(),
   ])
+  // Сплит — только у наборов: у мелких товаров (реактивы, оборудование, печать) его нет,
+  // и если категорию узнать не удалось — тоже нет.
+  const splitOn =
+    Boolean(yandexPay?.split) && category !== undefined && densityForSlug(category.slug) === 'kit'
   const crumbs = productBreadcrumbs({ locale, name, slug: product.slug, category })
 
   // Первое слово названия — фиолетовое (Figma: «Набор» lj/brand).
@@ -304,7 +310,8 @@ export default async function ProductPage({ params }: Props) {
                 />
                 <AddToCartWithQuantity product={product} />
               </div>
-              {yandexPay?.merchantId && (
+              {splitOn && <SplitInstallmentLine priceRub={product.priceRub} />}
+              {splitOn && yandexPay?.merchantId && (
                 <SplitWidget
                   merchantId={yandexPay.merchantId}
                   totalRub={product.priceRub}
@@ -344,6 +351,7 @@ export default async function ProductPage({ params }: Props) {
                       stats={{ reagents: 0, instruments: 0, reactions: 0 }}
                       statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
                       images={p.images}
+                      splitInstallments={splitOn}
                     />
                   </div>
                 )

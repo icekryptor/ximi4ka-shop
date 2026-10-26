@@ -143,16 +143,15 @@ describe('/cart page v3 calm', () => {
     expect(screen.queryByText('Вам подарок!')).not.toBeInTheDocument()
     expect(screen.getByTestId('gift-banner')).toHaveTextContent(/1\s000\s*₽/)
   })
-  it('под «Итого» — плашка Сплита на сумму корзины', async () => {
+  it('под «Итого» — чип «4 платежа в Сплит» на сумму корзины, без скрипта Яндекса', async () => {
     settingsMock.yandexPay = { split: true, merchantId: 'merchant-public-id' }
     act(() => {
       saveCart(seed)
     })
     const { container } = render(<CartPage />)
-    await screen.findByTestId('split-badge')
-    const badge = container.querySelector('yandex-pay-badge')
-    expect(badge).toHaveAttribute('amount', '4500.00')
-    expect(badge).toHaveAttribute('source', 'cart')
+    const chip = await screen.findByTestId('split-installments')
+    expect(chip).toHaveTextContent(/1\s125\s₽\s*× 4 платежа в Сплит/)
+    expect(container.querySelector('yandex-pay-badge')).toBeNull()
   })
 
   it('Яндекс недоступен — плашки нет', async () => {

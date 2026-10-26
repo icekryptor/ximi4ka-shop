@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import CategoryDetailPage, { dynamic, generateMetadata } from './page'
 import * as api from '@/lib/api'
+import * as splitInstallments from '@/lib/splitInstallments'
 
 // Островок сортировки ходит в App Router — в юнит-тесте роутера нет.
 vi.mock('next/navigation', () => ({
@@ -122,6 +123,21 @@ describe('CategoryDetailPage', () => {
       expect(imgs[1]).toHaveAttribute('loading', 'eager')
       expect(imgs[1]).not.toHaveAttribute('fetchpriority')
       expect(imgs[9]).toHaveAttribute('loading', 'lazy')
+    })
+
+    it('Сплит включён — строка «4 платежа» у наборов, у реактивов нет', async () => {
+      vi.spyOn(splitInstallments, 'fetchSplitAvailable').mockResolvedValue(true)
+      await renderCategory('kits')
+      expect(document.querySelectorAll('[data-testid="split-installments"]')).toHaveLength(12)
+      cleanup()
+      await renderCategory('reagents')
+      expect(document.querySelectorAll('[data-testid="split-installments"]')).toHaveLength(0)
+    })
+
+    it('Сплит выключен — строки нет', async () => {
+      vi.spyOn(splitInstallments, 'fetchSplitAvailable').mockResolvedValue(false)
+      await renderCategory('kits')
+      expect(document.querySelectorAll('[data-testid="split-installments"]')).toHaveLength(0)
     })
   })
 })

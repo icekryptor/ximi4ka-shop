@@ -382,20 +382,55 @@ describe('ProductPage', () => {
     const empty = { data: [], pagination: { limit: 100, offset: 0, total: 0 } }
     type Settings = Awaited<ReturnType<typeof getPublicSettings>>
 
+    const related = { ...product, id: 'p2', slug: 'kit-2', name: 'Набор Два', priceRub: 3099 }
+    const ON = { yandexPay: { split: true, merchantId: 'merchant-public-id' } } as Settings
+    // Товар и похожий — в одной категории; её slug решает, набор это или мелкий товар.
+    function inCategory(slug: string) {
+      vi.mocked(listPublishedProducts).mockResolvedValue({
+        data: [
+          { ...product, categoryIds: ['c1'] },
+          { ...related, categoryIds: ['c1'] },
+        ],
+        pagination: { limit: 100, offset: 0, total: 2 },
+      } as unknown as Awaited<ReturnType<typeof listPublishedProducts>>)
+      vi.mocked(listCategories).mockResolvedValue({
+        data: [{ id: 'c1', slug, name: slug, translations: {} }],
+        pagination: { limit: 100, offset: 0, total: 1 },
+      } as unknown as Awaited<ReturnType<typeof listCategories>>)
+    }
+
     beforeEach(() => {
       vi.mocked(getPublishedProduct).mockResolvedValue(product)
       vi.mocked(listPublishedProducts).mockResolvedValue(empty)
       vi.mocked(listCategories).mockResolvedValue(empty)
     })
 
-    it('под ценой и кнопкой — виджет Сплита с графиком платежей, без текста-заглушки чекаута', async () => {
-      vi.mocked(getPublicSettings).mockResolvedValue({
-        yandexPay: { split: true, merchantId: 'merchant-public-id' },
-      } as Settings)
+    it('набор: под ценой чип «4 платежа» и виджет Сплита, у похожих наборов — чип', async () => {
+      vi.mocked(getPublicSettings).mockResolvedValue(ON)
+      inCategory('kits')
       const { container } = render(await ProductPage(props))
       expect(screen.getByTestId('split-widget')).toBeInTheDocument()
       expect(screen.queryByText(SPLIT_FALLBACK_TEXT)).toBeNull()
       expect(container.querySelector('yandex-pay-badge')).toBeNull()
+      const chips = screen.getAllByTestId('split-installments')
+      expect(chips).toHaveLength(2)
+      expect(chips[0]).toHaveTextContent(/25\s₽\s*× 4 платежа в Сплит/)
+      expect(chips[1]).toHaveTextContent(/775\s₽\s*× 4 платежа в Сплит/)
+    })
+
+    it('мелкий товар (реактив) — ни чипа, ни виджета, ни у похожих', async () => {
+      vi.mocked(getPublicSettings).mockResolvedValue(ON)
+      inCategory('reagents')
+      render(await ProductPage(props))
+      expect(screen.queryByTestId('split-widget')).toBeNull()
+      expect(screen.queryAllByTestId('split-installments')).toHaveLength(0)
+    })
+
+    it('категорию узнать не удалось — Сплит не предлагаем', async () => {
+      vi.mocked(getPublicSettings).mockResolvedValue(ON)
+      render(await ProductPage(props))
+      expect(screen.queryByTestId('split-widget')).toBeNull()
+      expect(screen.queryAllByTestId('split-installments')).toHaveLength(0)
     })
 
     it('Яндекс недоступен — бейджа нет', async () => {

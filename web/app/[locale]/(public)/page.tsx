@@ -199,6 +199,8 @@ export default async function HomePage({ params }: Props) {
 
   // Только настоящие отзывы из настроек: заглушек нет (правило 6 docs/seo/WORKFLOW.md).
   const testimonials = settings?.testimonials ?? []
+  // «Сплит: 4 платежа» под ценой наборов — когда Сплит включён на сайте.
+  const splitOn = Boolean(settings?.yandexPay?.split)
 
   // Первые пять категорий — ряд из пяти плиток на десктопе; полный список — на /categories.
   const featuredCategories = categories.slice(0, 5)
@@ -287,7 +289,7 @@ export default async function HomePage({ params }: Props) {
                     stats={entry.stats}
                     statMaxes={SITE_CATALOG_STAT_MAXES}
                     images={entry.dbProduct?.images ?? []}
-                    splitSource="main"
+                    splitInstallments={splitOn}
                   />
                 </div>
               )
