@@ -517,6 +517,14 @@ describe('/checkout page', () => {
       expect(input.value).toBe('')
     })
 
+    it('поле вне формы заказа: автозаполнение браузера (YaBrowser) его не заполняет', () => {
+      seedCart(seed)
+      render(<CheckoutPage />)
+      // Браузеры заполняют поля той формы, где стоит курсор. Внутри формы YaBrowser принимал
+      // ловушку за поле имени — первый клик «Оформить заказ» получал bot_suspected (лог прода 26.10).
+      expect(trapInput().closest('form')).toBeNull()
+    })
+
     it('пустое поле в заказ не попадает', async () => {
       mapMock.available = false
       const fetchMock = vi.fn(async () => okCheckoutResponse())
