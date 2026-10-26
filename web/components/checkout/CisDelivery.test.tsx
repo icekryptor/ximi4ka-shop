@@ -86,6 +86,56 @@ describe('<CisDelivery>', () => {
     expect(note).toHaveTextContent('пока не принимаются')
   })
 
+  // Без ИИН (Казахстан) или ПИН (Киргизия) посылку не пропустит таможня.
+  it('поле ИИН есть только у Казахстана, ПИН — у Киргизии', () => {
+    render(<Harness />)
+    expect(screen.queryByLabelText(/ИИН|ПИН/)).toBeNull()
+    fireEvent.change(screen.getByLabelText(/страна/i), { target: { value: 'BY' } })
+    expect(screen.queryByLabelText(/ИИН|ПИН/)).toBeNull()
+    fireEvent.change(screen.getByLabelText(/страна/i), { target: { value: 'KZ' } })
+    expect(screen.getByLabelText(/ИИН/)).toHaveAttribute('inputmode', 'numeric')
+    expect(screen.getByText(/без него посылку не пропустит таможня/i)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/страна/i), { target: { value: 'KG' } })
+    expect(screen.queryByLabelText(/ИИН/)).toBeNull()
+    expect(screen.getByLabelText(/ПИН/)).toBeInTheDocument()
+  })
+
+  it('destination для Казахстана — только с верным ИИН, номер без пробелов', () => {
+    render(<Harness />)
+    fireEvent.change(screen.getByLabelText(/страна/i), { target: { value: 'KZ' } })
+    fireEvent.change(screen.getByLabelText(/город/i), { target: { value: 'Алматы' } })
+    fireEvent.change(screen.getByLabelText(/адрес пункта/i), { target: { value: 'ул. Абая, 1' } })
+    expect(model.destination).toBeNull()
+    fireEvent.change(screen.getByLabelText(/ИИН/), { target: { value: '850101300501' } })
+    expect(model.destination).toBeNull()
+    fireEvent.change(screen.getByLabelText(/ИИН/), { target: { value: '850101 300500' } })
+    expect(model.destination).toEqual({
+      method: 'cdek_manual_cis',
+      country: 'KZ',
+      city: 'Алматы',
+      address: 'ул. Абая, 1',
+      taxId: '850101300500',
+    })
+  })
+
+  it('смена страны сбрасывает ИИН', () => {
+    render(<Harness />)
+    fireEvent.change(screen.getByLabelText(/страна/i), { target: { value: 'KZ' } })
+    fireEvent.change(screen.getByLabelText(/ИИН/), { target: { value: '850101300500' } })
+    fireEvent.change(screen.getByLabelText(/страна/i), { target: { value: 'KG' } })
+    expect(model.taxId).toBe('')
+  })
+
+  it('показывает ошибку ИИН, пока номер неверен', () => {
+    render(<Harness errors={{ cisTaxId: 'Укажите ИИН — без него посылку не пропустит таможня' }} />)
+    fireEvent.change(screen.getByLabelText(/страна/i), { target: { value: 'KZ' } })
+    expect(
+      screen.getByText('Укажите ИИН — без него посылку не пропустит таможня'),
+    ).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText(/ИИН/), { target: { value: '850101300500' } })
+    expect(screen.queryByText('Укажите ИИН — без него посылку не пропустит таможня')).toBeNull()
+  })
+
   it('показывает ошибки полей', () => {
     render(
       <Harness

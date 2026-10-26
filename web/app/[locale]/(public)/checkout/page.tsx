@@ -205,6 +205,7 @@ export default function CheckoutPage() {
           country: cis.country,
           city: cis.city,
           address: cis.address,
+          taxId: cis.taxId,
         })
       : validateCheckoutForm(fields, {
           city: delivery.city,

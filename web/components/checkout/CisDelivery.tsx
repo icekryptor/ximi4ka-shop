@@ -5,6 +5,8 @@ import {
   CIS_COUNTRIES,
   CIS_COUNTRY_NAMES,
   CIS_DELIVERY_RULES,
+  CIS_TAX_ID,
+  cisTaxIdError,
   type CisCountry,
 } from '@ximi4ka-shop/shared/types/cis'
 import { CIS_PAYMENT_NOTE } from '@/lib/orderProcess'
@@ -12,7 +14,9 @@ import { formatRub } from '@/lib/stockLabel'
 import { ERROR_CLASS, FIELD_CLASS, HINT_CLASS, LABEL_CLASS } from './fieldStyles'
 import type { CisDeliveryModel } from './useCisDelivery'
 
-export type CisDeliveryErrors = Partial<Record<'country' | 'cisCity' | 'cisAddress', string>>
+export type CisDeliveryErrors = Partial<
+  Record<'country' | 'cisCity' | 'cisAddress' | 'cisTaxId', string>
+>
 
 interface Props {
   delivery: CisDeliveryModel
@@ -20,13 +24,15 @@ interface Props {
 }
 
 // Блок «Доставка СДЭК» для Беларуси, Казахстана, Армении и Киргизии: страна, город
-// только из списка городов с ПВЗ, адрес пункта вручную. Ошибка поля видна, пока оно
-// не заполнено правильно.
+// только из списка городов с ПВЗ, адрес пункта вручную, для Казахстана и Киргизии —
+// ИИН/ПИН для таможни. Ошибка поля видна, пока оно не заполнено правильно.
 export function CisDelivery({ delivery: d, errors }: Props) {
   const rule = d.country ? CIS_DELIVERY_RULES[d.country] : null
   const countryError = d.country ? undefined : errors.country
   const cityError = d.city ? undefined : errors.cisCity
   const addressError = d.address.trim() === '' ? errors.cisAddress : undefined
+  const taxIdRule = d.country ? CIS_TAX_ID[d.country] : undefined
+  const taxIdError = d.country && cisTaxIdError(d.country, d.taxId) ? errors.cisTaxId : undefined
 
   return (
     <section aria-labelledby="checkout-cis-delivery" className="flex flex-col gap-5">
@@ -107,6 +113,31 @@ export function CisDelivery({ delivery: d, errors }: Props) {
         />
         {addressError && <p className={ERROR_CLASS}>{addressError}</p>}
       </div>
+
+      {taxIdRule && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor="checkout-cis-tax-id" className={LABEL_CLASS}>
+            {taxIdRule.label} получателя *
+          </label>
+          <input
+            id="checkout-cis-tax-id"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={taxIdRule.length + 8}
+            placeholder={'0'.repeat(taxIdRule.length)}
+            value={d.taxId}
+            onChange={(e) => d.setTaxId(e.target.value)}
+            aria-invalid={taxIdError ? true : undefined}
+            aria-describedby="checkout-cis-tax-id-hint"
+            className={FIELD_CLASS}
+          />
+          <p id="checkout-cis-tax-id-hint" className={HINT_CLASS}>
+            {taxIdRule.hint}
+          </p>
+          {taxIdError && <p className={ERROR_CLASS}>{taxIdError}</p>}
+        </div>
+      )}
 
       {rule && (
         <p className={HINT_CLASS}>

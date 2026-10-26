@@ -3,7 +3,7 @@ import { AdminOnly } from '@/components/admin/AdminOnly'
 import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
 import type { OrderDto } from '@ximi4ka-shop/shared'
-import { CIS_COUNTRY_NAMES } from '@ximi4ka-shop/shared/types/cis'
+import { CIS_COUNTRY_NAMES, CIS_TAX_ID } from '@ximi4ka-shop/shared/types/cis'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import { OrderStatusActions } from './OrderStatusActions'
 import { OrderNotifications } from './OrderNotifications'
@@ -257,6 +257,16 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
                   </dd>
                 </div>
               )}
+              {order.deliveryMethod === 'cdek_manual_cis' &&
+                order.deliveryAddress.country &&
+                order.deliveryAddress.taxId && (
+                  <div>
+                    <dt className="text-xs text-brand-text-secondary">
+                      {CIS_TAX_ID[order.deliveryAddress.country]?.label ?? 'ИИН'} (для таможни)
+                    </dt>
+                    <dd className="text-brand-text tabular-nums">{order.deliveryAddress.taxId}</dd>
+                  </div>
+                )}
               <div>
                 <dt className="text-xs text-brand-text-secondary">Адрес</dt>
                 <dd className="text-brand-text">{order.deliveryAddress.address}</dd>
