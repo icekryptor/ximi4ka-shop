@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { CIS_PAYMENT_NOTE, CIS_PAYMENT_NOTE_FOREIGN_CARDS } from '@/lib/orderProcess'
 import { CisDelivery } from './CisDelivery'
 import { useCisDelivery } from './useCisDelivery'
 
@@ -7,11 +8,17 @@ afterEach(cleanup)
 
 let model: ReturnType<typeof useCisDelivery>
 
-function Harness({ errors = {} }: { errors?: Parameters<typeof CisDelivery>[0]['errors'] }) {
+function Harness({
+  errors = {},
+  foreignCards = false,
+}: {
+  errors?: Parameters<typeof CisDelivery>[0]['errors']
+  foreignCards?: boolean
+}) {
   const delivery = useCisDelivery()
   // eslint-disable-next-line react-hooks/globals
   model = delivery
-  return <CisDelivery delivery={delivery} errors={errors} />
+  return <CisDelivery delivery={delivery} errors={errors} foreignCards={foreignCards} />
 }
 
 function options(select: HTMLElement): string[] {
@@ -84,6 +91,12 @@ describe('<CisDelivery>', () => {
       'картами «Мир», выпущенными в Беларуси, Казахстане, Армении и Киргизии',
     )
     expect(note).toHaveTextContent('пока не принимаются')
+    expect(note).toHaveTextContent(CIS_PAYMENT_NOTE)
+  })
+
+  it('при включённом CloudPayments — плашка про карты банков ЕАЭС отдельным способом', () => {
+    render(<Harness foreignCards />)
+    expect(screen.getByRole('note')).toHaveTextContent(CIS_PAYMENT_NOTE_FOREIGN_CARDS)
   })
 
   // Без ИИН (Казахстан) или ПИН (Киргизия) посылку не пропустит таможня.

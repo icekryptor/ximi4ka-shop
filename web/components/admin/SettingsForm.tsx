@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { MAX_PAYMENT_SURCHARGE_PERCENT } from '@ximi4ka-shop/shared/types/payment'
 import {
   ApiError,
   adminUpdateSettings,
@@ -70,6 +71,14 @@ export function SettingsForm({ initial }: Props) {
   const [yandexPayMode, setYandexPayMode] = useState<'sandbox' | 'production'>(
     initial.yandexPayMode,
   )
+  const [cloudpaymentsEnabled, setCloudpaymentsEnabled] = useState(initial.cloudpaymentsEnabled)
+  const [cloudpaymentsMode, setCloudpaymentsMode] = useState<'test' | 'live'>(
+    initial.cloudpaymentsMode,
+  )
+  // Строка, а не число: пустое поле и «2.5» должны дойти до проверки при сохранении.
+  const [cloudpaymentsSurchargePercent, setCloudpaymentsSurchargePercent] = useState(
+    String(initial.cloudpaymentsSurchargePercent),
+  )
   // Marketing fields. headerPromoText is a single nullable text blob; the
   // two list editors keep their state as plain arrays of objects, with
   // helpers below to add / update / remove rows.
@@ -95,6 +104,17 @@ export function SettingsForm({ initial }: Props) {
       return
     }
 
+    // Та же граница, что у zod-схемы в api/src/routes/admin/settings.ts: целое 0…15.
+    if (
+      !/^\d{1,2}$/.test(cloudpaymentsSurchargePercent) ||
+      Number(cloudpaymentsSurchargePercent) > MAX_PAYMENT_SURCHARGE_PERCENT
+    ) {
+      setFormError(
+        `Надбавка за способ оплаты — целое число от 0 до ${MAX_PAYMENT_SURCHARGE_PERCENT}.`,
+      )
+      return
+    }
+
     const patch: AdminSettingsPatch = {
       metrikaId: nullifyBlank(metrikaId),
       ga4Id: nullifyBlank(ga4Id),
@@ -109,6 +129,9 @@ export function SettingsForm({ initial }: Props) {
       ymlDeliveryNote: nullifyBlank(ymlDeliveryNote),
       yandexPayEnabled,
       yandexPayMode,
+      cloudpaymentsEnabled,
+      cloudpaymentsMode,
+      cloudpaymentsSurchargePercent: Number(cloudpaymentsSurchargePercent),
       headerPromoText: nullifyBlank(headerPromoText),
       trustStripItems,
       testimonials,
@@ -330,6 +353,52 @@ export function SettingsForm({ initial }: Props) {
           </select>
           <p className="mt-1 text-xs text-brand-text-secondary">
             Учётные данные платёжной системы хранятся в переменных окружения, а не в базе.
+          </p>
+        </Field>
+      </Section>
+
+      <Section title="CloudPayments">
+        <p className="text-xs text-brand-text-secondary">
+          Оплата картами Visa / Mastercard банков Беларуси, Казахстана, Армении и Киргизии — только
+          при доставке в эти страны. Ключи — в app.env на сервере. Боевой режим — только после
+          подключения иностранных карт и решения по чеку (deploy/README.md).
+        </p>
+        <div className="flex items-center gap-3">
+          <input
+            id="cloudpayments-enabled"
+            type="checkbox"
+            checked={cloudpaymentsEnabled}
+            onChange={(e) => setCloudpaymentsEnabled(e.target.checked)}
+          />
+          <label htmlFor="cloudpayments-enabled" className="text-sm text-brand-text">
+            Включить CloudPayments на чекауте (только доставка в ЕАЭС)
+          </label>
+        </div>
+        <Field label="Режим CloudPayments" htmlFor="cloudpayments-mode">
+          <select
+            id="cloudpayments-mode"
+            value={cloudpaymentsMode}
+            onChange={(e) => setCloudpaymentsMode(e.target.value as 'test' | 'live')}
+            className="input"
+          >
+            <option value="test">Тест (на сайте не виден)</option>
+            <option value="live">Боевой</option>
+          </select>
+        </Field>
+        <Field label="Надбавка за способ оплаты, %" htmlFor="cloudpayments-surcharge">
+          <input
+            id="cloudpayments-surcharge"
+            type="number"
+            min={0}
+            max={MAX_PAYMENT_SURCHARGE_PERCENT}
+            step={1}
+            onWheel={(e) => e.currentTarget.blur()}
+            value={cloudpaymentsSurchargePercent}
+            onChange={(e) => setCloudpaymentsSurchargePercent(e.target.value)}
+            className="input w-24"
+          />
+          <p className="mt-1 text-xs text-brand-text-secondary">
+            0 — без надбавки. Ненулевой процент — только после ответа юриста.
           </p>
         </Field>
       </Section>

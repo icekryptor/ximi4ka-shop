@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { z } from 'zod'
+import { MAX_PAYMENT_SURCHARGE_PERCENT } from '@ximi4ka-shop/shared/types/payment'
 import { AppDataSource } from '../../config/dataSource.js'
 import { SiteSettings } from '../../entities/SiteSettings.js'
 import { getSettings } from '../../lib/settings.js'
@@ -35,6 +36,15 @@ const UpdateSchema = z.object({
   ymlDeliveryNote: z.string().max(2000).nullable().optional(),
   yandexPayEnabled: z.boolean().optional(),
   yandexPayMode: z.enum(['sandbox', 'production']).optional(),
+  cloudpaymentsEnabled: z.boolean().optional(),
+  cloudpaymentsMode: z.enum(['test', 'live']).optional(),
+  // Надбавка за оплату через CloudPayments, целые проценты; 0 — без надбавки.
+  cloudpaymentsSurchargePercent: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_PAYMENT_SURCHARGE_PERCENT)
+    .optional(),
   // --- Marketing fields (homepage redesign) ---
   // Header promo strip text — null hides the strip in the header. 500 chars
   // is generous; the admin form is a single-line textarea so a paste of

@@ -53,4 +53,15 @@ describe('статус заказа: ссылка «Оплатить» для Я
       'paymentUrl',
     )
   })
+
+  it('«Оплатить» отдаётся для неоплаченного заказа CloudPayments с секретом', async () => {
+    const o = await seedOrder({
+      paymentProvider: 'cloudpayments',
+      paymentUrl: 'https://orders.cloudpayments.ru/d/gASGZ',
+    })
+    const res = await status(o.orderNumber, o.publicToken)
+    expect(res.body.data.paymentUrl).toBe('https://orders.cloudpayments.ru/d/gASGZ')
+    const noSecret = await status(o.orderNumber)
+    expect(noSecret.body.data.paymentUrl ?? null).toBeNull()
+  })
 })

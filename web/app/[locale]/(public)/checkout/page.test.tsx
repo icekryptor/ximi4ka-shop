@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { resetPublicYandexPayCacheForTests } from '@/lib/yandexPay'
+import { resetPublicCloudPaymentsCacheForTests } from '@/lib/cloudPayments'
+import { CIS_PAYMENT_NOTE } from '@/lib/orderProcess'
 import type {
   CdekCity,
   CdekCityPoints,
@@ -12,6 +14,7 @@ import CheckoutPage from './page'
 import { loadGiftChoice, saveGiftChoice } from '@/lib/gift'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
 import { reportPurchaseOnce, setMetrikaCounterId } from '@/lib/metrika'
+import { ApiError } from '@/lib/api'
 
 const mockPush = vi.fn<(path: string) => void>()
 
@@ -126,7 +129,11 @@ const mockQuoteShipping = vi.fn(async ({ destination }: { destination?: QuoteDes
 })
 
 // Публичные настройки идут мимо fetch: тесты чекаута считают вызовы fetch.
-const mockGetPublicSettings = vi.fn(async () => ({ yandexPay: null as unknown }))
+const mockGetPublicSettings = vi.fn<(opts?: { fresh?: boolean }) => Promise<unknown>>(async () => ({
+  yandexPay: null,
+}))
+// Админ-превью CloudPayments (?cp_test=1) — тоже мимо fetch.
+const mockCloudPaymentsPreview = vi.fn<() => Promise<unknown>>(async () => null)
 
 // Виджет Сплита грузит pay.js — в тестах скрипта нет, остаётся текст.
 vi.mock('next/script', () => ({ default: () => null }))
@@ -138,14 +145,18 @@ vi.mock('@/lib/api', async (importActual) => {
     quoteShipping: (payload: never) => mockQuoteShipping(payload),
     suggestCdekCities: (q: string) => mockSuggest(q),
     getCdekPoints: (cityCode: number) => mockGetPoints(cityCode),
-    getPublicSettings: () => mockGetPublicSettings(),
+    getPublicSettings: (opts?: { fresh?: boolean }) => mockGetPublicSettings(opts),
+    getCloudPaymentsCheckoutPreview: () => mockCloudPaymentsPreview(),
   }
 })
 
 beforeEach(() => {
   mockGetPublicSettings.mockReset()
   mockGetPublicSettings.mockImplementation(async () => ({ yandexPay: null }))
+  mockCloudPaymentsPreview.mockReset()
+  mockCloudPaymentsPreview.mockImplementation(async () => null)
   resetPublicYandexPayCacheForTests()
+  resetPublicCloudPaymentsCacheForTests()
   window.localStorage.clear()
   window.sessionStorage.clear()
   mockPush.mockReset()
@@ -756,6 +767,217 @@ describe('/checkout page', () => {
       expect(screen.getByLabelText(/телефон/i)).toHaveValue('')
       expect(screen.queryByText('Укажите email — на него придёт чек')).not.toBeInTheDocument()
     })
+
+    describe('оплата картой банка ЕАЭС (CloudPayments)', () => {
+      const FOREIGN_CARD = /Visa \/ Mastercard банка Беларуси/
+
+      function mockPublicSettings(settings: Record<string, unknown>) {
+        mockGetPublicSettings.mockImplementation(async () => settings as never)
+      }
+
+      // Корзина 2000 ₽, Беларусь: доставка 700 ₽ (ниже порога 3000 ₽).
+      async function chooseCisBelarus() {
+        await chooseCisRegion()
+        fillCis('BY', 'Минск')
+      }
+
+      async function chooseRussia() {
+        fireEvent.click(screen.getByRole('radio', { name: /^россия$/i }))
+        await screen.findByRole('combobox', { name: /город/i })
+      }
+
+      function stubCheckoutFetch() {
+        const fetchMock = vi.fn(async () => okCheckoutResponse())
+        vi.stubGlobal('fetch', fetchMock)
+        return fetchMock
+      }
+
+      function lastCheckoutBody(fetchMock: ReturnType<typeof vi.fn>) {
+        const [, init] = fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit]
+        return JSON.parse(init.body as string) as Record<string, unknown>
+      }
+
+      async function submitValidCisForm(fetchMock: ReturnType<typeof vi.fn>) {
+        cisContacts()
+        submit()
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      }
+
+      async function submitValidRuForm(fetchMock: ReturnType<typeof vi.fn>) {
+        await fillValidForm()
+        submit()
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      }
+
+      it('ЕАЭС + CloudPayments 8%: строка надбавки, итог с ней, paymentMethod в запросе', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+        const fetchMock = stubCheckoutFetch()
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        expect(screen.getByRole('note')).toHaveTextContent('отдельным способом')
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        // 8% от 2000 + 700 = 216 ₽.
+        expect(screen.getByTestId('summary-payment-surcharge')).toHaveTextContent('216')
+        expect(screen.getByTestId('summary-total')).toHaveTextContent('2 916')
+        await submitValidCisForm(fetchMock)
+        expect(lastCheckoutBody(fetchMock).paymentMethod).toBe('cloudpayments')
+      })
+
+      it('смена региона на Россию после выбора CloudPayments — сброс на Т-Банк, без надбавки', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+        mapMock.available = false
+        const fetchMock = stubCheckoutFetch()
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        expect(screen.getByTestId('summary-payment-surcharge')).toBeInTheDocument()
+        await chooseRussia()
+        expect(screen.queryByTestId('summary-payment-surcharge')).toBeNull()
+        await submitValidRuForm(fetchMock)
+        expect(lastCheckoutBody(fetchMock).paymentMethod).not.toBe('cloudpayments')
+      })
+
+      it('после возврата в ЕАЭС выбран Т-Банк, надбавки нет', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        await chooseRussia()
+        await chooseCisBelarus()
+        expect(
+          await screen.findByLabelText('Картой «Мир» или российской Visa / Mastercard'),
+        ).toBeChecked()
+        expect(screen.queryByTestId('summary-payment-surcharge')).toBeNull()
+      })
+
+      it('CloudPayments выключили до отправки: 400 — нейтральный текст, Т-Банк, выбор пропал', async () => {
+        // Первые два ответа — загрузка Яндекса и CloudPayments, дальше — перечитывание.
+        const ON = { yandexPay: null, cloudPayments: { surchargePercent: 8 } }
+        mockGetPublicSettings
+          .mockImplementationOnce(async () => ON)
+          .mockImplementationOnce(async () => ON)
+          .mockImplementation(async () => ({ yandexPay: null, cloudPayments: null }))
+        const fetchMock = vi
+          .fn()
+          .mockImplementationOnce(
+            async () =>
+              new Response(
+                JSON.stringify({
+                  error: {
+                    code: 'payment_method_unavailable',
+                    message: 'Оплата картой банка другой страны сейчас недоступна',
+                  },
+                }),
+                { status: 400 },
+              ),
+          )
+          .mockImplementation(async () => okCheckoutResponse())
+        vi.stubGlobal('fetch', fetchMock)
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        cisContacts()
+        submit()
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+          'Оплата картой банка другой страны сейчас недоступна. Выберите другой способ оплаты и оформите заказ ещё раз.',
+        )
+        // Перечитывание обоих способов — мимо HTTP-кеша настроек.
+        await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(4))
+        expect(mockGetPublicSettings).toHaveBeenNthCalledWith(3, { fresh: true })
+        expect(mockGetPublicSettings).toHaveBeenNthCalledWith(4, { fresh: true })
+        await vi.waitFor(() => expect(screen.queryByLabelText(FOREIGN_CARD)).toBeNull())
+        expect(screen.queryByTestId('summary-payment-surcharge')).toBeNull()
+        expect(screen.getByRole('note')).toHaveTextContent(CIS_PAYMENT_NOTE)
+        expect(loadCart()).toHaveLength(1)
+        submit()
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+        expect(lastCheckoutBody(fetchMock)).not.toHaveProperty('paymentMethod')
+      })
+
+      describe('тестовый режим для админа (?cp_test=1)', () => {
+        const ADMIN_NOTE = 'Тестовый режим CloudPayments — видно только администратору'
+
+        afterEach(() => {
+          window.history.replaceState(null, '', '/')
+        })
+
+        it('публичного нет, админ-превью 8% — выбор и пометка видны, надбавка считается', async () => {
+          window.history.replaceState(null, '', '/checkout?cp_test=1')
+          mockPublicSettings({ yandexPay: null, cloudPayments: null })
+          mockCloudPaymentsPreview.mockImplementation(async () => ({ surchargePercent: 8 }))
+          const fetchMock = stubCheckoutFetch()
+          seedCart(seed)
+          render(<CheckoutPage />)
+          await chooseCisBelarus()
+          fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+          expect(screen.getByText(ADMIN_NOTE)).toBeInTheDocument()
+          expect(screen.getByTestId('summary-payment-surcharge')).toHaveTextContent('216')
+          await submitValidCisForm(fetchMock)
+          expect(lastCheckoutBody(fetchMock).paymentMethod).toBe('cloudpayments')
+          expect(mockCloudPaymentsPreview).toHaveBeenCalledTimes(1)
+        })
+
+        it('без cp_test превью не запрашивается', async () => {
+          mockPublicSettings({ yandexPay: null, cloudPayments: null })
+          mockCloudPaymentsPreview.mockImplementation(async () => ({ surchargePercent: 8 }))
+          seedCart(seed)
+          render(<CheckoutPage />)
+          await chooseCisBelarus()
+          await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(2))
+          await act(async () => {})
+          expect(mockCloudPaymentsPreview).not.toHaveBeenCalled()
+          expect(screen.queryByLabelText(FOREIGN_CARD)).toBeNull()
+          expect(screen.queryByText(ADMIN_NOTE)).toBeNull()
+        })
+
+        it('публичное значение есть — превью не нужно, пометки нет', async () => {
+          window.history.replaceState(null, '', '/checkout?cp_test=1')
+          mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+          seedCart(seed)
+          render(<CheckoutPage />)
+          await chooseCisBelarus()
+          await screen.findByLabelText(FOREIGN_CARD)
+          expect(mockCloudPaymentsPreview).not.toHaveBeenCalled()
+          expect(screen.queryByText(ADMIN_NOTE)).toBeNull()
+        })
+
+        it('превью 401 (не админ) — блока нет, прежняя плашка', async () => {
+          window.history.replaceState(null, '', '/checkout?cp_test=1')
+          mockPublicSettings({ yandexPay: null, cloudPayments: null })
+          mockCloudPaymentsPreview.mockImplementation(async () => {
+            throw new ApiError(401, 'auth_required', 'Authentication required')
+          })
+          seedCart(seed)
+          render(<CheckoutPage />)
+          await chooseCisBelarus()
+          await vi.waitFor(() => expect(mockCloudPaymentsPreview).toHaveBeenCalledTimes(1))
+          await act(async () => {})
+          expect(screen.queryByLabelText(FOREIGN_CARD)).toBeNull()
+          expect(screen.queryByText(ADMIN_NOTE)).toBeNull()
+          expect(screen.getByRole('note')).toHaveTextContent(CIS_PAYMENT_NOTE)
+        })
+      })
+
+      it('CloudPayments недоступен — в блоке ЕАЭС нет выбора оплаты, прежняя плашка', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: null })
+        const fetchMock = stubCheckoutFetch()
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        // Настройки уже пришли: отсутствие выбора — не из-за того, что они ещё грузятся.
+        await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(2))
+        await act(async () => {})
+        expect(screen.queryByLabelText(FOREIGN_CARD)).toBeNull()
+        expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull()
+        expect(screen.getByRole('note')).toHaveTextContent(CIS_PAYMENT_NOTE)
+        await submitValidCisForm(fetchMock)
+        expect(lastCheckoutBody(fetchMock)).not.toHaveProperty('paymentMethod')
+      })
+    })
   })
 
   describe('отказ сервера по ловушке и лимиту', () => {
@@ -1226,7 +1448,9 @@ describe('/checkout page', () => {
     })
 
     it('Яндекс выключили до отправки: 400 — сообщение, сброс на Т-Банк, блок пропал, корзина цела', async () => {
+      // Первые два ответа — загрузка Яндекса и CloudPayments, дальше — перечитывание.
       mockGetPublicSettings
+        .mockImplementationOnce(async () => ON)
         .mockImplementationOnce(async () => ON)
         .mockImplementation(async () => ({ yandexPay: null }))
       mapMock.available = false
@@ -1250,9 +1474,10 @@ describe('/checkout page', () => {
       await fillValidForm()
       submit()
       expect(await screen.findByRole('alert')).toHaveTextContent(
-        /яндекс пэй сейчас недоступен.*картой/i,
+        'Яндекс Пэй сейчас недоступен. Выберите другой способ оплаты и оформите заказ ещё раз.',
       )
-      await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(2))
+      // Перечитываются оба способа — Яндекс и CloudPayments.
+      await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(4))
       await vi.waitFor(() =>
         expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull(),
       )

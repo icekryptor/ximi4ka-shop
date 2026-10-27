@@ -157,6 +157,7 @@ export async function listCustomerOrders(
       promoCode: o.promoCode,
       promoDiscountRub: o.promoDiscountRub,
       shippingRub: o.shippingRub,
+      paymentSurchargeRub: o.paymentSurchargeRub,
       deliveryMethod: o.deliveryMethod as OrderDeliveryMethod,
       deliveryAddress: o.deliveryAddress.address ?? '',
       shipment: shipmentView(shipments.find((s) => s.orderId === o.id)),

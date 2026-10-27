@@ -55,6 +55,18 @@ describe('sheetRow', () => {
     expect(row.slice(-4, -1)).toEqual([950, 350, 1300])
   })
 
+  it('надбавка за оплату картой идёт в «Доставка, ₽»: Товары + Доставка = Итого', () => {
+    const row = sheetRow({
+      ...order,
+      subtotalRub: 2000,
+      shippingRub: 700,
+      paymentProvider: 'cloudpayments',
+      paymentSurchargeRub: 216,
+      totalRub: 2916,
+    })
+    expect(row.slice(-4, -1)).toEqual([2000, 916, 2916])
+  })
+
   it('строка заказа по колонкам листа', () => {
     expect(sheetRow(order)).toEqual([
       'XM-2026-00042',
@@ -334,6 +346,25 @@ describe('telegramCard', () => {
     expect(card).not.toMatch(
       /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
     )
+  })
+
+  it('CloudPayments: способ оплаты и надбавка в карточке; без надбавки — без строки', () => {
+    const card = telegramCard({
+      ...order,
+      paymentProvider: 'cloudpayments',
+      paymentSurchargeRub: 216,
+      totalRub: order.totalRub + 216,
+    })
+    expect(card).toContain('Оплата: карта банка другой страны (CloudPayments)')
+    expect(card).toContain('надбавка за способ оплаты +')
+    const zero = telegramCard({
+      ...order,
+      paymentProvider: 'cloudpayments',
+      paymentSurchargeRub: 0,
+    })
+    expect(zero).not.toContain('надбавка')
+    const tbank = telegramCard({ ...order, paymentProvider: 'tbank' })
+    expect(tbank).not.toContain('CloudPayments')
   })
 })
 

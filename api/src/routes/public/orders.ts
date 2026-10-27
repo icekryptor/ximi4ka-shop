@@ -59,10 +59,12 @@ publicOrdersRouter.get(
       const order = await repo.findOneBy({ orderNumber: req.params.number })
       if (!order) throw notFound('order_not_found', 'Заказ не найден')
       const withSecret = tokenMatches(req.query.t, order.publicToken)
-      // Кнопка «Оплатить»: ссылка на форму Яндекса — только с секретом и пока заказ
-      // Яндекс Пэй не оплачен.
+      // Кнопка «Оплатить»: ссылка на форму Яндекса или CloudPayments — только с секретом
+      // и пока заказ не оплачен. У CloudPayments после отказа карты ссылка рабочая.
       const payLink =
-        withSecret && order.status === 'pending' && order.paymentProvider === 'yandex_pay'
+        withSecret &&
+        order.status === 'pending' &&
+        (order.paymentProvider === 'yandex_pay' || order.paymentProvider === 'cloudpayments')
           ? order.paymentUrl
           : null
       res.json({

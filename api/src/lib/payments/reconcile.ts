@@ -3,6 +3,8 @@ import { Order } from '../../entities/Order.js'
 import { getPaymentProvider } from './index.js'
 import { getYandexOrderStatus } from './yandexPay/client.js'
 import { hasYandexPayMerchant } from './yandexPay/config.js'
+import { getCloudPaymentsStatus } from './cloudpayments/client.js'
+import { hasCloudPaymentsKeys } from './cloudpayments/config.js'
 import { applyPaymentStatus } from './orderStatus.js'
 import { saveOrderWithStatusEvent } from '../notifications/outbox.js'
 import type { PaymentProvider } from './types.js'
@@ -53,9 +55,10 @@ export async function reconcilePendingOrders(
     // Заказы из Яндекса оплачены у Яндекса: Т-Касса о них не знает.
     .andWhere("o.payment_provider <> 'ycp'")
     // Заказ Яндекса живёт YANDEX_ORDER_TTL_SEC (3 суток), потом Яндекс сам ставит FAILED.
-    // Страховка, если статус так и не пришёл: старше 8 суток не опрашиваем.
+    // Ссылки Яндекса и CloudPayments живут ограниченно; если статус так и не пришёл,
+    // старше 8 суток не опрашиваем.
     .andWhere(
-      "(o.payment_provider <> 'yandex_pay' OR o.created_at > now() - make_interval(days => :maxDays))",
+      "(o.payment_provider NOT IN ('yandex_pay', 'cloudpayments') OR o.created_at > now() - make_interval(days => :maxDays))",
       { maxDays: YANDEX_RECONCILE_MAX_AGE_DAYS },
     )
     .andWhere('o.created_at < now() - make_interval(secs => :ageSec)', {
@@ -66,11 +69,13 @@ export async function reconcilePendingOrders(
 
   let updated = 0
   for (const order of pending) {
-    // Заказ Яндекс Пэй сверяется у Яндекса по номеру заказа, остальные — как раньше.
+    // Яндекс Пэй и CloudPayments сверяются у себя по номеру заказа, остальные — как раньше.
     const status =
       order.paymentProvider === 'yandex_pay'
         ? await getYandexOrderStatus(order.orderNumber)
-        : await provider.getStatus(order.paymentIntentId!)
+        : order.paymentProvider === 'cloudpayments'
+          ? await getCloudPaymentsStatus(order)
+          : await provider.getStatus(order.paymentIntentId!)
     if (status === 'unknown') continue
     const previousStatus = order.status
     if (applyPaymentStatus(order, status, 'reconcile')) {
@@ -87,8 +92,9 @@ export function startReconciliationJob(
   provider: PaymentProvider = getPaymentProvider(),
   env: NodeJS.ProcessEnv = process.env,
 ): NodeJS.Timeout | null {
-  // Т-Касса — как раньше; Яндекс досверяется, пока задан его Merchant ID.
-  if (provider.name !== 'tbank' && !hasYandexPayMerchant(env)) return null
+  // Т-Касса — как раньше; Яндекс и CloudPayments досверяются, пока заданы их ключи.
+  if (provider.name !== 'tbank' && !hasYandexPayMerchant(env) && !hasCloudPaymentsKeys(env))
+    return null
   const tick = skipWhileRunning(() =>
     reconcilePendingOrders(provider).catch((err) => {
       console.error('payments: reconciliation run failed', err)

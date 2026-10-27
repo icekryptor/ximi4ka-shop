@@ -10,6 +10,7 @@ export const PAYMENT_METHOD_LABELS: Record<CheckoutPaymentMethod, string> = {
   tbank: 'Картой — Т-Банк',
   yandex_pay: 'Яндекс Пэй',
   yandex_split: 'Сплит — оплата частями',
+  cloudpayments: 'Visa / Mastercard банка другой страны',
 }
 
 export function isYandexMethod(method: CheckoutPaymentMethod): boolean {
@@ -21,9 +22,9 @@ export function splitBadgeAmount(amountRub: number): string | null {
   return Number.isFinite(amountRub) && amountRub > 0 ? amountRub.toFixed(2) : null
 }
 
-function fetchYandexPay(): Promise<PublicYandexPay | null> {
+function fetchYandexPay(fresh = false): Promise<PublicYandexPay | null> {
   return Promise.resolve()
-    .then(() => getPublicSettings())
+    .then(() => (fresh ? getPublicSettings({ fresh: true }) : getPublicSettings()))
     .then((settings) => settings?.yandexPay ?? null)
     .catch(() => null)
 }
@@ -35,9 +36,9 @@ export function loadPublicYandexPay(): Promise<PublicYandexPay | null> {
   return cached
 }
 
-/** Перечитать: Яндекс выключили, пока покупатель был на чекауте. */
+/** Перечитать мимо HTTP-кеша: Яндекс выключили, пока покупатель был на чекауте. */
 export function reloadPublicYandexPay(): Promise<PublicYandexPay | null> {
-  cached = fetchYandexPay()
+  cached = fetchYandexPay(true)
   return cached
 }
 

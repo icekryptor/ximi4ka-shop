@@ -543,6 +543,9 @@ export interface SiteSettings {
   ymlDeliveryNote: string | null
   yandexPayEnabled: boolean
   yandexPayMode: 'sandbox' | 'production'
+  cloudpaymentsEnabled: boolean
+  cloudpaymentsMode: 'test' | 'live'
+  cloudpaymentsSurchargePercent: number
   headerPromoText: string | null
   trustStripItems: TrustStripItem[]
   testimonials: Testimonial[]

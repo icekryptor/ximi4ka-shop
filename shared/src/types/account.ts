@@ -62,6 +62,8 @@ export interface AccountOrderSummary {
   promoCode: string | null
   promoDiscountRub: number
   shippingRub: number
+  /** Надбавка за оплату картой банка ЕАЭС (CloudPayments), уже в totalRub; 0 — без неё. */
+  paymentSurchargeRub: number
   deliveryMethod: OrderDeliveryMethod
   /** Адрес доставки одной строкой: «<город>, <ПВЗ или улица>». */
   deliveryAddress: string
