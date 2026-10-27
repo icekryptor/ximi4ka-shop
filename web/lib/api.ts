@@ -14,6 +14,7 @@ import type {
   PublicOrderStatus,
   SearchResult,
   PublicYandexPay,
+  PublicCloudPayments,
 } from '@ximi4ka-shop/shared'
 
 // Two audiences, two origins. The browser must use the public origin
@@ -328,6 +329,8 @@ export interface PublicSettings {
   testimonials: PublicTestimonial[]
   /** Яндекс Пэй: null — недоступен; merchantId — только в боевом режиме. */
   yandexPay?: PublicYandexPay | null
+  /** CloudPayments для блока ЕАЭС: null — недоступен. */
+  cloudPayments?: PublicCloudPayments | null
 }
 
 export async function getPublicSettings(): Promise<PublicSettings> {

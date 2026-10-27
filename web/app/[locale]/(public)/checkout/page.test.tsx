@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { resetPublicYandexPayCacheForTests } from '@/lib/yandexPay'
+import { resetPublicCloudPaymentsCacheForTests } from '@/lib/cloudPayments'
+import { CIS_PAYMENT_NOTE } from '@/lib/orderProcess'
 import type {
   CdekCity,
   CdekCityPoints,
@@ -146,6 +148,7 @@ beforeEach(() => {
   mockGetPublicSettings.mockReset()
   mockGetPublicSettings.mockImplementation(async () => ({ yandexPay: null }))
   resetPublicYandexPayCacheForTests()
+  resetPublicCloudPaymentsCacheForTests()
   window.localStorage.clear()
   window.sessionStorage.clear()
   mockPush.mockReset()
@@ -756,6 +759,108 @@ describe('/checkout page', () => {
       expect(screen.getByLabelText(/телефон/i)).toHaveValue('')
       expect(screen.queryByText('Укажите email — на него придёт чек')).not.toBeInTheDocument()
     })
+
+    describe('оплата картой банка ЕАЭС (CloudPayments)', () => {
+      const FOREIGN_CARD = /Visa \/ Mastercard банка Беларуси/
+
+      function mockPublicSettings(settings: Record<string, unknown>) {
+        mockGetPublicSettings.mockImplementation(async () => settings as never)
+      }
+
+      // Корзина 2000 ₽, Беларусь: доставка 700 ₽ (ниже порога 3000 ₽).
+      async function chooseCisBelarus() {
+        await chooseCisRegion()
+        fillCis('BY', 'Минск')
+      }
+
+      async function chooseRussia() {
+        fireEvent.click(screen.getByRole('radio', { name: /^россия$/i }))
+        await screen.findByRole('combobox', { name: /город/i })
+      }
+
+      function stubCheckoutFetch() {
+        const fetchMock = vi.fn(async () => okCheckoutResponse())
+        vi.stubGlobal('fetch', fetchMock)
+        return fetchMock
+      }
+
+      function lastCheckoutBody(fetchMock: ReturnType<typeof vi.fn>) {
+        const [, init] = fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit]
+        return JSON.parse(init.body as string) as Record<string, unknown>
+      }
+
+      async function submitValidCisForm(fetchMock: ReturnType<typeof vi.fn>) {
+        cisContacts()
+        submit()
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      }
+
+      async function submitValidRuForm(fetchMock: ReturnType<typeof vi.fn>) {
+        await fillValidForm()
+        submit()
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      }
+
+      it('ЕАЭС + CloudPayments 8%: строка надбавки, итог с ней, paymentMethod в запросе', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+        const fetchMock = stubCheckoutFetch()
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        expect(screen.getByRole('note')).toHaveTextContent('отдельным способом')
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        // 8% от 2000 + 700 = 216 ₽.
+        expect(screen.getByTestId('summary-payment-surcharge')).toHaveTextContent('216')
+        expect(screen.getByTestId('summary-total')).toHaveTextContent('2 916')
+        await submitValidCisForm(fetchMock)
+        expect(lastCheckoutBody(fetchMock).paymentMethod).toBe('cloudpayments')
+      })
+
+      it('смена региона на Россию после выбора CloudPayments — сброс на Т-Банк, без надбавки', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+        mapMock.available = false
+        const fetchMock = stubCheckoutFetch()
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        expect(screen.getByTestId('summary-payment-surcharge')).toBeInTheDocument()
+        await chooseRussia()
+        expect(screen.queryByTestId('summary-payment-surcharge')).toBeNull()
+        await submitValidRuForm(fetchMock)
+        expect(lastCheckoutBody(fetchMock).paymentMethod).not.toBe('cloudpayments')
+      })
+
+      it('после возврата в ЕАЭС выбран Т-Банк, надбавки нет', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        await chooseRussia()
+        await chooseCisBelarus()
+        expect(
+          await screen.findByLabelText('Картой «Мир» или российской Visa / Mastercard'),
+        ).toBeChecked()
+        expect(screen.queryByTestId('summary-payment-surcharge')).toBeNull()
+      })
+
+      it('CloudPayments недоступен — в блоке ЕАЭС нет выбора оплаты, прежняя плашка', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: null })
+        const fetchMock = stubCheckoutFetch()
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        // Настройки уже пришли: отсутствие выбора — не из-за того, что они ещё грузятся.
+        await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(2))
+        await act(async () => {})
+        expect(screen.queryByLabelText(FOREIGN_CARD)).toBeNull()
+        expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull()
+        expect(screen.getByRole('note')).toHaveTextContent(CIS_PAYMENT_NOTE)
+        await submitValidCisForm(fetchMock)
+        expect(lastCheckoutBody(fetchMock)).not.toHaveProperty('paymentMethod')
+      })
+    })
   })
 
   describe('отказ сервера по ловушке и лимиту', () => {
@@ -1226,7 +1331,9 @@ describe('/checkout page', () => {
     })
 
     it('Яндекс выключили до отправки: 400 — сообщение, сброс на Т-Банк, блок пропал, корзина цела', async () => {
+      // Первые два ответа — загрузка Яндекса и CloudPayments, третий — перечитывание.
       mockGetPublicSettings
+        .mockImplementationOnce(async () => ON)
         .mockImplementationOnce(async () => ON)
         .mockImplementation(async () => ({ yandexPay: null }))
       mapMock.available = false
@@ -1252,7 +1359,7 @@ describe('/checkout page', () => {
       expect(await screen.findByRole('alert')).toHaveTextContent(
         /яндекс пэй сейчас недоступен.*картой/i,
       )
-      await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(2))
+      await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(3))
       await vi.waitFor(() =>
         expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull(),
       )

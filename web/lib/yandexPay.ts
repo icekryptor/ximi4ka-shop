@@ -10,6 +10,7 @@ export const PAYMENT_METHOD_LABELS: Record<CheckoutPaymentMethod, string> = {
   tbank: 'Картой — Т-Банк',
   yandex_pay: 'Яндекс Пэй',
   yandex_split: 'Сплит — оплата частями',
+  cloudpayments: 'Visa / Mastercard банка другой страны',
 }
 
 export function isYandexMethod(method: CheckoutPaymentMethod): boolean {

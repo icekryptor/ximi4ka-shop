@@ -3,7 +3,13 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import type { CheckoutPaymentMethod, CheckoutRequest, PublicYandexPay } from '@ximi4ka-shop/shared'
+import type {
+  CheckoutPaymentMethod,
+  CheckoutRequest,
+  PublicCloudPayments,
+  PublicYandexPay,
+} from '@ximi4ka-shop/shared'
+import { paymentSurchargeRub } from '@ximi4ka-shop/shared/types/payment'
 import { findPromo, promoDiscountRub, type Promo } from '@ximi4ka-shop/shared/types/promo'
 import { getMeOrNull } from '@/lib/accountApi'
 import { loadAttribution, safeLocalStorage } from '@/lib/attribution'
@@ -17,7 +23,9 @@ import { CdekDelivery } from '@/components/checkout/CdekDelivery'
 import { CisDelivery } from '@/components/checkout/CisDelivery'
 import { PromoCodeField } from '@/components/checkout/PromoCodeField'
 import { PaymentMethodField } from '@/components/checkout/PaymentMethodField'
+import { CisPaymentMethodField } from '@/components/checkout/CisPaymentMethodField'
 import { loadPublicYandexPay, reloadPublicYandexPay } from '@/lib/yandexPay'
+import { loadPublicCloudPayments } from '@/lib/cloudPayments'
 import { ERROR_CLASS, FIELD_CLASS, LABEL_CLASS } from '@/components/checkout/fieldStyles'
 import { useCdekDelivery } from '@/components/checkout/useCdekDelivery'
 import { useCisDelivery } from '@/components/checkout/useCisDelivery'
@@ -82,6 +90,17 @@ export default function CheckoutPage() {
       cancelled = true
     }
   }, [])
+  // CloudPayments для блока ЕАЭС: null — недоступен, выбора нет, оплата через Т-Банк.
+  const [cloudPayments, setCloudPayments] = useState<PublicCloudPayments | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    void loadPublicCloudPayments().then((value) => {
+      if (!cancelled) setCloudPayments(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
   // Ловушка для ботов: людям поле не видно, формы-спамеры заполняют всё подряд.
   const [trap, setTrap] = useState('')
   // Заказ создан, браузер уходит на шлюз или на страницу заказа. Корзина к этому
@@ -108,9 +127,11 @@ export default function CheckoutPage() {
   const [region, setRegion] = useState<'ru' | 'cis'>('ru')
   const cis = useCisDelivery()
   const isCis = region === 'cis'
-  // Доставка в ЕАЭС — без Яндекс Пэй и Сплита: блок скрыт, оплата картой.
+  // Россия — Т-Банк или Сплит; ЕАЭС — Т-Банк или CloudPayments. Нет выбора — Т-Банк.
   const showPaymentChoice = yandexPay !== null && !isCis
-  const selectedMethod: CheckoutPaymentMethod = showPaymentChoice ? paymentMethod : 'tbank'
+  const showCisPaymentChoice = cloudPayments !== null && isCis
+  const selectedMethod: CheckoutPaymentMethod =
+    showPaymentChoice || showCisPaymentChoice ? paymentMethod : 'tbank'
 
   // Вошедшему покупателю — контакты и доставка из профиля; гостю — подсказка
   // войти. undefined — ещё не знаем (подсказку не мигаем).
@@ -172,7 +193,13 @@ export default function CheckoutPage() {
   // Промо — с суммы товаров после скидок. Доставка (и порог бесплатной) выше
   // считаются от суммы до промокода, как на сервере.
   const promoRub = promo ? promoDiscountRub(totals.totalRub, promo.percent) : 0
-  const totalRub = totals.totalRub - promoRub + shippingRub
+  // Надбавку считает сервер; здесь та же функция только для показа до оформления.
+  const surchargePercent = cloudPayments?.surchargePercent ?? 0
+  const surchargeRub =
+    selectedMethod === 'cloudpayments'
+      ? paymentSurchargeRub(totals.totalRub - promoRub + shippingRub, surchargePercent)
+      : 0
+  const totalRub = totals.totalRub - promoRub + shippingRub + surchargeRub
 
   // Маска и проверка телефона у регионов разные: введённый номер при смене
   // региона не переносим (иначе чужой номер молча превратится в +7…), а
@@ -180,7 +207,8 @@ export default function CheckoutPage() {
   function changeRegion(next: 'ru' | 'cis') {
     if (next === region) return
     setRegion(next)
-    if (next === 'cis') setPaymentMethod('tbank')
+    // Способы у регионов разные: Сплит не едет в ЕАЭС, CloudPayments — в Россию.
+    setPaymentMethod('tbank')
     setField('phone', '')
     setErrors((prev) => ({ ...prev, phone: undefined, email: undefined }))
     setServerError(null)
@@ -226,7 +254,7 @@ export default function CheckoutPage() {
       items: items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
       ...(gift ? { giftProductId: gift.productId } : {}),
       ...(promo ? { promoCode: promo.code } : {}),
-      ...(showPaymentChoice ? { paymentMethod: selectedMethod } : {}),
+      ...(showPaymentChoice || showCisPaymentChoice ? { paymentMethod: selectedMethod } : {}),
       customer: {
         name: fields.name.trim(),
         phone: `+${isCis ? internationalPhoneDigits(fields.phone) : phoneDigits(fields.phone)}`,
@@ -480,7 +508,7 @@ export default function CheckoutPage() {
                 </fieldset>
 
                 {isCis ? (
-                  <CisDelivery delivery={cis} errors={errors} />
+                  <CisDelivery delivery={cis} errors={errors} foreignCards={showCisPaymentChoice} />
                 ) : (
                   <CdekDelivery delivery={delivery} shipping={shipping} errors={errors} />
                 )}
@@ -573,6 +601,14 @@ export default function CheckoutPage() {
                         : '—'}
                     </span>
                   </div>
+                  {surchargeRub > 0 && (
+                    <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
+                      <span>Надбавка за оплату картой ({surchargePercent}%)</span>
+                      <span data-testid="summary-payment-surcharge" className="whitespace-nowrap">
+                        {formatRub(surchargeRub)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t border-[var(--color-lj-rule)] pt-4 font-lj-display font-[900] text-2xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
                     <span>Итого</span>
                     <span data-testid="summary-total">{formatRub(totalRub)}</span>
@@ -587,6 +623,15 @@ export default function CheckoutPage() {
                       onChange={setPaymentMethod}
                       merchantId={yandexPay?.merchantId ?? null}
                       totalRub={totalRub}
+                    />
+                  </div>
+                )}
+                {showCisPaymentChoice && (
+                  <div className="border-t border-[var(--color-lj-rule)] pt-5">
+                    <CisPaymentMethodField
+                      value={selectedMethod}
+                      onChange={setPaymentMethod}
+                      surchargePercent={surchargePercent}
                     />
                   </div>
                 )}

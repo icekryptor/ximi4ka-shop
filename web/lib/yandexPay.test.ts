@@ -23,6 +23,7 @@ describe('подписи и сумма плашки', () => {
       tbank: 'Картой — Т-Банк',
       yandex_pay: 'Яндекс Пэй',
       yandex_split: 'Сплит — оплата частями',
+      cloudpayments: 'Visa / Mastercard банка другой страны',
     })
     expect(isYandexMethod('yandex_split')).toBe(true)
     expect(isYandexMethod('tbank')).toBe(false)
