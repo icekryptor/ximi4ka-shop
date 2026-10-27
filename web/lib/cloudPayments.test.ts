@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('@/lib/api', () => ({ getPublicSettings: vi.fn() }))
-import { getPublicSettings } from '@/lib/api'
+vi.mock('@/lib/api', () => ({
+  getPublicSettings: vi.fn(),
+  getCloudPaymentsCheckoutPreview: vi.fn(),
+}))
+import { getCloudPaymentsCheckoutPreview, getPublicSettings } from '@/lib/api'
 import {
+  isCloudPaymentsPreviewRequested,
+  loadCloudPaymentsAdminPreview,
   loadPublicCloudPayments,
   reloadPublicCloudPayments,
   resetPublicCloudPaymentsCacheForTests,
@@ -40,5 +45,35 @@ describe('loadPublicCloudPayments', () => {
     resetPublicCloudPaymentsCacheForTests()
     vi.mocked(getPublicSettings).mockRejectedValue(new Error('down'))
     expect(await loadPublicCloudPayments()).toBeNull()
+  })
+})
+
+describe('админ-превью CloudPayments (?cp_test=1)', () => {
+  afterEach(() => {
+    vi.mocked(getCloudPaymentsCheckoutPreview).mockReset()
+  })
+
+  it('спрашивается только при cp_test=1 в адресе', () => {
+    expect(isCloudPaymentsPreviewRequested('?cp_test=1')).toBe(true)
+    expect(isCloudPaymentsPreviewRequested('?utm_source=x&cp_test=1')).toBe(true)
+    expect(isCloudPaymentsPreviewRequested('')).toBe(false)
+    expect(isCloudPaymentsPreviewRequested('?cp_test=0')).toBe(false)
+    expect(isCloudPaymentsPreviewRequested('?cp_test=true')).toBe(false)
+  })
+
+  it('процент из админ-эндпоинта; null — как есть', async () => {
+    vi.mocked(getCloudPaymentsCheckoutPreview).mockResolvedValueOnce({ surchargePercent: 8 })
+    expect(await loadCloudPaymentsAdminPreview()).toEqual({ surchargePercent: 8 })
+    vi.mocked(getCloudPaymentsCheckoutPreview).mockResolvedValueOnce(null)
+    expect(await loadCloudPaymentsAdminPreview()).toBeNull()
+  })
+
+  it('401 (не админ), сбой сети или мусор вместо процента — null', async () => {
+    vi.mocked(getCloudPaymentsCheckoutPreview).mockRejectedValueOnce(new Error('401'))
+    expect(await loadCloudPaymentsAdminPreview()).toBeNull()
+    vi.mocked(getCloudPaymentsCheckoutPreview).mockResolvedValueOnce({
+      surchargePercent: 'x',
+    } as never)
+    expect(await loadCloudPaymentsAdminPreview()).toBeNull()
   })
 })

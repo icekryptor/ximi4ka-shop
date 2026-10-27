@@ -342,3 +342,15 @@ export async function getPublicSettings(opts: { fresh?: boolean } = {}): Promise
   )
   return body.data
 }
+
+/**
+ * CloudPayments в режиме «Тест» для вошедшего админа (чекаут с ?cp_test=1): процент
+ * надбавки или null. Без сессии админки — ApiError 401.
+ */
+export async function getCloudPaymentsCheckoutPreview(): Promise<PublicCloudPayments | null> {
+  const body = await request<DataEnvelope<PublicCloudPayments | null>>(
+    `/api/admin/cloudpayments/checkout-preview`,
+    { credentials: 'include', cache: 'no-store' },
+  )
+  return body.data
+}

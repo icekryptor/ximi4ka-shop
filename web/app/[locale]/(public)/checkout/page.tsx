@@ -25,7 +25,12 @@ import { PromoCodeField } from '@/components/checkout/PromoCodeField'
 import { PaymentMethodField } from '@/components/checkout/PaymentMethodField'
 import { CisPaymentMethodField } from '@/components/checkout/CisPaymentMethodField'
 import { loadPublicYandexPay, reloadPublicYandexPay } from '@/lib/yandexPay'
-import { loadPublicCloudPayments, reloadPublicCloudPayments } from '@/lib/cloudPayments'
+import {
+  isCloudPaymentsPreviewRequested,
+  loadCloudPaymentsAdminPreview,
+  loadPublicCloudPayments,
+  reloadPublicCloudPayments,
+} from '@/lib/cloudPayments'
 import { ERROR_CLASS, FIELD_CLASS, LABEL_CLASS } from '@/components/checkout/fieldStyles'
 import { useCdekDelivery } from '@/components/checkout/useCdekDelivery'
 import { useCisDelivery } from '@/components/checkout/useCisDelivery'
@@ -49,6 +54,19 @@ const INITIAL_FIELDS: CheckoutFormFields = {
   email: '',
   telegram: '',
   comment: '',
+}
+
+// CloudPayments для блока ЕАЭС. На проде в режиме «Тест» публичное значение — null; с
+// ?cp_test=1 в адресе спрашиваем админ-превью (cookie сессии админки): способ видит только
+// вошедший администратор. preview — показать пометку о тестовом режиме.
+async function resolveCloudPayments(
+  publicValue: PublicCloudPayments | null,
+): Promise<{ value: PublicCloudPayments | null; preview: boolean }> {
+  if (publicValue !== null || !isCloudPaymentsPreviewRequested(window.location.search)) {
+    return { value: publicValue, preview: false }
+  }
+  const value = await loadCloudPaymentsAdminPreview()
+  return { value, preview: value !== null }
 }
 
 export default function CheckoutPage() {
@@ -91,12 +109,25 @@ export default function CheckoutPage() {
     }
   }, [])
   // CloudPayments для блока ЕАЭС: null — недоступен, выбора нет, оплата через Т-Банк.
+  // cloudPaymentsPreview — тестовый режим, видимый только админу (?cp_test=1).
   const [cloudPayments, setCloudPayments] = useState<PublicCloudPayments | null>(null)
+  const [cloudPaymentsPreview, setCloudPaymentsPreview] = useState(false)
+  const applyCloudPayments = (resolved: {
+    value: PublicCloudPayments | null
+    preview: boolean
+  }) => {
+    setCloudPayments(resolved.value)
+    setCloudPaymentsPreview(resolved.preview)
+  }
   useEffect(() => {
     let cancelled = false
-    void loadPublicCloudPayments().then((value) => {
-      if (!cancelled) setCloudPayments(value)
-    })
+    void loadPublicCloudPayments()
+      .then(resolveCloudPayments)
+      .then((resolved) => {
+        if (cancelled) return
+        setCloudPayments(resolved.value)
+        setCloudPaymentsPreview(resolved.preview)
+      })
     return () => {
       cancelled = true
     }
@@ -322,7 +353,7 @@ export default function CheckoutPage() {
           setServerError(`${err.message}. Выберите другой способ оплаты и оформите заказ ещё раз.`)
           setPaymentMethod('tbank')
           void reloadPublicYandexPay().then(setYandexPay)
-          void reloadPublicCloudPayments().then(setCloudPayments)
+          void reloadPublicCloudPayments().then(resolveCloudPayments).then(applyCloudPayments)
         } else if (err.code === 'delivery_point_unknown') {
           // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
           // «Пункт получения», выбор сброшен, список города грузится заново.
@@ -630,6 +661,11 @@ export default function CheckoutPage() {
                 )}
                 {showCisPaymentChoice && (
                   <div className="border-t border-[var(--color-lj-rule)] pt-5">
+                    {cloudPaymentsPreview && (
+                      <p className="font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)] m-0 mb-3">
+                        Тестовый режим CloudPayments — видно только администратору
+                      </p>
+                    )}
                     <CisPaymentMethodField
                       value={selectedMethod}
                       onChange={setPaymentMethod}
