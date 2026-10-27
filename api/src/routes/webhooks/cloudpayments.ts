@@ -102,6 +102,33 @@ cloudPaymentsWebhookRouter.post('/check', async (req, res, next) => {
   }
 })
 
+// TransactionId CloudPayments — число; у заказа после чекаута в paymentIntentId лежит
+// Id ссылки (буквы), после оплаты вебхуком — TransactionId.
+const TRANSACTION_ID = /^\d+$/
+
+// Pay по уже оплаченному или отгруженному заказу. Повтор приходит с тем же
+// TransactionId — ничего не делаем. Если заказ оплатила сверка или менеджер, в нём ещё
+// Id ссылки (или пусто) — это тот же платёж: молча сохраняем TransactionId для
+// возврата, без события статуса. Другой TransactionId при сохранённом прежнем —
+// покупатель заплатил второй раз (например, по старой ссылке в другой вкладке).
+async function onPayForPaidOrder(order: Order, n: CloudPaymentsNotification): Promise<void> {
+  const transactionId = n.TransactionId ?? ''
+  if (!transactionId) {
+    console.error(
+      `cloudpayments pay: заказ ${order.orderNumber} уже оплачен, уведомление без TransactionId — проверьте в кабинете`,
+    )
+    return
+  }
+  if (transactionId === order.paymentIntentId) return
+  if (order.paymentIntentId && TRANSACTION_ID.test(order.paymentIntentId)) {
+    console.error(
+      `cloudpayments pay: ПОВТОРНОЕ списание по ${order.orderNumber}: TransactionId=${clip(transactionId)} (в заказе ${clip(order.paymentIntentId)}) — нужен возврат`,
+    )
+    return
+  }
+  await AppDataSource.getRepository(Order).update(order.id, { paymentIntentId: transactionId })
+}
+
 cloudPaymentsWebhookRouter.post('/pay', async (req, res, next) => {
   try {
     const n = readNotification(req, res)
@@ -142,15 +169,8 @@ cloudPaymentsWebhookRouter.post('/pay', async (req, res, next) => {
           `cloudpayments pay: оплата пришла по заказу ${order.orderNumber} в статусе ${previousStatus} — заказ переведён в «оплачен», проверьте вручную`,
         )
       }
-    } else if (
-      (order.status === 'paid' || order.status === 'shipped') &&
-      n.TransactionId !== order.paymentIntentId
-    ) {
-      // Повтор Pay приходит с тем же TransactionId; другой — значит, покупатель
-      // заплатил второй раз (например, по старой ссылке в другой вкладке).
-      console.error(
-        `cloudpayments pay: ПОВТОРНОЕ списание по ${order.orderNumber}: TransactionId=${clip(n.TransactionId)} (в заказе ${clip(order.paymentIntentId)}) — нужен возврат`,
-      )
+    } else if (order.status === 'paid' || order.status === 'shipped') {
+      await onPayForPaidOrder(order, n)
     }
     res.status(200).json({ code: CODE.OK })
   } catch (err) {

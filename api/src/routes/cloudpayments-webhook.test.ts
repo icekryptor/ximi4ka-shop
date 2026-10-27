@@ -235,6 +235,43 @@ describe('вебхуки CloudPayments', () => {
       expect((await reload(o)).status).toBe('shipped')
     })
 
+    it('заказ оплачен сверкой или менеджером (в заказе Id ссылки) — поздний Pay без тревоги, TransactionId сохраняется', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const history = [
+        { from: 'pending', to: 'paid', at: '2026-10-27T10:00:00.000Z', by: 'reconcile' },
+      ]
+      const o = await seedOrder({
+        status: 'paid',
+        paymentIntentId: 'gASGZ',
+        statusHistory: history as Order['statusHistory'],
+      })
+      const events = await statusEvents(o)
+      expect((await post('pay', fields(o, { TransactionId: '504' }))).body).toEqual({ code: 0 })
+      expect(log.mock.calls.flat().join(' ')).not.toContain('ПОВТОРНОЕ')
+      const after = await reload(o)
+      expect(after.paymentIntentId).toBe('504')
+      expect(after.status).toBe('paid')
+      expect(after.statusHistory).toEqual(history)
+      expect(await statusEvents(o)).toBe(events)
+      // Без Id в заказе (отмечен оплаченным вручную) — так же.
+      const manual = await seedOrder({ status: 'paid', paymentIntentId: null })
+      await post('pay', fields(manual, { TransactionId: '600' }))
+      expect((await reload(manual)).paymentIntentId).toBe('600')
+      expect(log).not.toHaveBeenCalled()
+    })
+
+    it('Pay без TransactionId по оплаченному заказу — проверить в кабинете, без «нужен возврат»', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const o = await seedOrder({ status: 'paid', paymentIntentId: '504' })
+      await post('pay', fields(o, { TransactionId: '' }))
+      const logged = log.mock.calls.flat().join(' ')
+      expect(logged).toContain(
+        `cloudpayments pay: заказ ${o.orderNumber} уже оплачен, уведомление без TransactionId — проверьте в кабинете`,
+      )
+      expect(logged).not.toContain('нужен возврат')
+      expect((await reload(o)).paymentIntentId).toBe('504')
+    })
+
     it('оплата отменённого или неуспешного заказа — «оплачен» и лог для ручной проверки', async () => {
       const log = vi.spyOn(console, 'error').mockImplementation(() => {})
       for (const status of ['cancelled', 'failed'] as const) {
