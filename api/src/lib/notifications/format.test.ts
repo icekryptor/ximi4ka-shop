@@ -335,6 +335,25 @@ describe('telegramCard', () => {
       /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
     )
   })
+
+  it('CloudPayments: способ оплаты и надбавка в карточке; без надбавки — без строки', () => {
+    const card = telegramCard({
+      ...order,
+      paymentProvider: 'cloudpayments',
+      paymentSurchargeRub: 216,
+      totalRub: order.totalRub + 216,
+    })
+    expect(card).toContain('Оплата: карта банка другой страны (CloudPayments)')
+    expect(card).toContain('надбавка за способ оплаты +')
+    const zero = telegramCard({
+      ...order,
+      paymentProvider: 'cloudpayments',
+      paymentSurchargeRub: 0,
+    })
+    expect(zero).not.toContain('надбавка')
+    const tbank = telegramCard({ ...order, paymentProvider: 'tbank' })
+    expect(tbank).not.toContain('CloudPayments')
+  })
 })
 
 describe('telegramCard: «Запас всех реактивов»', () => {

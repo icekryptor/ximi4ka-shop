@@ -339,6 +339,38 @@ describe('<OrderStatusView>', () => {
     expect(screen.queryByTestId('order-pay-link')).toBeNull()
   })
 
+  it('CloudPayments: опрашивает статус как онлайн-оплату и показывает «Оплатить»', async () => {
+    vi.useFakeTimers()
+    const fetchMock = fetchReturning(
+      statusPayload({
+        paymentProvider: 'cloudpayments',
+        paymentUrl: 'https://orders.cloudpayments.ru/d/gASGZ',
+      }),
+      statusPayload({
+        paymentProvider: 'cloudpayments',
+        status: 'paid',
+        paidAt: '2026-10-27T12:00:00.000Z',
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    render(<OrderStatusView orderNumber="XM-2026-00042" celebrate={false} token="tok123" />)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(screen.getByTestId('order-pay-link')).toHaveAttribute(
+      'href',
+      'https://orders.cloudpayments.ru/d/gASGZ',
+    )
+    expect(screen.getByText(/Ожидаем подтверждение оплаты/)).toBeInTheDocument()
+    expect(screen.queryByText(/Менеджер свяжется/)).not.toBeInTheDocument()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(screen.getByTestId('order-status-label')).toHaveTextContent('Оплачен')
+    expect(screen.queryByTestId('order-pay-link')).toBeNull()
+  })
+
   it('ссылку не на https кнопкой не показывает', async () => {
     vi.stubGlobal(
       'fetch',
