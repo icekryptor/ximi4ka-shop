@@ -136,10 +136,56 @@ export function isCisCity(country: CisCountry, city: string): boolean {
   return CIS_CITIES[country].includes(city)
 }
 
-// Куда везём: способ «cdek_manual_cis» — страна, город из списка и адрес ПВЗ.
+// Личный номер получателя для таможни: без ИИН (Казахстан) или ПИН (Киргизия) посылку
+// не выпустят. Беларуси и Армении номер не нужен — поле там не показываем.
+export const CIS_TAX_ID: Partial<
+  Record<CisCountry, { label: string; length: number; hint: string }>
+> = {
+  KZ: {
+    label: 'ИИН',
+    length: 12,
+    hint: '12 цифр, есть в удостоверении личности. Без него посылку не пропустит таможня',
+  },
+  KG: {
+    label: 'ПИН',
+    length: 14,
+    hint: 'Персональный номер, 14 цифр, есть в паспорте. Без него посылку не пропустит таможня',
+  },
+}
+
+export function normalizeTaxId(value: string): string {
+  return value.replace(/[\s-]/g, '')
+}
+
+// Контрольная цифра ИИН Казахстана: веса 1…11, остаток от 11; если вышло 10 — веса
+// 3…11, 1, 2; снова 10 — такой номер не выдаётся.
+function isKzIinChecksumValid(iin: string): boolean {
+  const digits = Array.from(iin, Number)
+  const mod = (weights: number[]) => weights.reduce((sum, w, i) => sum + w * digits[i]!, 0) % 11
+  let control = mod([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
+  if (control === 10) control = mod([3, 4, 5, 6, 7, 8, 9, 10, 11, 1, 2])
+  return control !== 10 && control === digits[11]
+}
+
+/** Ошибка в ИИН/ПИН для страны или null, если номер не нужен или верен. */
+export function cisTaxIdError(country: CisCountry, value: string): string | null {
+  const rule = CIS_TAX_ID[country]
+  if (!rule) return null
+  const id = normalizeTaxId(value)
+  if (id === '') return `Укажите ${rule.label} — без него посылку не пропустит таможня`
+  if (!/^\d+$/.test(id) || id.length !== rule.length) return `${rule.label} — ${rule.length} цифр`
+  if (country === 'KZ' && !isKzIinChecksumValid(id)) {
+    return 'Проверьте ИИН — в номере опечатка'
+  }
+  return null
+}
+
+// Куда везём: способ «cdek_manual_cis» — страна, город из списка и адрес ПВЗ;
+// для Казахстана и Киргизии ещё ИИН/ПИН получателя (CIS_TAX_ID).
 export interface CisDeliveryDestination {
   method: 'cdek_manual_cis'
   country: CisCountry
   city: string
   address: string
+  taxId?: string
 }

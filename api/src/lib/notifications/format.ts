@@ -1,5 +1,5 @@
 import type { DeliveryAddress, OrderEventKey, OrderStatus } from '@ximi4ka-shop/shared'
-import type { CisCountry } from '@ximi4ka-shop/shared/types/cis'
+import { CIS_TAX_ID, type CisCountry } from '@ximi4ka-shop/shared/types/cis'
 
 // Что показываем людям в таблице и в чате. Чистые функции без сети — вся
 // логика вида уведомлений тестируется здесь.
@@ -160,12 +160,23 @@ function cisLabel(order: NotifiableOrder): string {
   return `Доставка в ${name} (СДЭК, адрес вручную)`
 }
 
+// ИИН (Казахстан) или ПИН (Киргизия) получателя для таможни; null — номера нет.
+function cisTaxId(order: NotifiableOrder): { label: string; value: string } | null {
+  const { country, taxId } = order.deliveryAddress
+  const rule = country ? CIS_TAX_ID[country] : undefined
+  return rule && taxId ? { label: rule.label, value: taxId } : null
+}
+
 function deliveryCell(order: NotifiableOrder): string {
   const { address, deliveryPointCode } = order.deliveryAddress
   if (isPickupPoint(order)) {
     return deliveryPointCode ? `ПВЗ ${deliveryPointCode} · ${address}` : `ПВЗ · ${address}`
   }
-  if (order.deliveryMethod === 'cdek_manual_cis') return `${cisLabel(order)} · ${address}`
+  if (order.deliveryMethod === 'cdek_manual_cis') {
+    const taxId = cisTaxId(order)
+    const tail = taxId ? ` · ${taxId.label} ${taxId.value}` : ''
+    return `${cisLabel(order)} · ${address}${tail}`
+  }
   return `Курьер · ${address}`
 }
 
@@ -216,6 +227,8 @@ export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []
   ]
   if (order.customerTelegram) client.push(`Телеграм: ${escapeHtml(order.customerTelegram)}`)
   client.push(`Адрес: ${escapeHtml(where)}`)
+  const taxId = order.deliveryMethod === 'cdek_manual_cis' ? cisTaxId(order) : null
+  if (taxId) client.push(`${taxId.label}: ${escapeHtml(taxId.value)}`)
   if (comment) client.push(`Комментарий: ${escapeHtml(comment)}`)
 
   const goods = [`Товары ${rub(order.subtotalRub)}`]

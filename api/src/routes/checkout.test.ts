@@ -451,19 +451,19 @@ describe('POST /api/checkout', () => {
     })
 
     it.each([
-      ['KZ', 'Алматы', 900],
-      ['KG', 'Бишкек', 900],
-      ['AM', 'Ереван', 1200],
-    ])('%s: %i ₽ ниже 5000 ₽ и бесплатно от 5000 ₽', async (country, city, price) => {
+      ['KZ', 'Алматы', 900, '850101300500'],
+      ['KG', 'Бишкек', 900, '21501199012345'],
+      ['AM', 'Ереван', 1200, undefined],
+    ])('%s: %i ₽ ниже 5000 ₽ и бесплатно от 5000 ₽', async (country, city, price, taxId) => {
       noCdek()
-      const below = await placeCis(4000, { country, city })
+      const below = await placeCis(4000, { country, city, taxId })
       expect(below.status).toBe(201)
       const belowOrder = await AppDataSource.getRepository(Order).findOneByOrFail({
         orderNumber: below.body.data.orderNumber,
       })
       expect(belowOrder.shippingRub).toBe(price)
 
-      const free = await placeCis(5000, { country, city })
+      const free = await placeCis(5000, { country, city, taxId })
       expect(free.status).toBe(201)
       const freeOrder = await AppDataSource.getRepository(Order).findOneByOrFail({
         orderNumber: free.body.data.orderNumber,
@@ -518,6 +518,48 @@ describe('POST /api/checkout', () => {
       const res = await placeCis(2000, { country: 'KZ', city: 'Минск' })
       expect(res.status).toBe(400)
       expect(res.body.error.code).toBe('delivery_city_unavailable')
+    })
+
+    // Без ИИН (Казахстан) или ПИН (Киргизия) посылку не пропустит таможня.
+    it('400 tax_id_invalid: Казахстан без ИИН — заказ не создаётся', async () => {
+      noCdek()
+      const res = await placeCis(2000, { country: 'KZ', city: 'Алматы' })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('tax_id_invalid')
+      expect(res.body.error.message).toBe('Укажите ИИН — без него посылку не пропустит таможня')
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
+
+    it('400 tax_id_invalid: ИИН с опечаткой и ПИН не той длины', async () => {
+      noCdek()
+      const kz = await placeCis(2000, { country: 'KZ', city: 'Алматы', taxId: '850101300501' })
+      expect(kz.status).toBe(400)
+      expect(kz.body.error.code).toBe('tax_id_invalid')
+      expect(kz.body.error.message).toBe('Проверьте ИИН — в номере опечатка')
+      const kg = await placeCis(2000, { country: 'KG', city: 'Бишкек', taxId: '123' })
+      expect(kg.status).toBe(400)
+      expect(kg.body.error.message).toBe('ПИН — 14 цифр')
+      expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+    })
+
+    it('ИИН сохраняется в заказе без пробелов', async () => {
+      noCdek()
+      const res = await placeCis(2000, { country: 'KZ', city: 'Алматы', taxId: ' 850101 300500 ' })
+      expect(res.status).toBe(201)
+      const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: res.body.data.orderNumber,
+      })
+      expect(order.deliveryAddress.taxId).toBe('850101300500')
+    })
+
+    it('Беларуси номер не нужен: присланный не сохраняется', async () => {
+      noCdek()
+      const res = await placeCis(2000, { taxId: '850101300500' })
+      expect(res.status).toBe(201)
+      const order = await AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: res.body.data.orderNumber,
+      })
+      expect(order.deliveryAddress.taxId).toBeUndefined()
     })
 
     it('400: страна вне списка и пустой адрес не проходят схему', async () => {

@@ -423,6 +423,24 @@ describe('доставка в страны ЕАЭС (cdek_manual_cis)', () => {
     expect(telegramCard(o)).toContain(`Адрес: ${label}`)
   })
 
+  // Без ИИН/ПИН посылку не пропустит таможня — оператору номер нужен под рукой.
+  it.each([
+    ['KZ', '850101300500', 'ИИН'],
+    ['KG', '21501199012345', 'ПИН'],
+  ] as const)('%s: номер для таможни в таблице и в карточке', (country, taxId, label) => {
+    const o: NotifiableOrder = {
+      ...cisOrder,
+      deliveryAddress: { ...cisOrder.deliveryAddress, country, taxId },
+    }
+    expect(sheetRow(o)[6]).toContain(` · ${label} ${taxId}`)
+    expect(telegramCard(o)).toContain(`${label}: ${taxId}`)
+  })
+
+  it('без номера строки ИИН/ПИН нет', () => {
+    expect(telegramCard(cisOrder)).not.toMatch(/ИИН|ПИН/)
+    expect(String(sheetRow(cisOrder)[6])).not.toMatch(/ИИН|ПИН/)
+  })
+
   it('без страны в заказе — «другую страну»', () => {
     const o: NotifiableOrder = {
       ...cisOrder,

@@ -1,5 +1,5 @@
 import type { DeliveryMethod } from '@ximi4ka-shop/shared'
-import { isCisCity, type CisCountry } from '@ximi4ka-shop/shared/types/cis'
+import { cisTaxIdError, isCisCity, type CisCountry } from '@ximi4ka-shop/shared/types/cis'
 import { isPostalCode } from './shipping'
 
 // Пороги бесплатной доставки — зеркало api/src/lib/shipping/rates.ts, только
@@ -84,7 +84,8 @@ export type CheckoutFormErrors = Partial<
     | 'delivery'
     | 'country'
     | 'cisCity'
-    | 'cisAddress',
+    | 'cisAddress'
+    | 'cisTaxId',
     string
   >
 >
@@ -159,15 +160,18 @@ export function validateCheckoutForm(
   return errors
 }
 
-// Что выбрано в блоке «страны ЕАЭС»: страна, город из списка и адрес пункта.
+// Что выбрано в блоке «страны ЕАЭС»: страна, город из списка, адрес пункта и
+// ИИН/ПИН получателя (нужен только Казахстану и Киргизии).
 export interface CisFormState {
   country: CisCountry | null
   city: string
   address: string
+  taxId: string
 }
 
 // Зеркало серверных проверок для доставки в страны ЕАЭС (checkout.ts в api):
-// международный телефон, обязательный email, город только из списка страны.
+// международный телефон, обязательный email, город только из списка страны,
+// ИИН/ПИН для таможни Казахстана и Киргизии.
 export function validateCisCheckoutForm(
   fields: CheckoutFormFields,
   cis: CisFormState,
@@ -183,6 +187,8 @@ export function validateCisCheckoutForm(
   if (cis.address.trim() === '') {
     errors.cisAddress = 'Укажите адрес пункта выдачи СДЭК'
   }
+  const taxIdError = cis.country ? cisTaxIdError(cis.country, cis.taxId) : null
+  if (taxIdError) errors.cisTaxId = taxIdError
   return errors
 }
 

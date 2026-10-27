@@ -25,12 +25,14 @@ const CourierDeliverySchema = z.object({
 
 // Доставка в Беларусь, Казахстан, Армению, Киргизию: город — из списка городов
 // с ПВЗ СДЭК (проверяет маршрут), адрес пункта покупатель пишет сам. Расчёта СДЭК
-// и кода пункта здесь нет: отправку оформляет оператор.
+// и кода пункта здесь нет: отправку оформляет оператор. ИИН/ПИН для таможни
+// Казахстана и Киргизии проверяет маршрут (cisTaxIdError в shared).
 const CisDeliverySchema = z.object({
   method: z.literal('cdek_manual_cis'),
   country: z.enum(CIS_COUNTRIES),
   city: z.string().trim().min(1).max(100),
   address: z.string().trim().min(1).max(1000),
+  taxId: z.string().max(32).optional(),
   comment,
 })
 

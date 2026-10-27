@@ -1,6 +1,12 @@
 import { Router } from 'express'
 import type { CheckoutResponse, DeliveryQuote, OrderAttribution } from '@ximi4ka-shop/shared'
-import { cisShippingRub, isCisCity } from '@ximi4ka-shop/shared/types/cis'
+import {
+  CIS_TAX_ID,
+  cisShippingRub,
+  cisTaxIdError,
+  isCisCity,
+  normalizeTaxId,
+} from '@ximi4ka-shop/shared/types/cis'
 import { findPromo, promoDiscountRub } from '@ximi4ka-shop/shared/types/promo'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
@@ -129,6 +135,9 @@ checkoutRouter.post('/', async (req, res, next) => {
           'Доставка в этот город недоступна — выберите город из списка',
         )
       }
+      // Казахстану и Киргизии нужен ИИН/ПИН получателя: без него посылку не пропустит таможня.
+      const taxIdError = cisTaxIdError(parsed.delivery.country, parsed.delivery.taxId ?? '')
+      if (taxIdError) throw badRequest('tax_id_invalid', taxIdError)
     }
 
     // Яндекс Пэй / Сплит: проверяем до расчёта доставки и до заказа — недоступный
@@ -244,6 +253,10 @@ checkoutRouter.post('/', async (req, res, next) => {
                     comment: delivery.comment ?? null,
                     country: delivery.country,
                     city: delivery.city,
+                    // Номер храним только там, где он нужен таможне (CIS_TAX_ID).
+                    ...(CIS_TAX_ID[delivery.country] && delivery.taxId
+                      ? { taxId: normalizeTaxId(delivery.taxId) }
+                      : {}),
                     quote: null,
                     packages,
                   }
