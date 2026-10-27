@@ -30,7 +30,7 @@ export function CisPaymentMethodField({ value, onChange, surchargePercent }: Pro
       {METHODS.map((method) => (
         <label
           key={method}
-          className="flex cursor-pointer items-center gap-3 font-lj-body text-base text-[var(--color-lj-ink)]"
+          className="flex cursor-pointer items-start gap-3 font-lj-body text-base text-[var(--color-lj-ink)]"
         >
           <input
             type="radio"
@@ -38,7 +38,9 @@ export function CisPaymentMethodField({ value, onChange, surchargePercent }: Pro
             value={method}
             checked={value === method}
             onChange={() => onChange(method)}
-            className="accent-[var(--color-lj-ink)]"
+            // Подпись длинная и на телефоне переносится: кружок не сжимается и стоит
+            // напротив первой строки.
+            className="mt-1 shrink-0 accent-[var(--color-lj-ink)]"
           />
           {label(method, surchargePercent)}
         </label>

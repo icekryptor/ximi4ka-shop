@@ -47,6 +47,8 @@ describe('yandexPay из публичных настроек', () => {
     expect(api.getPublicSettings).toHaveBeenCalledTimes(1)
     expect(await reloadPublicYandexPay()).toBeNull()
     expect(api.getPublicSettings).toHaveBeenCalledTimes(2)
+    expect(api.getPublicSettings).toHaveBeenNthCalledWith(1)
+    expect(api.getPublicSettings).toHaveBeenNthCalledWith(2, { fresh: true })
   })
 
   it('сбой api, нет поля или пустой ответ — null без исключения', async () => {

@@ -333,7 +333,12 @@ export interface PublicSettings {
   cloudPayments?: PublicCloudPayments | null
 }
 
-export async function getPublicSettings(): Promise<PublicSettings> {
-  const body = await request<DataEnvelope<PublicSettings>>(`/api/public/settings`)
+// fresh — мимо HTTP-кеша браузера (у ответа max-age=60): перечитать после того, как
+// способ оплаты выключили, пока покупатель был на чекауте.
+export async function getPublicSettings(opts: { fresh?: boolean } = {}): Promise<PublicSettings> {
+  const body = await request<DataEnvelope<PublicSettings>>(
+    `/api/public/settings`,
+    opts.fresh ? { cache: 'no-store' } : undefined,
+  )
   return body.data
 }

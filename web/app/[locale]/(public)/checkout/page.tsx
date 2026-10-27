@@ -25,7 +25,7 @@ import { PromoCodeField } from '@/components/checkout/PromoCodeField'
 import { PaymentMethodField } from '@/components/checkout/PaymentMethodField'
 import { CisPaymentMethodField } from '@/components/checkout/CisPaymentMethodField'
 import { loadPublicYandexPay, reloadPublicYandexPay } from '@/lib/yandexPay'
-import { loadPublicCloudPayments } from '@/lib/cloudPayments'
+import { loadPublicCloudPayments, reloadPublicCloudPayments } from '@/lib/cloudPayments'
 import { ERROR_CLASS, FIELD_CLASS, LABEL_CLASS } from '@/components/checkout/fieldStyles'
 import { useCdekDelivery } from '@/components/checkout/useCdekDelivery'
 import { useCisDelivery } from '@/components/checkout/useCisDelivery'
@@ -316,11 +316,15 @@ export default function CheckoutPage() {
           setPromo(null)
           setPromoError(`${err.message}. Скидка снята, проверьте сумму и оформите заказ ещё раз.`)
         } else if (err.code === 'payment_method_unavailable') {
-          // Яндекс выключили, пока покупатель заполнял форму: объясняем, переключаем на
-          // карту и перечитываем настройки — блок выбора пропадёт сам.
-          setServerError(`${err.message}. Выбрана оплата картой — оформите заказ ещё раз.`)
+          // Яндекс или CloudPayments выключили, пока покупатель заполнял форму:
+          // объясняем, переключаем на Т-Банк и перечитываем настройки мимо HTTP-кеша —
+          // выключенный способ пропадёт из выбора сам.
+          setServerError(
+            `${err.message}. Этот способ оплаты сейчас недоступен — выберите другой и оформите заказ ещё раз.`,
+          )
           setPaymentMethod('tbank')
           void reloadPublicYandexPay().then(setYandexPay)
+          void reloadPublicCloudPayments().then(setCloudPayments)
         } else if (err.code === 'delivery_point_unknown') {
           // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
           // «Пункт получения», выбор сброшен, список города грузится заново.

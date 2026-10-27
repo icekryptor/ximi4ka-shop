@@ -23,4 +23,13 @@ describe('CisPaymentMethodField', () => {
     ).toBeChecked()
     expect(document.body.textContent).not.toMatch(/%|UnionPay/)
   })
+
+  it('длинная подпись переносится, кружок не сжимается и стоит у первой строки', () => {
+    render(<CisPaymentMethodField value="tbank" onChange={() => {}} surchargePercent={8} />)
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio).toHaveClass('shrink-0', 'mt-1')
+      expect(radio.closest('label')).toHaveClass('items-start')
+      expect(radio.closest('label')).not.toHaveClass('items-center')
+    }
+  })
 })

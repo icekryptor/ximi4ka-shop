@@ -128,7 +128,9 @@ const mockQuoteShipping = vi.fn(async ({ destination }: { destination?: QuoteDes
 })
 
 // Публичные настройки идут мимо fetch: тесты чекаута считают вызовы fetch.
-const mockGetPublicSettings = vi.fn(async () => ({ yandexPay: null as unknown }))
+const mockGetPublicSettings = vi.fn<(opts?: { fresh?: boolean }) => Promise<unknown>>(async () => ({
+  yandexPay: null,
+}))
 
 // Виджет Сплита грузит pay.js — в тестах скрипта нет, остаётся текст.
 vi.mock('next/script', () => ({ default: () => null }))
@@ -140,7 +142,7 @@ vi.mock('@/lib/api', async (importActual) => {
     quoteShipping: (payload: never) => mockQuoteShipping(payload),
     suggestCdekCities: (q: string) => mockSuggest(q),
     getCdekPoints: (cityCode: number) => mockGetPoints(cityCode),
-    getPublicSettings: () => mockGetPublicSettings(),
+    getPublicSettings: (opts?: { fresh?: boolean }) => mockGetPublicSettings(opts),
   }
 })
 
@@ -845,6 +847,51 @@ describe('/checkout page', () => {
         expect(screen.queryByTestId('summary-payment-surcharge')).toBeNull()
       })
 
+      it('CloudPayments выключили до отправки: 400 — нейтральный текст, Т-Банк, выбор пропал', async () => {
+        // Первые два ответа — загрузка Яндекса и CloudPayments, дальше — перечитывание.
+        const ON = { yandexPay: null, cloudPayments: { surchargePercent: 8 } }
+        mockGetPublicSettings
+          .mockImplementationOnce(async () => ON)
+          .mockImplementationOnce(async () => ON)
+          .mockImplementation(async () => ({ yandexPay: null, cloudPayments: null }))
+        const fetchMock = vi
+          .fn()
+          .mockImplementationOnce(
+            async () =>
+              new Response(
+                JSON.stringify({
+                  error: {
+                    code: 'payment_method_unavailable',
+                    message: 'Оплата картой банка другой страны сейчас недоступна',
+                  },
+                }),
+                { status: 400 },
+              ),
+          )
+          .mockImplementation(async () => okCheckoutResponse())
+        vi.stubGlobal('fetch', fetchMock)
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        cisContacts()
+        submit()
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+          'Оплата картой банка другой страны сейчас недоступна. Этот способ оплаты сейчас недоступен — выберите другой и оформите заказ ещё раз.',
+        )
+        // Перечитывание обоих способов — мимо HTTP-кеша настроек.
+        await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(4))
+        expect(mockGetPublicSettings).toHaveBeenNthCalledWith(3, { fresh: true })
+        expect(mockGetPublicSettings).toHaveBeenNthCalledWith(4, { fresh: true })
+        await vi.waitFor(() => expect(screen.queryByLabelText(FOREIGN_CARD)).toBeNull())
+        expect(screen.queryByTestId('summary-payment-surcharge')).toBeNull()
+        expect(screen.getByRole('note')).toHaveTextContent(CIS_PAYMENT_NOTE)
+        expect(loadCart()).toHaveLength(1)
+        submit()
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+        expect(lastCheckoutBody(fetchMock)).not.toHaveProperty('paymentMethod')
+      })
+
       it('CloudPayments недоступен — в блоке ЕАЭС нет выбора оплаты, прежняя плашка', async () => {
         mockPublicSettings({ yandexPay: null, cloudPayments: null })
         const fetchMock = stubCheckoutFetch()
@@ -1331,7 +1378,7 @@ describe('/checkout page', () => {
     })
 
     it('Яндекс выключили до отправки: 400 — сообщение, сброс на Т-Банк, блок пропал, корзина цела', async () => {
-      // Первые два ответа — загрузка Яндекса и CloudPayments, третий — перечитывание.
+      // Первые два ответа — загрузка Яндекса и CloudPayments, дальше — перечитывание.
       mockGetPublicSettings
         .mockImplementationOnce(async () => ON)
         .mockImplementationOnce(async () => ON)
@@ -1357,9 +1404,10 @@ describe('/checkout page', () => {
       await fillValidForm()
       submit()
       expect(await screen.findByRole('alert')).toHaveTextContent(
-        /яндекс пэй сейчас недоступен.*картой/i,
+        'Яндекс Пэй сейчас недоступен. Этот способ оплаты сейчас недоступен — выберите другой и оформите заказ ещё раз.',
       )
-      await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(3))
+      // Перечитываются оба способа — Яндекс и CloudPayments.
+      await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(4))
       await vi.waitFor(() =>
         expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull(),
       )

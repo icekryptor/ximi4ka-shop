@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/api', () => ({ getPublicSettings: vi.fn() }))
 import { getPublicSettings } from '@/lib/api'
-import { loadPublicCloudPayments, resetPublicCloudPaymentsCacheForTests } from './cloudPayments'
+import {
+  loadPublicCloudPayments,
+  reloadPublicCloudPayments,
+  resetPublicCloudPaymentsCacheForTests,
+} from './cloudPayments'
 
 describe('loadPublicCloudPayments', () => {
   afterEach(() => {
@@ -17,6 +21,17 @@ describe('loadPublicCloudPayments', () => {
     expect(await loadPublicCloudPayments()).toEqual({ surchargePercent: 8 })
     await loadPublicCloudPayments()
     expect(getPublicSettings).toHaveBeenCalledTimes(1)
+  })
+
+  it('reload спрашивает заново мимо HTTP-кеша и обновляет кеш сессии', async () => {
+    vi.mocked(getPublicSettings)
+      .mockResolvedValueOnce({ cloudPayments: { surchargePercent: 8 } } as never)
+      .mockResolvedValueOnce({ cloudPayments: null } as never)
+    expect(await loadPublicCloudPayments()).toEqual({ surchargePercent: 8 })
+    expect(await reloadPublicCloudPayments()).toBeNull()
+    expect(getPublicSettings).toHaveBeenNthCalledWith(2, { fresh: true })
+    expect(await loadPublicCloudPayments()).toBeNull()
+    expect(getPublicSettings).toHaveBeenCalledTimes(2)
   })
 
   it('нет поля или ошибка api — null', async () => {
