@@ -4,7 +4,7 @@ import type { TrafficWeek } from '@ximi4ka-shop/shared'
 export const SERIES = [
   { key: 'organic', label: 'Поиск', color: '#2563eb' },
   { key: 'direct', label: 'Прямые заходы', color: '#64748b' },
-  { key: 'referral', label: 'Ссылки', color: '#16a34a' },
+  { key: 'referral', label: 'Ссылки на сайтах', color: '#16a34a' },
   { key: 'ad', label: 'Реклама', color: '#d97706' },
   { key: 'other', label: 'Остальное', color: '#a78bfa' },
 ] as const

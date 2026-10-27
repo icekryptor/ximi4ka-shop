@@ -33,3 +33,19 @@ export function formatDelta(cur: number, prev: number): string {
   if (pct < 0) return `−${Math.abs(pct)}%`
   return '0%'
 }
+
+// 2026-10-19 → «19.10»
+const ddmm = (iso: string) => iso.slice(5).split('-').reverse().join('.')
+// 2026-10-19 → «19.10.2026»
+export const formatDay = (iso: string) => iso.split('-').reverse().join('.')
+
+// Подпись под показателем: разница и с каким периодом сравнивали.
+export function comparedPeriodText(
+  cur: number,
+  prev: number,
+  { prevFrom, prevTo }: { prevFrom: string; prevTo: string },
+): string {
+  const range = `${ddmm(prevFrom)}–${ddmm(prevTo)}`
+  if (prev === 0) return cur > 0 ? `в прошлом периоде (${range}) данных нет` : '—'
+  return `${formatDelta(cur, prev)} к ${range}`
+}

@@ -4,7 +4,13 @@ import { CHIP_ACTIVE, CHIP_IDLE } from '../StatsDashboard'
 import type { PeriodPreset, StatsPeriod } from '../statsPeriod'
 import { SourcesChart } from './SourcesChart'
 import { SyncStatusBanner } from './SyncStatusBanner'
-import { engineLabel, formatCount, formatDelta, sourceLabel } from './trafficFormat'
+import {
+  comparedPeriodText,
+  engineLabel,
+  formatCount,
+  formatDelta,
+  sourceLabel,
+} from './trafficFormat'
 
 const PRESETS: Array<{ value: Exclude<PeriodPreset, 'custom'>; label: string }> = [
   { value: 'week', label: 'Неделя' },
@@ -90,7 +96,7 @@ export function TrafficDashboard({
             {formatCount(sources.totalVisits)}
           </div>
           <div className="mt-1 text-xs text-brand-text-secondary">
-            {formatDelta(sources.totalVisits, sources.prevTotalVisits)} к прошлому периоду
+            {comparedPeriodText(sources.totalVisits, sources.prevTotalVisits, sources)}
           </div>
         </div>
         <div className={CARD}>
@@ -99,14 +105,18 @@ export function TrafficDashboard({
             {formatCount(organic.visits)}
           </div>
           <div className="mt-1 text-xs text-brand-text-secondary">
-            {formatDelta(organic.visits, organic.prevVisits)} к прошлому периоду
+            {comparedPeriodText(organic.visits, organic.prevVisits, sources)}
           </div>
         </div>
       </div>
 
       <div className={CARD}>
         <div className="mb-3 text-sm font-medium text-brand-text">Визиты по неделям</div>
-        <SourcesChart weeks={sources.weeks} />
+        {sources.weeks.length === 0 ? (
+          <p className="text-sm text-brand-text-secondary">За этот период данных нет.</p>
+        ) : (
+          <SourcesChart weeks={sources.weeks} />
+        )}
       </div>
 
       <div className={CARD}>

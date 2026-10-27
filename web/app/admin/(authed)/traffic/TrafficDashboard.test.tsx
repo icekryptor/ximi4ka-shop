@@ -80,7 +80,8 @@ describe('TrafficDashboard', () => {
       />,
     )
     expect(screen.getByText(/Синхронизация не настроена/)).toBeInTheDocument()
-    expect(screen.getByText('За этот период данных нет.')).toBeInTheDocument()
+    // пустой график и пустая таблица источников
+    expect(screen.getAllByText('За этот период данных нет.')).toHaveLength(2)
     expect(screen.queryByRole('table')).toBeNull()
   })
 
@@ -100,6 +101,78 @@ describe('TrafficDashboard', () => {
       />,
     )
     expect(screen.getByText(/Токен отозван или истёк/)).toBeInTheDocument()
+  })
+
+  it('плашка «ок» называет реальный последний день данных', () => {
+    render(<TrafficDashboard status={status} sources={sources} period={period} now={NOW} />)
+    expect(screen.getByText(/Данные по 27\.10\.2026, обновлено/)).toBeInTheDocument()
+    expect(screen.getByText(/есть с 10\.10\.2026/)).toBeInTheDocument()
+    expect(screen.queryByText(/на вчера/)).toBeNull()
+  })
+
+  it('плашка «ок» без dataUntil — прежний текст без даты', () => {
+    render(
+      <TrafficDashboard
+        status={{ ...status, dataUntil: null }}
+        sources={sources}
+        period={period}
+        now={NOW}
+      />,
+    )
+    expect(screen.getByText(/^Данные на вчера, обновлено/)).toBeInTheDocument()
+  })
+
+  it('без недель — в карточке графика «данных нет», без SVG и легенды', () => {
+    render(
+      <TrafficDashboard
+        status={status}
+        sources={{ ...sources, weeks: [] }}
+        period={period}
+        now={NOW}
+      />,
+    )
+    expect(screen.queryByRole('img', { name: 'Визиты по неделям и источникам' })).toBeNull()
+    const card = screen.getByText('Визиты по неделям').parentElement as HTMLElement
+    expect(within(card).getByText('За этот период данных нет.')).toBeInTheDocument()
+    expect(within(card).queryByText('Прямые заходы')).toBeNull()
+  })
+
+  it('под карточками — сравниваемый период', () => {
+    render(<TrafficDashboard status={status} sources={sources} period={period} now={NOW} />)
+    // 45 к 30 → +50%; поиск 30 к 20 → +50%
+    expect(screen.getAllByText('+50% к 13.10–19.10')).toHaveLength(2)
+  })
+
+  it('прошлый период пуст — текст про отсутствие данных; оба нуля — тире', () => {
+    const { rerender } = render(
+      <TrafficDashboard
+        status={status}
+        sources={{
+          ...sources,
+          prevTotalVisits: 0,
+          sources: [{ source: 'organic', visits: 30, prevVisits: 0 }],
+        }}
+        period={period}
+        now={NOW}
+      />,
+    )
+    expect(screen.getAllByText('в прошлом периоде (13.10–19.10) данных нет')).toHaveLength(2)
+    rerender(
+      <TrafficDashboard
+        status={status}
+        sources={{
+          ...sources,
+          totalVisits: 0,
+          prevTotalVisits: 0,
+          sources: [],
+          engines: [],
+          weeks: [],
+        }}
+        period={period}
+        now={NOW}
+      />,
+    )
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(2)
   })
 
   it('плашки периода ведут в /admin/traffic, есть «90 дней»', () => {

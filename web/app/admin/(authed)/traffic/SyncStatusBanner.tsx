@@ -1,5 +1,6 @@
 import type { TrafficStatus } from '@ximi4ka-shop/shared'
 import { syncBannerState } from './syncBanner'
+import { formatDay } from './trafficFormat'
 
 const WARN = 'rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900'
 
@@ -36,8 +37,9 @@ export function SyncStatusBanner({ status, now }: { status: TrafficStatus; now: 
     case 'ok':
       return (
         <p className="text-sm text-brand-text-secondary">
-          Данные на вчера, обновлено {formatMsk(state.lastSuccessAt)}
-          {status.dataSince ? `; есть с ${status.dataSince.split('-').reverse().join('.')}` : ''}.
+          {status.dataUntil ? `Данные по ${formatDay(status.dataUntil)}` : 'Данные на вчера'},
+          обновлено {formatMsk(state.lastSuccessAt)}
+          {status.dataSince ? `; есть с ${formatDay(status.dataSince)}` : ''}.
         </p>
       )
   }

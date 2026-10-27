@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { seriesKey, stackLayout } from './sourcesChartLayout'
+import { SERIES, seriesKey, stackLayout } from './sourcesChartLayout'
 
 describe('stackLayout', () => {
   it('высота столбца пропорциональна сумме, сегменты в порядке SERIES снизу вверх', () => {
@@ -24,6 +24,9 @@ describe('stackLayout', () => {
     expect(stackLayout([], 200, 100)).toEqual([])
     const [bar] = stackLayout([{ weekStart: '2026-10-19', visitsBySource: {} }], 200, 100)
     expect(bar.segments).toEqual([])
+  })
+  it('подпись ссылок в легенде такая же, как в таблице', () => {
+    expect(SERIES.find((s) => s.key === 'referral')?.label).toBe('Ссылки на сайтах')
   })
   it('seriesKey: малые источники — в «Остальное»', () => {
     expect(seriesKey('organic')).toBe('organic')
