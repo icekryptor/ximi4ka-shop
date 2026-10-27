@@ -4,7 +4,7 @@ import { Order } from '../../entities/Order.js'
 import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
 import {
   acceptsTestPayments,
-  getCloudPaymentsConfig,
+  hasCloudPaymentsKeys,
 } from '../../lib/payments/cloudpayments/config.js'
 import {
   amountKopecks,
@@ -22,18 +22,18 @@ export const cloudPaymentsWebhookRouter: Router = Router()
 //   Check — https://ximi4ka.ru/api/webhooks/cloudpayments/check
 //   Pay   — https://ximi4ka.ru/api/webhooks/cloudpayments/pay
 //   Fail  — https://ximi4ka.ru/api/webhooks/cloudpayments/fail
-// Ответ — {"code":N}. Check с ненулевым кодом отклоняет платёж до списания; Pay и Fail
-// CloudPayments повторяет до 100 раз, пока не получит code 0, поэтому на них всегда
-// отвечаем 0 после обработки, а несоответствия только логируем.
+// На подписанное уведомление ответ — {"code":N} с HTTP 200 (неверная подпись — 401).
+// Check с ненулевым кодом отклоняет платёж до списания; Pay и Fail CloudPayments
+// повторяет до 100 раз, пока не получит code 0, поэтому на них всегда отвечаем 0
+// после обработки, а несоответствия только логируем.
 const CODE = { OK: 0, BAD_ORDER: 10, BAD_AMOUNT: 12, REJECT: 13 } as const
 
-async function readNotification(
-  req: Request,
-  res: Response,
-): Promise<CloudPaymentsNotification | null> {
-  const cfg = await getCloudPaymentsConfig()
+// Подпись проверяем первой и по ключу из env — без чтения настроек: неподписанный
+// запрос не должен доходить до базы.
+function readNotification(req: Request, res: Response): CloudPaymentsNotification | null {
+  const secret = (process.env.CLOUDPAYMENTS_API_SECRET ?? '').trim()
   const raw = Buffer.isBuffer(req.body) ? req.body : null
-  if (!cfg || !raw || !verifyCloudPaymentsSignature(raw, req.headers, cfg.apiSecret)) {
+  if (!hasCloudPaymentsKeys() || !raw || !verifyCloudPaymentsSignature(raw, req.headers, secret)) {
     res.status(401).json({ code: CODE.REJECT })
     return null
   }
@@ -79,7 +79,7 @@ async function matchOrder(n: CloudPaymentsNotification): Promise<Match> {
 
 cloudPaymentsWebhookRouter.post('/check', async (req, res, next) => {
   try {
-    const n = await readNotification(req, res)
+    const n = readNotification(req, res)
     if (!n) return
     const match = await matchOrder(n)
     if (!match.ok) {
@@ -104,11 +104,19 @@ cloudPaymentsWebhookRouter.post('/check', async (req, res, next) => {
 
 cloudPaymentsWebhookRouter.post('/pay', async (req, res, next) => {
   try {
-    const n = await readNotification(req, res)
+    const n = readNotification(req, res)
     if (!n) return
     const match = await matchOrder(n)
     if (!match.ok) {
       console.error(`cloudpayments pay: НЕ засчитано, проверьте вручную: ${match.reason}`)
+      res.status(200).json({ code: CODE.OK })
+      return
+    }
+    // Засчитываем только списание: возвраты и прочие операции заказ не оплачивают.
+    if (n.OperationType !== 'Payment') {
+      console.error(
+        `cloudpayments pay: заказ ${match.order.orderNumber}, OperationType=${clip(n.OperationType)} — не засчитано`,
+      )
       res.status(200).json({ code: CODE.OK })
       return
     }
@@ -127,6 +135,22 @@ cloudPaymentsWebhookRouter.post('/pay', async (req, res, next) => {
       // TransactionId нужен для возврата в кабинете CloudPayments.
       if (n.TransactionId) order.paymentIntentId = n.TransactionId
       await saveOrderWithStatusEvent(order, previousStatus)
+      // Правило «деньги пришли — оплачен» общее с Т-Кассой, но отменённый заказ мог
+      // уже уйти из работы — менеджеру нужно разобраться.
+      if (previousStatus === 'cancelled' || previousStatus === 'failed') {
+        console.error(
+          `cloudpayments pay: оплата пришла по заказу ${order.orderNumber} в статусе ${previousStatus} — заказ переведён в «оплачен», проверьте вручную`,
+        )
+      }
+    } else if (
+      (order.status === 'paid' || order.status === 'shipped') &&
+      n.TransactionId !== order.paymentIntentId
+    ) {
+      // Повтор Pay приходит с тем же TransactionId; другой — значит, покупатель
+      // заплатил второй раз (например, по старой ссылке в другой вкладке).
+      console.error(
+        `cloudpayments pay: ПОВТОРНОЕ списание по ${order.orderNumber}: TransactionId=${clip(n.TransactionId)} (в заказе ${clip(order.paymentIntentId)}) — нужен возврат`,
+      )
     }
     res.status(200).json({ code: CODE.OK })
   } catch (err) {
@@ -139,7 +163,7 @@ cloudPaymentsWebhookRouter.post('/pay', async (req, res, next) => {
 // России (иностранные карты не подключены у CloudPayments).
 cloudPaymentsWebhookRouter.post('/fail', async (req, res, next) => {
   try {
-    const n = await readNotification(req, res)
+    const n = readNotification(req, res)
     if (!n) return
     console.error(
       `cloudpayments fail: заказ ${clip(n.InvoiceId)}, ReasonCode=${clip(n.ReasonCode)} Reason=${clip(n.Reason)} IssuerBankCountry=${clip(n.IssuerBankCountry)}`,

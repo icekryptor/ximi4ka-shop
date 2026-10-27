@@ -103,6 +103,19 @@ describe('вебхуки CloudPayments', () => {
       vi.stubEnv('CLOUDPAYMENTS_API_SECRET', '')
       const o = await seedOrder()
       expect((await post('check', fields(o))).status).toBe(401)
+      vi.stubEnv('CLOUDPAYMENTS_API_SECRET', SECRET)
+      vi.stubEnv('CLOUDPAYMENTS_PUBLIC_ID', ' ')
+      expect((await post('check', fields(o))).status).toBe(401)
+    })
+
+    it('подпись проверяется до любого обращения к базе', async () => {
+      const o = await seedOrder()
+      const repo = vi.spyOn(AppDataSource, 'getRepository')
+      const query = vi.spyOn(AppDataSource, 'query')
+      expect((await post('pay', fields(o), { signed: false })).status).toBe(401)
+      expect((await post('check', fields(o), { secret: 'other' })).status).toBe(401)
+      expect(repo).not.toHaveBeenCalled()
+      expect(query).not.toHaveBeenCalled()
     })
   })
 
@@ -183,6 +196,62 @@ describe('вебхуки CloudPayments', () => {
       await post('pay', fields(o, { Status: 'Authorized' }))
       expect((await reload(o)).status).toBe('pending')
       expect((await reload(t)).status).toBe('pending')
+    })
+
+    it('OperationType не Payment — code 0, заказ не оплачен, в логе тип операции', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const o = await seedOrder()
+      for (const extra of [{ OperationType: 'Refund' }, { OperationType: '' }]) {
+        expect((await post('pay', fields(o, extra))).body).toEqual({ code: 0 })
+      }
+      expect((await reload(o)).status).toBe('pending')
+      expect(log.mock.calls.flat().join(' ')).toContain('OperationType=Refund')
+    })
+
+    it('второе списание с другим TransactionId — лог «ПОВТОРНОЕ списание», заказ не меняется', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const o = await seedOrder()
+      await post('pay', fields(o, { TransactionId: '504' }))
+      const before = await reload(o)
+      // Повтор того же уведомления — не двойное списание.
+      await post('pay', fields(o, { TransactionId: '504' }))
+      expect(log.mock.calls.flat().join(' ')).not.toContain('ПОВТОРНОЕ списание')
+
+      const res = await post('pay', fields(o, { TransactionId: '777' }))
+      expect(res.body).toEqual({ code: 0 })
+      const logged = log.mock.calls.flat().join(' ')
+      expect(logged).toContain(`ПОВТОРНОЕ списание по ${o.orderNumber}`)
+      expect(logged).toContain('TransactionId=777 (в заказе 504)')
+      const after = await reload(o)
+      expect(after.paymentIntentId).toBe('504')
+      expect(after.statusHistory).toEqual(before.statusHistory)
+    })
+
+    it('второе списание по отгруженному заказу — тоже лог «ПОВТОРНОЕ списание»', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const o = await seedOrder({ status: 'shipped', paymentIntentId: '504' })
+      await post('pay', fields(o, { TransactionId: '505' }))
+      expect(log.mock.calls.flat().join(' ')).toContain('ПОВТОРНОЕ списание')
+      expect((await reload(o)).status).toBe('shipped')
+    })
+
+    it('оплата отменённого или неуспешного заказа — «оплачен» и лог для ручной проверки', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      for (const status of ['cancelled', 'failed'] as const) {
+        const o = await seedOrder({ status })
+        expect((await post('pay', fields(o))).body).toEqual({ code: 0 })
+        expect((await reload(o)).status).toBe('paid')
+        expect(log.mock.calls.flat().join(' ')).toContain(
+          `оплата пришла по заказу ${o.orderNumber} в статусе ${status} — заказ переведён в «оплачен», проверьте вручную`,
+        )
+      }
+    })
+
+    it('обычная оплата ожидающего заказа — без предупреждений в логе', async () => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const o = await seedOrder()
+      await post('pay', fields(o))
+      expect(log).not.toHaveBeenCalled()
     })
 
     it('JSON-тело с верной подписью тоже принимается', async () => {

@@ -65,6 +65,21 @@ async function call(
   return { httpStatus: res.status, ok: res.ok, body: parsed ?? {} }
 }
 
+// Покупателя отправляем только на https-страницу домена CloudPayments: подменённый
+// ответ не должен увести его на чужой сайт.
+export function isCloudPaymentsPayUrl(url: unknown): url is string {
+  if (typeof url !== 'string') return false
+  try {
+    const u = new URL(url)
+    return (
+      u.protocol === 'https:' &&
+      (u.hostname === 'cloudpayments.ru' || u.hostname.endsWith('.cloudpayments.ru'))
+    )
+  } catch {
+    return false
+  }
+}
+
 // Любой сбой — null с записью в лог: заказ остаётся pending без ссылки и уходит
 // менеджеру, как при отказе Т-Кассы и Яндекса.
 export async function createCloudPaymentsOrder(
@@ -113,8 +128,7 @@ export async function createCloudPaymentsOrder(
       res.body.Success !== true ||
       typeof id !== 'string' ||
       !id ||
-      typeof url !== 'string' ||
-      !url.startsWith('https://')
+      !isCloudPaymentsPayUrl(url)
     ) {
       console.error(
         `cloudpayments: ссылка для ${order.orderNumber} не создана: HTTP ${res.httpStatus} Success=${clip(String(res.body.Success))} Message=${clip(res.body.Message, secrets)}`,
@@ -131,7 +145,7 @@ export async function createCloudPaymentsOrder(
 }
 
 // Сверка зависших платежей (reconcile.ts). paid — только Completed с той же суммой в
-// рублях и не тестовый на проде; Declined и прочее — pending: ссылка живёт, покупатель
+// рублях (Currency=RUB обязательно) и не тестовый на проде; Declined и прочее — pending: ссылка живёт, покупатель
 // может заплатить другой картой. Сбой — unknown, заказ не трогаем.
 export async function getCloudPaymentsStatus(
   order: Order,
@@ -157,7 +171,8 @@ export async function getCloudPaymentsStatus(
     if (model.Status !== 'Completed') return 'pending'
     const amountOk =
       typeof model.Amount === 'number' && Math.round(model.Amount * 100) === order.totalRub * 100
-    const currencyOk = (model.Currency ?? 'RUB') === 'RUB'
+    // Валюта обязательна: без неё платёж не засчитываем.
+    const currencyOk = model.Currency === 'RUB'
     const testOk = model.TestMode !== true || acceptsTestPayments(env)
     if (!amountOk || !currencyOk || !testOk) {
       console.error(

@@ -74,6 +74,30 @@ describe('createCloudPaymentsOrder', () => {
     expect(JSON.parse(String(fetch.mock.calls[0]![1]!.body))).not.toHaveProperty('Email')
   })
 
+  it('ссылка не на домен CloudPayments — null; поддомены cloudpayments.ru принимаются', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const withUrl = (Url: string) => reply({ Success: true, Model: { Id: 'x', Url } })
+    for (const bad of [
+      'https://evil.example/d/x',
+      'https://cloudpayments.ru.evil.example/d/x',
+      'https://evilcloudpayments.ru/d/x',
+      'http://orders.cloudpayments.ru/d/x',
+      'not a url',
+    ]) {
+      expect(
+        await createCloudPaymentsOrder(order(), { config, fetch: withUrl(bad), env }),
+      ).toBeNull()
+    }
+    expect(
+      await createCloudPaymentsOrder(order(), {
+        config,
+        fetch: withUrl('https://cloudpayments.ru/d/x'),
+        env,
+      }),
+    ).toEqual({ externalId: 'x', paymentUrl: 'https://cloudpayments.ru/d/x' })
+    log.mockRestore()
+  })
+
   it('отказ, не-https ссылка, сеть, нет ключей, нет WEB_ORIGIN — null и лог без секретов', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(
@@ -122,7 +146,7 @@ describe('getCloudPaymentsStatus', () => {
     expect(JSON.parse(String(init!.body))).toEqual({ InvoiceId: 'XM-2026-00042' })
   })
 
-  it('Completed с другой суммой, валютой или тестовый на проде — unknown', async () => {
+  it('Completed с другой суммой, валютой, без валюты или тестовый на проде — unknown', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(
       await getCloudPaymentsStatus(order(), {
@@ -135,6 +159,13 @@ describe('getCloudPaymentsStatus', () => {
       await getCloudPaymentsStatus(order(), {
         config,
         fetch: found({ Status: 'Completed', Amount: 2916, Currency: 'USD' }),
+        env,
+      }),
+    ).toBe('unknown')
+    expect(
+      await getCloudPaymentsStatus(order(), {
+        config,
+        fetch: found({ Status: 'Completed', Amount: 2916, Currency: undefined }),
         env,
       }),
     ).toBe('unknown')
