@@ -73,7 +73,7 @@ describe('GET /api/admin/traffic', () => {
     await seedSource('2026-10-20', 'organic', 30)
     await seedSource('2026-10-20', 'organic', 20, 'yandex')
     await seedSource('2026-10-20', 'organic', 10, 'google')
-    await seedSource('2026-10-21', 'direct', 15)
+    await seedSource('2026-10-26', 'direct', 15)
     await seedSource('2026-10-14', 'organic', 12)
     await seedSource('2026-10-14', 'organic', 12, 'yandex')
     await seedSource('2026-10-01', 'direct', 99)
@@ -94,8 +94,64 @@ describe('GET /api/admin/traffic', () => {
       { engine: 'google', visits: 10, prevVisits: 0 },
     ])
     expect(data.weeks).toEqual([
-      { weekStart: '2026-10-19', visitsBySource: { organic: 30, direct: 15 } },
+      { weekStart: '2026-10-19', visitsBySource: { organic: 30 } },
+      { weekStart: '2026-10-26', visitsBySource: { direct: 15 } },
     ])
+  })
+
+  it('данные кончаются раньше конца периода — период и прошлый период сжимаются вместе', async () => {
+    // Сегодня в пресете, но синхронизировано только по 24.10.
+    await seedSource('2026-10-20', 'organic', 10)
+    await seedSource('2026-10-24', 'organic', 5)
+    await seedSource('2026-10-15', 'organic', 7)
+    await seedSource('2026-10-19', 'organic', 3)
+    await seedSource('2026-10-14', 'organic', 100) // раньше прошлого периода
+
+    const res = await request(app)
+      .get('/api/admin/traffic/sources?from=2026-10-20&to=2026-10-26')
+      .set(authHeaders(auth))
+    const data = res.body.data as TrafficSourcesResponse
+
+    expect(data).toMatchObject({
+      from: '2026-10-20',
+      to: '2026-10-24',
+      prevFrom: '2026-10-15',
+      prevTo: '2026-10-19',
+      totalVisits: 15,
+      prevTotalVisits: 10,
+    })
+  })
+
+  it('границы периодов включительно: from и prevFrom входят, prevFrom - 1 нет', async () => {
+    await seedSource('2026-10-20', 'organic', 1) // from
+    await seedSource('2026-10-26', 'organic', 2) // to
+    await seedSource('2026-10-13', 'organic', 4) // prevFrom
+    await seedSource('2026-10-19', 'organic', 8) // prevTo
+    await seedSource('2026-10-12', 'organic', 16) // prevFrom - 1
+
+    const res = await request(app)
+      .get('/api/admin/traffic/sources?from=2026-10-20&to=2026-10-26')
+      .set(authHeaders(auth))
+    expect(res.body.data).toMatchObject({
+      to: '2026-10-26',
+      prevFrom: '2026-10-13',
+      prevTo: '2026-10-19',
+      totalVisits: 3,
+      prevTotalVisits: 12,
+    })
+  })
+
+  it('данные целиком до начала периода — период не сжимается', async () => {
+    await seedSource('2026-10-05', 'organic', 9)
+    const res = await request(app)
+      .get('/api/admin/traffic/sources?from=2026-10-20&to=2026-10-26')
+      .set(authHeaders(auth))
+    expect(res.body.data).toMatchObject({
+      to: '2026-10-26',
+      prevFrom: '2026-10-13',
+      prevTo: '2026-10-19',
+      totalVisits: 0,
+    })
   })
 
   it('даты отдаются строками без сдвига пояса', async () => {

@@ -33,7 +33,22 @@ const TOTALS_SQL = (keyCol: string, where: string) => `
   HAVING SUM(visits) > 0
    ORDER BY visits DESC, prev DESC, key`
 
-export async function getTrafficSources(from: string, to: string): Promise<TrafficSourcesResponse> {
+// Синхронизированные данные не доходят до «сегодня» (а при сбое и до вчера):
+// если период упирается в них, сжимаем его до последнего дня с данными, иначе
+// прошлый период той же длины выглядел бы заведомо «больше» текущего.
+async function lastDataDay(): Promise<string | null> {
+  const [row] = (await AppDataSource.query(
+    `SELECT to_char(MAX(day), 'YYYY-MM-DD') AS until FROM traffic_sources_daily`,
+  )) as Array<{ until: string | null }>
+  return row?.until ?? null
+}
+
+export async function getTrafficSources(
+  from: string,
+  requestedTo: string,
+): Promise<TrafficSourcesResponse> {
+  const maxDay = await lastDataDay()
+  const to = maxDay !== null && requestedTo > maxDay && from <= maxDay ? maxDay : requestedTo
   const prevTo = addDays(from, -1)
   const prevFrom = addDays(from, -daysInclusive(from, to))
   const params = [from, to, prevFrom, prevTo]
