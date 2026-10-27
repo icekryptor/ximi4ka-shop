@@ -319,9 +319,7 @@ export default function CheckoutPage() {
           // Яндекс или CloudPayments выключили, пока покупатель заполнял форму:
           // объясняем, переключаем на Т-Банк и перечитываем настройки мимо HTTP-кеша —
           // выключенный способ пропадёт из выбора сам.
-          setServerError(
-            `${err.message}. Этот способ оплаты сейчас недоступен — выберите другой и оформите заказ ещё раз.`,
-          )
+          setServerError(`${err.message}. Выберите другой способ оплаты и оформите заказ ещё раз.`)
           setPaymentMethod('tbank')
           void reloadPublicYandexPay().then(setYandexPay)
           void reloadPublicCloudPayments().then(setCloudPayments)

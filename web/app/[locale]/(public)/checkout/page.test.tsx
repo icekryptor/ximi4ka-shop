@@ -877,7 +877,7 @@ describe('/checkout page', () => {
         cisContacts()
         submit()
         expect(await screen.findByRole('alert')).toHaveTextContent(
-          'Оплата картой банка другой страны сейчас недоступна. Этот способ оплаты сейчас недоступен — выберите другой и оформите заказ ещё раз.',
+          'Оплата картой банка другой страны сейчас недоступна. Выберите другой способ оплаты и оформите заказ ещё раз.',
         )
         // Перечитывание обоих способов — мимо HTTP-кеша настроек.
         await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(4))
@@ -1404,7 +1404,7 @@ describe('/checkout page', () => {
       await fillValidForm()
       submit()
       expect(await screen.findByRole('alert')).toHaveTextContent(
-        'Яндекс Пэй сейчас недоступен. Этот способ оплаты сейчас недоступен — выберите другой и оформите заказ ещё раз.',
+        'Яндекс Пэй сейчас недоступен. Выберите другой способ оплаты и оформите заказ ещё раз.',
       )
       // Перечитываются оба способа — Яндекс и CloudPayments.
       await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(4))
