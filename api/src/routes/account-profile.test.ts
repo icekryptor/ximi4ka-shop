@@ -331,6 +331,29 @@ describe('профиль и заказы', () => {
     expect(body).not.toContain(strangerOrder.orderNumber)
   })
 
+  it('GET /orders: надбавка за оплату картой — paymentSurchargeRub (у остальных 0)', async () => {
+    const auth = await loginAsCustomer(app)
+    const c = await me()
+    const card = await seedOrder({
+      customerId: c.id,
+      paymentProvider: 'cloudpayments',
+      subtotalRub: 2000,
+      shippingRub: 700,
+      paymentSurchargeRub: 216,
+      totalRub: 2916,
+    })
+    const plain = await seedOrder({ customerId: c.id })
+    const res = await request(app).get('/api/account/orders').set(customerHeaders(auth))
+    const byNumber = Object.fromEntries(
+      res.body.data.orders.map((o: { orderNumber: string }) => [o.orderNumber, o]),
+    )
+    expect(byNumber[card.orderNumber]).toMatchObject({
+      paymentSurchargeRub: 216,
+      totalRub: 2916,
+    })
+    expect(byNumber[plain.orderNumber]).toMatchObject({ paymentSurchargeRub: 0 })
+  })
+
   it('GET /orders: подарочная позиция помечена isGift, обычная — нет', async () => {
     const auth = await loginAsCustomer(app)
     const c = await me()

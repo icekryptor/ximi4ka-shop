@@ -198,9 +198,10 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
     order.customerTelegram ?? '',
     deliveryCell(order),
     giftLast(order.items).map(itemLine).join('\n'),
-    // «Товары» — со всеми скидками: колонки таблицы не менялись, Товары + Доставка = Итого.
+    // Колонки таблицы не менялись, Товары + Доставка = Итого: «Товары» — со всеми
+    // скидками, «Доставка» — вместе с надбавкой за оплату картой (CloudPayments).
     order.subtotalRub - order.discountRub - (order.promoDiscountRub ?? 0),
-    order.shippingRub,
+    order.shippingRub + (order.paymentSurchargeRub ?? 0),
     order.totalRub,
     STATUS_LABELS[order.status],
   ]

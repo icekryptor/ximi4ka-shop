@@ -55,6 +55,18 @@ describe('sheetRow', () => {
     expect(row.slice(-4, -1)).toEqual([950, 350, 1300])
   })
 
+  it('надбавка за оплату картой идёт в «Доставка, ₽»: Товары + Доставка = Итого', () => {
+    const row = sheetRow({
+      ...order,
+      subtotalRub: 2000,
+      shippingRub: 700,
+      paymentProvider: 'cloudpayments',
+      paymentSurchargeRub: 216,
+      totalRub: 2916,
+    })
+    expect(row.slice(-4, -1)).toEqual([2000, 916, 2916])
+  })
+
   it('строка заказа по колонкам листа', () => {
     expect(sheetRow(order)).toEqual([
       'XM-2026-00042',
