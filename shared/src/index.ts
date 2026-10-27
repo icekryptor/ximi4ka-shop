@@ -8,6 +8,7 @@ export type {
   PaymentProvider,
   CheckoutPaymentMethod,
   PublicYandexPay,
+  PublicCloudPayments,
   DeliveryAddress,
   DeliveryMethod,
   OrderDeliveryMethod,
