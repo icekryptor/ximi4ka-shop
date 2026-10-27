@@ -59,9 +59,14 @@ const INITIAL_FIELDS: CheckoutFormFields = {
 // CloudPayments для блока ЕАЭС. На проде в режиме «Тест» публичное значение — null; с
 // ?cp_test=1 в адресе спрашиваем админ-превью (cookie сессии админки): способ видит только
 // вошедший администратор. preview — показать пометку о тестовом режиме.
+interface CheckoutCloudPayments {
+  value: PublicCloudPayments | null
+  preview: boolean
+}
+
 async function resolveCloudPayments(
   publicValue: PublicCloudPayments | null,
-): Promise<{ value: PublicCloudPayments | null; preview: boolean }> {
+): Promise<CheckoutCloudPayments> {
   if (publicValue !== null || !isCloudPaymentsPreviewRequested(window.location.search)) {
     return { value: publicValue, preview: false }
   }
@@ -109,24 +114,19 @@ export default function CheckoutPage() {
     }
   }, [])
   // CloudPayments для блока ЕАЭС: null — недоступен, выбора нет, оплата через Т-Банк.
-  // cloudPaymentsPreview — тестовый режим, видимый только админу (?cp_test=1).
-  const [cloudPayments, setCloudPayments] = useState<PublicCloudPayments | null>(null)
-  const [cloudPaymentsPreview, setCloudPaymentsPreview] = useState(false)
-  const applyCloudPayments = (resolved: {
-    value: PublicCloudPayments | null
-    preview: boolean
-  }) => {
-    setCloudPayments(resolved.value)
-    setCloudPaymentsPreview(resolved.preview)
-  }
+  // preview — тестовый режим, видимый только админу (?cp_test=1).
+  const [cloudState, setCloudState] = useState<CheckoutCloudPayments>({
+    value: null,
+    preview: false,
+  })
+  const cloudPayments = cloudState.value
+  const cloudPaymentsPreview = cloudState.preview
   useEffect(() => {
     let cancelled = false
     void loadPublicCloudPayments()
       .then(resolveCloudPayments)
       .then((resolved) => {
-        if (cancelled) return
-        setCloudPayments(resolved.value)
-        setCloudPaymentsPreview(resolved.preview)
+        if (!cancelled) setCloudState(resolved)
       })
     return () => {
       cancelled = true
@@ -353,7 +353,7 @@ export default function CheckoutPage() {
           setServerError(`${err.message}. Выберите другой способ оплаты и оформите заказ ещё раз.`)
           setPaymentMethod('tbank')
           void reloadPublicYandexPay().then(setYandexPay)
-          void reloadPublicCloudPayments().then(resolveCloudPayments).then(applyCloudPayments)
+          void reloadPublicCloudPayments().then(resolveCloudPayments).then(setCloudState)
         } else if (err.code === 'delivery_point_unknown') {
           // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
           // «Пункт получения», выбор сброшен, список города грузится заново.
