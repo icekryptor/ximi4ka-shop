@@ -25,9 +25,20 @@ describe('расписание', () => {
     expect(syncDue(new Date(now.getTime() - 20 * HOUR), now)).toBe(true)
   })
 
-  it('syncWindow: обычный запуск — 7 дней до вчера, первый — с начала истории', () => {
-    expect(syncWindow('2026-10-28', false)).toEqual({ from: '2026-10-21', to: '2026-10-27' })
-    expect(syncWindow('2026-10-28', true)).toEqual({ from: '2026-10-01', to: '2026-10-27' })
+  it('syncWindow: первый запуск — с начала истории до вчера', () => {
+    expect(syncWindow('2026-10-28', null)).toEqual({ from: '2026-10-01', to: '2026-10-27' })
+  })
+
+  it('syncWindow: успех вчера — обычные 7 дней до вчера', () => {
+    expect(syncWindow('2026-10-28', '2026-10-27')).toEqual({ from: '2026-10-21', to: '2026-10-27' })
+    expect(syncWindow('2026-10-28', '2026-10-28')).toEqual({ from: '2026-10-21', to: '2026-10-27' })
+  })
+
+  it('syncWindow: простой дольше недели — окно тянется от последнего успеха, не раньше начала истории', () => {
+    // 2026-10-20 - 7 = 2026-10-13
+    expect(syncWindow('2026-10-28', '2026-10-20')).toEqual({ from: '2026-10-13', to: '2026-10-27' })
+    // 2026-10-05 - 7 = 2026-09-28 → не раньше 2026-10-01
+    expect(syncWindow('2026-10-28', '2026-10-05')).toEqual({ from: '2026-10-01', to: '2026-10-27' })
   })
 
   it('searchStatsConfigured: нужны и флаг, и токен', () => {
@@ -67,6 +78,21 @@ describe('runMetrikaSyncIfDue', () => {
     })
     expect(res).toBe('ok')
     expect(client.data.mock.calls[0][1]).toMatchObject({ date1: '2026-10-01', date2: '2026-10-27' })
+  })
+
+  it('после простоя дольше недели забирает пропущенные дни от последнего успеха', async () => {
+    await AppDataSource.query(
+      `INSERT INTO search_stats_sync_runs (source, status, finished_at)
+       VALUES ('metrika', 'ok', '2026-10-20T04:00:00Z')`,
+    )
+    const client = { data: vi.fn(async (_c: string, _q: StatQuery): Promise<StatRow[]> => []) }
+    const res = await runMetrikaSyncIfDue({
+      client,
+      counterId: '1',
+      now: new Date('2026-10-28T04:00:00Z'),
+    })
+    expect(res).toBe('ok')
+    expect(client.data.mock.calls[0][1]).toMatchObject({ date1: '2026-10-13', date2: '2026-10-27' })
   })
 
   it('недавний успех — пропуск без запросов к Метрике', async () => {

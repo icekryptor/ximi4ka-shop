@@ -22,12 +22,15 @@ export function syncDue(lastOk: Date | null, now: Date): boolean {
   return !lastOk || now.getTime() - lastOk.getTime() >= SYNC_MIN_GAP_MS
 }
 
-// Вчера и шесть дней до него; первый запуск — вся история счётчика.
-export function syncWindow(today: string, firstRun: boolean): DateRange {
-  return {
-    from: firstRun ? METRIKA_HISTORY_START : addDays(today, -SYNC_WINDOW_DAYS),
-    to: addDays(today, -1),
-  }
+// Вчера и шесть дней до него; первый запуск (успехов ещё не было) — вся история
+// счётчика. После простоя дольше недели окно тянется от последнего успешного
+// дня, иначе в данных остаётся дыра. Успех «вчера» или «сегодня» — не простой.
+export function syncWindow(today: string, lastSuccessDay: string | null): DateRange {
+  const yesterday = addDays(today, -1)
+  if (lastSuccessDay === null) return { from: METRIKA_HISTORY_START, to: yesterday }
+  const anchor = lastSuccessDay >= yesterday ? today : lastSuccessDay
+  const from = addDays(anchor, -SYNC_WINDOW_DAYS)
+  return { from: from < METRIKA_HISTORY_START ? METRIKA_HISTORY_START : from, to: yesterday }
 }
 
 export async function runMetrikaSyncIfDue({
@@ -43,7 +46,7 @@ export async function runMetrikaSyncIfDue({
 }): Promise<'skipped' | 'ok' | 'error'> {
   const last = await lastSuccessAt('metrika')
   if (!syncDue(last, now)) return 'skipped'
-  const range = syncWindow(todayMsk(now), last === null)
+  const range = syncWindow(todayMsk(now), last ? todayMsk(last) : null)
   const run = await recordRun('metrika', () => syncMetrika(client, counterId, range, sleep))
   if (!run.ok) console.warn(`search-stats: синхронизация Метрики не удалась: ${run.error}`)
   return run.ok ? 'ok' : 'error'
