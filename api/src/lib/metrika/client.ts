@@ -48,7 +48,7 @@ export function buildCsv(rows: ConversionRow[]): string {
 }
 
 // Retry-After бывает числом секунд или датой; по умолчанию и при мусоре — минута.
-function retryAfterMs(header: string | null): number {
+export function retryAfterMs(header: string | null): number {
   const seconds = Number(header)
   if (header && Number.isFinite(seconds) && seconds > 0) return seconds * 1000
   const date = header ? Date.parse(header) : NaN
