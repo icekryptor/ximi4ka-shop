@@ -210,6 +210,32 @@ describe('fetchSourceDays', () => {
     ])
   })
 
+  it('длинное имя без id режется под колонки: источник 32, поисковик 64', async () => {
+    const data = vi
+      .fn()
+      .mockResolvedValueOnce([
+        row(
+          [
+            [null, '2026-10-20'],
+            [null, 's'.repeat(40)],
+          ],
+          [1, 1, 0, 1],
+        ),
+      ])
+      .mockResolvedValueOnce([
+        row(
+          [
+            [null, '2026-10-20'],
+            [null, 'e'.repeat(70)],
+          ],
+          [1, 1, 0, 1],
+        ),
+      ])
+    const rows = await fetchSourceDays({ data }, COUNTER, '2026-10-20', '2026-10-20')
+    expect(rows[0].source).toBe('s'.repeat(32))
+    expect(rows[1].searchEngine).toBe('e'.repeat(64))
+  })
+
   it('строку с некорректным днём пропускает', async () => {
     const data = vi
       .fn()
@@ -252,6 +278,21 @@ describe('fetchLandingDays и normalizePath', () => {
       ['/catalog', 'organic', 5],
       ['/', 'direct', 2],
     ])
+  })
+
+  it('источник лендинга без id и с длинным именем режется до 32', async () => {
+    const data = vi.fn().mockResolvedValueOnce([
+      row(
+        [
+          [null, '2026-10-20'],
+          [null, '/x'],
+          [null, 's'.repeat(40)],
+        ],
+        [1, 1, 0, 1],
+      ),
+    ])
+    const [r] = await fetchLandingDays({ data }, COUNTER, '2026-10-20', '2026-10-20')
+    expect(r.source).toBe('s'.repeat(32))
   })
 
   it('normalizePath: пусто → "/", без слэша → со слэшем, длинный режется до 300', () => {

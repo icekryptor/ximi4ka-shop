@@ -156,7 +156,12 @@ function dayOf(d: StatDimension | undefined): string | null {
   return v && DAY_RE.test(v) ? v : null
 }
 
-const codeOf = (d: StatDimension | undefined) => d?.id ?? d?.name ?? 'undefined'
+// Код источника — varchar(32), поисковика — varchar(64): длинное имя без id режем,
+// иначе вставка падает и весь синхрон остаётся без данных.
+const SOURCE_CODE_MAX = 32
+const ENGINE_CODE_MAX = 64
+const codeOf = (d: StatDimension | undefined, max: number) =>
+  (d?.id ?? d?.name ?? 'undefined').slice(0, max)
 
 export function normalizePath(name: string | null): string {
   const p = (name ?? '').trim()
@@ -191,12 +196,23 @@ export async function fetchSourceDays(
   const out: SourceDayRow[] = []
   for (const r of totals) {
     const day = dayOf(r.dimensions[0])
-    if (day) out.push({ day, source: codeOf(r.dimensions[1]), searchEngine: '', ...metricsOf(r) })
+    if (day)
+      out.push({
+        day,
+        source: codeOf(r.dimensions[1], SOURCE_CODE_MAX),
+        searchEngine: '',
+        ...metricsOf(r),
+      })
   }
   for (const r of engines) {
     const day = dayOf(r.dimensions[0])
     if (day)
-      out.push({ day, source: 'organic', searchEngine: codeOf(r.dimensions[1]), ...metricsOf(r) })
+      out.push({
+        day,
+        source: 'organic',
+        searchEngine: codeOf(r.dimensions[1], ENGINE_CODE_MAX),
+        ...metricsOf(r),
+      })
   }
   return out
 }
@@ -221,7 +237,7 @@ export async function fetchLandingDays(
     out.push({
       day,
       path: normalizePath(r.dimensions[1]?.name ?? null),
-      source: codeOf(r.dimensions[2]),
+      source: codeOf(r.dimensions[2], SOURCE_CODE_MAX),
       ...metricsOf(r),
     })
   }
