@@ -104,6 +104,10 @@ export class Order {
   @Column({ type: 'integer', name: 'shipping_rub', default: 0 })
   shippingRub!: number
 
+  // Надбавка за оплату через CloudPayments; уже входит в total_rub.
+  @Column({ type: 'integer', name: 'payment_surcharge_rub', default: 0 })
+  paymentSurchargeRub!: number
+
   @Column({ type: 'integer', name: 'total_rub' })
   totalRub!: number
 

@@ -90,6 +90,17 @@ export class SiteSettings {
   })
   yandexPayMode!: 'sandbox' | 'production'
 
+  // CloudPayments: ключи — в env (CLOUDPAYMENTS_PUBLIC_ID, CLOUDPAYMENTS_API_SECRET),
+  // здесь рубильник, режим и надбавка за способ оплаты в целых процентах.
+  @Column({ type: 'boolean', name: 'cloudpayments_enabled', default: false })
+  cloudpaymentsEnabled!: boolean
+
+  @Column({ type: 'varchar', length: 16, name: 'cloudpayments_mode', default: 'test' })
+  cloudpaymentsMode!: 'test' | 'live'
+
+  @Column({ type: 'integer', name: 'cloudpayments_surcharge_percent', default: 0 })
+  cloudpaymentsSurchargePercent!: number
+
   // --- Marketing (homepage redesign) ---
   // Free-text promo strip rendered in the site header. Null hides the strip.
   @Column({ type: 'text', name: 'header_promo_text', nullable: true })

@@ -1,5 +1,9 @@
 import { Router } from 'express'
 import { getSettings } from '../../lib/settings.js'
+import {
+  cloudPaymentsConfigFrom,
+  publicCloudPayments,
+} from '../../lib/payments/cloudpayments/config.js'
 import { publicYandexPay, yandexPayConfigFrom } from '../../lib/payments/yandexPay/config.js'
 
 // Public subset of the settings. Analytics IDs and SEO content must
@@ -9,7 +13,7 @@ import { publicYandexPay, yandexPayConfigFrom } from '../../lib/payments/yandexP
 // externally and is the same data that appears in the Yandex Market feed.
 // Marketing fields (header promo, trust strip, testimonials) are by
 // definition meant to render to every visitor, so they're public-safe too.
-// Admin-only toggles (Yandex Pay) stay out of this response; payment
+// Admin-only toggles (Yandex Pay, CloudPayments) stay out of this response; payment
 // credentials themselves never live in the DB.
 export const publicSettingsRouter: Router = Router()
 
@@ -39,6 +43,8 @@ publicSettingsRouter.get('/', async (_req, res, next) => {
         // Яндекс Пэй для витрины: null — недоступен; Merchant ID — только в боевом
         // режиме. Рубильник и режим сами по-прежнему не отдаются.
         yandexPay: publicYandexPay(yandexPayConfigFrom(s)),
+        // CloudPayments для блока ЕАЭС: null — недоступен; наружу — только процент надбавки.
+        cloudPayments: publicCloudPayments(cloudPaymentsConfigFrom(s)),
       },
     })
   } catch (err) {

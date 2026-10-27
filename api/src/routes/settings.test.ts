@@ -1,5 +1,5 @@
 import 'reflect-metadata'
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { createApp } from '../app.js'
@@ -41,12 +41,19 @@ describe('Site settings', () => {
         yml_delivery_note = NULL,
         yandex_pay_enabled = false,
         yandex_pay_mode = 'sandbox',
+        cloudpayments_enabled = false,
+        cloudpayments_mode = 'test',
+        cloudpayments_surcharge_percent = 0,
         header_promo_text = NULL,
         trust_strip_items = '[]'::jsonb,
         testimonials = '[]'::jsonb
       WHERE id = 'default'
     `)
     auth = await loginAsAdmin(app)
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it('GET /api/admin/settings returns the singleton with defaults', async () => {
@@ -305,5 +312,44 @@ describe('Site settings', () => {
     expect(res.body.data.headerPromoText).toBeNull()
     expect(res.body.data.trustStripItems).toEqual([])
     expect(res.body.data.testimonials).toEqual([])
+  })
+
+  it('CloudPayments: админ сохраняет рубильник, режим и процент; процент вне 0…15 — 400', async () => {
+    const adminPatch = (body: Record<string, unknown>) =>
+      request(app).patch('/api/admin/settings').set(authHeaders(auth)).send(body)
+    const ok = await adminPatch({
+      cloudpaymentsEnabled: true,
+      cloudpaymentsMode: 'live',
+      cloudpaymentsSurchargePercent: 8,
+    })
+    expect(ok.status).toBe(200)
+    expect(ok.body.data).toMatchObject({
+      cloudpaymentsEnabled: true,
+      cloudpaymentsMode: 'live',
+      cloudpaymentsSurchargePercent: 8,
+    })
+    expect((await adminPatch({ cloudpaymentsSurchargePercent: 16 })).status).toBe(400)
+    expect((await adminPatch({ cloudpaymentsSurchargePercent: 7.5 })).status).toBe(400)
+    expect((await adminPatch({ cloudpaymentsMode: 'prod' })).status).toBe(400)
+  })
+
+  it('публичные настройки: cloudPayments null без ключей и { surchargePercent } при включённом live', async () => {
+    vi.stubEnv('CLOUDPAYMENTS_PUBLIC_ID', '')
+    vi.stubEnv('CLOUDPAYMENTS_API_SECRET', '')
+    expect((await request(app).get('/api/public/settings')).body.data.cloudPayments).toBeNull()
+    vi.stubEnv('CLOUDPAYMENTS_PUBLIC_ID', 'pk_test')
+    vi.stubEnv('CLOUDPAYMENTS_API_SECRET', 'secret_test')
+    await request(app)
+      .patch('/api/admin/settings')
+      .set(authHeaders(auth))
+      .send({
+        cloudpaymentsEnabled: true,
+        cloudpaymentsMode: 'live',
+        cloudpaymentsSurchargePercent: 8,
+      })
+      .expect(200)
+    const res = await request(app).get('/api/public/settings')
+    expect(res.body.data.cloudPayments).toEqual({ surchargePercent: 8 })
+    expect(JSON.stringify(res.body)).not.toContain('secret_test')
   })
 })
