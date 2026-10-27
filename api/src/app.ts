@@ -24,6 +24,10 @@ import { createTelegramWebhookRouter } from './routes/telegram/loginWebhook.js'
 import { checkoutRouter } from './routes/checkout.js'
 import { tbankWebhookRouter } from './routes/webhooks/tbank.js'
 import { yandexPayWebhookErrors, yandexPayWebhookRouter } from './routes/webhooks/yandexPay.js'
+import {
+  cloudPaymentsWebhookErrors,
+  cloudPaymentsWebhookRouter,
+} from './routes/webhooks/cloudpayments.js'
 import { publicOrdersRouter } from './routes/public/orders.js'
 import { adminOrdersRouter } from './routes/admin/orders.js'
 import { adminStatsRouter } from './routes/admin/stats.js'
@@ -81,6 +85,13 @@ export function createApp(): Express {
     express.raw({ type: '*/*', limit: '64kb' }),
     yandexPayWebhookRouter,
     yandexPayWebhookErrors,
+  )
+  // CloudPayments подписывает сырое тело (HMAC) — разбираем его сами, до JSON-парсера.
+  app.use(
+    '/api/webhooks/cloudpayments',
+    express.raw({ type: '*/*', limit: '64kb' }),
+    cloudPaymentsWebhookRouter,
+    cloudPaymentsWebhookErrors,
   )
   app.use(express.json({ limit: '1mb' }))
   app.use(cookieParser())
