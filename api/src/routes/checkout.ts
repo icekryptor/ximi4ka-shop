@@ -168,7 +168,7 @@ checkoutRouter.post('/', async (req, res, next) => {
     // CloudPayments — карты Visa / Mastercard банков стран ЕАЭС, только при доставке
     // туда (B7). Недоступный способ — 400 без заказа. Конфигурация нужна ниже: процент
     // надбавки берём из неё, клиенту не доверяем. Режим «Тест» на проде — только
-    // вошедшему админу; сессию ищем лишь здесь, остальные заказы не замедляем.
+    // вошедшему админу; сессию ищем лишь в этом случае, остальные заказы не замедляем.
     const cloudMethod = parsed.paymentMethod === 'cloudpayments'
     let cloudConfig: CloudPaymentsConfig | null = null
     if (cloudMethod) {
@@ -179,7 +179,10 @@ checkoutRouter.post('/', async (req, res, next) => {
         )
       }
       const cfg = await getCloudPaymentsConfig()
-      const admin = (await findAdminSession(req)) !== null
+      // Сессия важна только для режима «Тест» на production — иначе без запроса к базе.
+      const adminMatters =
+        cfg?.enabled === true && cfg.mode === 'test' && process.env.NODE_ENV === 'production'
+      const admin = adminMatters && (await findAdminSession(req)) !== null
       if (!isCloudPaymentsCheckoutAvailable(cfg, process.env, { admin })) {
         throw badRequest(
           'payment_method_unavailable',

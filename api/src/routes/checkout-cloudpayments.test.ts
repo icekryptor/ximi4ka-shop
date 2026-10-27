@@ -4,6 +4,7 @@ import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { Product } from '../entities/Product.js'
+import { AdminSession } from '../entities/AdminSession.js'
 import { SiteSettings } from '../entities/SiteSettings.js'
 import { createApp } from '../app.js'
 import { loginAsAdmin } from './testUtils.js'
@@ -250,6 +251,27 @@ describe('POST /api/checkout: CloudPayments', () => {
     expect(order.paymentProvider).toBe('cloudpayments')
     expect(order.paymentSurchargeRub).toBe(216)
     expect(cloudCalls(cloud)).toHaveLength(1)
+  })
+
+  it('боевой режим и тест вне production — сессию админа не ищем', async () => {
+    stubCloud()
+    const p = await seedProduct(2000)
+    const repo = vi.spyOn(AppDataSource, 'getRepository')
+    const adminLookups = () => repo.mock.calls.filter(([target]) => target === AdminSession)
+    vi.stubEnv('NODE_ENV', 'production')
+    const live = await request(app)
+      .post('/api/checkout')
+      .set('Cookie', 'ximi4ka_shop_session=whatever')
+      .send(cisBody(p.id, { paymentMethod: 'cloudpayments' }))
+    expect(live.status).toBe(201)
+    vi.stubEnv('NODE_ENV', 'test')
+    await setCloud({ cloudpaymentsMode: 'test' })
+    const dev = await request(app)
+      .post('/api/checkout')
+      .set('Cookie', 'ximi4ka_shop_session=whatever')
+      .send(cisBody(p.id, { paymentMethod: 'cloudpayments' }))
+    expect(dev.status).toBe(201)
+    expect(adminLookups()).toEqual([])
   })
 
   it('CloudPayments отказал — заказ создан pending без ссылки', async () => {
