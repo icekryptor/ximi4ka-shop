@@ -186,6 +186,26 @@ describe('getCloudPaymentsStatus', () => {
     vi.restoreAllMocks()
   })
 
+  it('тестовый платёж на проде в режиме «Тест» — paid, в режиме «Боевой» — unknown', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const testMode = { ...config, mode: 'test' as const }
+    expect(
+      await getCloudPaymentsStatus(order(), {
+        config: testMode,
+        fetch: found({ Status: 'Completed', Amount: 2916, TestMode: true }),
+        env,
+      }),
+    ).toBe('paid')
+    expect(
+      await getCloudPaymentsStatus(order(), {
+        config,
+        fetch: found({ Status: 'Completed', Amount: 2916, TestMode: true }),
+        env,
+      }),
+    ).toBe('unknown')
+    vi.restoreAllMocks()
+  })
+
   it('Declined / Authorized / Not found — pending (ссылка жива, покупатель может повторить)', async () => {
     expect(
       await getCloudPaymentsStatus(order(), {

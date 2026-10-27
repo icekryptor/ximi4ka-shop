@@ -4,6 +4,7 @@ import { Order } from '../../entities/Order.js'
 import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
 import {
   acceptsTestPayments,
+  getCloudPaymentsConfig,
   hasCloudPaymentsKeys,
 } from '../../lib/payments/cloudpayments/config.js'
 import {
@@ -47,7 +48,9 @@ function readNotification(req: Request, res: Response): CloudPaymentsNotificatio
 
 type Match = { ok: true; order: Order } | { ok: false; code: number; reason: string }
 
-// Заказ CloudPayments с той же суммой в рублях; тестовые платежи — только вне production.
+// Заказ CloudPayments с той же суммой в рублях. Тестовый платёж (TestMode=1) на
+// production — только в режиме «Тест» (acceptsTestPayments); настройки читаем уже после
+// проверки подписи и только для тестового уведомления.
 async function matchOrder(n: CloudPaymentsNotification): Promise<Match> {
   const invoiceId = n.InvoiceId ?? ''
   const order = invoiceId
@@ -67,11 +70,11 @@ async function matchOrder(n: CloudPaymentsNotification): Promise<Match> {
       reason: `сумма ${clip(n.Amount)} ${clip(n.Currency)} не совпала с заказом ${order.orderNumber} (${order.totalRub} RUB)`,
     }
   }
-  if (isTestModeNotification(n) && !acceptsTestPayments()) {
+  if (isTestModeNotification(n) && !acceptsTestPayments(await getCloudPaymentsConfig())) {
     return {
       ok: false,
       code: CODE.REJECT,
-      reason: `тестовый платёж по ${order.orderNumber} на production`,
+      reason: `тестовый платёж по ${order.orderNumber} на production в режиме «Боевой»`,
     }
   }
   return { ok: true, order }

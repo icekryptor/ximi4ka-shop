@@ -2,6 +2,7 @@ import 'reflect-metadata'
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
+import { SiteSettings } from '../../entities/SiteSettings.js'
 import { reconcilePendingOrders, startReconciliationJob } from './reconcile.js'
 import type { PaymentProvider } from './types.js'
 
@@ -41,6 +42,9 @@ async function seedCloudOrder(over: Partial<Order> = {}, ageMinutes = 10): Promi
   )
   return o
 }
+
+const setMode = (mode: 'test' | 'live') =>
+  AppDataSource.getRepository(SiteSettings).save({ id: 'default', cloudpaymentsMode: mode })
 
 const stubFind = (model: Record<string, unknown> | null, message: string | null = null) =>
   vi.stubGlobal(
@@ -98,6 +102,25 @@ describe('сверка CloudPayments', () => {
     expect((await AppDataSource.getRepository(Order).findOneByOrFail({ id: o.id })).status).toBe(
       'pending',
     )
+  })
+
+  it('тестовый платёж на production: режим «Тест» — paid, режим «Боевой» — pending', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    try {
+      await setMode('test')
+      const o = await seedCloudOrder()
+      stubFind({ Status: 'Completed', Amount: 2916, Currency: 'RUB', TestMode: true })
+      await reconcilePendingOrders(fakeProvider())
+      const repo = AppDataSource.getRepository(Order)
+      expect((await repo.findOneByOrFail({ id: o.id })).status).toBe('paid')
+
+      await setMode('live')
+      const live = await seedCloudOrder()
+      await reconcilePendingOrders(fakeProvider())
+      expect((await repo.findOneByOrFail({ id: live.id })).status).toBe('pending')
+    } finally {
+      await setMode('test')
+    }
   })
 
   it('заказы старше 8 суток не опрашиваются', async () => {

@@ -5,6 +5,7 @@ import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Order } from '../entities/Order.js'
 import { OrderNotification } from '../entities/OrderNotification.js'
+import { SiteSettings } from '../entities/SiteSettings.js'
 import { createApp } from '../app.js'
 
 const SECRET = 'test-api-secret-not-real'
@@ -68,6 +69,10 @@ function post(
   return req.send(raw)
 }
 
+// Режим CloudPayments в настройках сайта; по умолчанию в базе — 'test'.
+const setMode = (mode: 'test' | 'live') =>
+  AppDataSource.getRepository(SiteSettings).save({ id: 'default', cloudpaymentsMode: mode })
+
 const reload = (o: Order) => AppDataSource.getRepository(Order).findOneByOrFail({ id: o.id })
 const statusEvents = (o: Order) =>
   AppDataSource.getRepository(OrderNotification).countBy({ orderId: o.id })
@@ -86,9 +91,10 @@ describe('вебхуки CloudPayments', () => {
     vi.stubEnv('CLOUDPAYMENTS_API_SECRET', SECRET)
     vi.spyOn(console, 'error').mockImplementation(() => {})
   })
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
+    await setMode('test')
   })
 
   describe('подпись', () => {
@@ -148,11 +154,19 @@ describe('вебхуки CloudPayments', () => {
       expect((await post('check', fields(paid))).body).toEqual({ code: 13 })
     })
 
-    it('тестовый платёж на production — 13, вне production — 0', async () => {
+    it('тестовый платёж на production в режиме «Боевой» — 13, вне production — 0', async () => {
+      await setMode('live')
       const o = await seedOrder()
       vi.stubEnv('NODE_ENV', 'production')
       expect((await post('check', fields(o, { TestMode: '1' }))).body).toEqual({ code: 13 })
       vi.stubEnv('NODE_ENV', 'test')
+      expect((await post('check', fields(o, { TestMode: '1' }))).body).toEqual({ code: 0 })
+    })
+
+    it('тестовый платёж на production в режиме «Тест» — 0 (проверка тестовым терминалом)', async () => {
+      await setMode('test')
+      const o = await seedOrder()
+      vi.stubEnv('NODE_ENV', 'production')
       expect((await post('check', fields(o, { TestMode: '1' }))).body).toEqual({ code: 0 })
     })
   })
@@ -185,7 +199,8 @@ describe('вебхуки CloudPayments', () => {
       expect((await reload(o)).statusHistory.length).toBe(history)
     })
 
-    it('несовпавшая сумма, чужой провайдер, тест на проде, не Completed — code 0, заказ не оплачен', async () => {
+    it('несовпавшая сумма, чужой провайдер, тест на проде в режиме «Боевой», не Completed — code 0, заказ не оплачен', async () => {
+      await setMode('live')
       const o = await seedOrder()
       expect((await post('pay', fields(o, { Amount: '1.00' }))).body).toEqual({ code: 0 })
       const t = await seedOrder({ paymentProvider: 'tbank' })
@@ -196,6 +211,16 @@ describe('вебхуки CloudPayments', () => {
       await post('pay', fields(o, { Status: 'Authorized' }))
       expect((await reload(o)).status).toBe('pending')
       expect((await reload(t)).status).toBe('pending')
+    })
+
+    it('тестовый платёж на production в режиме «Тест» — заказ оплачен', async () => {
+      await setMode('test')
+      const o = await seedOrder()
+      vi.stubEnv('NODE_ENV', 'production')
+      expect((await post('pay', fields(o, { TestMode: '1' }))).body).toEqual({ code: 0 })
+      const after = await reload(o)
+      expect(after.status).toBe('paid')
+      expect(after.statusHistory.at(-1)).toMatchObject({ to: 'paid', by: 'cloudpayments' })
     })
 
     it('OperationType не Payment — code 0, заказ не оплачен, в логе тип операции', async () => {

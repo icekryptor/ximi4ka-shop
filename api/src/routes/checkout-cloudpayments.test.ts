@@ -6,6 +6,7 @@ import { Order } from '../entities/Order.js'
 import { Product } from '../entities/Product.js'
 import { SiteSettings } from '../entities/SiteSettings.js'
 import { createApp } from '../app.js'
+import { loginAsAdmin } from './testUtils.js'
 
 const tbankFetchMock = vi.hoisted(() => vi.fn())
 vi.mock('../lib/payments/tbankTransport.js', () => ({ tbankFetch: tbankFetchMock }))
@@ -219,6 +220,36 @@ describe('POST /api/checkout: CloudPayments', () => {
     await setCloud()
     vi.stubEnv('CLOUDPAYMENTS_API_SECRET', '')
     expect((await checkout(cisBody(p.id, { paymentMethod: 'cloudpayments' }))).status).toBe(400)
+  })
+
+  it('production + режим «Тест»: без админ-сессии — 400, с админ-сессией — 201, заказ cloudpayments', async () => {
+    const cloud = stubCloud()
+    const p = await seedProduct(2000)
+    await setCloud({ cloudpaymentsMode: 'test' })
+    const admin = await loginAsAdmin(app)
+    const adminCookie = admin.sessionCookie.split(';')[0]!
+    vi.stubEnv('NODE_ENV', 'production')
+
+    const guest = await checkout(cisBody(p.id, { paymentMethod: 'cloudpayments' }))
+    expect(guest.status).toBe(400)
+    expect(guest.body.error.code).toBe('payment_method_unavailable')
+    const stale = await request(app)
+      .post('/api/checkout')
+      .set('Cookie', 'ximi4ka_shop_session=not-a-session')
+      .send(cisBody(p.id, { paymentMethod: 'cloudpayments' }))
+    expect(stale.status).toBe(400)
+    expect(await AppDataSource.getRepository(Order).count()).toBe(0)
+
+    const res = await request(app)
+      .post('/api/checkout')
+      .set('Cookie', adminCookie)
+      .send(cisBody(p.id, { paymentMethod: 'cloudpayments' }))
+    expect(res.status).toBe(201)
+    expect(res.body.data.paymentUrl).toBe('https://orders.cloudpayments.ru/d/gASGZ')
+    const order = await findOrder(res.body.data.orderNumber)
+    expect(order.paymentProvider).toBe('cloudpayments')
+    expect(order.paymentSurchargeRub).toBe(216)
+    expect(cloudCalls(cloud)).toHaveLength(1)
   })
 
   it('CloudPayments отказал — заказ создан pending без ссылки', async () => {

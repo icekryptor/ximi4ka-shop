@@ -36,6 +36,7 @@ import { isUniqueViolation } from '../lib/pgErrors.js'
 import { findCustomerSession } from '../lib/account/session.js'
 import { normalizeEmail } from '../lib/account/emailCodes.js'
 import { badRequest } from './errors.js'
+import { findAdminSession } from './middleware/requireAdminAuth.js'
 import { CheckoutSchema } from './checkout.schemas.js'
 
 export const checkoutRouter: Router = Router()
@@ -166,7 +167,8 @@ checkoutRouter.post('/', async (req, res, next) => {
 
     // CloudPayments — карты Visa / Mastercard банков стран ЕАЭС, только при доставке
     // туда (B7). Недоступный способ — 400 без заказа. Конфигурация нужна ниже: процент
-    // надбавки берём из неё, клиенту не доверяем.
+    // надбавки берём из неё, клиенту не доверяем. Режим «Тест» на проде — только
+    // вошедшему админу; сессию ищем лишь здесь, остальные заказы не замедляем.
     const cloudMethod = parsed.paymentMethod === 'cloudpayments'
     let cloudConfig: CloudPaymentsConfig | null = null
     if (cloudMethod) {
@@ -177,7 +179,8 @@ checkoutRouter.post('/', async (req, res, next) => {
         )
       }
       const cfg = await getCloudPaymentsConfig()
-      if (!isCloudPaymentsCheckoutAvailable(cfg)) {
+      const admin = (await findAdminSession(req)) !== null
+      if (!isCloudPaymentsCheckoutAvailable(cfg, process.env, { admin })) {
         throw badRequest(
           'payment_method_unavailable',
           'Оплата картой банка другой страны сейчас недоступна',

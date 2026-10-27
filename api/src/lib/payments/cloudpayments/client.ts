@@ -145,8 +145,9 @@ export async function createCloudPaymentsOrder(
 }
 
 // Сверка зависших платежей (reconcile.ts). paid — только Completed с той же суммой в
-// рублях (Currency=RUB обязательно) и не тестовый на проде; Declined и прочее — pending: ссылка живёт, покупатель
-// может заплатить другой картой. Сбой — unknown, заказ не трогаем.
+// рублях (Currency=RUB обязательно); тестовый на проде — только в режиме «Тест»
+// (acceptsTestPayments). Declined и прочее — pending: ссылка живёт, покупатель может
+// заплатить другой картой. Сбой — unknown, заказ не трогаем.
 export async function getCloudPaymentsStatus(
   order: Order,
   deps: CloudPaymentsClientDeps = {},
@@ -173,7 +174,7 @@ export async function getCloudPaymentsStatus(
       typeof model.Amount === 'number' && Math.round(model.Amount * 100) === order.totalRub * 100
     // Валюта обязательна: без неё платёж не засчитываем.
     const currencyOk = model.Currency === 'RUB'
-    const testOk = model.TestMode !== true || acceptsTestPayments(env)
+    const testOk = model.TestMode !== true || acceptsTestPayments(cfg, env)
     if (!amountOk || !currencyOk || !testOk) {
       console.error(
         `cloudpayments: платёж по ${order.orderNumber} не засчитан сверкой: Amount=${clip(model.Amount)} Currency=${clip(model.Currency)} TestMode=${clip(String(model.TestMode))}`,

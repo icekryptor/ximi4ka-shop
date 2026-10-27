@@ -53,21 +53,39 @@ describe('cloudpayments config', () => {
     ).toBe(15)
   })
 
-  it('чекаут: нужен рубильник; test-режим — только вне production', () => {
+  it('чекаут: нужен рубильник; test-режим на production — только админу', () => {
     const live = cloudPaymentsConfigFrom(settings(), KEYS)
     const test = cloudPaymentsConfigFrom(settings({ cloudpaymentsMode: 'test' }), KEYS)
     const off = cloudPaymentsConfigFrom(settings({ cloudpaymentsEnabled: false }), KEYS)
     const prod = { NODE_ENV: 'production' }
     expect(isCloudPaymentsCheckoutAvailable(live, prod)).toBe(true)
+    expect(isCloudPaymentsCheckoutAvailable(live, prod, { admin: false })).toBe(true)
     expect(isCloudPaymentsCheckoutAvailable(test, prod)).toBe(false)
+    expect(isCloudPaymentsCheckoutAvailable(test, prod, { admin: false })).toBe(false)
+    expect(isCloudPaymentsCheckoutAvailable(test, prod, { admin: true })).toBe(true)
     expect(isCloudPaymentsCheckoutAvailable(test, { NODE_ENV: 'test' })).toBe(true)
     expect(isCloudPaymentsCheckoutAvailable(off, prod)).toBe(false)
-    expect(isCloudPaymentsCheckoutAvailable(null, prod)).toBe(false)
+    expect(isCloudPaymentsCheckoutAvailable(off, prod, { admin: true })).toBe(false)
+    expect(isCloudPaymentsCheckoutAvailable(null, prod, { admin: true })).toBe(false)
   })
 
-  it('тестовые платежи не принимаются на production', () => {
-    expect(acceptsTestPayments({ NODE_ENV: 'production' })).toBe(false)
-    expect(acceptsTestPayments({ NODE_ENV: 'development' })).toBe(true)
+  it('тестовые платежи: на production — только в режиме «Тест»', () => {
+    const live = cloudPaymentsConfigFrom(settings(), KEYS)
+    const test = cloudPaymentsConfigFrom(settings({ cloudpaymentsMode: 'test' }), KEYS)
+    const prod = { NODE_ENV: 'production' }
+    expect(acceptsTestPayments(live, prod)).toBe(false)
+    expect(acceptsTestPayments(test, prod)).toBe(true)
+    expect(acceptsTestPayments(null, prod)).toBe(false)
+    expect(acceptsTestPayments(live, { NODE_ENV: 'development' })).toBe(true)
+    expect(acceptsTestPayments(null, { NODE_ENV: 'test' })).toBe(true)
+  })
+
+  it('публичное значение на production в режиме «Тест» — null (ответ кешируется для всех)', () => {
+    expect(
+      publicCloudPayments(cloudPaymentsConfigFrom(settings({ cloudpaymentsMode: 'test' }), KEYS), {
+        NODE_ENV: 'production',
+      }),
+    ).toBeNull()
   })
 
   it('публичное значение: только процент, null — если недоступен', () => {

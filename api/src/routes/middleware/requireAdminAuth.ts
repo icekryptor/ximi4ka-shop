@@ -20,23 +20,27 @@ export function hashSessionToken(token: string): string {
   return createHash('sha256').update(token).digest('hex')
 }
 
+// Действующая сессия админки по cookie (sha256 токена, не отозвана, не истекла) или
+// null — без ошибок. Любая роль. Нужна и там, где вход не обязателен: чекаут пускает
+// админа к тестовому режиму CloudPayments на проде.
+export async function findAdminSession(req: Request): Promise<AdminSession | null> {
+  const token = req.cookies?.[SESSION_COOKIE_NAME]
+  if (!token || typeof token !== 'string') return null
+  const session = await AppDataSource.getRepository(AdminSession).findOne({
+    where: { tokenHash: hashSessionToken(token), revokedAt: IsNull() },
+    relations: { adminUser: true },
+  })
+  if (!session || session.expiresAt.getTime() < Date.now()) return null
+  return session
+}
+
 export async function requireAdminAuth(
   req: Request,
   _res: Response,
   next: NextFunction,
 ): Promise<void> {
-  const token = req.cookies?.[SESSION_COOKIE_NAME]
-  if (!token || typeof token !== 'string') {
-    return next(new ApiError(401, 'auth_required', 'Authentication required'))
-  }
-
-  const tokenHash = hashSessionToken(token)
-  const session = await AppDataSource.getRepository(AdminSession).findOne({
-    where: { tokenHash, revokedAt: IsNull() },
-    relations: { adminUser: true },
-  })
-
-  if (!session || session.expiresAt.getTime() < Date.now()) {
+  const session = await findAdminSession(req)
+  if (!session) {
     return next(new ApiError(401, 'auth_required', 'Authentication required'))
   }
 

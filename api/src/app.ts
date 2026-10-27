@@ -31,6 +31,7 @@ import {
 import { publicOrdersRouter } from './routes/public/orders.js'
 import { adminOrdersRouter } from './routes/admin/orders.js'
 import { adminStatsRouter } from './routes/admin/stats.js'
+import { adminCloudPaymentsRouter } from './routes/admin/cloudpayments.js'
 import { publicShippingRouter } from './routes/public/shipping.js'
 import { cdekWidgetRouter } from './routes/public/cdek-widget.js'
 import { cdekLocationsRouter } from './routes/public/cdek-locations.js'
@@ -187,6 +188,7 @@ export function createApp(): Express {
   app.use('/api/admin/revisions', adminRevisionsRouter)
   app.use('/api/public/settings', publicSettingsRouter)
   app.use('/api/admin/settings', adminSettingsRouter)
+  app.use('/api/admin/cloudpayments', adminCloudPaymentsRouter)
 
   // Yandex Commerce Protocol: Яндекс вызывает методы магазина под /api/v1
   // (servers[0].url спецификации). Префикс свободен — других /api/v1 нет. Свой
