@@ -27,6 +27,7 @@ import { yandexPayWebhookErrors, yandexPayWebhookRouter } from './routes/webhook
 import { publicOrdersRouter } from './routes/public/orders.js'
 import { adminOrdersRouter } from './routes/admin/orders.js'
 import { adminStatsRouter } from './routes/admin/stats.js'
+import { adminTrafficRouter } from './routes/admin/traffic.js'
 import { publicShippingRouter } from './routes/public/shipping.js'
 import { cdekWidgetRouter } from './routes/public/cdek-widget.js'
 import { cdekLocationsRouter } from './routes/public/cdek-locations.js'
@@ -158,6 +159,7 @@ export function createApp(): Express {
   app.use('/api/public/orders', publicOrdersRouter)
   app.use('/api/admin/orders', adminOrdersRouter)
   app.use('/api/admin/stats', adminStatsRouter)
+  app.use('/api/admin/traffic', adminTrafficRouter)
   app.use('/api/public/products', publicProductsRouter)
   app.use('/api/admin/products', adminProductsRouter)
   app.use('/api/public/categories', publicCategoriesRouter)
