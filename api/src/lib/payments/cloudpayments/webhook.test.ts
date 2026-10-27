@@ -46,6 +46,23 @@ describe('verifyCloudPaymentsSignature', () => {
     expect(verifyCloudPaymentsSignature(Buffer.from(raw), {}, SECRET)).toBe(false)
   })
 
+  it('при наличии Content-HMAC решает только он: неверный Content-HMAC + верный X-Content-HMAC — неверно', () => {
+    const decoded = decodeURIComponent(raw.replace(/\+/g, ' '))
+    expect(
+      verifyCloudPaymentsSignature(
+        Buffer.from(raw),
+        { 'content-hmac': sign(raw, 'other'), 'x-content-hmac': sign(decoded) },
+        SECRET,
+      ),
+    ).toBe(false)
+  })
+
+  it('подпись сырого тела только в X-Content-HMAC — неверно, если раскодированное тело другое', () => {
+    expect(
+      verifyCloudPaymentsSignature(Buffer.from(raw), { 'x-content-hmac': sign(raw) }, SECRET),
+    ).toBe(false)
+  })
+
   it('мусор вместо base64 и битая %-последовательность не роняют проверку', () => {
     expect(verifyCloudPaymentsSignature(Buffer.from(raw), { 'content-hmac': '###' }, SECRET)).toBe(
       false,
@@ -105,10 +122,14 @@ describe('amountKopecks', () => {
 })
 
 describe('isTestModeNotification', () => {
-  it('1 и true — тест, остальное — нет', () => {
-    expect(isTestModeNotification({ TestMode: '1' })).toBe(true)
-    expect(isTestModeNotification({ TestMode: 'true' })).toBe(true)
-    expect(isTestModeNotification({ TestMode: '0' })).toBe(false)
+  it('пусто, 0, false (в любом регистре) и отсутствие поля — не тест', () => {
+    for (const v of ['', '0', 'false', 'FALSE', 'False', ' 0 '])
+      expect(isTestModeNotification({ TestMode: v })).toBe(false)
     expect(isTestModeNotification({})).toBe(false)
+  })
+
+  it('всё остальное — тест (fail closed)', () => {
+    for (const v of ['1', 'true', 'True', 'TRUE', 'yes', '2'])
+      expect(isTestModeNotification({ TestMode: v })).toBe(true)
   })
 })

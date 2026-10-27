@@ -4,8 +4,7 @@ import type { IncomingHttpHeaders } from 'node:http'
 // Уведомления CloudPayments (developers.cloudpayments.ru, «Уведомления» и «Проверка
 // уведомлений»). Тело — form-urlencoded (в кабинете можно включить JSON), подпись —
 // HMAC-SHA256 ключом API Secret в base64: Content-HMAC — от тела как пришло,
-// X-Content-HMAC — от раскодированного. Проверяем по сырым байтам, сравнение — за
-// постоянное время.
+// X-Content-HMAC — от раскодированного. Сравнение — за постоянное время.
 
 export type CloudPaymentsNotification = Record<string, string>
 
@@ -32,13 +31,17 @@ function decodeForm(text: string): string | null {
   }
 }
 
+// Есть Content-HMAC — решает только он (по сырым байтам), без запасного пути: неверный
+// Content-HMAC не спасает никакой X-Content-HMAC. Только когда Content-HMAC нет вовсе,
+// проверяем X-Content-HMAC — от раскодированного тела.
 export function verifyCloudPaymentsSignature(
   rawBody: Buffer,
   headers: IncomingHttpHeaders,
   apiSecret: string,
 ): boolean {
   if (!apiSecret) return false
-  if (matches(digest(apiSecret, rawBody), header(headers['content-hmac']))) return true
+  const contentHmac = header(headers['content-hmac'])
+  if (contentHmac) return matches(digest(apiSecret, rawBody), contentHmac)
   const decoded = decodeForm(rawBody.toString('utf8'))
   return decoded !== null && matches(digest(apiSecret, decoded), header(headers['x-content-hmac']))
 }
@@ -78,6 +81,10 @@ export function amountKopecks(value: string | undefined): number | null {
   return Number(rub) * 100 + Number(kop.padEnd(2, '0'))
 }
 
+// Fail closed: «не тест» — только явные пусто, 0 и false (в любом регистре); любое
+// другое значение считаем тестовым, чтобы на production его отклонить.
+const NOT_TEST_MODE = new Set(['', '0', 'false'])
+
 export function isTestModeNotification(n: CloudPaymentsNotification): boolean {
-  return n.TestMode === '1' || n.TestMode === 'true'
+  return !NOT_TEST_MODE.has((n.TestMode ?? '').trim().toLowerCase())
 }
