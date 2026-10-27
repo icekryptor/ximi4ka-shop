@@ -107,15 +107,23 @@ export async function runWebmasterProbe(
 ): Promise<WebmasterProbeStep[]> {
   const steps: WebmasterProbeStep[] = []
   const call = async (label: string, url: string, init: RequestInit = {}) => {
-    const res = await fetchImpl(url, {
-      ...init,
-      headers: { Authorization: `OAuth ${token}`, 'Content-Type': 'application/json' },
-      signal: AbortSignal.timeout(30_000),
-    })
-    const text = await res.text()
-    const step: WebmasterProbeStep = { label, url, status: res.status, body: text.slice(0, 1500) }
-    steps.push(step)
-    return { step, text, ok: res.ok }
+    try {
+      const res = await fetchImpl(url, {
+        ...init,
+        headers: { Authorization: `OAuth ${token}`, 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(30_000),
+      })
+      const text = await res.text()
+      const step: WebmasterProbeStep = { label, url, status: res.status, body: text.slice(0, 1500) }
+      steps.push(step)
+      return { step, text, ok: res.ok }
+    } catch (err) {
+      // Сетевая ошибка или таймаут одного шага не должны терять остальной вывод.
+      const message = err instanceof Error ? err.message : String(err)
+      const step: WebmasterProbeStep = { label, url, status: 0, body: message.slice(0, 1500) }
+      steps.push(step)
+      return { step, text: '', ok: false }
+    }
   }
   const parse = (text: string): Record<string, unknown> => {
     try {
@@ -127,9 +135,16 @@ export async function runWebmasterProbe(
 
   const user = await call('user', `${WM}/user`)
   const userId = parse(user.text).user_id
-  if (!user.ok || typeof userId !== 'number') return steps
+  if (!user.ok || typeof userId !== 'number') {
+    user.step.note = 'Не удалось получить user_id: дальше шаги невозможны'
+    return steps
+  }
 
   const hosts = await call('hosts', `${WM}/user/${userId}/hosts`)
+  if (!hosts.ok) {
+    hosts.step.note = 'Не удалось получить список сайтов: дальше шаги невозможны'
+    return steps
+  }
   const list = (parse(hosts.text).hosts ?? []) as Array<{
     host_id?: string
     ascii_host_url?: string

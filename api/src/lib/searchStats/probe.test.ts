@@ -76,4 +76,38 @@ describe('runWebmasterProbe', () => {
     expect(steps.at(-1)).toMatchObject({ label: 'hosts', status: 200 })
     expect(steps.at(-1)?.note).toMatch(/ximi4ka\.ru не найден/)
   })
+
+  it('сбой одного шага (таймаут) не теряет остальные шаги', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith('/v4/user')) return new Response(JSON.stringify({ user_id: 5 }))
+      if (url.endsWith('/v4/user/5/hosts')) {
+        return new Response(
+          JSON.stringify({
+            hosts: [{ host_id: 'https:ximi4ka.ru:443', ascii_host_url: 'https://ximi4ka.ru/' }],
+          }),
+        )
+      }
+      if (url.includes('/indexing/history')) throw new Error('timeout')
+      return new Response('ok', { status: 200 })
+    })
+    const steps = await runWebmasterProbe(fetchMock, SECRET, '2026-10-28')
+    const failed = steps.find((s) => s.label === 'indexing/history за 400 дней')
+    expect(failed).toMatchObject({ status: 0 })
+    expect(failed?.body).toContain('timeout')
+    expect(failed?.body).not.toContain(SECRET)
+    const labels = steps.map((s) => s.label)
+    expect(labels).toContain('search-urls/in-search/history за 400 дней')
+    expect(labels.at(-1)).toBe('sqi-history')
+  })
+
+  it('сбой /user — шаг со status 0 и пояснением, дальше не идёт', async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new Error('ECONNRESET')
+    })
+    const steps = await runWebmasterProbe(fetchMock, SECRET, '2026-10-28')
+    expect(steps).toHaveLength(1)
+    expect(steps[0]).toMatchObject({ label: 'user', status: 0 })
+    expect(steps[0]?.body).toContain('ECONNRESET')
+    expect(steps[0]?.note).toMatch(/user_id/)
+  })
 })
