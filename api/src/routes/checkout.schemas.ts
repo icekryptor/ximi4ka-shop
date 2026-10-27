@@ -123,9 +123,9 @@ export const CheckoutSchema = z.object({
   // Промокод: пустая строка — «без промокода». Неизвестный код отклоняет роут
   // (promo_invalid), а не молча игнорирует: покупатель ждёт скидку.
   promoCode: z.string().max(64).optional(),
-  // Способ оплаты: нет или tbank — как раньше (PAYMENT_PROVIDER); yandex_* роут
-  // принимает, только когда Яндекс доступен (иначе 400 payment_method_unavailable).
-  paymentMethod: z.enum(['tbank', 'yandex_pay', 'yandex_split']).optional(),
+  // Способ оплаты: нет или tbank — как раньше (PAYMENT_PROVIDER); yandex_* и cloudpayments
+  // роут принимает, только когда способ доступен (иначе 400 payment_method_unavailable).
+  paymentMethod: z.enum(['tbank', 'yandex_pay', 'yandex_split', 'cloudpayments']).optional(),
   customer: z.object({
     name: z.string().trim().min(1).max(255),
     phone: z.string().trim().min(5).max(64),
