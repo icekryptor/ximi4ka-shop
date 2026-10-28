@@ -1,4 +1,9 @@
-import type { DeliveryAddress, OrderEventKey, OrderStatus } from '@ximi4ka-shop/shared'
+import type {
+  DeliveryAddress,
+  OrderEventKey,
+  OrderStatus,
+  PaymentProvider,
+} from '@ximi4ka-shop/shared'
 import { CIS_TAX_ID, type CisCountry } from '@ximi4ka-shop/shared/types/cis'
 
 // Что показываем людям в таблице и в чате. Чистые функции без сети — вся
@@ -21,6 +26,9 @@ export interface NotifiableOrder {
   promoDiscountRub?: number
   shippingRub: number
   totalRub: number
+  paymentProvider?: PaymentProvider
+  /** Надбавка за оплату через CloudPayments, уже в totalRub. */
+  paymentSurchargeRub?: number
   items: {
     productSnapshot: { name: string; sku: string | null; priceRub: number }
     quantity: number
@@ -190,9 +198,10 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
     order.customerTelegram ?? '',
     deliveryCell(order),
     giftLast(order.items).map(itemLine).join('\n'),
-    // «Товары» — со всеми скидками: колонки таблицы не менялись, Товары + Доставка = Итого.
+    // Колонки таблицы не менялись, Товары + Доставка = Итого: «Товары» — со всеми
+    // скидками, «Доставка» — вместе с надбавкой за оплату картой (CloudPayments).
     order.subtotalRub - order.discountRub - (order.promoDiscountRub ?? 0),
-    order.shippingRub,
+    order.shippingRub + (order.paymentSurchargeRub ?? 0),
     order.totalRub,
     STATUS_LABELS[order.status],
   ]
@@ -229,6 +238,9 @@ export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []
   client.push(`Адрес: ${escapeHtml(where)}`)
   const taxId = order.deliveryMethod === 'cdek_manual_cis' ? cisTaxId(order) : null
   if (taxId) client.push(`${taxId.label}: ${escapeHtml(taxId.value)}`)
+  if (order.paymentProvider === 'cloudpayments') {
+    client.push('Оплата: карта банка другой страны (CloudPayments)')
+  }
   if (comment) client.push(`Комментарий: ${escapeHtml(comment)}`)
 
   const goods = [`Товары ${rub(order.subtotalRub)}`]
@@ -236,7 +248,11 @@ export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []
   if (order.promoCode && (order.promoDiscountRub ?? 0) > 0) {
     goods.push(`промокод ${escapeHtml(order.promoCode)} −${rub(order.promoDiscountRub ?? 0)}`)
   }
-  const totals = `${goods.join(' · ')} · ${shipping} · итого ${rub(order.totalRub)}`
+  const surcharge =
+    (order.paymentSurchargeRub ?? 0) > 0
+      ? ` · надбавка за способ оплаты +${rub(order.paymentSurchargeRub ?? 0)}`
+      : ''
+  const totals = `${goods.join(' · ')} · ${shipping}${surcharge} · итого ${rub(order.totalRub)}`
 
   // Позиции добавляем, пока влезает в лимит, оставляя место на хвост и на
   // строку «…и ещё N позиций».

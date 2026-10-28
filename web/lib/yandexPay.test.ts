@@ -23,6 +23,7 @@ describe('подписи и сумма плашки', () => {
       tbank: 'Картой — Т-Банк',
       yandex_pay: 'Яндекс Пэй',
       yandex_split: 'Сплит — оплата частями',
+      cloudpayments: 'Visa / Mastercard банка другой страны',
     })
     expect(isYandexMethod('yandex_split')).toBe(true)
     expect(isYandexMethod('tbank')).toBe(false)
@@ -46,6 +47,8 @@ describe('yandexPay из публичных настроек', () => {
     expect(api.getPublicSettings).toHaveBeenCalledTimes(1)
     expect(await reloadPublicYandexPay()).toBeNull()
     expect(api.getPublicSettings).toHaveBeenCalledTimes(2)
+    expect(api.getPublicSettings).toHaveBeenNthCalledWith(1)
+    expect(api.getPublicSettings).toHaveBeenNthCalledWith(2, { fresh: true })
   })
 
   it('сбой api, нет поля или пустой ответ — null без исключения', async () => {

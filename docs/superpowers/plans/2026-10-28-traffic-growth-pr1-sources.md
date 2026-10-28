@@ -31,7 +31,7 @@ PR»; блоки 2–4 и сводка — отдельные планы пос�
 - Тело ответа внешнего API в ошибке обрезается до 300 символов.
 - Эндпоинты и пункт меню — только роль admin (`requireAdminAuth`, `requireCsrfToken`, `requireRole('admin')`).
 - Даты — московский день; колонки `date` из Postgres всегда отдаются через `to_char(day, 'YYYY-MM-DD')`.
-- Миграции — отметка больше `1790850000000`, сырой SQL, `IF NOT EXISTS`.
+- Миграции — отметка больше `1790860000000`, сырой SQL, `IF NOT EXISTS`.
 - Перед PR: `npm run lint`, `npm run typecheck`, тесты api и web, `npx prettier --check .` в корне. Тесты api — только на
   своей базе: `TEST_DATABASE_URL=postgres://localhost:5432/ximi4ka_shop_test_traffic`.
 - Мёрж в `main` = выкатка в прод: PR открывается, но не мёржится без команды владельца.
@@ -63,7 +63,7 @@ PR»; блоки 2–4 и сводка — отдельные планы пос�
 | `api/src/lib/searchStats/constants.ts` (новый)               | имена измерений, окна, интервалы                              |
 | `api/src/lib/searchStats/dates.ts` (новый)                   | `todayMsk`, `addDays`, `daysInclusive`                        |
 | `api/src/lib/searchStats/metrikaReports.ts` (новый)          | клиент Reporting API, `fetchSourceDays`, `fetchLandingDays`   |
-| `api/src/migrations/1790860000000-AddSearchStats.ts` (новый) | журнал, `traffic_sources_daily`, `landing_pages_daily`        |
+| `api/src/migrations/1790870000000-AddSearchStats.ts` (новый) | журнал, `traffic_sources_daily`, `landing_pages_daily`        |
 | `api/src/lib/searchStats/runs.ts` (новый)                    | журнал запусков и текст ошибок                                |
 | `api/src/lib/searchStats/sync.ts` (новый)                    | `mergeRows`, замена окна, `syncMetrika`, `withRateLimitRetry` |
 | `api/src/lib/searchStats/worker.ts` (новый)                  | расписание и запуск                                           |
@@ -801,7 +801,7 @@ git commit -m "feat(api): клиент отчётов Метрики для ра
 
 **Files:**
 
-- Create: `api/src/migrations/1790860000000-AddSearchStats.ts`
+- Create: `api/src/migrations/1790870000000-AddSearchStats.ts`
 - Create: `api/src/lib/searchStats/runs.ts`, `api/src/lib/searchStats/sync.ts`
 - Test: `api/src/lib/searchStats/sync.test.ts`, `api/src/lib/searchStats/runs.test.ts`
 
@@ -819,7 +819,7 @@ git commit -m "feat(api): клиент отчётов Метрики для ра
 
 - [ ] **Step 1: Миграция**
 
-`api/src/migrations/1790860000000-AddSearchStats.ts`:
+`api/src/migrations/1790870000000-AddSearchStats.ts`:
 
 ```ts
 import type { MigrationInterface, QueryRunner } from 'typeorm'
@@ -829,8 +829,8 @@ import type { MigrationInterface, QueryRunner } from 'typeorm'
 // строки с search_engine = '' — итоги источников; строки source = 'organic'
 // с непустым search_engine — разбивка поиска по поисковикам (не суммировать
 // с итогами). Пути — без параметров, как orders.attribution.landing.
-export class AddSearchStats1790860000000 implements MigrationInterface {
-  name = 'AddSearchStats1790860000000'
+export class AddSearchStats1790870000000 implements MigrationInterface {
+  name = 'AddSearchStats1790870000000'
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
@@ -1401,7 +1401,7 @@ Run: `npm run typecheck -w api` — без ошибок.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add api/src/migrations/1790860000000-AddSearchStats.ts api/src/lib/searchStats
+git add api/src/migrations/1790870000000-AddSearchStats.ts api/src/lib/searchStats
 git commit -m "feat(api): таблицы и ежедневная синхронизация источников трафика из Метрики" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 

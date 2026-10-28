@@ -20,7 +20,7 @@ import type { PaymentStatus } from './types.js'
 export function applyPaymentStatus(
   order: Order,
   status: PaymentStatus,
-  by: 'tbank' | 'yandex_pay' | 'reconcile',
+  by: 'tbank' | 'yandex_pay' | 'cloudpayments' | 'reconcile',
   now: Date = new Date(),
 ): boolean {
   if (status === 'pending') return false

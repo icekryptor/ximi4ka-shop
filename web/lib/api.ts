@@ -14,6 +14,7 @@ import type {
   PublicOrderStatus,
   SearchResult,
   PublicYandexPay,
+  PublicCloudPayments,
 } from '@ximi4ka-shop/shared'
 
 // Two audiences, two origins. The browser must use the public origin
@@ -328,9 +329,28 @@ export interface PublicSettings {
   testimonials: PublicTestimonial[]
   /** Яндекс Пэй: null — недоступен; merchantId — только в боевом режиме. */
   yandexPay?: PublicYandexPay | null
+  /** CloudPayments для блока ЕАЭС: null — недоступен. */
+  cloudPayments?: PublicCloudPayments | null
 }
 
-export async function getPublicSettings(): Promise<PublicSettings> {
-  const body = await request<DataEnvelope<PublicSettings>>(`/api/public/settings`)
+// fresh — мимо HTTP-кеша браузера (у ответа max-age=60): перечитать после того, как
+// способ оплаты выключили, пока покупатель был на чекауте.
+export async function getPublicSettings(opts: { fresh?: boolean } = {}): Promise<PublicSettings> {
+  const body = await request<DataEnvelope<PublicSettings>>(
+    `/api/public/settings`,
+    opts.fresh ? { cache: 'no-store' } : undefined,
+  )
+  return body.data
+}
+
+/**
+ * CloudPayments в режиме «Тест» для вошедшего админа (чекаут с ?cp_test=1): процент
+ * надбавки или null. Без сессии админки — ApiError 401.
+ */
+export async function getCloudPaymentsCheckoutPreview(): Promise<PublicCloudPayments | null> {
+  const body = await request<DataEnvelope<PublicCloudPayments | null>>(
+    `/api/admin/cloudpayments/checkout-preview`,
+    { credentials: 'include', cache: 'no-store' },
+  )
   return body.data
 }

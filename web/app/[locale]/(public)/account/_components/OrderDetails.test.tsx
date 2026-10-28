@@ -1,5 +1,5 @@
 import { afterEach, describe, it, expect } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import type { AccountOrderSummary } from '@ximi4ka-shop/shared'
 import { OrderDetails } from './OrderDetails'
 
@@ -31,6 +31,7 @@ const order = (extra: Partial<AccountOrderSummary> = {}): AccountOrderSummary =>
   promoCode: null,
   promoDiscountRub: 0,
   shippingRub: 0,
+  paymentSurchargeRub: 0,
   deliveryMethod: 'cdek_pvz',
   deliveryAddress: 'Москва, ул. Ленина, 1',
   shipment: null,
@@ -50,6 +51,24 @@ describe('OrderDetails', () => {
     expect(screen.getByText(/Доставка СДЭК в другую страну:/)).toBeInTheDocument()
     expect(screen.getByText(/Минск, ул. Ленина, 5/)).toBeInTheDocument()
     expect(screen.queryByText(/undefined/)).not.toBeInTheDocument()
+  })
+
+  it('надбавка за оплату картой — отдельной строкой, только когда она есть', () => {
+    render(
+      <OrderDetails
+        order={order({
+          paymentProvider: 'cloudpayments',
+          paymentSurchargeRub: 216,
+          shippingRub: 700,
+          totalRub: 4316,
+        })}
+      />,
+    )
+    const row = screen.getByText('Надбавка за оплату картой').parentElement!
+    expect(within(row).getByText(price('216 ₽'))).toBeInTheDocument()
+    cleanup()
+    render(<OrderDetails order={order()} />)
+    expect(screen.queryByText(/Надбавка/)).not.toBeInTheDocument()
   })
 
   it('подарок: вместо «0 ₽» подпись «подарок»', () => {

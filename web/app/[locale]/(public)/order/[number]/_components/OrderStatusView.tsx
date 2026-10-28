@@ -42,10 +42,11 @@ function formatDate(iso: string): string {
 // Онлайн-оплата: статус приходит вебхуком провайдера, поэтому страница опрашивает
 // статус, а покупка в Метрику уходит только после подтверждения оплаты.
 function isOnlinePayment(provider: PaymentProvider): boolean {
-  return provider === 'tbank' || provider === 'yandex_pay'
+  return provider === 'tbank' || provider === 'yandex_pay' || provider === 'cloudpayments'
 }
 
-// Ссылка «Оплатить» — только https: api отдаёт её для неоплаченного заказа Яндекс Пэй.
+// Ссылка «Оплатить» — только https: api отдаёт её для неоплаченного заказа Яндекс Пэй
+// или CloudPayments.
 function safePaymentUrl(url: string | null | undefined): string | null {
   return typeof url === 'string' && /^https:\/\//.test(url) ? url : null
 }

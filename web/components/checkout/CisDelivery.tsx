@@ -9,7 +9,7 @@ import {
   cisTaxIdError,
   type CisCountry,
 } from '@ximi4ka-shop/shared/types/cis'
-import { CIS_PAYMENT_NOTE } from '@/lib/orderProcess'
+import { CIS_PAYMENT_NOTE, CIS_PAYMENT_NOTE_FOREIGN_CARDS } from '@/lib/orderProcess'
 import { formatRub } from '@/lib/stockLabel'
 import { ERROR_CLASS, FIELD_CLASS, HINT_CLASS, LABEL_CLASS } from './fieldStyles'
 import type { CisDeliveryModel } from './useCisDelivery'
@@ -21,12 +21,14 @@ export type CisDeliveryErrors = Partial<
 interface Props {
   delivery: CisDeliveryModel
   errors: CisDeliveryErrors
+  /** CloudPayments включён: карты банков этих стран оплачиваются отдельным способом. */
+  foreignCards: boolean
 }
 
 // Блок «Доставка СДЭК» для Беларуси, Казахстана, Армении и Киргизии: страна, город
 // только из списка городов с ПВЗ, адрес пункта вручную, для Казахстана и Киргизии —
 // ИИН/ПИН для таможни. Ошибка поля видна, пока оно не заполнено правильно.
-export function CisDelivery({ delivery: d, errors }: Props) {
+export function CisDelivery({ delivery: d, errors, foreignCards }: Props) {
   const rule = d.country ? CIS_DELIVERY_RULES[d.country] : null
   const countryError = d.country ? undefined : errors.country
   const cityError = d.city ? undefined : errors.cisCity
@@ -40,13 +42,14 @@ export function CisDelivery({ delivery: d, errors }: Props) {
         Доставка СДЭК в другую страну *
       </h2>
 
-      {/* Платёж идёт через Т-Кассу в рублях: Visa/Mastercard/UnionPay банков этих стран
-          пока не принимаются. Предупреждаем до выбора страны, а не после отказа. */}
+      {/* Т-Касса не принимает Visa / Mastercard банков этих стран; когда включён
+          CloudPayments, они оплачиваются отдельным способом (выбор над кнопкой).
+          Предупреждаем до выбора страны, а не после отказа. */}
       <p
         role="note"
         className="m-0 border border-[var(--color-lj-rule)] px-4 py-3 font-lj-body text-sm text-[var(--color-lj-ink)]"
       >
-        {CIS_PAYMENT_NOTE}
+        {foreignCards ? CIS_PAYMENT_NOTE_FOREIGN_CARDS : CIS_PAYMENT_NOTE}
       </p>
 
       <div className="flex flex-col gap-2">

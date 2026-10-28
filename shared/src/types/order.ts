@@ -11,20 +11,27 @@ export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled
 // Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring. `ycp` — оплату принял
 // Яндекс (Яндекс Пэй, Сплит) в «Купить в 1 клик»; в Т-Кассу такие заказы не идут.
 // `yandex_pay` — Яндекс Пэй на чекауте сайта (картой или Сплитом): заказ в Яндексе
-// создаёт наш сервер, статус приходит вебхуком и сверкой.
-export type PaymentProvider = 'manual' | 'tbank' | 'ycp' | 'yandex_pay'
+// создаёт наш сервер, статус приходит вебхуком и сверкой. `cloudpayments` —
+// платёжная ссылка CloudPayments (Visa / Mastercard банков стран ЕАЭС).
+export type PaymentProvider = 'manual' | 'tbank' | 'ycp' | 'yandex_pay' | 'cloudpayments'
 
 /**
  * Способ оплаты на чекауте. Оба способа Яндекса создают заказ провайдера
  * yandex_pay; yandex_split открывает форму Яндекса сразу на Сплите.
  */
-export type CheckoutPaymentMethod = 'tbank' | 'yandex_pay' | 'yandex_split'
+export type CheckoutPaymentMethod = 'tbank' | 'yandex_pay' | 'yandex_split' | 'cloudpayments'
 
 /** Яндекс Пэй в публичных настройках; null — недоступен. */
 export interface PublicYandexPay {
   split: true
   /** Только в боевом режиме: в песочнице Merchant ID служит ключом API. */
   merchantId?: string
+}
+
+/** CloudPayments в публичных настройках; null — способ недоступен. */
+export interface PublicCloudPayments {
+  /** Надбавка за способ оплаты, целые проценты; 0 — без надбавки. */
+  surchargePercent: number
 }
 
 // Откуда пришёл заказ: витрина или «Купить в 1 клик» в Яндексе (YCP).
@@ -87,7 +94,7 @@ export interface OrderStatusHistoryEntry {
   from: OrderStatus | null
   to: OrderStatus
   at: string
-  by: 'tbank' | 'admin' | 'reconcile' | 'ycp' | 'yandex_pay'
+  by: 'tbank' | 'admin' | 'reconcile' | 'ycp' | 'yandex_pay' | 'cloudpayments'
   comment?: string
 }
 
@@ -149,12 +156,14 @@ export interface OrderDto {
   source?: OrderSource
   /** Товары по обычным ценам. */
   subtotalRub: number
-  /** Оптовая скидка (наборы, проценты на реагенты, цены партий); totalRub = subtotalRub − discountRub + shippingRub. */
+  /** Оптовая скидка (наборы, проценты на реагенты, цены партий). */
   discountRub: number
-  /** Промокод заказа (null — без промокода) и его скидка; totalRub = subtotalRub − discountRub − promoDiscountRub + shippingRub. */
+  /** Промокод заказа (null — без промокода) и его скидка; totalRub = subtotalRub − discountRub − promoDiscountRub + shippingRub + paymentSurchargeRub. */
   promoCode?: string | null
   promoDiscountRub?: number
   shippingRub: number
+  /** Надбавка за оплату через CloudPayments; 0 — у остальных способов и при проценте 0. */
+  paymentSurchargeRub: number
   totalRub: number
   paymentProvider: PaymentProvider
   paymentIntentId: string | null

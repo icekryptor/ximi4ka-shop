@@ -148,6 +148,19 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
                     {order.shippingRub === 0 ? 'Бесплатно' : formatRub(order.shippingRub)}
                   </td>
                 </tr>
+                {order.paymentSurchargeRub > 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-2 text-right text-brand-text-secondary">
+                      Надбавка за оплату картой (CloudPayments)
+                    </td>
+                    <td
+                      data-testid="order-payment-surcharge"
+                      className="px-4 py-2 text-right tabular-nums"
+                    >
+                      {formatRub(order.paymentSurchargeRub)}
+                    </td>
+                  </tr>
+                )}
                 <tr className="border-t border-brand-border font-semibold">
                   <td colSpan={4} className="px-4 py-3 text-right">
                     Итого

@@ -32,6 +32,7 @@ const order = (n: number, extra: Partial<AccountOrderSummary> = {}): AccountOrde
   promoCode: null,
   promoDiscountRub: 0,
   shippingRub: 0,
+  paymentSurchargeRub: 0,
   deliveryMethod: 'cdek_pvz',
   deliveryAddress: 'Москва, ул. Ленина, 1',
   shipment: null,

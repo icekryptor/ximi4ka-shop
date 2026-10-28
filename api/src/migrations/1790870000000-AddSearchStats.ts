@@ -5,8 +5,8 @@ import type { MigrationInterface, QueryRunner } from 'typeorm'
 // строки с search_engine = '' — итоги источников; строки source = 'organic'
 // с непустым search_engine — разбивка поиска по поисковикам (не суммировать
 // с итогами). Пути — без параметров, как orders.attribution.landing.
-export class AddSearchStats1790860000000 implements MigrationInterface {
-  name = 'AddSearchStats1790860000000'
+export class AddSearchStats1790870000000 implements MigrationInterface {
+  name = 'AddSearchStats1790870000000'
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
