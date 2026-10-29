@@ -10,6 +10,9 @@ import {
   internationalPhoneDigits,
   isInternationalPhone,
   validateCisCheckoutForm,
+  rememberAwaitingPayment,
+  readAwaitingPayment,
+  forgetAwaitingPayment,
   type CheckoutFormFields,
   type DeliveryFormState,
 } from './checkout'
@@ -286,5 +289,40 @@ describe('validateCisCheckoutForm', () => {
     expect(validateCisCheckoutForm(cisFields, { ...cisOk, address: '  ' }).cisAddress).toBe(
       'Укажите адрес пункта выдачи СДЭК',
     )
+  })
+})
+
+describe('заказ, ждущий оплаты (возврат со шлюза)', () => {
+  const KEY = 'ximi4ka-checkout-awaiting-payment'
+  const value = {
+    orderNumber: 'XM-2026-00050',
+    publicToken: 'tok',
+    paymentUrl: 'https://pay.example/1',
+  }
+
+  beforeEach(() => {
+    window.sessionStorage.clear()
+  })
+
+  it('запоминает и читает заказ, пока ссылка свежая', () => {
+    rememberAwaitingPayment(value)
+    expect(readAwaitingPayment()).toEqual(value)
+    expect(readAwaitingPayment(Date.now() + 61 * 60 * 1000)).toBeNull()
+  })
+
+  it('forget стирает запись', () => {
+    rememberAwaitingPayment(value)
+    forgetAwaitingPayment()
+    expect(readAwaitingPayment()).toBeNull()
+  })
+
+  it('битую запись и не-https ссылку не показывает', () => {
+    window.sessionStorage.setItem(KEY, '{не json')
+    expect(readAwaitingPayment()).toBeNull()
+    window.sessionStorage.setItem(
+      KEY,
+      JSON.stringify({ ...value, paymentUrl: 'javascript:alert(1)', ts: Date.now() }),
+    )
+    expect(readAwaitingPayment()).toBeNull()
   })
 })

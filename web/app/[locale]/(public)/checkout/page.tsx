@@ -36,12 +36,16 @@ import { useCdekDelivery } from '@/components/checkout/useCdekDelivery'
 import { useCisDelivery } from '@/components/checkout/useCisDelivery'
 import {
   clearIdempotencyKey,
+  forgetAwaitingPayment,
   formatPhoneInput,
   getOrCreateIdempotencyKey,
   internationalPhoneDigits,
   normalizeTelegramHandle,
   phoneDigits,
+  readAwaitingPayment,
   redirectTo,
+  rememberAwaitingPayment,
+  type AwaitingPayment,
   validateCheckoutForm,
   validateCisCheckoutForm,
   type CheckoutFormErrors,
@@ -138,12 +142,19 @@ export default function CheckoutPage() {
   // моменту уже очищена, и без отдельного состояния на секунду-две мелькало бы
   // «Корзина пуста». payment — идём на оплату, order — открываем страницу заказа.
   const [placed, setPlaced] = useState<'payment' | 'order' | null>(null)
+  // Заказ, созданный в этой вкладке и ушедший на шлюз: при возврате с пустой
+  // корзиной предлагаем его оплатить. На сервере sessionStorage нет, но до
+  // гидрации (hydrated) плашка и не рисуется — расхождения разметки не будет.
+  const [awaiting, setAwaiting] = useState<AwaitingPayment | null>(() =>
+    typeof window === 'undefined' ? null : readAwaitingPayment(),
+  )
   // Кнопка «Назад» со шлюза возвращает страницу из bfcache вместе с её
   // состоянием: сбрасываем «переходим», корзина при этом честно пуста.
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
       if (!event.persisted) return
       setPlaced(null)
+      setAwaiting(readAwaitingPayment())
       // Ключ идемпотентности уже сброшен: новая отправка создаст новый заказ.
       setSubmitting(false)
     }
@@ -322,8 +333,14 @@ export default function CheckoutPage() {
       clear()
       saveGiftChoice(null)
       if (result.paymentUrl) {
+        rememberAwaitingPayment({
+          orderNumber: result.orderNumber,
+          publicToken: result.publicToken,
+          paymentUrl: result.paymentUrl,
+        })
         redirectTo(result.paymentUrl)
       } else {
+        forgetAwaitingPayment()
         // Секрет заказа — во фрагменте (#t=): по нему страница покажет трек
         // СДЭК, а счётчики аналитики фрагмент не записывают.
         router.push(
@@ -391,6 +408,26 @@ export default function CheckoutPage() {
               ? 'Заказ оформлен. Переходим к оплате…'
               : 'Заказ оформлен. Открываем страницу заказа…'}
           </p>
+        ) : items.length === 0 && awaiting ? (
+          <div className="flex flex-col items-start gap-6">
+            <p className="text-xl text-[var(--color-lj-ink)]">
+              Заказ {awaiting.orderNumber} оформлен и ждёт оплаты.
+            </p>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+              <a
+                href={awaiting.paymentUrl}
+                className="inline-flex items-center gap-3 px-7 py-4 font-lj-mono text-[0.8125rem] font-medium uppercase tracking-[0.08em] rounded-full lj-cta-bright"
+              >
+                Перейти к оплате →
+              </a>
+              <Link
+                href={`/order/${awaiting.orderNumber}#t=${encodeURIComponent(awaiting.publicToken)}`}
+                className="font-lj-mono text-[0.8125rem] uppercase tracking-[0.08em] text-[var(--color-lj-ink)] underline underline-offset-4"
+              >
+                Страница заказа
+              </Link>
+            </div>
+          </div>
         ) : items.length === 0 ? (
           <div className="flex flex-col items-start gap-6">
             <p className="text-xl text-[var(--color-lj-ink)] opacity-70">Корзина пуста</p>

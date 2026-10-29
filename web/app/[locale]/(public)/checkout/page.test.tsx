@@ -1310,13 +1310,78 @@ describe('/checkout page', () => {
     })
     expect(screen.getByRole('status')).toHaveTextContent(/переходим к оплате/i)
 
-    // Браузер вернул страницу из bfcache: заказ уже оформлен, корзина пуста.
+    // Браузер вернул страницу из bfcache: заказ уже оформлен, корзина пуста —
+    // вместо тупика «Корзина пуста» предлагаем оплатить уже созданный заказ.
     act(() => {
       window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }))
     })
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.getByText(/корзина пуста/i)).toBeInTheDocument()
+    expect(screen.queryByText(/корзина пуста/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/XM-2026-00043/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /перейти к оплате/i })).toHaveAttribute(
+      'href',
+      'https://securepay.tinkoff.ru/pay/1',
+    )
+    expect(screen.getByRole('link', { name: /страница заказа/i })).toHaveAttribute(
+      'href',
+      '/order/XM-2026-00043#t=tok123',
+    )
+  })
+
+  it('после перезагрузки чекаута в той же вкладке тоже предлагает оплатить созданный заказ', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okCheckoutResponse('XM-2026-00044', 'https://securepay.tinkoff.ru/pay/2')),
+    )
+    seedCart(seed)
+    const first = render(<CheckoutPage />)
+    await fillValidForm()
+    submit()
+    await vi.waitFor(() => expect(mockRedirectTo).toHaveBeenCalled())
+    first.unmount()
+
+    render(<CheckoutPage />)
+
+    expect(await screen.findByText(/XM-2026-00044/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /перейти к оплате/i })).toHaveAttribute(
+      'href',
+      'https://securepay.tinkoff.ru/pay/2',
+    )
+  })
+
+  it('заказ без онлайн-оплаты не оставляет плашку «ждёт оплаты»', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => okCheckoutResponse('XM-2026-00045', null)),
+    )
+    seedCart(seed)
+    const first = render(<CheckoutPage />)
+    await fillValidForm()
+    submit()
+    await vi.waitFor(() => expect(mockPush).toHaveBeenCalled())
+    first.unmount()
+
+    render(<CheckoutPage />)
+
+    expect(await screen.findByText(/корзина пуста/i)).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /перейти к оплате/i })).not.toBeInTheDocument()
+  })
+
+  it('старая запись (больше часа) плашку не показывает — ссылка шлюза могла истечь', async () => {
+    window.sessionStorage.setItem(
+      'ximi4ka-checkout-awaiting-payment',
+      JSON.stringify({
+        orderNumber: 'XM-2026-00046',
+        publicToken: 'tok',
+        paymentUrl: 'https://securepay.tinkoff.ru/pay/3',
+        ts: Date.now() - 61 * 60 * 1000,
+      }),
+    )
+    render(<CheckoutPage />)
+
+    expect(await screen.findByText(/корзина пуста/i)).toBeInTheDocument()
+    expect(screen.queryByText(/XM-2026-00046/)).not.toBeInTheDocument()
   })
 
   it('shows the server message on 409 (availability changed)', async () => {

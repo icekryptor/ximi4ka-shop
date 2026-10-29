@@ -219,6 +219,65 @@ export function clearIdempotencyKey(): void {
   window.sessionStorage.removeItem(IDEMPOTENCY_STORAGE_KEY)
 }
 
+const AWAITING_PAYMENT_STORAGE_KEY = 'ximi4ka-checkout-awaiting-payment'
+// Ссылка Т-Кассы живёт недолго: старую запись не показываем, чтобы не вести на
+// истёкшую оплату. Сценарий — «Назад» со шлюза, это минуты, а не часы.
+const AWAITING_PAYMENT_TTL_MS = 60 * 60 * 1000
+
+export interface AwaitingPayment {
+  orderNumber: string
+  publicToken: string
+  paymentUrl: string
+}
+
+// Заказ создан и браузер уходит на шлюз; корзина к этому моменту очищена. Если
+// покупатель вернётся «Назад», чекаут предложит оплатить этот заказ, а не
+// покажет тупик «Корзина пуста». sessionStorage — только эта вкладка.
+export function rememberAwaitingPayment(value: AwaitingPayment): void {
+  try {
+    window.sessionStorage.setItem(
+      AWAITING_PAYMENT_STORAGE_KEY,
+      JSON.stringify({ ...value, ts: Date.now() }),
+    )
+  } catch {
+    // закрытое хранилище — плашки просто не будет
+  }
+}
+
+export function readAwaitingPayment(now = Date.now()): AwaitingPayment | null {
+  let raw: string | null
+  try {
+    raw = window.sessionStorage.getItem(AWAITING_PAYMENT_STORAGE_KEY)
+  } catch {
+    return null
+  }
+  if (!raw) return null
+  try {
+    const v = JSON.parse(raw) as Partial<AwaitingPayment & { ts: number }>
+    if (
+      typeof v.orderNumber !== 'string' ||
+      typeof v.publicToken !== 'string' ||
+      typeof v.paymentUrl !== 'string' ||
+      !v.paymentUrl.startsWith('https://') ||
+      typeof v.ts !== 'number' ||
+      now - v.ts > AWAITING_PAYMENT_TTL_MS
+    ) {
+      return null
+    }
+    return { orderNumber: v.orderNumber, publicToken: v.publicToken, paymentUrl: v.paymentUrl }
+  } catch {
+    return null
+  }
+}
+
+export function forgetAwaitingPayment(): void {
+  try {
+    window.sessionStorage.removeItem(AWAITING_PAYMENT_STORAGE_KEY)
+  } catch {
+    // см. выше
+  }
+}
+
 // Full-page navigation to an external payment URL (Т-Касса). Kept as a
 // module export instead of an inline `window.location.assign` so page tests
 // can mock the module and assert the redirect without jsdom navigation.
