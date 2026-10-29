@@ -7,6 +7,7 @@ import { startNotificationWorker } from './lib/notifications/worker.js'
 import { startCdekShipmentWorker } from './lib/cdek/worker.js'
 import { startPickupPointsJob } from './lib/ycp/pickupPoints.js'
 import { startMetrikaConversionWorker } from './lib/metrika/worker.js'
+import { startSearchStatsWorker } from './lib/searchStats/worker.js'
 import { startLoginBotPolling } from './lib/telegram/loginPoller.js'
 import { flagDefaultPasswordUsers } from './lib/auth/passwordMaintenance.js'
 import { startWebVitalsRetentionJob } from './lib/analytics/retention.js'
@@ -50,6 +51,12 @@ async function bootstrap() {
   // METRIKA_OFFLINE_ENABLED не true и не задан METRIKA_OAUTH_TOKEN.
   if (startMetrikaConversionWorker()) {
     logger.info('metrika offline conversions worker started')
+  }
+
+  // Статистика Метрики для раздела «Трафик и рост». No-op, пока
+  // SEARCH_STATS_SYNC_ENABLED не true и не задан YANDEX_STATS_OAUTH_TOKEN.
+  if (startSearchStatsWorker()) {
+    logger.info('search stats sync worker started')
   }
 
   // Полевые Web Vitals (web_vital) старше 90 дней удаляются раз в сутки.

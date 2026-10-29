@@ -18,6 +18,7 @@
     "./types/blocks": "./src/types/blocks.ts",
     "./types/materialLead": "./src/types/materialLead.ts",
     "./types/analytics": "./src/types/analytics.ts",
+    "./types/traffic": "./src/types/traffic.ts",
     "./content/kidsPositioning": "./src/content/kidsPositioning.ts"
   },
   "scripts": {
