@@ -46,7 +46,7 @@ export const SITE_CATALOG = [
     name: 'Химичка 3.0',
     shortDescription:
       'Флагман: настоящая лаборатория у вас дома. От реакций меди до выращивания кристаллов.',
-    priceRub: 3399,
+    priceRub: 3190,
     emphasisWord: 'Химичка',
     hoverFormula: 'Cu + 2 AgNO₃ → Cu(NO₃)₂ + 2 Ag↓',
     chips: ['по методичке', 'ярко', '14+'],
@@ -59,7 +59,7 @@ export const SITE_CATALOG = [
     name: 'Мини-Химичка',
     shortDescription:
       'Те же реакции, компактнее. Базовая посуда, идеален как первый набор или подарок.',
-    priceRub: 1799,
+    priceRub: 1699,
     emphasisWord: 'Мини-',
     hoverFormula: 'Pocket lab · 18 реактивов',
     chips: ['подарок', '14+'],
@@ -71,7 +71,7 @@ export const SITE_CATALOG = [
     slug: 'elektrohimichka',
     name: 'Электрохимичка',
     shortDescription: 'Электролиз, гальваника, батарея. Полный комплект для опытов с током.',
-    priceRub: 3299,
+    priceRub: 3190,
     emphasisWord: 'Электро',
     hoverFormula: '2 H₂O → 2 H₂↑ + O₂↑',
     chips: ['ток', 'гальваника', '14+'],
@@ -84,7 +84,7 @@ export const SITE_CATALOG = [
     name: 'Химичка ОГЭ',
     shortDescription:
       'Подготовка к экспериментальной части ОГЭ по химии: 29 реактивов, 2 индикатора, методичка на 110+ реакций.',
-    priceRub: 3099,
+    priceRub: 3590,
     emphasisWord: 'ОГЭ',
     hoverFormula: 'CuSO₄ + Fe → FeSO₄ + Cu↓',
     chips: ['ОГЭ', 'методичка', '9 класс'],

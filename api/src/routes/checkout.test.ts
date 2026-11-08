@@ -986,7 +986,7 @@ describe('POST /api/checkout', () => {
     expect(get).not.toHaveBeenCalled()
   })
   describe('подарок: реактив на выбор от 3000 ₽', () => {
-    const GIFT_SLUGS = ['azotnaya-kislota-10', 'solyanaya-kislota', 'iodat-kaliya']
+    const GIFT_SLUGS = ['iodat-kaliya', 'gidroksid-natriya', 'azotnaya-kislota-10']
 
     async function seedGift(overrides: Partial<Product> = {}): Promise<Product> {
       return seedProduct({ slug: 'iodat-kaliya', name: 'Йодат калия', priceRub: 249, ...overrides })
@@ -1099,7 +1099,7 @@ describe('POST /api/checkout', () => {
 
     it('тот же реактив в корзине и в подарок — две отдельные строки, платная не меняется', async () => {
       const kit = await seedProduct({ priceRub: 2900 })
-      const gift = await seedGift({ slug: 'solyanaya-kislota', priceRub: 199 })
+      const gift = await seedGift({ slug: 'gidroksid-natriya', priceRub: 199 })
 
       const { res, order } = await placeOrder(gift.id, [kit, gift])
 
@@ -1134,7 +1134,7 @@ describe('POST /api/checkout', () => {
         raw: vi.fn(),
       })
       const kit = await seedProduct({ priceRub: 2900, weightG: 500 })
-      const gift = await seedGift({ slug: 'solyanaya-kislota', priceRub: 199, weightG: 100 })
+      const gift = await seedGift({ slug: 'gidroksid-natriya', priceRub: 199, weightG: 100 })
 
       const { order } = await placeOrder(gift.id, [kit, gift])
 

@@ -65,10 +65,21 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
 
 export const TELEGRAM_TEXT_LIMIT = 4096
 
-// «Запас всех реактивов» — товар без собственного состава: это все реактивы
-// каталога по 2 шт. Сборщику в чате нужен список, а не одна строка.
+// Комплекты «все реактивы» — товары без собственного состава: это все реактивы
+// каталога по N шт. Сборщику в чате нужен список, а не одна строка.
+// «Запас всех реактивов» — по 2 шт, «Все реактивы по 1 шт» — по 1 шт.
+// Зеркало — web/lib/allReagents.ts.
 export const ALL_REAGENTS_SKU = 'RRR'
-export const ALL_REAGENTS_PER_SET = 2
+export const ALL_REAGENTS_ONE_SKU = 'RRR1'
+const ALL_REAGENTS_PER_SET: Readonly<Record<string, number>> = {
+  [ALL_REAGENTS_SKU]: 2,
+  [ALL_REAGENTS_ONE_SKU]: 1,
+}
+
+/** Сколько штук каждого реактива в одном комплекте; null — товар не комплект реактивов. */
+export function allReagentsPerSet(sku: string | null | undefined): number | null {
+  return sku ? (ALL_REAGENTS_PER_SET[sku] ?? null) : null
+}
 
 // Дата и время по Москве. Собираем из частей сами: у Intl в ru-RU между
 // датой и временем запятая, а нам нужен пробел.
@@ -208,11 +219,11 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
 }
 
 // Состав комплекта под строкой товара: реактив — количество в заказе.
-function compositionLines(names: string[], sets: number): string[] {
-  return names.map((name) => `— ${name} — ${ALL_REAGENTS_PER_SET * sets} шт`)
+function compositionLines(names: string[], perSet: number, sets: number): string[] {
+  return names.map((name) => `— ${name} — ${perSet * sets} шт`)
 }
 
-// `reagentNames` — реактивы каталога; нужны только заказу с «Запасом всех реактивов».
+// `reagentNames` — реактивы каталога; нужны только заказу с комплектом всех реактивов.
 export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []): string {
   const { deliveryPointCode } = order.deliveryAddress
   const address = clip(order.deliveryAddress.address, CARD_TEXT_LIMIT)
@@ -266,9 +277,10 @@ export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []
     lines.push(line)
     length += line.length + 1
     shown += 1
-    if (item.productSnapshot.sku === ALL_REAGENTS_SKU && reagentNames.length > 0) {
+    const perSet = allReagentsPerSet(item.productSnapshot.sku)
+    if (perSet !== null && reagentNames.length > 0) {
       // Состав — сколько влезет: хвост, который не поместился, считаем строкой.
-      const parts = compositionLines(reagentNames, item.quantity).map(escapeHtml)
+      const parts = compositionLines(reagentNames, perSet, item.quantity).map(escapeHtml)
       let added = 0
       for (const part of parts) {
         if (length + part.length + 1 > TELEGRAM_TEXT_LIMIT) break

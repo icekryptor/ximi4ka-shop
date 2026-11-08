@@ -30,7 +30,7 @@ import { ProductCard } from '@/components/ProductCard'
 import { PreFooterCta } from '@/components/marketing/PreFooterCta'
 import { parseCharacteristics } from '@/lib/parseCharacteristics'
 import {
-  ALL_REAGENTS_SKU,
+  allReagentsPerSet,
   fetchReagentsForContents,
   withAllReagentsContents,
 } from '@/lib/allReagents'
@@ -205,10 +205,16 @@ export default async function ProductPage({ params }: Props) {
   const shortDescription = pickField<string>(product, 'shortDescription', locale)
   const ownDescriptionBlocks = (pickField<unknown[]>(product, 'longDescriptionBlocks', locale) ??
     product.longDescriptionBlocks) as unknown[]
-  // У «Запаса всех реактивов» состав — весь каталог реактивов, его собираем.
+  // У комплектов всех реактивов («Запас», «по 1 шт») состав — весь каталог
+  // реактивов, его собираем.
+  const reagentsPerSet = allReagentsPerSet(product.sku)
   const longDescriptionBlocks =
-    product.sku === ALL_REAGENTS_SKU && Array.isArray(ownDescriptionBlocks)
-      ? withAllReagentsContents(ownDescriptionBlocks, await fetchReagentsForContents())
+    reagentsPerSet !== null && Array.isArray(ownDescriptionBlocks)
+      ? withAllReagentsContents(
+          ownDescriptionBlocks,
+          await fetchReagentsForContents(),
+          reagentsPerSet,
+        )
       : ownDescriptionBlocks
 
   const characteristics = parseCharacteristics(longDescriptionBlocks)

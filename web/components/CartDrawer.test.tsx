@@ -12,7 +12,7 @@ const settingsMock = vi.hoisted(() => ({ yandexPay: null as unknown }))
 
 const GIFT_PRODUCTS: Record<string, string> = {
   'azotnaya-kislota-10': 'Азотная кислота',
-  'solyanaya-kislota': 'Соляная кислота',
+  'gidroksid-natriya': 'Гидроксид натрия',
   'iodat-kaliya': 'Йодат калия',
 }
 
