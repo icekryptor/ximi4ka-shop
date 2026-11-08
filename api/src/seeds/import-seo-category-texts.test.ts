@@ -7,6 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
+import { AGE_FORMULA } from '@ximi4ka-shop/shared/content/kidsPositioning'
 import { CATALOG_CATEGORIES } from './_lib/tilda-crawl.js'
 import {
   META_DESCRIPTION_MAX,
@@ -237,21 +238,29 @@ describe('data/seo-category-texts.json', () => {
     }
   })
 
-  it('реактивы: раздел «Безопасность» с очками, перчатками, взрослыми, малыми количествами, проветриванием, хранением и запретом пробовать на вкус', async () => {
+  it('реактивы: раздел «Безопасность» с очками, перчатками, формулой возраста, малыми количествами, проветриванием, хранением и запретом пробовать на вкус', async () => {
     const entries = await readJson<SeoCategoryText[]>('seo-category-texts.json')
     const reagents = entries.find((e) => e.slug === 'reagents')!
     expect(paragraphHtml(reagents)).toContain('<h2>Безопасность</h2>')
     const text = bodyText(reagents)
-    for (const part of ['очк', 'перчатк', 'взросл', 'мал', 'проветр', 'недоступн', 'на вкус']) {
+    for (const part of [
+      'очк',
+      'перчатк',
+      AGE_FORMULA.toLowerCase(),
+      'мал',
+      'проветр',
+      'недоступн',
+      'на вкус',
+    ]) {
       expect(text, `reagents: нет «${part}»`).toContain(part)
     }
   })
 
-  it('наборы, комбо и оборудование: упоминают взрослых и защитные очки', async () => {
+  it('наборы, комбо и оборудование: формула возраста (решение Р1) и защитные очки', async () => {
     const entries = await readJson<SeoCategoryText[]>('seo-category-texts.json')
     for (const slug of ['kits', 'combo', 'equipment']) {
       const text = bodyText(entries.find((e) => e.slug === slug)!)
-      expect(text, slug).toContain('взросл')
+      expect(text, slug).toContain(AGE_FORMULA.toLowerCase())
       expect(text, slug).toContain('очк')
     }
   })

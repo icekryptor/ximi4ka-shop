@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
+import { AGE_FORMULA } from '@ximi4ka-shop/shared/content/kidsPositioning'
 
 const DATA_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data')
 
@@ -73,6 +74,17 @@ describe('data/seo-oge-article-body.json', () => {
     const html = (await readBody()).blocks.map((b) => b.html).join('')
     expect(html).not.toMatch(/Читайте также/i)
     expect(html).not.toMatch(/Частые вопросы/i)
+  })
+
+  it('формула возраста — один раз, сразу после мер предосторожности', async () => {
+    const { blocks } = await readBody()
+    const text = plain(blocks.map((b) => b.html).join(' '))
+    expect(text.split(AGE_FORMULA)).toHaveLength(2)
+    const at = blocks.findIndex((b) => b.html.includes('<h2>Меры предосторожности</h2>'))
+    expect(at).toBeGreaterThanOrEqual(0)
+    const next = blocks.findIndex((b, i) => i > at && b.html.startsWith('<h2>'))
+    const section = blocks.slice(at + 1, next === -1 ? undefined : next)
+    expect(plain(section.map((b) => b.html).join(' '))).toContain(AGE_FORMULA)
   })
 
   it('факты ФИПИ: задание 23, 5 баллов из 14', async () => {

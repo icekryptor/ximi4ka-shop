@@ -1,5 +1,5 @@
-// Только для тестов (сторож позиционирования 14+, kidsPositioning.guard.test.ts): в код
-// витрины не импортировать — тянет компилятор TypeScript.
+// Только для тестов (сторожа позиционирования 14+ в web и api): в код витрины и API не
+// импортировать — тянет компилятор TypeScript.
 import ts from 'typescript'
 
 export type SourceTextField = 'body' | 'meta'
@@ -11,7 +11,7 @@ export interface SourceText {
   field: SourceTextField
 }
 
-const META_KEYS = new Set(['title', 'description', 'metaTitle', 'metaDescription'])
+const META_KEYS = new Set(['title', 'description', 'metaTitle', 'metaDescription', 'name', 'h1'])
 
 /**
  * Тексты, которые может увидеть посетитель: строковые литералы, части шаблонных строк и
@@ -45,11 +45,28 @@ export function visibleTexts(src: string, fileName = 'source.tsx'): SourceText[]
     out.push({ text, line, field: fieldOf(node) })
   }
 
+  // Текст литерала; цепочка «'…' + '…'» и шаблонная строка склеиваются целиком (выражение
+  // `${…}` становится пробелом), чтобы фраза, разбитая на куски, не ускользала от проверки.
+  // null — в цепочке есть не-литерал: тогда каждый литерал проверяется отдельно.
+  const literalText = (node: ts.Node): string | null => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text
+    if (ts.isTemplateExpression(node)) {
+      return [node.head.text, ...node.templateSpans.map((s) => s.literal.text)].join(' ')
+    }
+    if (ts.isParenthesizedExpression(node)) return literalText(node.expression)
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+      const left = literalText(node.left)
+      const right = left === null ? null : literalText(node.right)
+      return left === null || right === null ? null : left + right
+    }
+    return null
+  }
+
   const visit = (node: ts.Node) => {
-    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) push(node, node.text)
-    else if (ts.isTemplateExpression(node)) {
-      push(node.head, node.head.text)
-      for (const span of node.templateSpans) push(span.literal, span.literal.text)
+    const text = literalText(node)
+    if (text !== null) {
+      push(node, text)
+      if (!ts.isTemplateExpression(node)) return
     } else if (ts.isJsxText(node)) push(node, node.text)
     ts.forEachChild(node, visit)
   }

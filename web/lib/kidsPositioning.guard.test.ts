@@ -4,7 +4,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { findKidsPositioning } from '@ximi4ka-shop/shared/content/kidsPositioning'
-import { visibleTexts } from './sourceTexts'
+import { visibleTexts } from '@ximi4ka-shop/shared/content/sourceTexts'
 
 // Сторож позиционирования 14+: в текстах витрины (строки, шаблонные строки и JSX-текст в
 // web/app, web/components, web/lib) нет «для детей», возраста младше 14, «вместе со

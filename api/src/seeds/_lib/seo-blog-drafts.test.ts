@@ -1,5 +1,7 @@
-// Контракт данных api/data/seo-blog-drafts.json: 15 черновиков SEO-статей
-// (10 спринта + 5 по листам «Инф» и «Ком» СЯ: 3 информационные, 2 коммерческие).
+// Контракт данных api/data/seo-blog-drafts.json: 13 черновиков SEO-статей
+// (8 спринта + 5 по листам «Инф» и «Ком» СЯ: 3 информационные, 2 коммерческие).
+// Две детские статьи спринта убраны при переходе на 14+ (решение Р6 плана
+// docs/superpowers/plans/2026-10-22-reposition-14-plus.md).
 // Тесты фиксируют требования плана и редакционные запреты (обещания «без
 // присмотра», «лучшая цена», штампы), чтобы правка текста их не сломала.
 import { readFile } from 'node:fs/promises'
@@ -7,6 +9,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
+import { AGE_FORMULA } from '@ximi4ka-shop/shared/content/kidsPositioning'
 import { loadSeoBlogDrafts, type SeoBlogDraft } from './seo-blog-drafts.js'
 
 const DATA_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../data')
@@ -52,6 +55,18 @@ function wordCount(text: string): number {
   return text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
 }
 
+// Текст раздела «Безопасность»: от его заголовка h2 до следующего h2.
+function safetySectionText(draft: SeoBlogDraft): string {
+  const parts: string[] = []
+  let inside = false
+  for (const block of draft.blocks) {
+    if (block.type !== 'paragraph') continue
+    if (block.html.includes('<h2')) inside = /<h2[^>]*>[^<]*безопасност/i.test(block.html)
+    else if (inside) parts.push(stripHtml(block.html))
+  }
+  return parts.join(' ')
+}
+
 function h2Titles(draft: SeoBlogDraft): string[] {
   const titles: string[] = []
   for (const block of draft.blocks) {
@@ -62,11 +77,11 @@ function h2Titles(draft: SeoBlogDraft): string[] {
 }
 
 describe('data/seo-blog-drafts.json', () => {
-  it('содержит ровно 15 статей с уникальными slug', async () => {
+  it('содержит ровно 13 статей с уникальными slug', async () => {
     const drafts = await loadSeoBlogDrafts()
-    expect(drafts).toHaveLength(15)
+    expect(drafts).toHaveLength(13)
     const slugs = drafts.map((d) => d.slug)
-    expect(new Set(slugs).size).toBe(15)
+    expect(new Set(slugs).size).toBe(13)
     for (const slug of slugs) {
       expect(slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/)
       expect(slug.length).toBeLessThanOrEqual(60)
@@ -84,7 +99,7 @@ describe('data/seo-blog-drafts.json', () => {
 
   it('автор у всех статей — «Василий Аистов», остальные поля автора пусты', async () => {
     const raw = JSON.parse(await readFile(path.join(DATA_DIR, 'seo-blog-drafts.json'), 'utf-8'))
-    expect(raw).toHaveLength(15)
+    expect(raw).toHaveLength(13)
     for (const entry of raw as Record<string, unknown>[]) {
       expect(entry.authorName, `authorName ${entry.slug}`).toBe('Василий Аистов')
       // Должность, био, ссылка и фото не заданы — их не придумываем.
@@ -206,6 +221,16 @@ describe('data/seo-blog-drafts.json', () => {
         h2Titles(d).some((t) => /безопасност/i.test(t)),
         `раздел безопасности в ${d.slug}`,
       ).toBe(true)
+    }
+  })
+
+  it('формула возраста — дословно и один раз, в разделе «Безопасность»', async () => {
+    for (const d of await loadSeoBlogDrafts()) {
+      if (NO_SAFETY_SECTION.includes(d.slug)) continue
+      expect(articleText(d).split(AGE_FORMULA), `формула в ${d.slug}`).toHaveLength(2)
+      expect(safetySectionText(d), `формула в разделе безопасности ${d.slug}`).toContain(
+        AGE_FORMULA,
+      )
     }
   })
 
