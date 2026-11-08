@@ -22,7 +22,7 @@ function product(slug: string, name: string, overrides: Partial<Product> = {}): 
 
 const CATALOG: Record<string, Product> = {
   'azotnaya-kislota-10': product('azotnaya-kislota-10', 'Азотная кислота'),
-  'solyanaya-kislota': product('solyanaya-kislota', 'Соляная кислота'),
+  'gidroksid-natriya': product('gidroksid-natriya', 'Гидроксид натрия'),
   'iodat-kaliya': product('iodat-kaliya', 'Йодат калия'),
 }
 
@@ -60,7 +60,7 @@ describe('GiftBanner', () => {
 
     expect(screen.getByText('Вам подарок!')).toBeInTheDocument()
     expect(await screen.findByRole('radio', { name: /Азотная кислота/ })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /Соляная кислота/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /Гидроксид натрия/ })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /Йодат калия/ })).toBeInTheDocument()
     expect(screen.getAllByRole('radio')).toHaveLength(3)
   })
@@ -123,13 +123,13 @@ describe('GiftBanner', () => {
     })
     expect(screen.getByRole('radio', { name: /Йодат калия/ })).toBeChecked()
 
-    fireEvent.click(screen.getByRole('radio', { name: /Соляная кислота/ }))
-    expect(loadGiftChoice()?.slug).toBe('solyanaya-kislota')
+    fireEvent.click(screen.getByRole('radio', { name: /Гидроксид натрия/ }))
+    expect(loadGiftChoice()?.slug).toBe('gidroksid-natriya')
     expect(screen.getByRole('radio', { name: /Йодат калия/ })).not.toBeChecked()
   })
 
   it('не предлагает закончившийся и неопубликованный реактив', async () => {
-    CATALOG['solyanaya-kislota'] = product('solyanaya-kislota', 'Соляная кислота', {
+    CATALOG['gidroksid-natriya'] = product('gidroksid-natriya', 'Гидроксид натрия', {
       stockStatus: 'out_of_stock',
     })
     CATALOG['iodat-kaliya'] = product('iodat-kaliya', 'Йодат калия', { isPublished: false })
@@ -139,14 +139,14 @@ describe('GiftBanner', () => {
       expect(await screen.findByRole('radio', { name: /Азотная кислота/ })).toBeInTheDocument()
       expect(screen.getAllByRole('radio')).toHaveLength(1)
     } finally {
-      CATALOG['solyanaya-kislota'] = product('solyanaya-kislota', 'Соляная кислота')
+      CATALOG['gidroksid-natriya'] = product('gidroksid-natriya', 'Гидроксид натрия')
       CATALOG['iodat-kaliya'] = product('iodat-kaliya', 'Йодат калия')
     }
   })
 
   it('сбой загрузки одного реактива не прячет остальные', async () => {
     getPublishedProduct.mockImplementation(async (slug: string) => {
-      if (slug === 'solyanaya-kislota') throw new Error('network')
+      if (slug === 'gidroksid-natriya') throw new Error('network')
       return CATALOG[slug]
     })
 
@@ -167,15 +167,15 @@ describe('GiftBanner', () => {
 
   it('оставляет сохранённый выбор, пока он есть среди доступных', async () => {
     const saved = {
-      productId: 'id-solyanaya-kislota',
-      slug: 'solyanaya-kislota',
-      name: 'Соляная кислота',
+      productId: 'id-gidroksid-natriya',
+      slug: 'gidroksid-natriya',
+      name: 'Гидроксид натрия',
     }
     saveGiftChoice(saved)
 
     render(<GiftBanner totalRub={3000} />)
 
-    expect(await screen.findByRole('radio', { name: /Соляная кислота/ })).toBeChecked()
+    expect(await screen.findByRole('radio', { name: /Гидроксид натрия/ })).toBeChecked()
     expect(loadGiftChoice()).toEqual(saved)
   })
 

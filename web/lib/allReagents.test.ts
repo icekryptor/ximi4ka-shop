@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { extractContentsHtml } from '@/components/product/ContentsSection'
-import { withAllReagentsContents, type ReagentForContents } from './allReagents'
+import {
+  ALL_REAGENTS_ONE_SKU,
+  ALL_REAGENTS_SKU,
+  allReagentsPerSet,
+  withAllReagentsContents,
+  type ReagentForContents,
+} from './allReagents'
 
 const reagent = (slug: string, name: string, sortOrder: number): ReagentForContents => ({
   slug,
@@ -52,8 +58,24 @@ describe('withAllReagentsContents', () => {
     expect(blocks).toHaveLength(2)
   })
 
+  it('для «Все реактивы по 1 шт» пишет «каждого по 1 шт.»', () => {
+    const html = extractContentsHtml(
+      withAllReagentsContents([], [reagent('magnii', 'Магний', 40)], 1),
+    )
+    expect(html).toContain('1 реактив, каждого по 1 шт.')
+  })
+
   it('без реактивов (api не ответил) возвращает описание как было', () => {
     const blocks = [stub]
     expect(withAllReagentsContents(blocks, [])).toBe(blocks)
+  })
+})
+
+describe('allReagentsPerSet', () => {
+  it('RRR — по 2 шт, RRR1 — по 1 шт, прочие товары — не комплект реактивов', () => {
+    expect(allReagentsPerSet(ALL_REAGENTS_SKU)).toBe(2)
+    expect(allReagentsPerSet(ALL_REAGENTS_ONE_SKU)).toBe(1)
+    expect(allReagentsPerSet('7V25')).toBeNull()
+    expect(allReagentsPerSet(null)).toBeNull()
   })
 })

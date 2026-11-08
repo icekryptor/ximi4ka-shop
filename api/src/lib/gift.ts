@@ -8,9 +8,9 @@ import { Product } from '../entities/Product.js'
 export const GIFT_THRESHOLD_RUB = 3000
 
 export const GIFT_SLUGS: readonly string[] = [
-  'azotnaya-kislota-10',
-  'solyanaya-kislota',
   'iodat-kaliya',
+  'gidroksid-natriya',
+  'azotnaya-kislota-10',
 ]
 
 // Подарок, как его выбрал покупатель, проверяем на сервере: id приходит от

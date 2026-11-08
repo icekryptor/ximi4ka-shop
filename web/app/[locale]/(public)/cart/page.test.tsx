@@ -11,7 +11,7 @@ const settingsMock = vi.hoisted(() => ({ yandexPay: null as unknown }))
 
 const GIFT_PRODUCTS: Record<string, string> = {
   'azotnaya-kislota-10': 'Азотная кислота',
-  'solyanaya-kislota': 'Соляная кислота',
+  'gidroksid-natriya': 'Гидроксид натрия',
   'iodat-kaliya': 'Йодат калия',
 }
 
@@ -131,7 +131,7 @@ describe('/cart page v3 calm', () => {
     render(<CartPage />)
     expect(screen.getByText('Вам подарок!')).toBeInTheDocument()
     expect(await screen.findByRole('radio', { name: /Азотная кислота/ })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /Соляная кислота/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /Гидроксид натрия/ })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /Йодат калия/ })).toBeInTheDocument()
   })
 

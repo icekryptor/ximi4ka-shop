@@ -75,6 +75,8 @@ export const SHIPPING_OVERRIDES: Record<string, ShippingRule> = {
   'bolshoi-nabor-dlya-oge': { shipBoxes: ['large'], weightG: 1300 },
   // Все реактивы разом — «крупная посылка от 15 предметов».
   'zapas-vseh-reaktivov': { looseUnits: 16 },
+  // Те же реактивы по одной штуке (товар заведён 09.11.2026, в фиде Тильды его нет).
+  'vse-reaktivy-po-1-sht': { looseUnits: 16 },
   'tri-kisloti': { looseUnits: 3 },
   // Формат 21×14 см в малую и среднюю коробку не влезает.
   'himichka-metodichka': { minBox: 'large' },

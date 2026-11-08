@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
+  ALL_REAGENTS_ONE_SKU,
   ALL_REAGENTS_SKU,
+  allReagentsPerSet,
   SHEET_HEADER,
   TELEGRAM_TEXT_LIMIT,
   sheetRow,
@@ -393,6 +395,29 @@ describe('telegramCard: «Запас всех реактивов»', () => {
     )
   })
 
+  it('«Все реактивы по 1 шт» (RRR1) — реактивы каталога по 1 шт на комплект', () => {
+    const card = telegramCard(
+      {
+        ...order,
+        items: [
+          {
+            productSnapshot: {
+              name: 'Все реактивы по 1 шт',
+              sku: ALL_REAGENTS_ONE_SKU,
+              priceRub: 3990,
+            },
+            quantity: 2,
+            unitPriceRub: 3990,
+          },
+        ],
+      },
+      ['Хлорид бария 3%, 35 мл'],
+    )
+    expect(card).toContain(
+      'Все реактивы по 1 шт · RRR1 · 2 × 3 990 ₽\n— Хлорид бария 3%, 35 мл — 2 шт',
+    )
+  })
+
   it('без списка реактивов карточка прежняя', () => {
     expect(telegramCard(reserve(1))).not.toContain('— ')
   })
@@ -480,5 +505,15 @@ describe('доставка в страны ЕАЭС (cdek_manual_cis)', () => {
     const label = 'Доставка в другую страну (СДЭК, адрес вручную)'
     expect(sheetRow(o)[6]).toContain(label)
     expect(telegramCard(o)).toContain(`Адрес: ${label}`)
+  })
+})
+
+describe('allReagentsPerSet', () => {
+  it('RRR — по 2 шт, RRR1 — по 1 шт, прочие товары — не комплект реактивов', () => {
+    expect(allReagentsPerSet(ALL_REAGENTS_SKU)).toBe(2)
+    expect(allReagentsPerSet(ALL_REAGENTS_ONE_SKU)).toBe(1)
+    expect(allReagentsPerSet('7V25')).toBeNull()
+    expect(allReagentsPerSet(null)).toBeNull()
+    expect(allReagentsPerSet(undefined)).toBeNull()
   })
 })

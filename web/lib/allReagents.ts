@@ -3,13 +3,23 @@ import { isBlock } from '@ximi4ka-shop/shared/types/blocks'
 import { listProductsByCategory } from './api'
 import { pluralizeRu } from './i18n'
 
-// «Запас всех реактивов» — все реактивы каталога по 2 шт. Своего состава у
-// товара нет: на Тильде в описании стояло «Полный состав:» без списка, так и
-// импортировалось. Список собираем из категории «Реактивы» по тем же правилам,
-// что и бот заказов (api/src/lib/notifications/worker.ts): опубликованные
-// товары категории без комбо «Три кислоты».
+// «Запас всех реактивов» — все реактивы каталога по 2 шт, «Все реактивы по
+// 1 шт» — по одной. Своего состава у этих товаров нет: на Тильде в описании
+// «Запаса» стояло «Полный состав:» без списка, так и импортировалось. Список
+// собираем из категории «Реактивы» по тем же правилам, что и бот заказов
+// (api/src/lib/notifications/format.ts, worker.ts): опубликованные товары
+// категории без комбо «Три кислоты». Артикулы и количества — зеркало format.ts.
 export const ALL_REAGENTS_SKU = 'RRR'
-const ALL_REAGENTS_PER_SET = 2
+export const ALL_REAGENTS_ONE_SKU = 'RRR1'
+const ALL_REAGENTS_PER_SET: Readonly<Record<string, number>> = {
+  [ALL_REAGENTS_SKU]: 2,
+  [ALL_REAGENTS_ONE_SKU]: 1,
+}
+
+/** Сколько штук каждого реактива в одном комплекте; null — товар не комплект реактивов. */
+export function allReagentsPerSet(sku: string | null | undefined): number | null {
+  return sku ? (ALL_REAGENTS_PER_SET[sku] ?? null) : null
+}
 const REAGENTS_CATEGORY_SLUG = 'reagents'
 const REAGENT_COMBO_SLUGS: readonly string[] = ['tri-kisloti']
 
@@ -40,6 +50,7 @@ function escapeHtml(s: string): string {
 export function withAllReagentsContents(
   blocks: unknown[],
   reagents: readonly ReagentForContents[],
+  perSet: number = ALL_REAGENTS_PER_SET[ALL_REAGENTS_SKU],
 ): unknown[] {
   const items = reagents
     .filter((r) => !REAGENT_COMBO_SLUGS.includes(r.slug))
@@ -47,7 +58,7 @@ export function withAllReagentsContents(
   if (items.length === 0) return blocks
 
   const count = items.length
-  const lead = `${count} ${pluralizeRu(count, ['реактив', 'реактива', 'реактивов'])}, каждого по ${ALL_REAGENTS_PER_SET} шт.:`
+  const lead = `${count} ${pluralizeRu(count, ['реактив', 'реактива', 'реактивов'])}, каждого по ${perSet} шт.:`
   const list = items.map((r) => `<li>${escapeHtml(r.name)}</li>`).join('')
   const contents = {
     type: 'paragraph',

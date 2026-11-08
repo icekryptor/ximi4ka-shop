@@ -5,7 +5,7 @@ import { Product } from '../../entities/Product.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { GoogleSheetsClient, SheetsConfigError } from '../google/sheets.js'
 import { TelegramBot, TelegramConfigError } from '../telegram/bot.js'
-import { ALL_REAGENTS_SKU, managerAlertText, sheetRow, telegramCard } from './format.js'
+import { allReagentsPerSet, managerAlertText, sheetRow, telegramCard } from './format.js'
 import { CHANNELS, TELEGRAM_EVENT, isManagerAlert } from './outbox.js'
 import { RateLimitError } from './rateLimit.js'
 
@@ -116,7 +116,7 @@ async function deliver(
   // Карточку этого заказа прошлая версия уже отправила при создании — второй
   // раз в чат не пишем, запись просто закрываем.
   if (order.telegramMessageId !== null) return {}
-  const needsReagents = order.items.some((i) => i.productSnapshot.sku === ALL_REAGENTS_SKU)
+  const needsReagents = order.items.some((i) => allReagentsPerSet(i.productSnapshot.sku) !== null)
   const reagentNames = needsReagents ? await loadReagentNames() : []
   const telegramMessageId = await bot.sendMessage(telegramCard(order, reagentNames))
   return { telegramMessageId }

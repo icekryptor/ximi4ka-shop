@@ -35,7 +35,7 @@ describe('gift constants mirror the api', () => {
   })
 
   it('три реактива на выбор', () => {
-    expect([...GIFT_SLUGS]).toEqual(['azotnaya-kislota-10', 'solyanaya-kislota', 'iodat-kaliya'])
+    expect([...GIFT_SLUGS]).toEqual(['iodat-kaliya', 'gidroksid-natriya', 'azotnaya-kislota-10'])
   })
 })
 
