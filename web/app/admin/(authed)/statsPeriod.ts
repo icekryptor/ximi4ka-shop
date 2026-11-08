@@ -1,9 +1,9 @@
 import { MAX_STATS_DAYS } from '@ximi4ka-shop/shared/types/analytics'
 
-// Период дашборда из searchParams. Неделя и месяц — скользящие окна из 7 и
-// 30 дней, включая сегодня по Москве (как и границы дней в api). Любой
+// Период дашборда из searchParams. Неделя, месяц и квартал — скользящие окна из 7,
+// 30 и 90 дней, включая сегодня по Москве (как и границы дней в api). Любой
 // некорректный ввод откатывается на неделю, а не на ошибку страницы.
-export type PeriodPreset = 'week' | 'month' | 'custom'
+export type PeriodPreset = 'week' | 'month' | 'quarter' | 'custom'
 
 export interface StatsPeriod {
   preset: PeriodPreset
@@ -11,7 +11,7 @@ export interface StatsPeriod {
   to: string
 }
 
-const PRESET_DAYS = { week: 7, month: 30 } as const
+const PRESET_DAYS = { week: 7, month: 30, quarter: 90 } as const
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/
 const MS_PER_DAY = 86_400_000
 
@@ -52,7 +52,7 @@ export function resolvePeriod(
       return { preset: 'custom', from: params.from as string, to: params.to as string }
     }
   }
-  const preset = params.preset === 'month' ? 'month' : 'week'
+  const preset = params.preset === 'month' || params.preset === 'quarter' ? params.preset : 'week'
   const today = todayMsk(now)
   return { preset, from: addDays(today, -(PRESET_DAYS[preset] - 1)), to: today }
 }

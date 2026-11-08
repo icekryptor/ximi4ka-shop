@@ -24,6 +24,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: '/admin', label: 'Главная', exact: true },
+  { href: '/admin/traffic', label: 'Трафик и рост', adminOnly: true },
   { href: '/admin/products', label: 'Товары' },
   { href: '/admin/categories', label: 'Категории' },
   { href: '/admin/pages', label: 'Страницы' },

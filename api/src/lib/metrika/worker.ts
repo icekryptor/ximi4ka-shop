@@ -204,7 +204,7 @@ export async function processDueConversions(
 }
 
 // Счётчик из настроек сайта (там его вносят в админке), иначе из env.
-async function resolveCounterId(env: NodeJS.ProcessEnv): Promise<string | null> {
+export async function resolveCounterId(env: NodeJS.ProcessEnv): Promise<string | null> {
   const fromSettings = (await getSettings()).metrikaId?.trim()
   if (fromSettings && /^\d+$/.test(fromSettings)) return fromSettings
   const fromEnv = env.METRIKA_COUNTER_ID?.trim()
