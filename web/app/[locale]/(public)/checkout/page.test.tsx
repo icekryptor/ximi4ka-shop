@@ -148,6 +148,8 @@ vi.mock('@/lib/api', async (importActual) => {
     getCdekPoints: (cityCode: number) => mockGetPoints(cityCode),
     getPublicSettings: (opts?: { fresh?: boolean }) => mockGetPublicSettings(opts),
     getCloudPaymentsCheckoutPreview: () => mockCloudPaymentsPreview(),
+    // Чип срока в сводке: общий запрос срока — мимо fetch, срока нет.
+    getDeliveryEta: async () => null,
   }
 })
 
@@ -321,6 +323,27 @@ describe('/checkout page', () => {
     })
     expect(screen.getByTestId('summary-shipping')).toHaveTextContent('390')
     expect(screen.getByTestId('summary-total')).toHaveTextContent('2 390')
+  })
+
+  it('в сводке — чип срока выбранного способа; в ЕАЭС чипа нет', async () => {
+    seedCart(seed)
+    render(<CheckoutPage />)
+    // Города нет, общий срок СДЭК не ответил — чипа нет, место под него есть.
+    expect(screen.getByTestId('delivery-eta')).toBeInTheDocument()
+    expect(screen.queryByTestId('delivery-eta-chip')).not.toBeInTheDocument()
+
+    await chooseCity()
+    const now = new Date()
+    expect(await screen.findByTestId('delivery-eta-chip')).toHaveTextContent(
+      `Доставка: ${formatDeliveryDates(3, 5, now)}`,
+    )
+    fireEvent.click(screen.getByRole('radio', { name: /курьер сдэк/i }))
+    expect(screen.getByTestId('delivery-eta-chip')).toHaveTextContent(
+      `Доставка: ${formatDeliveryDates(2, 2, now)}`,
+    )
+
+    await chooseCisRegion()
+    expect(screen.queryByTestId('delivery-eta')).not.toBeInTheDocument()
   })
 
   describe('подарок', () => {
