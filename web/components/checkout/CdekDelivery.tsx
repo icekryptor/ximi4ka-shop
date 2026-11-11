@@ -3,7 +3,7 @@
 import type { DeliveryMethod } from '@ximi4ka-shop/shared'
 import { cdekWidgetServicePath, type ShippingQuoteResponse } from '@/lib/api'
 import { SHIPPING_RULES } from '@/lib/checkout'
-import { formatPeriod, isPostalCode, widgetGoods } from '@/lib/shipping'
+import { formatDeliveryDates, isPostalCode, widgetGoods } from '@/lib/shipping'
 import { formatRub } from '@/lib/stockLabel'
 import { CityCombobox } from './CityCombobox'
 import { CourierFields } from './CourierFields'
@@ -30,7 +30,8 @@ const METHOD_TITLES: Record<DeliveryMethod, string> = {
 
 const METHODS: readonly DeliveryMethod[] = ['cdek_pvz', 'cdek_courier']
 
-// «Пункт выдачи СДЭК — 390 ₽, 3–5 дн.»: цена и срок — с сервера (§5.1, п. 2).
+// «Пункт выдачи СДЭК — 390 ₽, 15–17 ноября»: цена и срок — с сервера (§5.1,
+// п. 2); срок показываем датами, с сутками на сборку — как чип на витрине.
 function methodLabel(method: DeliveryMethod, view: QuoteView): string {
   const title = METHOD_TITLES[method]
   if (view.status === 'loading') return `${title} — ${view.refining ? 'пересчитываем' : 'считаем'}…`
@@ -38,7 +39,7 @@ function methodLabel(method: DeliveryMethod, view: QuoteView): string {
   if (!view.quote) return title
   const price =
     view.quote.customerPriceRub === 0 ? 'бесплатно' : formatRub(view.quote.customerPriceRub)
-  const period = formatPeriod(view.quote.periodMin, view.quote.periodMax)
+  const period = formatDeliveryDates(view.quote.periodMin, view.quote.periodMax, new Date())
   return `${title} — ${price}${period ? `, ${period}` : ''}`
 }
 

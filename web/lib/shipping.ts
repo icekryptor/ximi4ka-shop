@@ -6,6 +6,8 @@ import type {
   QuoteDestination,
   ShippingPackage,
 } from '@ximi4ka-shop/shared'
+import { deliveryDates } from '@ximi4ka-shop/shared/types/deliveryDates'
+import { etaRangeLabel } from '@/lib/deliveryDateLabel'
 
 // Пункт, который виджет отдаёт в onChoose('office', …) — iOffice из
 // dist/cdek-widget.es.d.ts 4.0.0. Берём только то, что используем.
@@ -27,10 +29,15 @@ export function widgetGoods(packages: ShippingPackage[]) {
   }))
 }
 
-export function formatPeriod(min: number | null, max: number | null): string | null {
-  if (min == null && max == null) return null
-  if (min == null || max == null || min === max) return `${min ?? max} дн.`
-  return `${min}–${max} дн.`
+// Когда привезут: срок СДЭК + сутки на сборку, датами — «15–17 ноября»,
+// «послезавтра». null — СДЭК срок не назвал.
+export function formatDeliveryDates(
+  periodMin: number | null,
+  periodMax: number | null,
+  now: Date,
+): string | null {
+  const dates = deliveryDates({ periodMin, periodMax }, now)
+  return dates ? etaRangeLabel(dates) : null
 }
 
 // Адрес курьера — свои поля под выбранным городом (спека §4.4, §5.1).
