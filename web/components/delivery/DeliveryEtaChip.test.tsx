@@ -73,7 +73,7 @@ describe('DeliveryEtaChip', () => {
       expect(screen.getByTestId('delivery-eta')).toHaveAttribute('data-state', 'none'),
     )
     expect(screen.getByTestId('delivery-eta')).toBeEmptyDOMElement()
-    expect(screen.getByTestId('delivery-eta').className).toContain('min-h-[38px]')
+    expect(screen.getByTestId('delivery-eta').className).toContain('min-h-[48px]')
   })
 
   it('страница пришла с сервера, город сохранён — один запрос, сразу по городу', async () => {

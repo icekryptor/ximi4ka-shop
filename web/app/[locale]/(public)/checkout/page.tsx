@@ -22,6 +22,7 @@ import { METRIKA_GOALS, reachGoal, rememberPendingPurchase } from '@/lib/metrika
 import { CdekDelivery } from '@/components/checkout/CdekDelivery'
 import { CisDelivery } from '@/components/checkout/CisDelivery'
 import { PromoCodeField } from '@/components/checkout/PromoCodeField'
+import { CheckoutEtaChip } from '@/components/delivery/CheckoutEtaChip'
 import { PaymentMethodField } from '@/components/checkout/PaymentMethodField'
 import { CisPaymentMethodField } from '@/components/checkout/CisPaymentMethodField'
 import { loadPublicYandexPay, reloadPublicYandexPay } from '@/lib/yandexPay'
@@ -646,6 +647,9 @@ export default function CheckoutPage() {
                     <span>Итого</span>
                     <span data-testid="summary-total">{formatRub(totalRub)}</span>
                   </div>
+                  {/* Срок — рядом с итогом, как в корзине. В ЕАЭС отправку оформляет
+                      оператор: срока СДЭК там нет. */}
+                  {!isCis && <CheckoutEtaChip period={quote} />}
                 </div>
 
                 {/* Способ оплаты — прямо над кнопкой: внизу левой колонки его было не найти. */}

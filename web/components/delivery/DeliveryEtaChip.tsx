@@ -9,22 +9,50 @@ function TruckIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
-      width="14"
-      height="14"
+      width="18"
+      height="18"
       fill="none"
       stroke="currentColor"
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
-      className="h-[14px] w-[14px] shrink-0"
+      className="h-[18px] w-[18px] shrink-0"
     >
       <path d="M2 6h11v10H2z" />
       <path d="M13 9h4.5L21 12.5V16h-8z" />
-      <circle cx="6.5" cy="17.5" r="2" fill="#EDEFF2" />
-      <circle cx="17" cy="17.5" r="2" fill="#EDEFF2" />
+      {/* Колёса залиты цветом чипа — перекрывают низ кузова. */}
+      <circle cx="6.5" cy="17.5" r="2" fill="var(--color-lj-brand-deep)" />
+      <circle cx="17" cy="17.5" r="2" fill="var(--color-lj-brand-deep)" />
     </svg>
   )
+}
+
+// Высота чипа; место под него держим и пока срока нет — страница не прыгает.
+export const ETA_CHIP_RESERVE = 'min-h-[28px]'
+
+// Сам чип: грузовик и срок на фирменном фиолетовом. Срок доставки — довод
+// купить, поэтому чип крупный и яркий, а не серая подпись.
+export function EtaChip({ label, title }: { label: string; title: string }) {
+  return (
+    <span
+      data-testid="delivery-eta-chip"
+      title={title}
+      className="inline-flex h-[28px] w-fit items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--color-lj-brand-deep)] pl-2.5 pr-3 font-lj-mazzard text-[0.9375rem] font-[500] leading-[28px] text-white"
+    >
+      <TruckIcon />
+      <span>
+        <span className="sr-only">Доставка: </span>
+        {label}
+      </span>
+    </span>
+  )
+}
+
+export function etaChipTitle(cityName: string | undefined): string {
+  return cityName
+    ? `Самая ранняя доставка в пункт СДЭК: ${cityName}`
+    : 'Самая ранняя доставка в пункт СДЭК'
 }
 
 const CAPTION_CLASS = 'font-ys-text text-[0.75rem] leading-4 text-black/55'
@@ -49,7 +77,7 @@ export function DeliveryEtaChip({ caption = false }: { caption?: boolean }) {
     wasPicking.current = picking
   }, [picking])
 
-  const reserve = caption ? 'min-h-[38px]' : 'min-h-[18px]'
+  const reserve = caption ? 'min-h-[48px]' : ETA_CHIP_RESERVE
   // Срока нет: первый расчёт ещё идёт или СДЭК не ответил — только место.
   if (eta === null || (eta === undefined && !refreshing)) {
     return (
@@ -68,24 +96,10 @@ export function DeliveryEtaChip({ caption = false }: { caption?: boolean }) {
       className={`flex max-w-full flex-col items-start gap-1 ${reserve}`}
     >
       {eta ? (
-        <span
-          data-testid="delivery-eta-chip"
-          title={
-            city
-              ? `Самая ранняя доставка в пункт СДЭК: ${city.name}`
-              : 'Самая ранняя доставка в пункт СДЭК'
-          }
-          className="inline-flex h-[18px] w-fit items-center gap-1 whitespace-nowrap rounded-full bg-[#EDEFF2] pl-1.5 pr-2 font-ys-text text-[0.8125rem] leading-[18px] text-black/85"
-        >
-          <TruckIcon />
-          <span>
-            <span className="sr-only">Доставка: </span>
-            {etaDayLabel(eta.dateMin, eta.today)}
-          </span>
-        </span>
+        <EtaChip label={etaDayLabel(eta.dateMin, eta.today)} title={etaChipTitle(city?.name)} />
       ) : (
         // Город сменили, срок пересчитывается: подпись остаётся, чип — на подходе.
-        <span className="h-[18px]" />
+        <span className="h-[28px]" />
       )}
       {caption &&
         (city ? (
