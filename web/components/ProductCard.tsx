@@ -7,6 +7,7 @@ import { SpecimenCard } from './ui/SpecimenCard'
 import { CompactProductCard } from './catalog/CompactProductCard'
 import { imageLoadingProps, type ImageLoading } from '@/lib/imageLoading'
 import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
+import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
 
 interface Stats {
   reagents: number
@@ -148,6 +149,8 @@ export function ProductCard({
             </Link>
           </div>
           {splitInstallments && <SplitInstallmentLine priceRub={product.priceRub} />}
+          {/* Срок обещаем только тому, что можно отправить сейчас. */}
+          {product.stockStatus === 'in_stock' && <DeliveryEtaChip />}
         </div>
 
         {product.shortDescription && (

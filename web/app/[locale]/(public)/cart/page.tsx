@@ -8,6 +8,7 @@ import { formatRub } from '@/lib/stockLabel'
 import { pluralizeRu } from '@/lib/i18n'
 import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
 import { GiftBanner } from '@/components/cart/GiftBanner'
+import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
 import { SplitInstallmentLineAuto } from '@/components/payments/SplitInstallmentLineAuto'
 
 export default function CartPage() {
@@ -104,6 +105,7 @@ export default function CartPage() {
                 <span data-testid="cart-total">{formatRub(totals.totalRub)}</span>
               </div>
               <SplitInstallmentLineAuto priceRub={totals.totalRub} />
+              <DeliveryEtaChip caption />
             </div>
 
             <div className="flex justify-end">

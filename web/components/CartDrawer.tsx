@@ -10,6 +10,7 @@ import { SHIPPING_RULES } from '@/lib/checkout'
 import { METRIKA_GOALS, reachGoal } from '@/lib/metrika'
 import { afterNextPaint } from '@/lib/afterPaint'
 import { formatRub } from '@/lib/stockLabel'
+import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
 import { SplitInstallmentLineAuto } from '@/components/payments/SplitInstallmentLineAuto'
 
 // Порог бесплатной доставки для прогресс-бара. Единый источник — правила
@@ -218,6 +219,7 @@ export function CartDrawer() {
               <span data-testid="drawer-total">{formatRub(totals.totalRub)}</span>
             </div>
             <SplitInstallmentLineAuto priceRub={totals.totalRub} />
+            <DeliveryEtaChip caption />
             <Link
               href="/checkout"
               onClick={() => setOpen(false)}

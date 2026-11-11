@@ -16,6 +16,7 @@ import type {
   PublicYandexPay,
   PublicCloudPayments,
 } from '@ximi4ka-shop/shared'
+import type { DeliveryDates } from '@ximi4ka-shop/shared/types/deliveryDates'
 
 // Two audiences, two origins. The browser must use the public origin
 // (NEXT_PUBLIC_API_URL, inlined at build time). Server-side rendering — build,
@@ -273,6 +274,14 @@ export async function quoteShipping(payload: {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+  return body.data
+}
+
+// Когда заказ приедет в город (чип с грузовиком). Без города — самый быстрый
+// возможный срок; null — СДЭК не ответил.
+export async function getDeliveryEta(cityCode?: number): Promise<DeliveryDates | null> {
+  const query = cityCode ? `?cityCode=${cityCode}` : ''
+  const body = await request<DataEnvelope<DeliveryDates | null>>(`/api/public/shipping/eta${query}`)
   return body.data
 }
 

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { getCdekClient } from '../../lib/cdek/index.js'
 import { loadCart } from '../../lib/shipping/cart.js'
+import { deliveryEta } from '../../lib/shipping/eta.js'
 import { packCart } from '../../lib/shipping/pack.js'
 import { deliveryConfigFromEnv, quoteDelivery } from '../../lib/shipping/quote.js'
 import { CheckoutSchema, QuoteDestinationSchema } from '../checkout.schemas.js'
@@ -37,6 +38,36 @@ publicShippingRouter.post(
       // по одним тарифам.
       const tariffs = { pvz: config.tariffPvz, courier: config.tariffCourier }
       res.json({ data: { subtotalRub, discountRub, packages, quote, tariffs } })
+    } catch (err) {
+      next(err)
+    }
+  },
+)
+
+const EtaQuery = z.object({
+  cityCode: z.coerce.number().int().positive().max(2_147_483_647).optional(),
+})
+
+// GET /api/public/shipping/eta?cityCode=424 — когда заказ приедет в город:
+// даты для чипа с грузовиком на витрине. Без города — самый быстрый возможный
+// срок. data: null — СДЭК не ответил, чип не показываем.
+publicShippingRouter.get(
+  '/eta',
+  rateLimit({ limit: 60, windowMs: 60_000 }),
+  async (req, res, next) => {
+    const parsed = EtaQuery.safeParse(req.query)
+    if (!parsed.success) {
+      next(parsed.error)
+      return
+    }
+    try {
+      const eta = await deliveryEta(
+        { cityCode: parsed.data.cityCode },
+        { cdek: getCdekClient(), config: deliveryConfigFromEnv() },
+      )
+      // Дата меняется в полночь по Москве — в браузере ответ живёт минуту.
+      res.set('Cache-Control', eta ? 'public, max-age=60' : 'no-store')
+      res.json({ data: eta })
     } catch (err) {
       next(err)
     }

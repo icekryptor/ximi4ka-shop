@@ -1,4 +1,5 @@
 import type { DeliveryMethod, DeliveryQuote } from '@ximi4ka-shop/shared'
+import { HANDOVER_DAYS, moscowDate } from '@ximi4ka-shop/shared/types/deliveryDates'
 import type { CdekClient } from '../cdek/client.js'
 import { suggestCities } from '../cdek/locations.js'
 import { packCart } from '../shipping/pack.js'
@@ -11,6 +12,9 @@ import {
 import { SHIPPING_RULES } from '../shipping/rates.js'
 import { lookupPickupPoint } from './pickupPoints.js'
 import { ycpGoodsTotal, ycpPackLines, type YcpLine } from './pricing.js'
+
+// Сутки на сборку и дата по Москве — общие с чипом доставки на витрине.
+export { HANDOVER_DAYS, moscowDate }
 
 type Cdek = Pick<CdekClient, 'get' | 'post'>
 
@@ -89,8 +93,6 @@ export class UnknownPickupPointError extends Error {
 
 // Ориентировочный срок в пути, если СДЭК не назвал свой.
 export const FALLBACK_PERIOD_DAYS = { min: 3, max: 7 } as const
-// Посылку относим в СДЭК на следующий день после заказа.
-export const HANDOVER_DAYS = 1
 export const MOSCOW_UTC_OFFSET = 3
 
 const OPTION_PREFIX: Record<DeliveryMethod, string> = { cdek_pvz: 'pvz', cdek_courier: 'courier' }
@@ -116,15 +118,6 @@ export function parseYcpOptionId(
     tariffCode: Number(m[2]),
     cityCode: cityCode > 0 ? cityCode : null,
   }
-}
-
-export function moscowDate(now: Date, addDays: number): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Moscow',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(now.getTime() + addDays * 86_400_000))
 }
 
 export function deliveryDateInterval(
@@ -195,7 +188,7 @@ export async function ycpDeliveryOption(
           subtotalRub,
           packages,
         },
-        { cdek, config },
+        { cdek, config, now: () => input.now },
       )
     }
   } else {
@@ -210,7 +203,7 @@ export async function ycpDeliveryOption(
         subtotalRub,
         packages,
       },
-      { cdek, config },
+      { cdek, config, now: () => input.now },
     )
   }
   return {

@@ -39,6 +39,7 @@ import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
 import { ProductViewTracker } from './_components/ProductViewTracker'
 import { SplitWidget } from '@/components/payments/SplitWidget'
+import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
 import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
 import { densityForSlug } from '@/lib/catalogApi'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
@@ -317,6 +318,8 @@ export default async function ProductPage({ params }: Props) {
                 <AddToCartWithQuantity product={product} />
               </div>
               {splitOn && <SplitInstallmentLine priceRub={product.priceRub} />}
+              {/* Срок обещаем только тому, что можно отправить сейчас. */}
+              {product.stockStatus === 'in_stock' && <DeliveryEtaChip caption />}
               {splitOn && yandexPay?.merchantId && (
                 <SplitWidget
                   merchantId={yandexPay.merchantId}

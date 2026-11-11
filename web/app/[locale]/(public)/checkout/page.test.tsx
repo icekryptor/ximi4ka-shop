@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { resetPublicYandexPayCacheForTests } from '@/lib/yandexPay'
 import { resetPublicCloudPaymentsCacheForTests } from '@/lib/cloudPayments'
 import { CIS_PAYMENT_NOTE } from '@/lib/orderProcess'
+import { formatDeliveryDates } from '@/lib/shipping'
 import type {
   CdekCity,
   CdekCityPoints,
@@ -296,10 +297,20 @@ describe('/checkout page', () => {
     seedCart(seed)
     render(<CheckoutPage />)
     await chooseCity()
+    // Срок — датами: срок СДЭК (3–5 и 2 дня) + сутки на сборку от сегодня.
+    const now = new Date()
+    const pvzDates = formatDeliveryDates(3, 5, now)
+    const courierDates = formatDeliveryDates(2, 2, now)
     expect(
-      screen.getByRole('radio', { name: /пункт выдачи сдэк — 390\s₽, 3–5 дн\./i }),
+      screen.getByRole('radio', {
+        name: new RegExp(`пункт выдачи сдэк — 390\\s₽, ${pvzDates}`, 'i'),
+      }),
     ).toBeChecked()
-    expect(screen.getByRole('radio', { name: /курьер сдэк — 600\s₽, 2 дн\./i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', {
+        name: new RegExp(`курьер сдэк — 600\\s₽, ${courierDates}`, 'i'),
+      }),
+    ).toBeInTheDocument()
     expect(mockQuoteShipping).toHaveBeenCalledWith({
       items: ITEMS,
       destination: { method: 'cdek_pvz', cityCode: 44, address: 'Москва' },

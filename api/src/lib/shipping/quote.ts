@@ -4,6 +4,7 @@ import type {
   QuoteDestination,
   ShippingPackage,
 } from '@ximi4ka-shop/shared'
+import { handoverDateTime } from '@ximi4ka-shop/shared/types/deliveryDates'
 import { SHIPPING_RULES } from './rates.js'
 
 // Отгрузка всегда одна: магазин относит посылку в ПВЗ СДЭК в Москве.
@@ -24,16 +25,63 @@ export function deliveryConfigFromEnv(env: NodeJS.ProcessEnv = process.env): Del
   }
 }
 
-interface CalculatorResult {
+export interface CalculatorResult {
   total_sum?: number
   delivery_sum?: number
+  // Срок в рабочих днях и он же в календарных — от дня передачи посылки.
   period_min?: number
   period_max?: number
+  calendar_min?: number
+  calendar_max?: number
 }
 
+export interface CalculatorParcel {
+  weight: number
+  length: number
+  width: number
+  height: number
+}
+
+type CdekCalculator = { post: (path: string, body: unknown) => Promise<unknown> }
+
 export interface QuoteDeps {
-  cdek: { post: (path: string, body: unknown) => Promise<unknown> }
+  cdek: CdekCalculator
   config: DeliveryConfig
+  now?: () => Date
+}
+
+// Один запрос к калькулятору СДЭК — для цены на чекауте и для срока в чипе.
+// date — день, когда посылка попадёт в СДЭК (сутки на сборку): от него СДЭК
+// считает календарный срок с учётом выходных.
+export async function calculateTariff(
+  cdek: CdekCalculator,
+  params: {
+    tariffCode: number
+    fromCityCode: number
+    to: Record<string, unknown>
+    packages: CalculatorParcel[]
+    now: Date
+  },
+): Promise<CalculatorResult> {
+  return (await cdek.post('/calculator/tariff', {
+    tariff_code: params.tariffCode,
+    date: handoverDateTime(params.now),
+    from_location: { code: params.fromCityCode },
+    to_location: params.to,
+    packages: params.packages,
+  })) as CalculatorResult
+}
+
+// Покупателю называем календарные дни; рабочие — если СДЭК отдал только их.
+// Пару берём целиком: календарный минимум с рабочим максимумом не смешиваем.
+export function tariffPeriod(result: CalculatorResult): {
+  periodMin: number | null
+  periodMax: number | null
+} {
+  if (result.calendar_min != null || result.calendar_max != null) {
+    return { periodMin: result.calendar_min ?? null, periodMax: result.calendar_max ?? null }
+  }
+  return { periodMin: result.period_min ?? null, periodMax: result.period_max ?? null }
 }
 
 export function tariffFor(method: DeliveryDestination['method'], config: DeliveryConfig): number {
@@ -55,7 +103,7 @@ function toLocation(destination: QuoteDestination): Record<string, unknown> {
 // ответил, заказ не теряем: берём прежнюю фиксированную ставку.
 export async function quoteDelivery(
   input: { destination: QuoteDestination; subtotalRub: number; packages: ShippingPackage[] },
-  { cdek, config }: QuoteDeps,
+  { cdek, config, now = () => new Date() }: QuoteDeps,
 ): Promise<DeliveryQuote> {
   const { destination, subtotalRub, packages } = input
   const rule = SHIPPING_RULES[destination.method]
@@ -63,17 +111,18 @@ export async function quoteDelivery(
   const free = subtotalRub >= rule.freeFromRub
 
   try {
-    const result = (await cdek.post('/calculator/tariff', {
-      tariff_code: tariffCode,
-      from_location: { code: config.fromCityCode },
-      to_location: toLocation(destination),
+    const result = await calculateTariff(cdek, {
+      tariffCode,
+      fromCityCode: config.fromCityCode,
+      to: toLocation(destination),
       packages: packages.map((p) => ({
         weight: p.weightG,
         length: p.lengthCm,
         width: p.widthCm,
         height: p.heightCm,
       })),
-    })) as CalculatorResult
+      now: now(),
+    })
     const sum = result.total_sum ?? result.delivery_sum
     if (typeof sum !== 'number') throw new Error('калькулятор СДЭК не вернул стоимость')
     const cdekPriceRub = Math.ceil(sum)
@@ -82,8 +131,7 @@ export async function quoteDelivery(
       tariffCode,
       customerPriceRub: free ? 0 : cdekPriceRub,
       cdekPriceRub,
-      periodMin: result.period_min ?? null,
-      periodMax: result.period_max ?? null,
+      ...tariffPeriod(result),
       free,
       source: 'cdek',
     }
