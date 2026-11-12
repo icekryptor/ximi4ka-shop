@@ -52,11 +52,11 @@ describe('DeliveryEtaChip', () => {
     expect(screen.queryByText(CITY_HINT)).not.toBeInTheDocument()
   })
 
-  it('скринридер слышит не только дату: «Доставка: послезавтра»', async () => {
+  it('в чипе видно слово, а не только дата: «Доставка: послезавтра»', async () => {
     render(<DeliveryEtaChip />)
-    expect(await screen.findByTestId('delivery-eta-chip')).toHaveTextContent(
-      'Доставка: послезавтра',
-    )
+    const chip = await screen.findByTestId('delivery-eta-chip')
+    expect(chip).toHaveTextContent('Доставка: послезавтра')
+    expect(chip.querySelector('.sr-only')).toBeNull()
   })
 
   it('без подписи (карточка каталога) — только чип, кнопок нет', async () => {

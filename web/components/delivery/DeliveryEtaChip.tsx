@@ -38,12 +38,13 @@ export function EtaChip({ label, title }: { label: string; title: string }) {
     <span
       data-testid="delivery-eta-chip"
       title={title}
-      className="inline-flex h-[28px] w-fit items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--color-lj-brand-deep)] pl-2.5 pr-3 font-lj-mazzard text-[0.9375rem] font-[500] leading-[28px] text-white"
+      className="inline-flex min-h-[28px] w-fit max-w-full items-center gap-1.5 rounded-[14px] bg-[var(--color-lj-brand-deep)] py-1 pl-2.5 pr-3 font-lj-mazzard text-[0.9375rem] font-[500] leading-5 text-white"
     >
       <TruckIcon />
+      {/* «Доставка:» видна всем: одна дата в чипе без слова не читалась. В узкой
+          сводке чекаута даты целиком уходят на вторую строку. */}
       <span>
-        <span className="sr-only">Доставка: </span>
-        {label}
+        Доставка: <span className="whitespace-nowrap">{label}</span>
       </span>
     </span>
   )
