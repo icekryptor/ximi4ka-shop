@@ -33,12 +33,14 @@ export const ETA_CHIP_RESERVE = 'min-h-[28px]'
 
 // Сам чип: грузовик и срок на фирменном фиолетовом. Срок доставки — довод
 // купить, поэтому чип крупный и яркий, а не серая подпись.
+// Отступы подобраны под самую узкую карточку набора (220 px при окне 1024 px):
+// «Доставка: послезавтра» должна помещаться в одну строку.
 export function EtaChip({ label, title }: { label: string; title: string }) {
   return (
     <span
       data-testid="delivery-eta-chip"
       title={title}
-      className="inline-flex min-h-[28px] w-fit max-w-full items-center gap-1.5 rounded-[14px] bg-[var(--color-lj-brand-deep)] py-1 pl-2.5 pr-3 font-lj-mazzard text-[0.9375rem] font-[500] leading-5 text-white"
+      className="inline-flex min-h-[28px] w-fit max-w-full items-center gap-1 rounded-[14px] bg-[var(--color-lj-brand-deep)] py-1 pl-2 pr-2.5 font-lj-mazzard text-[0.9375rem] font-[500] leading-5 text-white"
     >
       <TruckIcon />
       {/* «Доставка:» видна всем: одна дата в чипе без слова не читалась. В узкой
