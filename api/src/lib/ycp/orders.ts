@@ -1,5 +1,6 @@
 import type { EntityManager, FindOptionsWhere } from 'typeorm'
 import type { OrderStatus } from '@ximi4ka-shop/shared'
+import { isPaidOrderStatus } from '@ximi4ka-shop/shared/types/order'
 import { AppDataSource } from '../../config/dataSource.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
 import { Customer } from '../../entities/Customer.js'
@@ -249,7 +250,7 @@ export async function markYcpOrderPlaced(
   return withLockedOrder({ externalSessionId: input.sessionId }, async (em, order) => {
     if (!order) return 'not_found'
     if (order.status === 'cancelled') return 'cancelled'
-    if (order.status === 'paid' || order.status === 'shipped') {
+    if (isPaidOrderStatus(order.status)) {
       // Заказ оплачен другим путём (вебхук, ручная отметка): запоминаем order_id
       // Яндекса, иначе /order/cancel не найдёт заказ (404) и мы отгрузим отменённое.
       // Другой id у уже привязанного заказа не перезаписываем — только лог
@@ -332,11 +333,12 @@ export async function cancelYcpOrder(
     if (!order) return 'not_found'
     if (order.status === 'cancelled') return 'unchanged'
     const shipment = await em.getRepository(CdekShipment).findOneBy({ orderId: order.id })
-    const shipped = order.status === 'shipped' || isShipmentStarted(shipment)
+    const shipped =
+      order.status === 'shipped' || order.status === 'delivered' || isShipmentStarted(shipment)
     const previous = order.status
     appendYcpHistory(order, 'cancelled', now, 'Заказ отменён в Яндексе')
     await writeOrderStatusEvent(em, order, previous)
-    if (previous === 'paid' || previous === 'shipped' || shipped) {
+    if (isPaidOrderStatus(previous) || shipped) {
       await enqueueOrderEvent(em, order.id, 'ycp:cancel_after_ship')
     }
     return shipped ? 'cancelled_after_ship' : 'cancelled'

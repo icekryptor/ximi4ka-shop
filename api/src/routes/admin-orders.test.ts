@@ -232,6 +232,72 @@ describe('Admin orders', () => {
     expect(res.body.error.code).toBe('order_already_shipped')
   })
 
+  describe('статус «Получен»', () => {
+    const patch = (id: string, status: string) =>
+      request(app).patch(`/api/admin/orders/${id}/status`).set(authHeaders(auth)).send({ status })
+
+    it('shipped → delivered: 200, deliveredAt заполнен, событие status:delivered', async () => {
+      const shipped = await seedOrder({ status: 'shipped', paidAt: new Date() })
+      const res = await patch(shipped.id, 'delivered')
+      expect(res.status).toBe(200)
+      expect(res.body.data.status).toBe('delivered')
+      const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: shipped.id })
+      expect(saved.deliveredAt).toBeInstanceOf(Date)
+      expect(saved.statusHistory.at(-1)).toMatchObject({
+        from: 'shipped',
+        to: 'delivered',
+        by: 'admin',
+      })
+      const events = await AppDataSource.getRepository(OrderNotification).find({
+        where: { orderId: shipped.id },
+      })
+      expect(events.map((e) => e.eventKey)).toEqual(['status:delivered'])
+    })
+
+    it('paid → delivered: 409, статус не меняется', async () => {
+      const paid = await seedOrder({ status: 'paid', paidAt: new Date() })
+      const res = await patch(paid.id, 'delivered')
+      expect(res.status).toBe(409)
+      const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: paid.id })
+      expect(saved.status).toBe('paid')
+      expect(saved.deliveredAt).toBeNull()
+    })
+
+    it('pending → delivered: 409', async () => {
+      const pending = await seedOrder()
+      expect((await patch(pending.id, 'delivered')).status).toBe(409)
+    })
+
+    it.each(['shipped', 'paid'])('delivered → %s: 409', async (target) => {
+      const delivered = await seedOrder({
+        status: 'delivered',
+        paidAt: new Date(),
+        deliveredAt: new Date(),
+      })
+      expect((await patch(delivered.id, target)).status).toBe(409)
+    })
+
+    it('delivered → cancelled: 200', async () => {
+      const delivered = await seedOrder({
+        status: 'delivered',
+        paidAt: new Date(),
+        deliveredAt: new Date(),
+      })
+      const res = await patch(delivered.id, 'cancelled')
+      expect(res.status).toBe(200)
+      expect(res.body.data.status).toBe('cancelled')
+    })
+
+    it('фильтр списка принимает status=delivered', async () => {
+      const delivered = await seedOrder({ status: 'delivered', paidAt: new Date() })
+      const res = await request(app)
+        .get('/api/admin/orders?status=delivered')
+        .set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      expect(res.body.data.map((o: { id: string }) => o.id)).toEqual([delivered.id])
+    })
+  })
+
   it('rejects invalid status values with 400', async () => {
     const order = await seedOrder()
     const res = await request(app)

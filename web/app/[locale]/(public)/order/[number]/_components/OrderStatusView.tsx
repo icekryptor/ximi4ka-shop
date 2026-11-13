@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import type { PaymentProvider, PublicOrderStatus } from '@ximi4ka-shop/shared'
+import { isPaidOrderStatus } from '@ximi4ka-shop/shared/types/order'
 import { MaterialsDownloads } from '@/components/MaterialsDownloads'
 import { ApiError, getOrderStatus } from '@/lib/api'
 import { orderMaterialDownloadUrl } from '@/lib/materialUrls'
@@ -133,12 +134,12 @@ export function OrderStatusView({
 
   // Покупка для Метрики: после оформления (?new=1), когда заказ загружен.
   // Онлайн-оплата (Т-Касса, Яндекс Пэй) — только после подтверждения оплаты
-  // (paid/shipped; пока pending, поллинг ждёт вебхук провайдера); ручной заказ —
+  // (paid/shipped/delivered; пока pending, поллинг ждёт вебхук провайдера); ручной заказ —
   // сразу (pending тоже). Повторов нет (отметка по номеру заказа), а без снимка
   // состава из чекаута — страница открыта не тем браузером — ничего не уходит
   // (lib/metrika.ts). Провал/отмена — снимок больше не нужен.
   const status = order?.status
-  const paid = status === 'paid' || status === 'shipped'
+  const paid = status !== undefined && isPaidOrderStatus(status)
   const purchasable =
     order !== null && (isOnlinePayment(order.paymentProvider) ? paid : status === 'pending' || paid)
   const totalRub = order?.totalRub

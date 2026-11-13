@@ -342,13 +342,7 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
           <section className="bg-white rounded-2xl border border-brand-border p-4">
             <h2 className="text-lg font-semibold text-brand-text">Действия</h2>
             <div className="mt-3">
-              {order.status === 'shipped' ? (
-                <p className="text-sm text-brand-text-secondary">
-                  Заказ отправлен — ручное изменение статуса недоступно.
-                </p>
-              ) : (
-                <OrderStatusActions orderId={order.id} status={order.status} />
-              )}
+              <OrderStatusActions orderId={order.id} status={order.status} />
             </div>
           </section>
 

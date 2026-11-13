@@ -181,6 +181,18 @@ describe('GET /api/admin/stats', () => {
     ])
   })
 
+  it('полученный заказ входит в выручку', async () => {
+    await seedOrderAt(
+      { status: 'delivered', totalRub: 1800 },
+      '2026-10-05T10:00:00+03:00',
+      '2026-10-05T10:05:00+03:00',
+    )
+    const res = await get('from=2026-10-05&to=2026-10-07')
+    expect(res.status).toBe(200)
+    expect(res.body.data.totals.revenueRub).toBe(1800)
+    expect(res.body.data.days[0]).toEqual({ date: '2026-10-05', orders: 1, revenueRub: 1800 })
+  })
+
   it('пустая база: нули и ряд без дыр', async () => {
     const res = await get('from=2026-10-05&to=2026-10-07')
     expect(res.status).toBe(200)

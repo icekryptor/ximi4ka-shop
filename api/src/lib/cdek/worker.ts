@@ -1,3 +1,4 @@
+import { isPaidOrderStatus } from '@ximi4ka-shop/shared/types/order'
 import { AppDataSource } from '../../config/dataSource.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
 import { Order } from '../../entities/Order.js'
@@ -55,8 +56,6 @@ interface CdekOrderInfo {
 }
 
 type Outcome = 'submitted' | 'created' | 'waiting' | 'retried' | 'failed'
-
-const PAID_STATUSES = new Set(['paid', 'shipped'])
 
 function createRequest(info: CdekOrderInfo | null): CdekRequestState | undefined {
   return info?.requests?.find((r) => r.type === 'CREATE')
@@ -141,7 +140,7 @@ async function submit(
   now: Date,
 ): Promise<Outcome> {
   const repo = AppDataSource.getRepository(CdekShipment)
-  if (!PAID_STATUSES.has(order.status)) {
+  if (!isPaidOrderStatus(order.status)) {
     const message =
       order.status === 'cancelled'
         ? 'Заказ отменён — в СДЭК не отправляем'

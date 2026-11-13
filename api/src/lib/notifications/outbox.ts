@@ -70,9 +70,13 @@ export async function writeOrderStatusEvent(
   order: Order,
   previousStatus: OrderStatus,
 ): Promise<void> {
+  // Первый переход в «получен» — фиксируем момент получения.
+  const stampDelivered = order.status === 'delivered' && previousStatus !== 'delivered'
+  if (stampDelivered) order.deliveredAt = new Date()
   await em.update(Order, order.id, {
     status: order.status,
     paidAt: order.paidAt,
+    ...(stampDelivered ? { deliveredAt: order.deliveredAt } : {}),
     statusHistory: order.statusHistory,
     // Привязку платежа никто не снимает — null из памяти не пишем.
     ...(order.paymentIntentId ? { paymentIntentId: order.paymentIntentId } : {}),

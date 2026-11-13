@@ -46,6 +46,7 @@ const STATUS_FILTERS: Array<{ value: OrderStatus | undefined; label: string }> =
   { value: 'pending', label: ORDER_STATUS_LABELS.pending },
   { value: 'paid', label: ORDER_STATUS_LABELS.paid },
   { value: 'shipped', label: ORDER_STATUS_LABELS.shipped },
+  { value: 'delivered', label: ORDER_STATUS_LABELS.delivered },
   { value: 'failed', label: ORDER_STATUS_LABELS.failed },
   { value: 'cancelled', label: ORDER_STATUS_LABELS.cancelled },
 ]

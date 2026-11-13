@@ -484,10 +484,10 @@ export async function adminGetOrder(id: string): Promise<OrderDto> {
   return body.data
 }
 
-// Ручные переходы: «Оплачен», «Отменить», «Отправлен» (только из оплаченного).
+// Ручные переходы: «Оплачен», «Отменить», «Отправлен» (только из оплаченного), «Получен» (только из отправленного).
 export async function adminSetOrderStatus(
   id: string,
-  input: { status: 'paid' | 'cancelled' | 'shipped'; comment?: string },
+  input: { status: 'paid' | 'cancelled' | 'shipped' | 'delivered'; comment?: string },
 ): Promise<OrderDto> {
   const body = await authedRequest<{ data: OrderDto }>(
     `/api/admin/orders/${encodeURIComponent(id)}/status`,

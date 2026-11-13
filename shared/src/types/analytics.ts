@@ -26,7 +26,7 @@ export interface StatsTotals {
   carts: number
   /** Заказы, созданные в периоде (без удалённых), все статусы. */
   orders: number
-  /** Сумма заказов в статусах paid и shipped по дате оплаты. */
+  /** Сумма заказов в статусах paid, shipped и delivered по дате оплаты. */
   revenueRub: number
   /** Новые сессии кабинета; вход по уже живой сессии не считается. */
   logins: number

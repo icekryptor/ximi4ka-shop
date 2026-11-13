@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { IsNull, In, Not } from 'typeorm'
 import type { CdekShipmentDto, MetrikaConversionDto } from '@ximi4ka-shop/shared'
+import { isPaidOrderStatus } from '@ximi4ka-shop/shared/types/order'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrderItem } from '../../entities/OrderItem.js'
@@ -161,15 +162,22 @@ adminOrdersRouter.patch('/:id/status', async (req, res, next) => {
       }
       // «Отправлен» ставится только оплаченному заказу. Оплаченный заказ — это
       // деньги: вернуть его в другое состояние можно только отправкой (возвраты —
-      // отдельная будущая история). Отправленный заказ вручную не меняется.
+      // отдельная будущая история). Отправленный заказ можно только отметить полученным.
       if (status === 'shipped' && order.status !== 'paid') {
         throw conflict('order_not_paid', 'Отправить можно только оплаченный заказ')
+      }
+      if (status === 'delivered' && order.status !== 'shipped') {
+        throw conflict('order_not_shipped', 'Получен можно поставить только отправленному заказу')
       }
       if (order.status === 'paid' && status !== 'shipped') {
         throw conflict('order_already_paid', 'Оплаченный заказ нельзя изменить вручную')
       }
-      if (order.status === 'shipped') {
+      if (order.status === 'shipped' && status !== 'delivered') {
         throw conflict('order_already_shipped', 'Отправленный заказ нельзя изменить вручную')
+      }
+      // Полученный заказ можно только отменить (возврат); назад в оплачен/отправлен нельзя.
+      if (order.status === 'delivered' && status !== 'cancelled') {
+        throw conflict('order_already_delivered', 'Полученный заказ можно только отменить')
       }
 
       const now = new Date()
@@ -233,7 +241,7 @@ adminOrdersRouter.post('/:id/cdek/retry', async (req, res, next) => {
         'Обработчик очереди СДЭК не запущен — проверьте настройки сервера',
       )
     }
-    if (order.status !== 'paid' && order.status !== 'shipped') {
+    if (!isPaidOrderStatus(order.status)) {
       throw conflict('order_not_paid', 'Заказ не оплачен')
     }
     if (!isCdekDelivery(order.deliveryMethod)) {
