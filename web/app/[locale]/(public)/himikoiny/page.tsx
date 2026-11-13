@@ -6,6 +6,14 @@ import { getPublicSettings } from '@/lib/api'
 import { isLocale } from '@/lib/i18n'
 import { buildMetadata } from '@/lib/metadata'
 
+// Страница зависит от настройки программы из api: включил или выключил в админке —
+// должно подхватиться. Как и на главной, generateStaticParams по локалям не нужен:
+// образ собирается без доступа к api, пререндер запёк бы 404 (или падение сборки)
+// до конца окна revalidate. Рендер по первому запросу, дальше ISR-кеш на 60 секунд.
+// Ошибку запроса настроек не превращаем в notFound(): упавший рендер не кешируется,
+// а 404 — только когда api ответил, что программа выключена.
+export const revalidate = 60
+
 interface Props {
   params: Promise<{ locale: string }>
 }
