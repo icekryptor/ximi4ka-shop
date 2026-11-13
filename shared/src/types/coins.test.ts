@@ -20,6 +20,14 @@ describe('cashbackCoins', () => {
   test('нецелая сумма сначала округляется вниз до рубля', () => {
     expect(cashbackCoins(1000.9, 10)).toBe(100)
   })
+  test('NaN и бесконечности дают 0', () => {
+    expect(cashbackCoins(NaN, 10)).toBe(0)
+    expect(cashbackCoins(1000, NaN)).toBe(0)
+    expect(cashbackCoins(Infinity, 10)).toBe(0)
+    expect(cashbackCoins(-Infinity, 10)).toBe(0)
+    expect(cashbackCoins(1000, Infinity)).toBe(0)
+    expect(cashbackCoins(1000, -Infinity)).toBe(0)
+  })
   test('процент по умолчанию — 10', () => {
     expect(DEFAULT_CASHBACK_PERCENT).toBe(10)
   })

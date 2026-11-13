@@ -7,6 +7,7 @@ export type CoinTransactionKind = 'order_cashback' | 'order_cashback_revoke' | '
 
 /** Кэшбек в целых химикоинах: сумма товаров вниз до рубля, затем процент вниз. */
 export function cashbackCoins(goodsPaidRub: number, percent: number): number {
+  if (!Number.isFinite(goodsPaidRub) || !Number.isFinite(percent)) return 0
   const goods = Math.floor(goodsPaidRub)
   if (goods <= 0 || percent <= 0) return 0
   return Math.floor((goods * percent) / 100)
