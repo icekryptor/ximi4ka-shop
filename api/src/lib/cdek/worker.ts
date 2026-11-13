@@ -12,6 +12,7 @@ import {
 import { CdekClient, CdekError, PROD_BASE_URL, TEST_BASE_URL } from './client.js'
 import { getCdekClient } from './index.js'
 import { loadShipmentInput } from './orderInput.js'
+import { CDEK_TRACK_INTERVAL_MS, processDueTracking } from './tracking.js'
 import {
   buildCdekOrder,
   CdekDataError,
@@ -194,7 +195,15 @@ async function poll(s: CdekShipment, { cdek }: CdekShipmentDeps, now: Date): Pro
   if (request?.state === 'INVALID') throw new CdekDataError(errorsText(request))
   const cdekNumber = info?.entity?.cdek_number
   if (request?.state === 'SUCCESSFUL' && cdekNumber) {
-    await repo.update(s.id, { state: 'created', cdekNumber, lastError: null })
+    await repo.update(s.id, {
+      state: 'created',
+      cdekNumber,
+      lastError: null,
+      // Дальше следим за вручением (tracking.ts); отправления, созданные до этой
+      // версии, остаются в 'none' и не опрашиваются.
+      trackingState: 'tracking',
+      nextTrackAt: new Date(now.getTime() + CDEK_TRACK_INTERVAL_MS),
+    })
     return 'created'
   }
   const since = s.submittedAt ?? s.updatedAt
@@ -339,6 +348,10 @@ export function startCdekShipmentWorker({
     running = true
     processDueShipments(deps)
       .catch((err) => console.error('cdek: тик обработчика упал', err))
+      // Слежение — после создания заказов и отдельным catch: его сбой не должен
+      // мешать регистрации отправлений в том же тике.
+      .then(() => processDueTracking(deps, new Date()))
+      .catch((err) => console.error('cdek: слежение за вручением упало', err))
       .finally(() => {
         running = false
       })

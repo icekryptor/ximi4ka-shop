@@ -101,7 +101,7 @@ export interface OrderStatusHistoryEntry {
   from: OrderStatus | null
   to: OrderStatus
   at: string
-  by: 'tbank' | 'admin' | 'reconcile' | 'ycp' | 'yandex_pay' | 'cloudpayments'
+  by: 'tbank' | 'admin' | 'reconcile' | 'ycp' | 'yandex_pay' | 'cloudpayments' | 'cdek'
   comment?: string
 }
 

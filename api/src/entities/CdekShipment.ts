@@ -10,7 +10,7 @@ import {
   UpdateDateColumn,
   type Relation,
 } from 'typeorm'
-import type { CdekShipmentState } from '@ximi4ka-shop/shared'
+import type { CdekShipmentState, CdekTrackingState } from '@ximi4ka-shop/shared'
 import { Order } from './Order.js'
 
 // Очередь создания заказа в СДЭК: одна запись на заказ. Ставится в одной
@@ -52,9 +52,8 @@ export class CdekShipment {
   submittedAt!: Date | null
 
   // Опрос трека СДЭК после создания заказа (химикоины: кэшбек за доставленное).
-  // Тип состояния уточнится вместе с самим опросом.
   @Column({ type: 'varchar', length: 16, name: 'tracking_state', default: 'none' })
-  trackingState!: string
+  trackingState!: CdekTrackingState
 
   @Column({ type: 'timestamptz', name: 'next_track_at', nullable: true })
   nextTrackAt!: Date | null
