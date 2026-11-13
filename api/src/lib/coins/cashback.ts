@@ -21,6 +21,11 @@ export function promisedCashback(
 // Идемпотентно по заказу (ключ в журнале), поэтому повтор и гонка двух переходов безопасны.
 export async function accrueCashbackForOrder(em: EntityManager, order: Order): Promise<void> {
   if (order.status !== 'delivered' || !order.customerId || order.cashbackPromisedCoins <= 0) return
+  // Покупателя могли удалить (слияние): статус заказа важнее монет, не роняем переход.
+  const exists: unknown[] = await em.query('SELECT 1 FROM customers WHERE id = $1', [
+    order.customerId,
+  ])
+  if (exists.length === 0) return
   await applyCoinTransaction(em, {
     customerId: order.customerId,
     amount: order.cashbackPromisedCoins,
@@ -28,6 +33,30 @@ export async function accrueCashbackForOrder(em: EntityManager, order: Order): P
     orderId: order.id,
     idempotencyKey: `order_cashback:${order.id}`,
   })
+}
+
+// Догоняющее начисление по всем полученным заказам покупателя, по которым кэшбек ещё не
+// начислен (гостевой заказ получен до входа и привязан по email). Блокировки в порядке
+// «строки заказов → строка покупателя», как у начисления и отзыва. Повтор безопасен:
+// заказ с записью order_cashback в выборку не попадает, а ключ идемпотентности страхует гонку.
+export async function accrueCashbackForCustomer(
+  em: EntityManager,
+  customerId: string,
+): Promise<void> {
+  const rows: { id: string }[] = await em.query(
+    `SELECT o.id FROM orders o
+      WHERE o.customer_id = $1 AND o.status = 'delivered' AND o.cashback_promised_coins > 0
+        AND NOT EXISTS (
+          SELECT 1 FROM coin_transactions t
+           WHERE t.idempotency_key = 'order_cashback:' || o.id::text)
+      ORDER BY o.id
+        FOR UPDATE OF o`,
+    [customerId],
+  )
+  for (const { id } of rows) {
+    const order = await em.getRepository(Order).findOneByOrFail({ id })
+    await accrueCashbackForOrder(em, order)
+  }
 }
 
 // Отзыв начисленного при отмене полученного заказа: списываем min(начислено, баланс),
