@@ -37,9 +37,11 @@ function isActive(pathname: string, item: NavItem): boolean {
 
 interface HeaderProps {
   headerPromoText?: string | null
+  /** Химикоины включены в настройках: резервировать место под чип баланса. */
+  coinsEnabled?: boolean
 }
 
-export function Header({ headerPromoText = null }: HeaderProps) {
+export function Header({ headerPromoText = null, coinsEnabled = false }: HeaderProps) {
   const pathnameRaw = usePathname()
   const { itemCount } = useCart()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -167,7 +169,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
               </svg>
             </button>
 
-            <AccountLink />
+            <AccountLink coinsEnabled={coinsEnabled} />
 
             {/* Кнопка корзины видна ВСЕГДА (и на мобильном) и открывает
                 CartDrawer мгновенно — навигация на /cart только из drawer. */}

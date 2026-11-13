@@ -609,3 +609,15 @@ body {
     width: var(--w) !important;
   }
 }
+
+/* Шапка: вариант кабинета выбирает html[data-signed-in] (ставит статичный скрипт
+   по читаемой CSRF-cookie до первой отрисовки) — без сдвигов вёрстки. */
+.account-user {
+  display: none;
+}
+html[data-signed-in] .account-guest {
+  display: none;
+}
+html[data-signed-in] .account-user {
+  display: inline-flex;
+}

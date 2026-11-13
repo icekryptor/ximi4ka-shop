@@ -1,4 +1,5 @@
 import { Header } from '@/components/Header'
+import { SignedInHintScript } from '@/components/SignedInHintScript'
 import { Footer } from '@/components/Footer'
 import { CartDrawer } from '@/components/CartDrawer'
 import { AttributionTracker } from '@/components/AttributionTracker'
@@ -20,7 +21,12 @@ export default async function PublicLayout({ children }: Readonly<{ children: Re
       {/* Organization и WebSite — на каждой публичной странице (SEO-аудит). */}
       <JsonLd data={organizationJsonLd({ phone: PHONE, email: EMAIL, supportUrl: SUPPORT_URL })} />
       <JsonLd data={websiteJsonLd()} />
-      <Header headerPromoText={settings?.headerPromoText ?? null} />
+      {/* Статичный скрипт: до отрисовки шапки помечает html[data-signed-in] по cookie. */}
+      <SignedInHintScript />
+      <Header
+        headerPromoText={settings?.headerPromoText ?? null}
+        coinsEnabled={settings?.coins != null}
+      />
       <main className="flex-1">{children}</main>
       <Footer />
       <CartDrawer />
