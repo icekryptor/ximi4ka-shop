@@ -2,12 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { BLACK_FRIDAY, isBlackFridayActive } from './blackFriday'
 
 describe('isBlackFridayActive', () => {
-  it('выключена до полуночи 14.11 по Москве', () => {
-    expect(isBlackFridayActive(new Date('2026-11-13T23:59:59+03:00'))).toBe(false)
+  it('выключена до полуночи 13.11 по Москве', () => {
+    expect(isBlackFridayActive(new Date('2026-11-12T23:59:59+03:00'))).toBe(false)
   })
 
-  it('включается ровно в 00:00 14.11 по Москве', () => {
-    expect(isBlackFridayActive(new Date('2026-11-14T00:00:00+03:00'))).toBe(true)
+  it('включается ровно в 00:00 13.11 по Москве — за день до цен, как анонс', () => {
+    expect(isBlackFridayActive(new Date('2026-11-13T00:00:00+03:00'))).toBe(true)
   })
 
   it('работает весь последний день — 28.11 до полуночи', () => {
@@ -19,8 +19,8 @@ describe('isBlackFridayActive', () => {
   })
 
   it('считает по Москве, а не по часовому поясу сервера', () => {
-    // 13.11 21:30 UTC = 14.11 00:30 МСК — акция уже идёт
-    expect(isBlackFridayActive(new Date('2026-11-13T21:30:00Z'))).toBe(true)
+    // 12.11 21:30 UTC = 13.11 00:30 МСК — баннер уже показан
+    expect(isBlackFridayActive(new Date('2026-11-12T21:30:00Z'))).toBe(true)
   })
 })
 
