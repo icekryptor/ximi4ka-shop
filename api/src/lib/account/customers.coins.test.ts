@@ -151,6 +151,60 @@ describe('химикоины: привязка заказов и слияние 
     })
   })
 
+  describe('устаревший customerId в памяти', () => {
+    const load = (id: string) => AppDataSource.getRepository(Order).findOneByOrFail({ id })
+
+    it('гонка A: заказ загружен гостевым, вход привязал его, затем получен: кэшбек начислен', async () => {
+      const customer = await mkCustomer('buyer@test.local')
+      const order = await seedOrder({
+        status: 'shipped',
+        customerId: null,
+        customerEmail: 'buyer@test.local',
+        cashbackPromisedCoins: 190,
+      })
+      const stale = await load(order.id)
+      await claim(customer.id, 'buyer@test.local')
+      stale.status = 'delivered'
+      await saveOrderWithStatusEvent(stale, 'shipped')
+      expect(await balanceOf(customer.id)).toBe(190)
+    })
+
+    it('гонка B: заказ загружен с drop, слияние прошло, затем получен: кэшбек у keep', async () => {
+      const keep = await mkCustomer('keep@test.local')
+      const drop = await mkCustomer('drop@test.local')
+      const order = await seedOrder({
+        status: 'shipped',
+        customerId: drop.id,
+        cashbackPromisedCoins: 190,
+      })
+      const stale = await load(order.id)
+      await merge(keep.id, drop.id)
+      stale.status = 'delivered'
+      await saveOrderWithStatusEvent(stale, 'shipped')
+      expect(await balanceOf(keep.id)).toBe(190)
+    })
+
+    it('отзыв: заказ загружен с drop, слияние прошло, затем отмена: списано у keep', async () => {
+      const keep = await mkCustomer('keep@test.local')
+      const drop = await mkCustomer('drop@test.local')
+      await credit(keep.id, 100, 'k1')
+      const order = await seedOrder({
+        status: 'shipped',
+        customerId: drop.id,
+        cashbackPromisedCoins: 190,
+      })
+      const first = await load(order.id)
+      first.status = 'delivered'
+      await saveOrderWithStatusEvent(first, 'shipped')
+      const stale = await load(order.id)
+      await merge(keep.id, drop.id)
+      expect(await balanceOf(keep.id)).toBe(290)
+      stale.status = 'cancelled'
+      await saveOrderWithStatusEvent(stale, 'delivered')
+      expect(await balanceOf(keep.id)).toBe(100)
+    })
+  })
+
   describe('accrueCashbackForOrder', () => {
     it('покупателя уже нет: тихо выходит, ничего не начисляет и не бросает', async () => {
       const ghost = Object.assign(new Order(), {

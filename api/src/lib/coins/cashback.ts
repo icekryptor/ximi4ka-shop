@@ -16,18 +16,30 @@ export function promisedCashback(
   return cashbackCoins(goodsPaidRub, settings.coinsCashbackPercent)
 }
 
+// Текущий владелец заказа из базы, с блокировкой строки заказа. customerId в памяти мог
+// устареть: вход привязал гостевой заказ или слияние переписало владельца, пока заказ
+// был загружен. Блокировка здесь своя, а не расчёт на вызывающего; порядок «заказ →
+// покупатель» тот же, что у слияния.
+async function lockCurrentOwner(em: EntityManager, orderId: string): Promise<string | null> {
+  const rows: { customer_id: string | null }[] = await em.query(
+    'SELECT customer_id FROM orders WHERE id = $1 FOR UPDATE',
+    [orderId],
+  )
+  return rows[0]?.customer_id ?? null
+}
+
 // Начисление при получении заказа: ровно то, что обещано при оформлении. Настройку
 // `coinsEnabled` не смотрим — обещанное выполняется, даже если программу потом выключили.
 // Идемпотентно по заказу (ключ в журнале), поэтому повтор и гонка двух переходов безопасны.
 export async function accrueCashbackForOrder(em: EntityManager, order: Order): Promise<void> {
-  if (order.status !== 'delivered' || !order.customerId || order.cashbackPromisedCoins <= 0) return
+  if (order.status !== 'delivered' || order.cashbackPromisedCoins <= 0) return
+  const customerId = await lockCurrentOwner(em, order.id)
+  if (!customerId) return
   // Покупателя могли удалить (слияние): статус заказа важнее монет, не роняем переход.
-  const exists: unknown[] = await em.query('SELECT 1 FROM customers WHERE id = $1', [
-    order.customerId,
-  ])
+  const exists: unknown[] = await em.query('SELECT 1 FROM customers WHERE id = $1', [customerId])
   if (exists.length === 0) return
   await applyCoinTransaction(em, {
-    customerId: order.customerId,
+    customerId,
     amount: order.cashbackPromisedCoins,
     kind: 'order_cashback',
     orderId: order.id,
@@ -66,10 +78,11 @@ export async function accrueCashbackForCustomer(
 // «Уже отозван» — это строка order_cashback_revoke ИЛИ недостача > 0 (при балансе 0
 // строки нет, а повтор списал бы монеты, заработанные позже).
 export async function revokeCashbackForOrder(em: EntityManager, order: Order): Promise<void> {
-  if (!order.customerId) return
+  const customerId = await lockCurrentOwner(em, order.id)
+  if (!customerId) return
   const locked: { coin_balance: number }[] = await em.query(
     'SELECT coin_balance FROM customers WHERE id = $1 FOR UPDATE',
-    [order.customerId],
+    [customerId],
   )
   if (locked.length === 0) return
   const balance = locked[0].coin_balance
@@ -96,7 +109,7 @@ export async function revokeCashbackForOrder(em: EntityManager, order: Order): P
   const toRevoke = Math.min(promised, balance)
   if (toRevoke > 0) {
     await applyCoinTransaction(em, {
-      customerId: order.customerId,
+      customerId,
       amount: -toRevoke,
       kind: 'order_cashback_revoke',
       orderId: order.id,
