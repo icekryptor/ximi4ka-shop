@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 
 const api = vi.hoisted(() => ({ getPublicSettings: vi.fn() }))
 vi.mock('@/lib/api', () => api)
@@ -14,10 +14,12 @@ beforeEach(() => {
 
 describe('useCoinsProgram', () => {
   it('program off: percent stays null', async () => {
-    api.getPublicSettings.mockResolvedValue({ coins: null })
+    const settled = Promise.resolve({ coins: null })
+    api.getPublicSettings.mockReturnValue(settled)
     const { result } = renderHook(() => useCoinsProgram())
-    await waitFor(() => expect(api.getPublicSettings).toHaveBeenCalled())
-    await Promise.resolve()
+    await act(async () => {
+      await settled
+    })
     expect(result.current.percent).toBeNull()
   })
 
@@ -47,10 +49,13 @@ describe('useCoinsProgram', () => {
   })
 
   it('api down: no row and a later consumer retries', async () => {
-    api.getPublicSettings.mockRejectedValueOnce(new Error('down'))
+    const failed = Promise.reject(new Error('down'))
+    failed.catch(() => {})
+    api.getPublicSettings.mockReturnValueOnce(failed)
     const a = renderHook(() => useCoinsProgram())
-    await waitFor(() => expect(api.getPublicSettings).toHaveBeenCalledTimes(1))
-    await Promise.resolve()
+    await act(async () => {
+      await failed.catch(() => {})
+    })
     expect(a.result.current.percent).toBeNull()
     api.getPublicSettings.mockResolvedValueOnce({ coins: { cashbackPercent: 5 } })
     const b = renderHook(() => useCoinsProgram())

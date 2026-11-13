@@ -620,16 +620,17 @@ export default function CheckoutPage() {
                     itemCount={itemCount}
                     cashbackBaseRub={totals.totalRub - promoRub}
                     signedIn={signedIn ?? null}
-                  />
-                  {promo && promoRub > 0 && (
-                    <div
-                      data-testid="summary-promo"
-                      className="flex justify-between gap-4 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)]"
-                    >
-                      <span>Промокод {promo.code}</span>
-                      <span className="whitespace-nowrap">−{formatRub(promoRub)}</span>
-                    </div>
-                  )}
+                  >
+                    {promo && promoRub > 0 && (
+                      <div
+                        data-testid="summary-promo"
+                        className="flex justify-between gap-4 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)]"
+                      >
+                        <span>Промокод {promo.code}</span>
+                        <span className="whitespace-nowrap">−{formatRub(promoRub)}</span>
+                      </div>
+                    )}
+                  </CartSummaryWithCashback>
                   <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                     <span>Доставка</span>
                     <span data-testid="summary-shipping">

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 
 const api = vi.hoisted(() => ({ getPublicSettings: vi.fn() }))
 vi.mock('@/lib/api', () => api)
@@ -44,18 +44,45 @@ describe('CartSummaryWithCashback', () => {
   })
 
   it('holds the row while the page still resolves the session', async () => {
-    api.getPublicSettings.mockResolvedValue({ coins: { cashbackPercent: 5 } })
+    const settled = Promise.resolve({ coins: { cashbackPercent: 5 } })
+    api.getPublicSettings.mockReturnValue(settled)
     render(<CartSummaryWithCashback totals={totals} itemCount={1} signedIn={null} />)
-    await waitFor(() => expect(api.getPublicSettings).toHaveBeenCalled())
-    await Promise.resolve()
+    await act(async () => {
+      await settled
+    })
     expect(screen.queryByTestId('summary-cashback')).toBeNull()
   })
 
-  it('no row when the program is off or the total is zero', async () => {
-    api.getPublicSettings.mockResolvedValue({ coins: null })
+  it('no row when the program is off', async () => {
+    const settled = Promise.resolve({ coins: null })
+    api.getPublicSettings.mockReturnValue(settled)
     render(<CartSummaryWithCashback totals={totals} itemCount={1} />)
-    await waitFor(() => expect(api.getPublicSettings).toHaveBeenCalled())
-    await Promise.resolve()
+    await act(async () => {
+      await settled
+    })
     expect(screen.queryByTestId('summary-cashback')).toBeNull()
+  })
+
+  it('no row when the cashback rounds down to zero coins', async () => {
+    const settled = Promise.resolve({ coins: { cashbackPercent: 5 } })
+    api.getPublicSettings.mockReturnValue(settled)
+    render(<CartSummaryWithCashback totals={{ ...totals, totalRub: 0 }} itemCount={1} />)
+    await act(async () => {
+      await settled
+    })
+    expect(screen.queryByTestId('summary-cashback')).toBeNull()
+  })
+
+  it('shows the row after the extra rows (promo) and not before', async () => {
+    api.getPublicSettings.mockResolvedValue({ coins: { cashbackPercent: 5 } })
+    render(
+      <CartSummaryWithCashback totals={totals} itemCount={1}>
+        <div data-testid="promo" />
+      </CartSummaryWithCashback>,
+    )
+    const row = await screen.findByTestId('summary-cashback')
+    expect(
+      screen.getByTestId('promo').compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   })
 })

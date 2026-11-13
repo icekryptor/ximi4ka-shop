@@ -21,7 +21,15 @@ const mockPush = vi.fn<(path: string) => void>()
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => '/checkout',
 }))
+
+// Программа химикоинов подменена: настоящий хук ходил бы за настройками и сдвигал бы
+// счётчики/очередь ответов getPublicSettings в тестах оплаты.
+const coinsProgram = vi.hoisted(() => ({
+  value: { percent: null, signedIn: false } as { percent: number | null; signedIn: boolean },
+}))
+vi.mock('@/lib/useCoinsProgram', () => ({ useCoinsProgram: () => coinsProgram.value }))
 
 const mockRedirectTo = vi.fn<(url: string) => void>()
 
@@ -160,6 +168,7 @@ beforeEach(() => {
   mockCloudPaymentsPreview.mockImplementation(async () => null)
   resetPublicYandexPayCacheForTests()
   resetPublicCloudPaymentsCacheForTests()
+  coinsProgram.value = { percent: null, signedIn: false }
   window.localStorage.clear()
   window.sessionStorage.clear()
   mockPush.mockReset()
@@ -419,6 +428,24 @@ describe('/checkout page', () => {
       expect(screen.getByTestId('summary-promo')).toHaveTextContent('155')
       expect(screen.getByTestId('summary-promo')).toHaveTextContent('RENATA2026')
       expect(screen.getByTestId('summary-total')).toHaveTextContent('2 944')
+    })
+
+    it('строка кэшбека стоит после промокода и считается от суммы после него', async () => {
+      coinsProgram.value = { percent: 10, signedIn: true }
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('RENATA2026')
+
+      const cashback = await screen.findByTestId('summary-cashback')
+      expect(cashback).toHaveTextContent('294 химикоина')
+      const promoRow = screen.getByTestId('summary-promo')
+      const shippingRow = screen.getByTestId('summary-shipping').parentElement!
+      expect(
+        promoRow.compareDocumentPosition(cashback) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        cashback.compareDocumentPosition(shippingRow) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
 
     it('доставка остаётся бесплатной, хотя сумма после скидки ниже порога', async () => {
