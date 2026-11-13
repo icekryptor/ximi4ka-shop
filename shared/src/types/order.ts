@@ -194,6 +194,13 @@ export interface OrderDto {
   createdAt: string
   paidAt: string | null
   erpSyncedAt: string | null
+  /** Кэшбек: обещано, сколько начислено (только в деталях админки), недобор из-за возврата. */
+  cashbackPromisedCoins?: number
+  cashbackAccruedCoins?: number
+  cashbackShortfallCoins?: number
+  /** Когда заказ вручён (СДЭК) и проблема с доставкой, если есть. */
+  deliveredAt?: string | null
+  deliveryProblem?: string | null
 }
 
 // --- checkout API contract ---

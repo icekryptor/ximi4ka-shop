@@ -72,6 +72,15 @@ async function metrikaConversion(orderId: string): Promise<MetrikaConversionDto 
   }
 }
 
+// Сколько кэшбека реально начислено за заказ: сумма операции order_cashback или 0.
+async function cashbackAccruedCoins(orderId: string): Promise<number> {
+  const rows: { amount: number }[] = await AppDataSource.query(
+    'SELECT amount FROM coin_transactions WHERE idempotency_key = $1',
+    [`order_cashback:${orderId}`],
+  )
+  return rows[0]?.amount ?? 0
+}
+
 // List — newest first, optional status filter.
 // Секрет ссылки покупателя (publicToken) админке не нужен — не отдаём.
 function withoutSecret<T extends Order>(order: T): Omit<T, 'publicToken'> {
@@ -123,6 +132,7 @@ adminOrdersRouter.get('/:id', async (req, res, next) => {
     res.json({
       data: {
         ...withoutSecret(order),
+        cashbackAccruedCoins: await cashbackAccruedCoins(order.id),
         notifications: await orderNotifications(order.id),
         cdekShipment: await cdekShipment(order.id),
         metrikaConversion: await metrikaConversion(order.id),

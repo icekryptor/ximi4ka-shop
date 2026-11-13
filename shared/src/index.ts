@@ -63,6 +63,12 @@ export type {
   LastDelivery,
   AccountOrderSummary,
   AccountOrdersPage,
+  AccountCoinTransaction,
+  AccountCoins,
+  AdminCustomerListItem,
+  AdminCustomersPage,
+  AdminCoinTransaction,
+  AdminCustomerDetail,
   TelegramLoginStart,
   TelegramLoginPoll,
 } from './types/account.js'
