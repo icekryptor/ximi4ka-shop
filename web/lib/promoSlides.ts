@@ -4,7 +4,11 @@
  * узлы 144:4627 / 144:4642 / 144:4664): это короткие акционные плашки, а не
  * CMS-контент.
  */
-export type PromoVisual = 'gift' | 'oge' | 'learn'
+import { BLACK_FRIDAY, isBlackFridayActive } from './blackFriday'
+
+export type PromoVisual = 'gift' | 'oge' | 'learn' | 'blackFriday'
+/** оформление слайда: `hazard` — чёрный с оранжево-жёлтым свечением и лентами */
+export type PromoTheme = 'hazard'
 
 export interface PromoCta {
   label: string
@@ -25,6 +29,8 @@ export interface PromoSlide {
   visual: PromoVisual
   /** CSS-градиент подложки баннера */
   background: string
+  /** особое оформление текста и кнопки; без него — белый текст на градиенте */
+  theme?: PromoTheme
 }
 
 export const OGE_PRODUCT_SLUG = 'bolshoi-nabor-dlya-oge'
@@ -35,8 +41,24 @@ export function slideTitle(slide: PromoSlide): string {
   return slide.titleLines.join(' ')
 }
 
-export function buildPromoSlides(): PromoSlide[] {
+/** Слайд «Чёрной пятницы» — показывается только в даты акции, первым. */
+function blackFridaySlide(): PromoSlide {
+  return {
+    id: 'black-friday',
+    titleLines: [...BLACK_FRIDAY.titleLines],
+    leadLines: [BLACK_FRIDAY.lead],
+    leadWidth: 560,
+    cta: { label: BLACK_FRIDAY.cta, href: BLACK_FRIDAY.href },
+    visual: 'blackFriday',
+    background:
+      'radial-gradient(120% 90% at 78% 50%, #2a1500 0%, #120a02 38%, #050505 72%), #050505',
+    theme: 'hazard',
+  }
+}
+
+export function buildPromoSlides(now: Date = new Date()): PromoSlide[] {
   return [
+    ...(isBlackFridayActive(now) ? [blackFridaySlide()] : []),
     {
       id: 'gift',
       titleLines: ['Реактив в подарок', 'за заказ от 3000 руб'],

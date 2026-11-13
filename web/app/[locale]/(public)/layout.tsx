@@ -7,6 +7,7 @@ import { getPublicSettings } from '@/lib/api'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
 import { EMAIL, PHONE, SUPPORT_URL } from '@/lib/contacts'
+import { isBlackFridayActive } from '@/lib/blackFriday'
 
 // Public storefront chrome. All non-admin routes live under this group so
 // they all get the same sticky Header + Footer + shared CartDrawer without
@@ -26,6 +27,7 @@ export default async function PublicLayout({ children }: Readonly<{ children: Re
       <Header
         headerPromoText={settings?.headerPromoText ?? null}
         coinsEnabled={settings?.coins != null}
+        blackFriday={isBlackFridayActive()}
       />
       <main className="flex-1">{children}</main>
       <Footer />

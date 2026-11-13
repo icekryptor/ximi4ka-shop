@@ -14,7 +14,10 @@ interface Props {
   autoPlayMs?: number
 }
 
-const CTA_CLASS = 'lj-btn lj-btn-white rounded-[4px] px-7 py-4 max-sm:w-full'
+const CTA_BASE = 'lj-btn rounded-[4px] px-7 py-4 max-sm:w-full'
+const CTA_CLASS = `${CTA_BASE} lj-btn-white`
+/** «Чёрная пятница»: жёлтая кнопка с ореолом вместо белой */
+const CTA_HAZARD_CLASS = `${CTA_BASE} bf-cta`
 
 /**
  * Промо-слайдер первого экрана: три баннера из Figma («баннеры», 1440×760).
@@ -126,6 +129,8 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
       <div className="grid overflow-hidden rounded-t-[clamp(2.5rem,8vw,6.25rem)] rounded-b-[clamp(3.75rem,12vw,9.375rem)] text-[var(--color-lj-on-bright)] [--ox:560] [--u:calc(100cqw/900)] xl:rounded-b-[calc(var(--u)*150)] xl:rounded-t-[calc(var(--u)*100)] xl:[--ox:0] xl:[--u:calc(100cqw/1440)]">
         {slides.map((slide, i) => {
           const active = i === index
+          const hazard = slide.theme === 'hazard'
+          const ctaClass = hazard ? CTA_HAZARD_CLASS : CTA_CLASS
           return (
             <div
               key={slide.id}
@@ -143,7 +148,7 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
               }`}
               style={{ background: slide.background }}
             >
-              <GridOverlay surface="bright" />
+              {hazard ? null : <GridOverlay surface="bright" />}
 
               <div
                 className="relative z-[2] flex flex-col items-start gap-[30px] xl:absolute xl:left-[calc(var(--u)*80)] xl:top-1/2 xl:w-[calc(var(--u)*680)] xl:-translate-y-1/2 xl:gap-[calc(var(--u)*30)]"
@@ -151,7 +156,11 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
                   slide.leadWidth ? ({ '--lead-w': slide.leadWidth } as CSSProperties) : undefined
                 }
               >
-                <h2 className="font-lj-mazzard text-[clamp(1.625rem,7.6vw,4.5rem)] font-light italic leading-[1.1] tracking-[-0.045em] xl:whitespace-nowrap xl:text-[length:calc(var(--u)*72)]">
+                <h2
+                  className={`font-lj-mazzard text-[clamp(1.625rem,7.6vw,4.5rem)] leading-[1.1] tracking-[-0.045em] xl:whitespace-nowrap xl:text-[length:calc(var(--u)*72)] ${
+                    hazard ? 'font-[700] uppercase' : 'font-light italic'
+                  }`}
+                >
                   {slide.titleLines.map((line, n) => (
                     <Fragment key={line}>
                       {n > 0 && (
@@ -160,7 +169,11 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
                           <br />
                         </>
                       )}
-                      {line}
+                      {hazard ? (
+                        <span className={n === 0 ? 'bf-white-glow' : 'bf-fire-text'}>{line}</span>
+                      ) : (
+                        line
+                      )}
                     </Fragment>
                   ))}
                 </h2>
@@ -175,13 +188,13 @@ export function PromoSlider({ slides, autoPlayMs = 7000 }: Props) {
                       href={slide.cta.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={CTA_CLASS}
+                      className={ctaClass}
                     >
                       {slide.cta.label}
                       <ArrowIcon />
                     </a>
                   ) : (
-                    <Link href={slide.cta.href} className={CTA_CLASS}>
+                    <Link href={slide.cta.href} className={ctaClass}>
                       {slide.cta.label}
                       <ArrowIcon />
                     </Link>

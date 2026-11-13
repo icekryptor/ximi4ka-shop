@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useCart } from '@/lib/cart'
 import { Ticker } from '@/components/ui'
+import { BlackFridayStrip } from '@/components/marketing/BlackFridayStrip'
 import { AccountLink } from './AccountLink'
 import { CartButton } from './CartButton'
 import { HeaderLogo } from './HeaderLogo'
@@ -39,9 +40,15 @@ interface HeaderProps {
   headerPromoText?: string | null
   /** Химикоины включены в настройках: резервировать место под чип баланса. */
   coinsEnabled?: boolean
+  /** идёт «Чёрная пятница» — над шапкой показываем её ленту (даты считает сервер) */
+  blackFriday?: boolean
 }
 
-export function Header({ headerPromoText = null, coinsEnabled = false }: HeaderProps) {
+export function Header({
+  headerPromoText = null,
+  coinsEnabled = false,
+  blackFriday = false,
+}: HeaderProps) {
   const pathnameRaw = usePathname()
   const { itemCount } = useCart()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -76,6 +83,8 @@ export function Header({ headerPromoText = null, coinsEnabled = false }: HeaderP
 
   return (
     <>
+      {blackFriday ? <BlackFridayStrip /> : null}
+
       {showPromo ? (
         <div role="region" aria-label="Промо">
           <Ticker surface="dark" items={promoItems} />

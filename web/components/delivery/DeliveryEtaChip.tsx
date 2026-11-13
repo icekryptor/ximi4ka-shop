@@ -13,7 +13,7 @@ function TruckIcon() {
       height="18"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -22,8 +22,8 @@ function TruckIcon() {
       <path d="M2 6h11v10H2z" />
       <path d="M13 9h4.5L21 12.5V16h-8z" />
       {/* Колёса залиты цветом чипа — перекрывают низ кузова. */}
-      <circle cx="6.5" cy="17.5" r="2" fill="var(--color-lj-brand-deep)" />
-      <circle cx="17" cy="17.5" r="2" fill="var(--color-lj-brand-deep)" />
+      <circle cx="6.5" cy="17.5" r="2" fill="var(--color-lj-brand)" />
+      <circle cx="17" cy="17.5" r="2" fill="var(--color-lj-brand)" />
     </svg>
   )
 }
@@ -31,19 +31,24 @@ function TruckIcon() {
 // Высота чипа; место под него держим и пока срока нет — страница не прыгает.
 export const ETA_CHIP_RESERVE = 'min-h-[28px]'
 
-// Сам чип: грузовик и срок на фирменном фиолетовом. Срок доставки — довод
-// купить, поэтому чип крупный и яркий, а не серая подпись.
+// Сам чип: грузовик и срок на мягком фирменном фиолетовом (--color-lj-brand,
+// не насыщенный brand-deep), тонким начертанием: font-light у Mazzard H — это
+// Regular 400, файла 300 нет. Срок доставки — довод купить, поэтому чип
+// крупный и цветной, а не серая подпись.
+// Отступы подобраны под самую узкую карточку набора (220 px при окне 1024 px):
+// «Доставка: послезавтра» должна помещаться в одну строку.
 export function EtaChip({ label, title }: { label: string; title: string }) {
   return (
     <span
       data-testid="delivery-eta-chip"
       title={title}
-      className="inline-flex h-[28px] w-fit items-center gap-1.5 whitespace-nowrap rounded-full bg-[var(--color-lj-brand-deep)] pl-2.5 pr-3 font-lj-mazzard text-[0.9375rem] font-[500] leading-[28px] text-white"
+      className="inline-flex min-h-[28px] w-fit max-w-full items-center gap-1 rounded-[14px] bg-[var(--color-lj-brand)] py-1 pl-2 pr-2.5 font-lj-mazzard text-[0.9375rem] font-light leading-5 text-white"
     >
       <TruckIcon />
+      {/* «Доставка:» видна всем: одна дата в чипе без слова не читалась. В узкой
+          сводке чекаута даты целиком уходят на вторую строку. */}
       <span>
-        <span className="sr-only">Доставка: </span>
-        {label}
+        Доставка: <span className="whitespace-nowrap">{label}</span>
       </span>
     </span>
   )
