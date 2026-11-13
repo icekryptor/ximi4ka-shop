@@ -12,7 +12,8 @@ import { createApp } from '../app.js'
 import { setCdekClientForTests } from '../lib/cdek/index.js'
 import { clearCdekLocationCache } from '../lib/cdek/locations.js'
 import { setMailerForTests } from '../lib/mail/mailer.js'
-import { loginAsCustomer, resetAccountTables } from './testUtils.js'
+import { cashbackCoins } from '@ximi4ka-shop/shared/types/coins'
+import { loginAsCustomer, resetAccountTables, setCoinsProgram } from './testUtils.js'
 
 // TBankProvider (когда его строит getPaymentProvider()) по умолчанию ходит
 // через tbankFetch (undici + доверие корню Минцифры), а не через глобальный
@@ -305,6 +306,64 @@ describe('POST /api/checkout', () => {
     })
     expect(order.shippingRub).toBe(500)
     expect(order.totalRub).toBe(4500)
+  })
+
+  describe('обещание кэшбека', () => {
+    afterEach(async () => {
+      await setCoinsProgram(false)
+    })
+
+    async function place(body: Record<string, unknown>): Promise<Order> {
+      const res = await request(app).post('/api/checkout').send(body)
+      expect(res.status).toBe(201)
+      return AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: res.body.data.orderNumber,
+      })
+    }
+
+    it('товары за вычетом промокода; доставка в обещание не входит и совпадает с расчётом витрины', async () => {
+      await setCoinsProgram(true, 10)
+      const p = await seedProduct({ priceRub: 4000 })
+      const body = checkoutBody([{ productId: p.id, quantity: 1 }])
+      body.delivery = { method: 'cdek_courier', address: 'Москва, ул. Тверская, 1, кв. 5' }
+      const order = await place({ ...body, promoCode: 'RENATA2026' })
+      expect(order.promoDiscountRub).toBe(200)
+      expect(order.shippingRub).toBe(500)
+      expect(order.cashbackPromisedCoins).toBe(380)
+      expect(order.cashbackPromisedCoins).toBe(cashbackCoins(4000 - 200, 10))
+      expect(order.cashbackShortfallCoins).toBe(0)
+    })
+
+    it('оптовая скидка тоже вычитается', async () => {
+      await setCoinsProgram(true, 10)
+      const reagent = await seedProduct({ slug: 'copper-sulfate', priceRub: 100, sku: 'CU-9' })
+      await seedCategory('reagents', [reagent])
+      const order = await place(checkoutBody([{ productId: reagent.id, quantity: 10 }]))
+      expect(order.discountRub).toBe(200)
+      expect(order.cashbackPromisedCoins).toBe(80) // 10% от 1000 − 200
+    })
+
+    it('процент берётся из настроек', async () => {
+      await setCoinsProgram(true, 5)
+      const p = await seedProduct({ priceRub: 2000 })
+      const order = await place(checkoutBody([{ productId: p.id, quantity: 1 }]))
+      expect(order.cashbackPromisedCoins).toBe(100)
+    })
+
+    it('гостевой заказ тоже получает обещание', async () => {
+      await setCoinsProgram(true, 10)
+      const p = await seedProduct({ priceRub: 2000 })
+      const order = await place(checkoutBody([{ productId: p.id, quantity: 1 }]))
+      expect(order.customerId).toBeNull()
+      expect(order.cashbackPromisedCoins).toBe(200)
+    })
+
+    it('программа выключена — обещание 0', async () => {
+      await setCoinsProgram(false, 10)
+      const p = await seedProduct({ priceRub: 2000 })
+      const order = await place(checkoutBody([{ productId: p.id, quantity: 1 }]))
+      expect(order.cashbackPromisedCoins).toBe(0)
+    })
   })
 
   describe('промокод', () => {

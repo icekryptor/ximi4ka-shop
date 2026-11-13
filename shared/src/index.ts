@@ -22,6 +22,8 @@ export type {
   PublicOrderStatus,
 } from './types/order.js'
 
+export type { CoinTransactionKind, PublicCoins } from './types/coins.js'
+
 export type {
   NotificationChannel,
   OrderEventKey,
@@ -32,7 +34,7 @@ export type { MaterialLeadRequest, MaterialLeadSource } from './types/materialLe
 
 export type { AccountMaterial, MaterialKind, PublicOrderMaterial } from './types/materials.js'
 
-export type { CdekShipmentDto, CdekShipmentState } from './types/cdek.js'
+export type { CdekShipmentDto, CdekShipmentState, CdekTrackingState } from './types/cdek.js'
 
 export type { Product, ProductImage, ProductShippingUnit, StockStatus } from './types/product.js'
 
@@ -61,6 +63,12 @@ export type {
   LastDelivery,
   AccountOrderSummary,
   AccountOrdersPage,
+  AccountCoinTransaction,
+  AccountCoins,
+  AdminCustomerListItem,
+  AdminCustomersPage,
+  AdminCoinTransaction,
+  AdminCustomerDetail,
   TelegramLoginStart,
   TelegramLoginPoll,
 } from './types/account.js'

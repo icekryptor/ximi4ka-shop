@@ -610,6 +610,19 @@ body {
   }
 }
 
+/* Шапка: вариант кабинета выбирает html[data-signed-in] (ставит статичный скрипт
+   по читаемой CSRF-cookie до первой отрисовки) — без сдвигов вёрстки. Подмена
+   работает только при включённой программе: ссылка помечена [data-coins]. */
+.account-user {
+  display: none;
+}
+html[data-signed-in] [data-coins] .account-guest {
+  display: none;
+}
+html[data-signed-in] [data-coins] .account-user {
+  display: inline-flex;
+}
+
 /* === «Чёрная пятница» 14.11–28.11.2026 — слайд на главной и лента над шапкой ===
    Чёрный фон, оранжево-жёлтое свечение, сигнальные ленты. Свечение сделано
    градиентами и text-shadow, без filter: blur — он тормозит первый кадр на

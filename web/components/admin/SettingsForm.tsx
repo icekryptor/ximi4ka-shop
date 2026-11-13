@@ -79,6 +79,10 @@ export function SettingsForm({ initial }: Props) {
   const [cloudpaymentsSurchargePercent, setCloudpaymentsSurchargePercent] = useState(
     String(initial.cloudpaymentsSurchargePercent),
   )
+  const [coinsEnabled, setCoinsEnabled] = useState(initial.coinsEnabled ?? false)
+  const [coinsCashbackPercent, setCoinsCashbackPercent] = useState(
+    String(initial.coinsCashbackPercent ?? 10),
+  )
   // Marketing fields. headerPromoText is a single nullable text blob; the
   // two list editors keep their state as plain arrays of objects, with
   // helpers below to add / update / remove rows.
@@ -115,6 +119,12 @@ export function SettingsForm({ initial }: Props) {
       return
     }
 
+    // Та же граница, что у zod-схемы: целое 0…50.
+    if (!/^\d{1,2}$/.test(coinsCashbackPercent) || Number(coinsCashbackPercent) > 50) {
+      setFormError('Кэшбек — целое число процентов от 0 до 50.')
+      return
+    }
+
     const patch: AdminSettingsPatch = {
       metrikaId: nullifyBlank(metrikaId),
       ga4Id: nullifyBlank(ga4Id),
@@ -132,6 +142,8 @@ export function SettingsForm({ initial }: Props) {
       cloudpaymentsEnabled,
       cloudpaymentsMode,
       cloudpaymentsSurchargePercent: Number(cloudpaymentsSurchargePercent),
+      coinsEnabled,
+      coinsCashbackPercent: Number(coinsCashbackPercent),
       headerPromoText: nullifyBlank(headerPromoText),
       trustStripItems,
       testimonials,
@@ -399,6 +411,40 @@ export function SettingsForm({ initial }: Props) {
           />
           <p className="mt-1 text-xs text-brand-text-secondary">
             0 — без надбавки. Ненулевой процент — только после ответа юриста.
+          </p>
+        </Field>
+      </Section>
+
+      <Section title="Химикоины">
+        <p className="text-xs text-brand-text-secondary">
+          Кэшбек начисляется после получения заказа. Уже обещанный кэшбек выполняется, даже если
+          программу выключить.
+        </p>
+        <div className="flex items-center gap-3">
+          <input
+            id="coins-enabled"
+            type="checkbox"
+            checked={coinsEnabled}
+            onChange={(e) => setCoinsEnabled(e.target.checked)}
+          />
+          <label htmlFor="coins-enabled" className="text-sm text-brand-text">
+            Химикоины включены
+          </label>
+        </div>
+        <Field label="Кэшбек, %" htmlFor="coins-cashback-percent">
+          <input
+            id="coins-cashback-percent"
+            type="number"
+            min={0}
+            max={50}
+            step={1}
+            onWheel={(e) => e.currentTarget.blur()}
+            value={coinsCashbackPercent}
+            onChange={(e) => setCoinsCashbackPercent(e.target.value)}
+            className="input w-24"
+          />
+          <p className="mt-1 text-xs text-brand-text-secondary">
+            От суммы товаров, целое число от 0 до 50.
           </p>
         </Field>
       </Section>

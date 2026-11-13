@@ -165,6 +165,21 @@ export class Order {
   @Column({ type: 'timestamptz', name: 'paid_at', nullable: true })
   paidAt!: Date | null
 
+  // Химикоины: сколько кэшбека обещано покупателю при оформлении (считается от товаров после
+  // скидок, без доставки и надбавки), сколько из обещанного не удалось начислить (недобор),
+  // когда заказ доставлен и почему доставка не состоялась. 0/NULL у старых заказов.
+  @Column({ type: 'integer', name: 'cashback_promised_coins', default: 0 })
+  cashbackPromisedCoins!: number
+
+  @Column({ type: 'integer', name: 'cashback_shortfall_coins', default: 0 })
+  cashbackShortfallCoins!: number
+
+  @Column({ type: 'timestamptz', name: 'delivered_at', nullable: true })
+  deliveredAt!: Date | null
+
+  @Column({ type: 'varchar', length: 64, name: 'delivery_problem', nullable: true })
+  deliveryProblem!: string | null
+
   @Column({ type: 'timestamptz', name: 'erp_synced_at', nullable: true })
   erpSyncedAt!: Date | null
 

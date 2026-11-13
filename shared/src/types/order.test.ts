@@ -3,7 +3,7 @@ import type { CheckoutRequest, DeliveryAddress, OrderDeliveryMethod, OrderDto } 
 
 test('OrderDto.status is a discriminated literal union', () => {
   expectTypeOf<OrderDto['status']>().toEqualTypeOf<
-    'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
+    'pending' | 'paid' | 'shipped' | 'delivered' | 'failed' | 'cancelled'
   >()
 })
 

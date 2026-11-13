@@ -85,6 +85,17 @@ describe('Admin orders', () => {
     expect(res.body.data[0]).not.toHaveProperty('publicToken')
   })
 
+  it('список отдаёт deliveryProblem', async () => {
+    const o = await seedOrder({
+      status: 'shipped',
+      paidAt: new Date(),
+      deliveryProblem: 'cdek_not_delivered',
+    })
+    const res = await request(app).get('/api/admin/orders').set(authHeaders(auth))
+    const row = res.body.data.find((x: { id: string }) => x.id === o.id)
+    expect(row.deliveryProblem).toBe('cdek_not_delivered')
+  })
+
   it('filters by status', async () => {
     await seedOrder()
     const paid = await seedOrder({ status: 'paid', paidAt: new Date() })
@@ -230,6 +241,118 @@ describe('Admin orders', () => {
       .send({ status: 'cancelled' })
     expect(res.status).toBe(409)
     expect(res.body.error.code).toBe('order_already_shipped')
+  })
+
+  describe('shipped → cancelled при проблеме доставки', () => {
+    const cancel = (id: string) =>
+      request(app)
+        .patch(`/api/admin/orders/${id}/status`)
+        .set(authHeaders(auth))
+        .send({ status: 'cancelled' })
+
+    it.each(['cdek_not_delivered', 'cdek_tracking_timeout', 'cdek_partial_delivery'])(
+      'shipped с deliveryProblem=%s → cancelled: 200, событие status:cancelled',
+      async (problem) => {
+        const shipped = await seedOrder({
+          status: 'shipped',
+          paidAt: new Date(),
+          deliveryProblem: problem,
+        })
+        const res = await cancel(shipped.id)
+        expect(res.status).toBe(200)
+        expect(res.body.data.status).toBe('cancelled')
+        const events = await AppDataSource.getRepository(OrderNotification).find({
+          where: { orderId: shipped.id },
+        })
+        expect(events.map((e) => e.eventKey)).toContain('status:cancelled')
+      },
+    )
+
+    it('shipped без deliveryProblem → cancelled по-прежнему 409 order_already_shipped', async () => {
+      const shipped = await seedOrder({ status: 'shipped', paidAt: new Date() })
+      const res = await cancel(shipped.id)
+      expect(res.status).toBe(409)
+      expect(res.body.error.code).toBe('order_already_shipped')
+    })
+
+    it('shipped с проблемой → paid остаётся 409', async () => {
+      const shipped = await seedOrder({
+        status: 'shipped',
+        paidAt: new Date(),
+        deliveryProblem: 'cdek_not_delivered',
+      })
+      const res = await request(app)
+        .patch(`/api/admin/orders/${shipped.id}/status`)
+        .set(authHeaders(auth))
+        .send({ status: 'paid' })
+      expect(res.status).toBe(409)
+    })
+  })
+
+  describe('статус «Получен»', () => {
+    const patch = (id: string, status: string) =>
+      request(app).patch(`/api/admin/orders/${id}/status`).set(authHeaders(auth)).send({ status })
+
+    it('shipped → delivered: 200, deliveredAt заполнен, событие status:delivered', async () => {
+      const shipped = await seedOrder({ status: 'shipped', paidAt: new Date() })
+      const res = await patch(shipped.id, 'delivered')
+      expect(res.status).toBe(200)
+      expect(res.body.data.status).toBe('delivered')
+      const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: shipped.id })
+      expect(saved.deliveredAt).toBeInstanceOf(Date)
+      expect(saved.statusHistory.at(-1)).toMatchObject({
+        from: 'shipped',
+        to: 'delivered',
+        by: 'admin',
+      })
+      const events = await AppDataSource.getRepository(OrderNotification).find({
+        where: { orderId: shipped.id },
+      })
+      expect(events.map((e) => e.eventKey)).toEqual(['status:delivered'])
+    })
+
+    it('paid → delivered: 409, статус не меняется', async () => {
+      const paid = await seedOrder({ status: 'paid', paidAt: new Date() })
+      const res = await patch(paid.id, 'delivered')
+      expect(res.status).toBe(409)
+      const saved = await AppDataSource.getRepository(Order).findOneByOrFail({ id: paid.id })
+      expect(saved.status).toBe('paid')
+      expect(saved.deliveredAt).toBeNull()
+    })
+
+    it('pending → delivered: 409', async () => {
+      const pending = await seedOrder()
+      expect((await patch(pending.id, 'delivered')).status).toBe(409)
+    })
+
+    it.each(['shipped', 'paid'])('delivered → %s: 409', async (target) => {
+      const delivered = await seedOrder({
+        status: 'delivered',
+        paidAt: new Date(),
+        deliveredAt: new Date(),
+      })
+      expect((await patch(delivered.id, target)).status).toBe(409)
+    })
+
+    it('delivered → cancelled: 200', async () => {
+      const delivered = await seedOrder({
+        status: 'delivered',
+        paidAt: new Date(),
+        deliveredAt: new Date(),
+      })
+      const res = await patch(delivered.id, 'cancelled')
+      expect(res.status).toBe(200)
+      expect(res.body.data.status).toBe('cancelled')
+    })
+
+    it('фильтр списка принимает status=delivered', async () => {
+      const delivered = await seedOrder({ status: 'delivered', paidAt: new Date() })
+      const res = await request(app)
+        .get('/api/admin/orders?status=delivered')
+        .set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      expect(res.body.data.map((o: { id: string }) => o.id)).toEqual([delivered.id])
+    })
   })
 
   it('rejects invalid status values with 400', async () => {
@@ -489,6 +612,18 @@ describe('Admin orders', () => {
     const res = await retryCdek(shipped.id)
     expect(res.status).toBe(200)
     expect((await cdekRepo().findOneByOrFail({ id: failed.id })).state).toBe('queued')
+  })
+
+  it('полученный заказ — повтор СДЭК 409 order_not_paid, запись не меняется', async () => {
+    vi.stubEnv('CDEK_ORDERS_ENABLED', 'true')
+    const delivered = await seedOrder({ status: 'delivered', paidAt: new Date() })
+    const failed = await cdekRepo().save(
+      cdekRepo().create({ orderId: delivered.id, state: 'failed', attempts: 3, lastError: 'x' }),
+    )
+    const res = await retryCdek(delivered.id)
+    expect(res.status).toBe(409)
+    expect(res.body.error.code).toBe('order_not_paid')
+    expect((await cdekRepo().findOneByOrFail({ id: failed.id })).state).toBe('failed')
   })
 
   it('повтор СДЭК: 404 для неизвестного заказа, 403 без CSRF', async () => {

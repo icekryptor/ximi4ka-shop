@@ -71,6 +71,15 @@ async function metrikaConversion(orderId: string): Promise<MetrikaConversionDto 
   }
 }
 
+// Сколько кэшбека реально начислено за заказ: сумма операции order_cashback или 0.
+async function cashbackAccruedCoins(orderId: string): Promise<number> {
+  const rows: { amount: number }[] = await AppDataSource.query(
+    'SELECT amount FROM coin_transactions WHERE idempotency_key = $1',
+    [`order_cashback:${orderId}`],
+  )
+  return rows[0]?.amount ?? 0
+}
+
 // List — newest first, optional status filter.
 // Секрет ссылки покупателя (publicToken) админке не нужен — не отдаём.
 function withoutSecret<T extends Order>(order: T): Omit<T, 'publicToken'> {
@@ -122,6 +131,7 @@ adminOrdersRouter.get('/:id', async (req, res, next) => {
     res.json({
       data: {
         ...withoutSecret(order),
+        cashbackAccruedCoins: await cashbackAccruedCoins(order.id),
         notifications: await orderNotifications(order.id),
         cdekShipment: await cdekShipment(order.id),
         metrikaConversion: await metrikaConversion(order.id),
@@ -161,15 +171,26 @@ adminOrdersRouter.patch('/:id/status', async (req, res, next) => {
       }
       // «Отправлен» ставится только оплаченному заказу. Оплаченный заказ — это
       // деньги: вернуть его в другое состояние можно только отправкой (возвраты —
-      // отдельная будущая история). Отправленный заказ вручную не меняется.
+      // отдельная будущая история). Отправленный заказ можно только отметить полученным.
       if (status === 'shipped' && order.status !== 'paid') {
         throw conflict('order_not_paid', 'Отправить можно только оплаченный заказ')
+      }
+      if (status === 'delivered' && order.status !== 'shipped') {
+        throw conflict('order_not_shipped', 'Получен можно поставить только отправленному заказу')
       }
       if (order.status === 'paid' && status !== 'shipped') {
         throw conflict('order_already_paid', 'Оплаченный заказ нельзя изменить вручную')
       }
-      if (order.status === 'shipped') {
+      // Исключение: СДЭК сообщил о проблеме с вручением (не вручена, частично, не
+      // дождались финала) — владелец решает вручную и может отменить заказ.
+      const shippedCancelAllowed =
+        status === 'cancelled' && order.status === 'shipped' && !!order.deliveryProblem
+      if (order.status === 'shipped' && status !== 'delivered' && !shippedCancelAllowed) {
         throw conflict('order_already_shipped', 'Отправленный заказ нельзя изменить вручную')
+      }
+      // Полученный заказ можно только отменить (возврат); назад в оплачен/отправлен нельзя.
+      if (order.status === 'delivered' && status !== 'cancelled') {
+        throw conflict('order_already_delivered', 'Полученный заказ можно только отменить')
       }
 
       const now = new Date()
@@ -233,6 +254,7 @@ adminOrdersRouter.post('/:id/cdek/retry', async (req, res, next) => {
         'Обработчик очереди СДЭК не запущен — проверьте настройки сервера',
       )
     }
+    // Полученному заказу новая отправка не нужна — только оплаченный или отправленный.
     if (order.status !== 'paid' && order.status !== 'shipped') {
       throw conflict('order_not_paid', 'Заказ не оплачен')
     }

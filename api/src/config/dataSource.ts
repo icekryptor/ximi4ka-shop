@@ -27,6 +27,7 @@ import { MaterialLead } from '../entities/MaterialLead.js'
 import { LearningMaterial } from '../entities/LearningMaterial.js'
 import { LearningMaterialProduct } from '../entities/LearningMaterialProduct.js'
 import { MaterialGrant } from '../entities/MaterialGrant.js'
+import { CoinTransaction } from '../entities/CoinTransaction.js'
 import { Media } from '../entities/Media.js'
 import { SiteSettings } from '../entities/SiteSettings.js'
 
@@ -116,6 +117,7 @@ export const AppDataSource = new DataSource({
     LearningMaterial,
     LearningMaterialProduct,
     MaterialGrant,
+    CoinTransaction,
     Media,
     SiteSettings,
   ],

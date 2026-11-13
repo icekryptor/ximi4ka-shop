@@ -22,6 +22,8 @@ export function orderStatusLabel(status: OrderStatus, provider: PaymentProvider)
       return 'Оплачен'
     case 'shipped':
       return 'Отправлен'
+    case 'delivered':
+      return 'Получен'
     case 'failed':
       return 'Ошибка оплаты'
     case 'cancelled':
@@ -39,7 +41,7 @@ export interface OrderTimelineStep {
 }
 
 /**
- * Three-step order journey for the status page timeline:
+ * Order journey (три шага, у полученного — четыре) for the status page timeline:
  * Создан → Ожидает оплаты | Принят → Оплачен | Отменён | Ошибка оплаты.
  * The terminal step swaps its label/tone for cancelled and failed orders.
  */
@@ -67,6 +69,13 @@ export function orderTimelineSteps(
         { label: 'Создан', state: 'done', tone: 'default' },
         { label: 'Оплачен', state: 'done', tone: 'default' },
         { label: 'Отправлен', state: 'active', tone: 'success' },
+      ]
+    case 'delivered':
+      return [
+        { label: 'Создан', state: 'done', tone: 'default' },
+        { label: 'Оплачен', state: 'done', tone: 'default' },
+        { label: 'Отправлен', state: 'done', tone: 'default' },
+        { label: 'Получен', state: 'active', tone: 'success' },
       ]
     case 'failed':
       return [

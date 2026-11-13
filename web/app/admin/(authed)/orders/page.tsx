@@ -5,6 +5,7 @@ import type { OrderStatus } from '@ximi4ka-shop/shared'
 import type { Paginated } from '@/lib/api'
 import type { AdminOrderSummary } from '@/lib/adminApi'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
+import { DeliveryProblemBadge } from './DeliveryProblemBadge'
 import {
   ORDER_STATUS_BADGE_CLASSES,
   ORDER_STATUS_LABELS,
@@ -46,6 +47,7 @@ const STATUS_FILTERS: Array<{ value: OrderStatus | undefined; label: string }> =
   { value: 'pending', label: ORDER_STATUS_LABELS.pending },
   { value: 'paid', label: ORDER_STATUS_LABELS.paid },
   { value: 'shipped', label: ORDER_STATUS_LABELS.shipped },
+  { value: 'delivered', label: ORDER_STATUS_LABELS.delivered },
   { value: 'failed', label: ORDER_STATUS_LABELS.failed },
   { value: 'cancelled', label: ORDER_STATUS_LABELS.cancelled },
 ]
@@ -159,6 +161,7 @@ async function OrdersContent({ searchParams }: { searchParams?: Promise<SearchPa
                     >
                       {ORDER_STATUS_LABELS[o.status]}
                     </span>
+                    <DeliveryProblemBadge problem={o.deliveryProblem} />
                   </td>
                   <td className="px-4 py-3 text-brand-text-secondary">
                     {PAYMENT_PROVIDER_LABELS[o.paymentProvider] ?? o.paymentProvider}

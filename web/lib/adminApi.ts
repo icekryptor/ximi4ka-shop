@@ -1,4 +1,6 @@
 import type {
+  AdminCustomerDetail,
+  AdminCustomersPage,
   BlogPost,
   CdekShipmentDto,
   OrderDto,
@@ -484,10 +486,10 @@ export async function adminGetOrder(id: string): Promise<OrderDto> {
   return body.data
 }
 
-// Ручные переходы: «Оплачен», «Отменить», «Отправлен» (только из оплаченного).
+// Ручные переходы: «Оплачен», «Отменить», «Отправлен» (только из оплаченного), «Получен» (только из отправленного).
 export async function adminSetOrderStatus(
   id: string,
-  input: { status: 'paid' | 'cancelled' | 'shipped'; comment?: string },
+  input: { status: 'paid' | 'cancelled' | 'shipped' | 'delivered'; comment?: string },
 ): Promise<OrderDto> {
   const body = await authedRequest<{ data: OrderDto }>(
     `/api/admin/orders/${encodeURIComponent(id)}/status`,
@@ -546,6 +548,8 @@ export interface SiteSettings {
   cloudpaymentsEnabled: boolean
   cloudpaymentsMode: 'test' | 'live'
   cloudpaymentsSurchargePercent: number
+  coinsEnabled: boolean
+  coinsCashbackPercent: number
   headerPromoText: string | null
   trustStripItems: TrustStripItem[]
   testimonials: Testimonial[]
@@ -671,4 +675,38 @@ export async function adminChangePassword(input: {
     method: 'POST',
     body: JSON.stringify(input),
   })
+}
+
+// --- покупатели и химикоины ---
+
+export async function adminListCustomers(
+  opts: { q?: string; page?: number } = {},
+): Promise<AdminCustomersPage> {
+  const params = new URLSearchParams()
+  if (opts.q) params.set('q', opts.q)
+  if (opts.page != null) params.set('page', String(opts.page))
+  const qs = params.toString()
+  const body = await authedRequest<{ data: AdminCustomersPage }>(
+    `/api/admin/customers${qs ? `?${qs}` : ''}`,
+  )
+  return body.data
+}
+
+export async function adminGetCustomer(id: string): Promise<AdminCustomerDetail> {
+  const body = await authedRequest<{ data: AdminCustomerDetail }>(
+    `/api/admin/customers/${encodeURIComponent(id)}`,
+  )
+  return body.data
+}
+
+// Ручная правка баланса. requestId — uuid, один на «намерение» (повтор не удвоит правку).
+export async function adminAdjustCoins(
+  id: string,
+  input: { amount: number; comment: string; requestId: string },
+): Promise<{ balance: number }> {
+  const body = await authedRequest<{ data: { balance: number } }>(
+    `/api/admin/customers/${encodeURIComponent(id)}/coins`,
+    { method: 'POST', body: JSON.stringify(input) },
+  )
+  return body.data
 }

@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./types/order": "./src/types/order.ts",
     "./types/cis": "./src/types/cis.ts",
+    "./types/coins": "./src/types/coins.ts",
     "./types/promo": "./src/types/promo.ts",
     "./types/payment": "./src/types/payment.ts",
     "./types/product": "./src/types/product.ts",
