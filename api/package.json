@@ -30,6 +30,7 @@
     "apply:mini-himichka-card": "tsx src/seeds/apply-mini-himichka-card.ts",
     "apply:materials-methodichki": "tsx src/seeds/apply-materials-methodichki.ts",
     "apply:prices-and-combos": "tsx src/seeds/apply-prices-and-combos.ts",
+    "apply:sale-combos": "tsx src/seeds/link-sale-combos.ts",
     "audit:images": "tsx src/scripts/audit-images.ts",
     "migrate:tilda-images": "tsx src/scripts/migrate-tilda-images.ts",
     "import:tilda-shipping": "tsx src/seeds/import-tilda-shipping.ts",

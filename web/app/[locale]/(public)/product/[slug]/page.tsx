@@ -42,6 +42,7 @@ import { SplitWidget } from '@/components/payments/SplitWidget'
 import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
 import { BlackFridayChip } from '@/components/marketing/BlackFridayChip'
 import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
+import { WbPriceCompare } from '@/components/payments/WbPriceCompare'
 import { densityForSlug } from '@/lib/catalogApi'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 
@@ -321,6 +322,7 @@ export default async function ProductPage({ params }: Props) {
                 />
                 <AddToCartWithQuantity product={product} />
               </div>
+              <WbPriceCompare slug={product.slug} priceRub={product.priceRub} />
               {splitOn && <SplitInstallmentLine priceRub={product.priceRub} />}
               {/* Срок обещаем только тому, что можно отправить сейчас. */}
               {product.stockStatus === 'in_stock' && <DeliveryEtaChip caption />}

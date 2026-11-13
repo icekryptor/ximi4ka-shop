@@ -7,6 +7,7 @@ import { SpecimenCard } from './ui/SpecimenCard'
 import { CompactProductCard } from './catalog/CompactProductCard'
 import { imageLoadingProps, type ImageLoading } from '@/lib/imageLoading'
 import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
+import { WbPriceCompare } from '@/components/payments/WbPriceCompare'
 import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
 import { BlackFridayChip } from '@/components/marketing/BlackFridayChip'
 
@@ -28,7 +29,8 @@ interface Props {
   images: ProductImage[]
   hoverFormula?: string
   // v3.5: увеличенная карточка (первая в категорийной сетке) — широкая
-  // фото-плита вместо портретной.
+  // фото-плита вместо портретной. Только до десктопа (xl): там широкая плита
+  // обрезала фото набора и выталкивала четвёртый набор во второй ряд.
   featured?: boolean
   // Плотность карточки. 'kit' (по умолчанию) — крупная фото-форвард карточка
   // набора с описанием/статами. 'compact' — плотная карточка реактива
@@ -50,7 +52,7 @@ interface Props {
 // в images.qualities, next.config.ts).
 const PHOTO_QUALITY = 65
 const PHOTO_SIZES = '(max-width: 768px) calc(100vw - 48px), 33vw'
-const PHOTO_SIZES_FEATURED = '(max-width: 768px) calc(100vw - 48px), 66vw'
+const PHOTO_SIZES_FEATURED = '(max-width: 768px) calc(100vw - 48px), (max-width: 1279px) 66vw, 25vw'
 
 export function ProductCard({
   product,
@@ -103,7 +105,7 @@ export function ProductCard({
       ) : (
         <Link href={`/product/${product.slug}`} className="block">
           <div
-            className={`relative ${featured ? 'aspect-[16/10]' : 'aspect-square'} bg-white rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color,box-shadow] duration-500 group-hover/pcard:border-[var(--color-lj-brand)] group-hover/pcard:shadow-[var(--shadow-lj-bright)]`}
+            className={`relative ${featured ? 'aspect-[16/10] xl:aspect-square' : 'aspect-square'} bg-white rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color,box-shadow] duration-500 group-hover/pcard:border-[var(--color-lj-brand)] group-hover/pcard:shadow-[var(--shadow-lj-bright)]`}
           >
             <Image
               src={images[0].url}
@@ -150,6 +152,7 @@ export function ProductCard({
               Заказать набор →
             </Link>
           </div>
+          <WbPriceCompare slug={product.slug} priceRub={product.priceRub} />
           {splitInstallments && <SplitInstallmentLine priceRub={product.priceRub} />}
           {/* Срок обещаем только тому, что можно отправить сейчас. */}
           {product.stockStatus === 'in_stock' && <DeliveryEtaChip />}

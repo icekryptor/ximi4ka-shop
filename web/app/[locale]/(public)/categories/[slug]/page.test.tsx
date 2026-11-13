@@ -116,6 +116,14 @@ describe('CategoryDetailPage', () => {
       expect(imgs[9]).toHaveAttribute('loading', 'lazy')
     })
 
+    it('широкая первая карточка наборов — только до десктопа: на xl все четыре в один ряд', async () => {
+      const imgs = await renderCategory('kits', 4)
+      const wrapper = imgs[0].closest('article')!.parentElement!
+      expect(wrapper.className).toContain('sm:col-span-2')
+      expect(wrapper.className).toContain('xl:col-span-1')
+      expect(wrapper.parentElement!.className).toContain('xl:grid-cols-4')
+    })
+
     it('сетка наборов: первая картинка priority, вторая eager, десятая lazy', async () => {
       const imgs = await renderCategory('kits')
       expect(imgs[0]).toHaveAttribute('loading', 'eager')

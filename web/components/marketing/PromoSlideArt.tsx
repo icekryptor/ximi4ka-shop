@@ -261,9 +261,42 @@ function Tape({ left, top, width, height, rotate, text = false }: TapeProps) {
   )
 }
 
+interface KitShotProps {
+  src: string
+  /** исходный размер файла — нужен next/image, на вёрстку не влияет */
+  intrinsic: readonly [number, number]
+  /** левый край и верх в пикселях макета 1440×760; высота — по пропорциям файла */
+  left: number
+  top: number
+  width: number
+  rotate?: number
+  priority?: boolean
+}
+
+/** Фото набора без подложки (вырезано из белого фона, тень сохранена). */
+function KitShot({ src, intrinsic, left, top, width, rotate = 0, priority }: KitShotProps) {
+  return (
+    <Image
+      src={src}
+      alt=""
+      width={intrinsic[0]}
+      height={intrinsic[1]}
+      {...imageLoadingProps(priority ? 'priority' : 'eager')}
+      sizes="(min-width: 1280px) 30vw, 45vw"
+      className="absolute h-auto max-w-none drop-shadow-[0_18px_30px_rgba(0,0,0,0.65)]"
+      style={{
+        left: ux(left),
+        top: u(top),
+        width: u(width),
+        transform: rotate ? `rotate(${rotate}deg)` : undefined,
+      }}
+    />
+  )
+}
+
 /**
- * «Чёрная пятница»: без картинок, всё на CSS — пятно света, огромные «2023»
- * и три сигнальные ленты. Первый слайд не тянет ни одного файла.
+ * «Чёрная пятница»: на переднем плане — четыре набора, за ними фоном огромные
+ * «2023» в оранжевом свечении и сигнальные ленты.
  */
 function BlackFridayArt() {
   return (
@@ -281,25 +314,58 @@ function BlackFridayArt() {
         }}
       />
 
-      <Tape left={760} top={40} width={860} height={54} rotate={-12} />
+      <Tape left={760} top={22} width={860} height={54} rotate={-8} text />
 
-      {/* зачёркнутый нынешний год — над ценами прошлого */}
+      {/* фон: зачёркнутый нынешний год и огромные «2023» за наборами */}
       <div
-        className="absolute font-lj-mazzard font-[700] leading-none text-white/45 line-through decoration-[var(--bf-ember)]"
-        style={{ left: ux(770), top: u(206), fontSize: u(60), textDecorationThickness: u(5) }}
+        className="absolute font-lj-mazzard font-[700] leading-none text-white/40 line-through decoration-[var(--bf-ember)]"
+        style={{ left: ux(1220), top: u(108), fontSize: u(56), textDecorationThickness: u(5) }}
       >
         2026
       </div>
       <div
-        className="bf-fire-text absolute font-lj-mazzard font-[700] leading-none tracking-[-0.04em]"
-        style={{ left: ux(748), top: u(246), fontSize: u(292) }}
+        className="bf-fire-text absolute font-lj-mazzard font-[700] leading-none tracking-[-0.05em] opacity-55"
+        style={{ left: ux(716), top: u(140), fontSize: u(320) }}
       >
         2023
       </div>
 
-      {/* полосатая лента лежит под лентой с надписью — текст не перекрывается */}
-      <Tape left={640} top={640} width={1000} height={44} rotate={9} />
-      <Tape left={600} top={548} width={1000} height={78} rotate={-7} text />
+      <Tape left={600} top={668} width={1000} height={40} rotate={-4} />
+
+      {/* передний план: наборы, от дальних к ближним */}
+      <KitShot
+        src="/img/promo/bf-mini.webp"
+        intrinsic={[616, 592]}
+        left={1170}
+        top={300}
+        width={230}
+        rotate={6}
+      />
+      <KitShot
+        src="/img/promo/bf-oge.webp"
+        intrinsic={[760, 680]}
+        left={1040}
+        top={372}
+        width={330}
+        rotate={-2}
+      />
+      <KitShot
+        src="/img/promo/bf-elektro.webp"
+        intrinsic={[720, 485]}
+        left={640}
+        top={430}
+        width={370}
+        rotate={-7}
+      />
+      <KitShot
+        src="/img/promo/bf-himichka.webp"
+        intrinsic={[720, 519]}
+        left={830}
+        top={392}
+        width={350}
+        rotate={4}
+        priority
+      />
     </>
   )
 }
