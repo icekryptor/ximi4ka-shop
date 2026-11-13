@@ -1,9 +1,12 @@
 import type { CartTotals } from '@/lib/cart'
 import { formatRub } from '@/lib/stockLabel'
+import { CashbackRow } from './CashbackRow'
 
 interface Props {
   totals: CartTotals
   itemCount: number
+  /** Будущий кэшбек: информационная строка после скидки; без пропа — как раньше. */
+  cashback?: { coins: number; signedIn: boolean }
 }
 
 const ROW =
@@ -15,7 +18,7 @@ const ROW =
  * оптовая скидка (наборы, проценты на реагенты, цены партий)). Доставку и
  * «Итого» рисует место вызова — у них разные источники и оформление.
  */
-export function CartSummaryRows({ totals, itemCount }: Props) {
+export function CartSummaryRows({ totals, itemCount, cashback }: Props) {
   return (
     <>
       <div className={`${ROW} opacity-70`}>
@@ -38,6 +41,7 @@ export function CartSummaryRows({ totals, itemCount }: Props) {
           </span>
         </div>
       )}
+      {cashback && <CashbackRow coins={cashback.coins} signedIn={cashback.signedIn} />}
     </>
   )
 }

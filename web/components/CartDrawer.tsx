@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { OPEN_CART_EVENT, backfillCartCategories, useCart } from '@/lib/cart'
-import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
+import { CartSummaryWithCashback } from '@/components/cart/CartSummaryWithCashback'
 import { GiftBanner } from '@/components/cart/GiftBanner'
 import { SHIPPING_RULES } from '@/lib/checkout'
 import { METRIKA_GOALS, reachGoal } from '@/lib/metrika'
@@ -213,7 +213,7 @@ export function CartDrawer() {
 
             <GiftBanner totalRub={totals.totalRub} />
 
-            <CartSummaryRows totals={totals} itemCount={itemCount} />
+            <CartSummaryWithCashback totals={totals} itemCount={itemCount} />
             <div className="flex items-baseline justify-between font-lj-display font-[900] text-xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
               <span>Итого</span>
               <span data-testid="drawer-total">{formatRub(totals.totalRub)}</span>

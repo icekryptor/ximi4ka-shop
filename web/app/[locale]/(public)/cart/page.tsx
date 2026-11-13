@@ -6,7 +6,7 @@ import { useCart } from '@/lib/cart'
 import { QuantityStepperLJ } from '@/components/product/QuantityStepperLJ'
 import { formatRub } from '@/lib/stockLabel'
 import { pluralizeRu } from '@/lib/i18n'
-import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
+import { CartSummaryWithCashback } from '@/components/cart/CartSummaryWithCashback'
 import { GiftBanner } from '@/components/cart/GiftBanner'
 import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
 import { SplitInstallmentLineAuto } from '@/components/payments/SplitInstallmentLineAuto'
@@ -94,7 +94,7 @@ export default function CartPage() {
             </div>
 
             <div className="flex flex-col gap-3 mb-8 max-w-md ml-auto">
-              <CartSummaryRows totals={totals} itemCount={itemCount} />
+              <CartSummaryWithCashback totals={totals} itemCount={itemCount} />
               {/* Цена доставки зависит от города и пункта — её считает чекаут. */}
               <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                 <span>Доставка</span>

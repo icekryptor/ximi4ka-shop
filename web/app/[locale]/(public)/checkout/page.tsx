@@ -15,7 +15,7 @@ import { getMeOrNull } from '@/lib/accountApi'
 import { loadAttribution, safeLocalStorage } from '@/lib/attribution'
 import { useCart } from '@/lib/cart'
 import { giftRemainingRub, saveGiftChoice, useGiftChoice } from '@/lib/gift'
-import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
+import { CartSummaryWithCashback } from '@/components/cart/CartSummaryWithCashback'
 import { ApiError, quoteShipping, submitCheckout, type ShippingQuoteResponse } from '@/lib/api'
 import { formatRub } from '@/lib/stockLabel'
 import { METRIKA_GOALS, reachGoal, rememberPendingPurchase } from '@/lib/metrika'
@@ -615,7 +615,12 @@ export default function CheckoutPage() {
                 />
 
                 <div className="flex flex-col gap-2">
-                  <CartSummaryRows totals={totals} itemCount={itemCount} />
+                  <CartSummaryWithCashback
+                    totals={totals}
+                    itemCount={itemCount}
+                    cashbackBaseRub={totals.totalRub - promoRub}
+                    signedIn={signedIn ?? null}
+                  />
                   {promo && promoRub > 0 && (
                     <div
                       data-testid="summary-promo"
