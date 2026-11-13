@@ -548,6 +548,8 @@ export interface SiteSettings {
   cloudpaymentsEnabled: boolean
   cloudpaymentsMode: 'test' | 'live'
   cloudpaymentsSurchargePercent: number
+  coinsEnabled: boolean
+  coinsCashbackPercent: number
   headerPromoText: string | null
   trustStripItems: TrustStripItem[]
   testimonials: Testimonial[]

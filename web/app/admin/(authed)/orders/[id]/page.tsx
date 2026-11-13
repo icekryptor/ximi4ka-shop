@@ -9,6 +9,7 @@ import { OrderStatusActions } from './OrderStatusActions'
 import { OrderNotifications } from './OrderNotifications'
 import { CdekShipmentPanel } from './CdekShipmentPanel'
 import { OrderAttribution } from './OrderAttribution'
+import { OrderCoinsPanel } from './OrderCoinsPanel'
 import {
   DELIVERY_METHOD_LABELS,
   HISTORY_ACTOR_LABELS,
@@ -243,6 +244,18 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
               </div>
             </dl>
           </section>
+
+          {/* Химикоины */}
+          <OrderCoinsPanel
+            order={{
+              status: order.status,
+              customerId: order.customerId ?? null,
+              cashbackPromisedCoins: order.cashbackPromisedCoins ?? 0,
+              cashbackAccruedCoins: order.cashbackAccruedCoins ?? 0,
+              cashbackShortfallCoins: order.cashbackShortfallCoins ?? 0,
+              deliveryProblem: order.deliveryProblem ?? null,
+            }}
+          />
 
           {/* Источник */}
           <OrderAttribution

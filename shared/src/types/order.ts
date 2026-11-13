@@ -195,6 +195,8 @@ export interface OrderDto {
   paidAt: string | null
   erpSyncedAt: string | null
   /** Кэшбек: обещано, сколько начислено (только в деталях админки), недобор из-за возврата. */
+  /** Покупатель, к которому привязан заказ (null — гостевой); только в деталях админки. */
+  customerId?: string | null
   cashbackPromisedCoins?: number
   cashbackAccruedCoins?: number
   cashbackShortfallCoins?: number
