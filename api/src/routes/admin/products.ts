@@ -60,7 +60,7 @@ function isUniqueViolation(err: unknown): boolean {
 // List
 adminProductsRouter.get('/', async (req, res, next) => {
   try {
-    const { limit, offset, q } = ListQuerySchema.parse(req.query)
+    const { limit, offset, q, categoryId } = ListQuerySchema.parse(req.query)
     const repo = AppDataSource.getRepository(Product)
     const qb = repo
       .createQueryBuilder('p')
@@ -74,6 +74,12 @@ adminProductsRouter.get('/', async (req, res, next) => {
         new Brackets((qq) => {
           qq.where('p.name ILIKE :q', { q: `%${q}%` }).orWhere('p.sku ILIKE :q', { q: `%${q}%` })
         }),
+      )
+    }
+    if (categoryId) {
+      qb.andWhere(
+        'EXISTS (SELECT 1 FROM product_category_links pcl WHERE pcl.product_id = p.id AND pcl.category_id = :categoryId)',
+        { categoryId },
       )
     }
     const [items, total] = await qb.getManyAndCount()
