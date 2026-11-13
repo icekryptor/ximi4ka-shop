@@ -65,6 +65,7 @@ export function AccountLink({
     <Link
       href="/account"
       aria-label={label}
+      title={label}
       className="relative inline-flex shrink-0 items-center text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand)] transition-colors after:absolute after:-inset-3 after:content-['']"
     >
       <svg
@@ -86,13 +87,13 @@ export function AccountLink({
         className="account-user shrink-0 items-center gap-1.5"
         aria-hidden="true"
       >
-        <span className="inline-flex h-5 w-5 shrink-0 items-center lg:h-7 lg:w-7 justify-center rounded-full bg-[var(--color-lj-ink)] font-lj-mono text-[length:var(--text-lj-mono-sm)] leading-none text-[var(--color-lj-cream)]">
+        <span className="inline-flex h-5 w-5 shrink-0 items-center xl:h-7 xl:w-7 justify-center rounded-full bg-[var(--color-lj-ink)] font-lj-mono text-[length:var(--text-lj-mono-sm)] leading-none text-[var(--color-lj-cream)]">
           {loaded?.initial ?? ''}
         </span>
         {showChip ? (
           <span
             data-account-chip=""
-            className="hidden h-7 min-w-[calc(7ch+2.25rem)] items-center justify-center lg:inline-flex gap-1 whitespace-nowrap rounded-full border border-[var(--color-lj-rule)] px-2 font-lj-mono text-[length:var(--text-lj-mono-sm)] leading-none tabular-nums"
+            className="hidden h-7 min-w-[calc(7ch+2.25rem)] items-center justify-center xl:inline-flex gap-1 whitespace-nowrap rounded-full border border-[var(--color-lj-rule)] px-2 font-lj-mono text-[length:var(--text-lj-mono-sm)] leading-none tabular-nums"
           >
             <CoinIcon />
             <span>{loaded ? formatCoins(loaded.balance) : ''}</span>
