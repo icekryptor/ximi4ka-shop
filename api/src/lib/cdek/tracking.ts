@@ -2,7 +2,8 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
 import { Order } from '../../entities/Order.js'
 import { writeOrderStatusEvent } from '../notifications/outbox.js'
-import type { CdekShipmentDeps } from './worker.js'
+import { CdekError } from './client.js'
+import { errCode, type CdekShipmentDeps } from './worker.js'
 
 // Слежение за вручением посылки в СДЭК (химикоины: кэшбек начисляется, когда
 // заказ получен). Опрос GET /v2/orders/{uuid}, тот же тик воркера, что и создание
@@ -143,8 +144,13 @@ async function trackShipment(
     return
   }
   const since = s.submittedAt ?? s.createdAt
-  if (order.status !== 'delivered' && now.getTime() - since.getTime() > CDEK_TRACK_MAX_AGE_MS) {
-    await flagProblem(s, DELIVERY_PROBLEM_TIMEOUT, 'stopped', s.lastCdekStatus)
+  if (now.getTime() - since.getTime() > CDEK_TRACK_MAX_AGE_MS) {
+    if (order.status === 'delivered') {
+      // Админ уже отметил заказ полученным — проблемы нет, просто хватит опрашивать.
+      await repo().update(s.id, { trackingState: 'stopped', nextTrackAt: null })
+    } else {
+      await flagProblem(s, DELIVERY_PROBLEM_TIMEOUT, 'stopped', s.lastCdekStatus)
+    }
     return
   }
   if (!s.cdekUuid) {
@@ -187,11 +193,17 @@ export async function processDueTracking(deps: CdekShipmentDeps, now: Date): Pro
     try {
       await trackShipment(s, deps, now)
     } catch (err) {
-      const code = err instanceof Error ? err.name : 'unknown_error'
-      console.warn(`cdek: слежение за заказом ${s.orderId} — ${code}, повтор позже`)
+      // Только код (и HTTP-статус СДЭК), без текста ошибки: он может содержать
+      // данные покупателя (как и в worker.ts).
+      const http = err instanceof CdekError ? ` (HTTP ${err.status})` : ''
+      console.warn(`cdek: слежение за заказом ${s.orderId} — ${errCode(err)}${http}, повтор позже`)
       await repo()
         .update(s.id, { nextTrackAt: new Date(now.getTime() + CDEK_TRACK_INTERVAL_MS) })
-        .catch(() => undefined)
+        .catch((rescheduleErr: unknown) => {
+          console.warn(
+            `cdek: слежение за заказом ${s.orderId} — не удалось перенести следующий опрос: ${errCode(rescheduleErr)}`,
+          )
+        })
     }
   }
   return due.length

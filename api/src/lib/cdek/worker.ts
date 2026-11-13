@@ -99,7 +99,7 @@ function asDataError(err: unknown): CdekDataError | null {
 
 // Код ошибки в лог сервера — без текста СДЭК: он может содержать эхо данных
 // покупателя (design §9 — полный текст виден только в админке, в last_error).
-function errCode(err: unknown): string {
+export function errCode(err: unknown): string {
   if (err instanceof CdekError) return err.code
   if (err instanceof Error) return err.name
   return 'unknown_error'

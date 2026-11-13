@@ -324,6 +324,47 @@ describe('слежение за вручением', () => {
     },
   )
 
+  it('ошибка СДЭК попадает в лог с кодом и статусом, без текста СДЭК', async () => {
+    const o = await order()
+    await ship(o.id)
+    const cdek = fakeCdek()
+    cdek.get.mockRejectedValue(new CdekError(503, 'http_error', 'ПДн покупателя в тексте'))
+
+    await run(cdek)
+
+    const lines = vi.mocked(console.warn).mock.calls.map((c) => c.join(' '))
+    expect(lines.some((l) => l.includes(o.id) && l.includes('http_error') && l.includes('503'))).toBe(
+      true,
+    )
+    expect(lines.join('\n')).not.toContain('ПДн')
+  })
+
+  it('не удалось перенести следующий опрос — это логируется, тик не падает', async () => {
+    const o = await order()
+    await ship(o.id)
+    const cdek = fakeCdek()
+    cdek.get.mockRejectedValue(new CdekError(500, 'http_error', 'boom'))
+    const repo = AppDataSource.getRepository(CdekShipment)
+    vi.spyOn(repo, 'update').mockRejectedValue(new Error('db down'))
+
+    await expect(run(cdek)).resolves.toBe(1)
+
+    const lines = vi.mocked(console.warn).mock.calls.map((c) => c.join(' '))
+    expect(lines.some((l) => l.includes('не удалось перенести') && l.includes(o.id))).toBe(true)
+  })
+
+  it('заказ уже delivered (отметил админ), а СДЭК финала нет 60 дней → stopped без deliveryProblem', async () => {
+    const o = await order({ status: 'delivered' })
+    const s = await ship(o.id, { submittedAt: at(-CDEK_TRACK_MAX_AGE_MS - 1000) })
+    const cdek = fakeCdek()
+
+    await run(cdek)
+
+    expect(cdek.get).not.toHaveBeenCalled()
+    expect(await orderOf(o.id)).toMatchObject({ status: 'delivered', deliveryProblem: null })
+    expect(await shipmentOf(s.id)).toMatchObject({ trackingState: 'stopped', nextTrackAt: null })
+  })
+
   it("отправления с trackingState='none' и ещё не подошедшие по времени не опрашиваются", async () => {
     const a = await order()
     const b = await order()
