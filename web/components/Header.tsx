@@ -45,6 +45,7 @@ export function Header({ headerPromoText = null, coinsEnabled = false }: HeaderP
   const pathnameRaw = usePathname()
   const { itemCount } = useCart()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [coinBalance, setCoinBalance] = useState<number | null>(null)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
   const pathname = pathnameRaw?.replace(/^\/(ru|en)(?=\/|$)/, '') || '/'
@@ -169,7 +170,7 @@ export function Header({ headerPromoText = null, coinsEnabled = false }: HeaderP
               </svg>
             </button>
 
-            <AccountLink coinsEnabled={coinsEnabled} />
+            <AccountLink coinsEnabled={coinsEnabled} onBalanceChange={setCoinBalance} />
 
             {/* Кнопка корзины видна ВСЕГДА (и на мобильном) и открывает
                 CartDrawer мгновенно — навигация на /cart только из drawer. */}
@@ -206,6 +207,7 @@ export function Header({ headerPromoText = null, coinsEnabled = false }: HeaderP
         pathname={pathname}
         navItems={NAV}
         cartCount={itemCount}
+        coinBalance={coinBalance !== null && (coinsEnabled || coinBalance > 0) ? coinBalance : null}
       />
     </>
   )

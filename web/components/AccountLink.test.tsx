@@ -90,4 +90,34 @@ describe('<AccountLink>', () => {
     render(<AccountLink coinsEnabled />)
     await waitFor(() => expect(screen.getByText('B')).toBeInTheDocument())
   })
+
+  it('узкий экран: в слоте только кружок 20px, чип скрыт до lg, слот не сжимается', () => {
+    reset(true)
+    getMeOrNull.mockResolvedValue(profile())
+    render(<AccountLink coinsEnabled />)
+    const link = screen.getByRole('link')
+    expect(link.className).toMatch(/(^|\s)shrink-0(\s|$)/)
+    const avatar = document.querySelector('[data-account-user] > span') as HTMLElement
+    expect(avatar.className).toMatch(/(^|\s)h-5(\s|$)/)
+    expect(avatar.className).toMatch(/(^|\s)w-5(\s|$)/)
+    const chip = document.querySelector('[data-account-chip]') as HTMLElement
+    expect(chip.className).toMatch(/(^|\s)hidden(\s|$)/)
+    expect(chip.className).toMatch(/(^|\s)lg:inline-flex(\s|$)/)
+    // ширина резервируется по содержимому: 7 знаков «123 456» + обвязка
+    expect(chip.className).toContain('min-w-[calc(7ch+2.25rem)]')
+    expect(chip.className).toContain('tabular-nums')
+  })
+
+  it('сообщает баланс наверх: число для вошедшего, null для протухшей сессии', async () => {
+    reset(true)
+    const cb = vi.fn()
+    getMeOrNull.mockResolvedValue(profile({ coinBalance: 190 }))
+    const { unmount } = render(<AccountLink coinsEnabled onBalanceChange={cb} />)
+    await waitFor(() => expect(cb).toHaveBeenCalledWith(190))
+    unmount()
+    getMeOrNull.mockResolvedValue(null)
+    const cb2 = vi.fn()
+    render(<AccountLink coinsEnabled onBalanceChange={cb2} />)
+    await waitFor(() => expect(cb2).toHaveBeenCalledWith(null))
+  })
 })

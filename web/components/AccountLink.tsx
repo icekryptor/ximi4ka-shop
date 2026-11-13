@@ -20,7 +20,14 @@ interface Loaded {
   balance: number
 }
 
-export function AccountLink({ coinsEnabled }: { coinsEnabled: boolean }) {
+export function AccountLink({
+  coinsEnabled,
+  onBalanceChange,
+}: {
+  coinsEnabled: boolean
+  /** Баланс для строки в мобильном меню; null — гость или сессия протухла. */
+  onBalanceChange?: (balance: number | null) => void
+}) {
   const pathname = usePathname()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const loadedRef = useRef(false)
@@ -40,10 +47,12 @@ export function AccountLink({ coinsEnabled }: { coinsEnabled: boolean }) {
         : null
       loadedRef.current = next !== null
       setLoaded(next)
+      onBalanceChange?.(next ? next.balance : null)
     })()
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname])
 
   const showChip = coinsEnabled || (loaded?.balance ?? 0) > 0
@@ -56,7 +65,7 @@ export function AccountLink({ coinsEnabled }: { coinsEnabled: boolean }) {
     <Link
       href="/account"
       aria-label={label}
-      className="relative inline-flex items-center text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand)] transition-colors after:absolute after:-inset-3 after:content-['']"
+      className="relative inline-flex shrink-0 items-center text-[var(--color-lj-ink)] hover:text-[var(--color-lj-brand)] transition-colors after:absolute after:-inset-3 after:content-['']"
     >
       <svg
         data-account-guest=""
@@ -72,14 +81,18 @@ export function AccountLink({ coinsEnabled }: { coinsEnabled: boolean }) {
         <circle cx="8" cy="5.5" r="3" />
         <path d="M2.5 14c.8-2.6 3-4 5.5-4s4.7 1.4 5.5 4" strokeLinecap="round" />
       </svg>
-      <span data-account-user="" className="account-user items-center gap-1.5" aria-hidden="true">
-        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-lj-ink)] font-lj-mono text-[length:var(--text-lj-mono-sm)] leading-none text-[var(--color-lj-cream)]">
+      <span
+        data-account-user=""
+        className="account-user shrink-0 items-center gap-1.5"
+        aria-hidden="true"
+      >
+        <span className="inline-flex h-5 w-5 shrink-0 items-center lg:h-7 lg:w-7 justify-center rounded-full bg-[var(--color-lj-ink)] font-lj-mono text-[length:var(--text-lj-mono-sm)] leading-none text-[var(--color-lj-cream)]">
           {loaded?.initial ?? ''}
         </span>
         {showChip ? (
           <span
             data-account-chip=""
-            className="inline-flex h-7 min-w-[4.75rem] items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[var(--color-lj-rule)] px-2 font-lj-mono text-[length:var(--text-lj-mono-sm)] leading-none tabular-nums"
+            className="hidden h-7 min-w-[calc(7ch+2.25rem)] items-center justify-center lg:inline-flex gap-1 whitespace-nowrap rounded-full border border-[var(--color-lj-rule)] px-2 font-lj-mono text-[length:var(--text-lj-mono-sm)] leading-none tabular-nums"
           >
             <CoinIcon />
             <span>{loaded ? formatCoins(loaded.balance) : ''}</span>
