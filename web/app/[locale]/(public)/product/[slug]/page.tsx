@@ -40,6 +40,7 @@ import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
 import { ProductViewTracker } from './_components/ProductViewTracker'
 import { SplitWidget } from '@/components/payments/SplitWidget'
 import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
+import { BlackFridayChip } from '@/components/marketing/BlackFridayChip'
 import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
 import { densityForSlug } from '@/lib/catalogApi'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
@@ -296,7 +297,10 @@ export default async function ProductPage({ params }: Props) {
           <div className="flex flex-col gap-10 min-w-0">
             <div className="flex flex-col gap-5">
               <div className="flex flex-col items-start gap-5">
-                <StockChip status={product.stockStatus} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <StockChip status={product.stockStatus} />
+                  <BlackFridayChip slug={product.slug} />
+                </div>
 
                 <h1 className="font-lj-mazzard font-light italic text-[clamp(2rem,5vw,3rem)] leading-[1.02] tracking-[-0.04em] text-[var(--color-lj-ink)]">
                   <span className="text-[var(--color-lj-brand)]">{firstWord}</span>
