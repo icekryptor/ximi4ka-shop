@@ -202,7 +202,7 @@ async function CustomerDetail({ params }: { params: Promise<{ id: string }> }) {
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">{formatRub(o.totalRub)}</td>
                       <td className="px-4 py-3 text-brand-text-secondary">
-                        {customerOrderCashback(o)}
+                        {customerOrderCashback(o, transactions)}
                       </td>
                     </tr>
                   ))

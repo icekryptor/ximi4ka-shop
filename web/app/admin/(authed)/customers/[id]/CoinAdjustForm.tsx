@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { adminAdjustCoins, ApiError } from '@/lib/adminApi'
 import { formatCoins } from '@/lib/coins'
@@ -15,6 +15,8 @@ type Mode = 'credit' | 'debit'
 // после УСПЕШНОЙ отправки: повтор после сетевой ошибки не удвоит правку.
 export function CoinAdjustForm({ customerId }: { customerId: string }) {
   const router = useRouter()
+  const amountId = useId()
+  const commentId = useId()
   const [mode, setMode] = useState<Mode>('credit')
   const [amount, setAmount] = useState('')
   const [comment, setComment] = useState('')
@@ -81,6 +83,7 @@ export function CoinAdjustForm({ customerId }: { customerId: string }) {
               type="radio"
               name="coin-mode"
               value={m}
+              aria-label={m === 'credit' ? 'Начислить' : 'Списать'}
               checked={mode === m}
               onChange={() => setMode(m)}
               className="sr-only"
@@ -90,9 +93,12 @@ export function CoinAdjustForm({ customerId }: { customerId: string }) {
         ))}
       </div>
 
-      <label className="block text-sm text-brand-text-secondary">
-        Сумма, химикоинов
+      <div>
+        <label htmlFor={amountId} className="block text-sm text-brand-text-secondary">
+          Сумма, химикоинов
+        </label>
         <input
+          id={amountId}
           type="number"
           min={1}
           max={MAX_AMOUNT}
@@ -103,11 +109,14 @@ export function CoinAdjustForm({ customerId }: { customerId: string }) {
           onChange={(e) => setAmount(e.target.value)}
           className="mt-1 block w-40 rounded-xl border border-brand-border px-3 py-2 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand/40"
         />
-      </label>
+      </div>
 
-      <label className="block text-sm text-brand-text-secondary">
-        Комментарий (обязательно)
+      <div>
+        <label htmlFor={commentId} className="block text-sm text-brand-text-secondary">
+          Комментарий (обязательно)
+        </label>
         <textarea
+          id={commentId}
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           rows={2}
@@ -115,7 +124,7 @@ export function CoinAdjustForm({ customerId }: { customerId: string }) {
           placeholder="Например: компенсация за задержку заказа"
           className="mt-1 w-full rounded-xl border border-brand-border px-3 py-2 text-sm text-brand-text focus:outline-none focus:ring-2 focus:ring-brand/40"
         />
-      </label>
+      </div>
 
       {error && (
         <p role="alert" className="text-sm text-red-600">

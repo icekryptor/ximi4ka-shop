@@ -4,7 +4,7 @@ import type { AdminCustomersPage } from '@ximi4ka-shop/shared'
 import { AdminOnly } from '@/components/admin/AdminOnly'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import { formatCoins } from '@/lib/coins'
-import { CUSTOMERS_PAGE_SIZE, customersHref } from './customerUi'
+import { CUSTOMERS_PAGE_SIZE, customersHref, firstParam } from './customerUi'
 
 async function fetchCustomers(q: string, page: number): Promise<AdminCustomersPage> {
   const store = await cookies()
@@ -23,8 +23,8 @@ async function fetchCustomers(q: string, page: number): Promise<AdminCustomersPa
 }
 
 interface SearchParams {
-  q?: string
-  page?: string
+  q?: string | string[]
+  page?: string | string[]
 }
 
 // Покупатели (почта, Telegram, баланс) — только admin (см. orders/page.tsx).
@@ -38,8 +38,8 @@ export default async function AdminCustomersPage(props: Parameters<typeof Custom
 
 async function CustomersContent({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   const params = (await searchParams) ?? {}
-  const q = (params.q ?? '').trim().slice(0, 100)
-  const parsed = Math.trunc(Number(params.page ?? 1))
+  const q = (firstParam(params.q) ?? '').trim().slice(0, 100)
+  const parsed = Math.trunc(Number(firstParam(params.page) ?? 1))
   const page = Number.isFinite(parsed) && parsed >= 1 ? Math.min(parsed, 100000) : 1
 
   const { items, total } = await fetchCustomers(q, page)
