@@ -158,16 +158,31 @@ adminCustomersRouter.post('/:id/coins', async (req, res, next) => {
     if (!exists) throw notFound('customer_not_found', 'Покупатель не найден')
 
     try {
-      const result = await AppDataSource.transaction((em) =>
-        applyCoinTransaction(em, {
+      const key = `admin_adjust:${requestId}`
+      const result = await AppDataSource.transaction(async (em) => {
+        const r = await applyCoinTransaction(em, {
           customerId: id.data,
           amount,
           kind: 'admin_adjust',
-          idempotencyKey: `admin_adjust:${requestId}`,
+          idempotencyKey: key,
           comment,
           adminUserId: req.adminUser!.id,
-        }),
-      )
+        })
+        if (!r.applied) {
+          // Ключ уже занят: это честный повтор только если та же правка того же покупателя.
+          const rows: { customer_id: string; amount: number }[] = await em.query(
+            'SELECT customer_id, amount FROM coin_transactions WHERE idempotency_key = $1',
+            [key],
+          )
+          if (rows[0]?.customer_id !== id.data || rows[0]?.amount !== amount) {
+            throw conflict(
+              'request_id_conflict',
+              'requestId уже использован для другой правки баланса',
+            )
+          }
+        }
+        return r
+      })
       res.json({ data: { balance: result.balance } })
     } catch (err) {
       if (err instanceof InsufficientCoinsError) {

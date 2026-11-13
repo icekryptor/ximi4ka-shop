@@ -263,6 +263,30 @@ describe('админка: покупатели и химикоины', () => {
       expect((await repo().findOneByOrFail({ id: c.id })).coinBalance).toBe(500)
     })
 
+    it('тот же requestId на другого покупателя — 409 request_id_conflict, Y не тронут', async () => {
+      const x = await mk({ email: 'x@y.ru' })
+      const y = await mk({ email: 'y@y.ru' })
+      const requestId = randomUUID()
+      expect((await adjust(x.id, { amount: 500, comment: 'бонус', requestId })).status).toBe(200)
+      const res = await adjust(y.id, { amount: 500, comment: 'бонус', requestId })
+      expect(res.status).toBe(409)
+      expect(res.body.error.code).toBe('request_id_conflict')
+      expect((await repo().findOneByOrFail({ id: y.id })).coinBalance).toBe(0)
+      expect(await adjustRows(y.id)).toHaveLength(0)
+      expect(await adjustRows(x.id)).toHaveLength(1)
+    })
+
+    it('тот же requestId и покупатель, другая сумма — 409, баланс не меняется', async () => {
+      const c = await mk({ email: 'a@y.ru' })
+      const requestId = randomUUID()
+      await adjust(c.id, { amount: 500, comment: 'бонус', requestId })
+      const res = await adjust(c.id, { amount: 700, comment: 'бонус', requestId })
+      expect(res.status).toBe(409)
+      expect(res.body.error.code).toBe('request_id_conflict')
+      expect((await repo().findOneByOrFail({ id: c.id })).coinBalance).toBe(500)
+      expect(await adjustRows(c.id)).toHaveLength(1)
+    })
+
     it('баланс 100, −150 → 409 insufficient_coins, баланс 100, строк admin_adjust 0', async () => {
       const c = await mk({ email: 'a@y.ru' })
       await apply(c.id, 100, 'order_cashback:seed', undefined, 'order_cashback')
