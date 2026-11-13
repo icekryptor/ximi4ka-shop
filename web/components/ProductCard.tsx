@@ -8,6 +8,7 @@ import { CompactProductCard } from './catalog/CompactProductCard'
 import { imageLoadingProps, type ImageLoading } from '@/lib/imageLoading'
 import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
 import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
+import { BlackFridayChip } from '@/components/marketing/BlackFridayChip'
 
 interface Stats {
   reagents: number
@@ -123,6 +124,7 @@ export function ProductCard({
                 className="absolute inset-0 object-cover opacity-0 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:scale-[1.04]"
               />
             )}
+            <BlackFridayChip slug={product.slug} className="absolute left-3.5 top-3.5 z-10" />
             {hoverFormula && (
               <div className="absolute bottom-3.5 left-3.5 z-10 font-lj-mono text-[length:var(--text-lj-mono-xs)] tracking-[0.04em] text-[var(--color-lj-ink)] bg-[var(--color-lj-cream)] px-2.5 py-1.5 border border-[var(--color-lj-ink)] opacity-0 translate-y-2 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:translate-y-0">
                 {hoverFormula}
