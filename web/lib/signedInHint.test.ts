@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { SIGNED_IN_SCRIPT, hasSignedInCookie, setSignedInAttr } from './signedInHint'
+import {
+  SIGNED_IN_SCRIPT,
+  expireSignedInCookie,
+  hasSignedInCookie,
+  setSignedInAttr,
+} from './signedInHint'
 
 function clearCookies() {
   for (const c of document.cookie.split(';')) {
@@ -28,6 +33,13 @@ describe('signedInHint', () => {
     expect(document.documentElement.dataset.signedIn).toBe('1')
     setSignedInAttr(false)
     expect(document.documentElement.dataset.signedIn).toBeUndefined()
+  })
+
+  it('expireSignedInCookie снимает cookie', () => {
+    document.cookie = 'ximi4ka_customer_csrf=abc; path=/'
+    expect(hasSignedInCookie()).toBe(true)
+    expireSignedInCookie()
+    expect(hasSignedInCookie()).toBe(false)
   })
 
   it('инлайн-скрипт без cookie ничего не ставит', () => {

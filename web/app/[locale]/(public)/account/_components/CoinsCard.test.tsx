@@ -88,6 +88,19 @@ describe('CoinsCard', () => {
     expect(await screen.findByText('Корректировка')).toBeInTheDocument()
   })
 
+  it('ссылка «Правила программы» есть при включённой программе и скрыта при выключенной', async () => {
+    getCoins.mockResolvedValue({ balance: 100, pending: 0, transactions: [] })
+    render(<CoinsCard programEnabled />)
+    expect(await screen.findByRole('link', { name: 'Правила программы' })).toHaveAttribute(
+      'href',
+      '/himikoiny',
+    )
+    cleanup()
+    render(<CoinsCard programEnabled={false} />)
+    expect(await screen.findByTestId('coins-balance')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Правила программы' })).toBeNull()
+  })
+
   it('ошибка — короткое сообщение и повтор', async () => {
     getCoins.mockRejectedValueOnce(new Error('boom'))
     render(<CoinsCard programEnabled />)

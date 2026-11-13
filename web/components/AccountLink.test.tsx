@@ -1,11 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 
-const getMeOrNull = vi.fn()
-vi.mock('@/lib/accountApi', () => ({ getMeOrNull: () => getMeOrNull() }))
-vi.mock('next/navigation', () => ({ usePathname: () => '/' }))
+const getMeSession = vi.fn()
+vi.mock('@/lib/accountApi', () => ({ getMeSession: () => getMeSession() }))
+let pathname = '/'
+vi.mock('next/navigation', () => ({ usePathname: () => pathname }))
 
 import { AccountLink } from './AccountLink'
+import { hasSignedInCookie } from '@/lib/signedInHint'
 
 function reset(signedIn: boolean) {
   for (const c of document.cookie.split(';')) {
@@ -20,14 +22,18 @@ function reset(signedIn: boolean) {
 }
 
 const profile = (over: object = {}) => ({ name: 'рената', email: null, coinBalance: 190, ...over })
+const ok = (over: object = {}) => ({ status: 'ok', me: profile(over) })
 
 describe('<AccountLink>', () => {
-  beforeEach(() => getMeOrNull.mockReset())
+  beforeEach(() => {
+    getMeSession.mockReset()
+    pathname = '/'
+  })
 
   it('гость: человечек, запросов нет', () => {
     reset(false)
     render(<AccountLink coinsEnabled />)
-    expect(getMeOrNull).not.toHaveBeenCalled()
+    expect(getMeSession).not.toHaveBeenCalled()
     expect(screen.getByRole('link', { name: 'Личный кабинет' })).toHaveAttribute('href', '/account')
     expect(document.querySelector('[data-account-guest]')).not.toBeNull()
     expect(document.documentElement.dataset.signedIn).toBeUndefined()
@@ -35,7 +41,7 @@ describe('<AccountLink>', () => {
 
   it('есть cookie: плейсхолдер чипа сразу в разметке, затем буква и баланс', async () => {
     reset(true)
-    getMeOrNull.mockResolvedValue(profile({ coinBalance: 12345 }))
+    getMeSession.mockResolvedValue(ok({ coinBalance: 12345 }))
     render(<AccountLink coinsEnabled />)
     expect(document.querySelector('[data-account-chip]')).not.toBeNull()
     await waitFor(() => expect(screen.getByText('12 345')).toBeInTheDocument())
@@ -48,7 +54,7 @@ describe('<AccountLink>', () => {
 
   it('форма слова в aria-label', async () => {
     reset(true)
-    getMeOrNull.mockResolvedValue(profile({ coinBalance: 21 }))
+    getMeSession.mockResolvedValue(ok({ coinBalance: 21 }))
     render(<AccountLink coinsEnabled />)
     await waitFor(() =>
       expect(screen.getByRole('link')).toHaveAttribute(
@@ -58,42 +64,76 @@ describe('<AccountLink>', () => {
     )
   })
 
-  it('протухшая сессия: атрибут снимается, остаётся человечек', async () => {
+  it('401: cookie снимается, атрибут снимается, на следующем маршруте запроса нет', async () => {
     reset(true)
-    getMeOrNull.mockResolvedValue(null)
-    render(<AccountLink coinsEnabled />)
+    getMeSession.mockResolvedValue({ status: 'unauthorized' })
+    const { rerender } = render(<AccountLink coinsEnabled />)
     await waitFor(() => expect(document.documentElement.dataset.signedIn).toBeUndefined())
+    expect(hasSignedInCookie()).toBe(false)
     expect(screen.getByRole('link', { name: 'Личный кабинет' })).toBeInTheDocument()
+    pathname = '/catalog'
+    rerender(<AccountLink coinsEnabled />)
+    expect(getMeSession).toHaveBeenCalledTimes(1)
   })
 
-  it('программа выключена и баланс 0: чипа нет', async () => {
+  it('500: cookie остаётся, запрос один, на следующем маршруте не повторяется', async () => {
     reset(true)
-    getMeOrNull.mockResolvedValue(profile({ coinBalance: 0 }))
-    render(<AccountLink coinsEnabled={false} />)
-    expect(document.querySelector('[data-account-chip]')).toBeNull()
+    getMeSession.mockResolvedValue({ status: 'error' })
+    const { rerender } = render(<AccountLink coinsEnabled />)
+    await waitFor(() => expect(getMeSession).toHaveBeenCalledTimes(1))
+    await Promise.resolve()
+    expect(hasSignedInCookie()).toBe(true)
+    pathname = '/catalog'
+    rerender(<AccountLink coinsEnabled />)
+    pathname = '/about'
+    rerender(<AccountLink coinsEnabled />)
+    expect(getMeSession).toHaveBeenCalledTimes(1)
+  })
+
+  it('после ошибки новая cookie (повторный вход) снова проверяется', async () => {
+    reset(true)
+    getMeSession.mockResolvedValue({ status: 'error' })
+    const { rerender } = render(<AccountLink coinsEnabled />)
+    await waitFor(() => expect(getMeSession).toHaveBeenCalledTimes(1))
+    document.cookie = 'ximi4ka_customer_csrf=new; path=/'
+    getMeSession.mockResolvedValue(ok())
+    pathname = '/catalog'
+    rerender(<AccountLink coinsEnabled />)
+    await waitFor(() => expect(getMeSession).toHaveBeenCalledTimes(2))
+  })
+
+  it('программа включена, баланс 0: чип есть', async () => {
+    reset(true)
+    getMeSession.mockResolvedValue(ok({ coinBalance: 0 }))
+    render(<AccountLink coinsEnabled />)
     await waitFor(() => expect(screen.getByText('Р')).toBeInTheDocument())
-    expect(document.querySelector('[data-account-chip]')).toBeNull()
-    expect(screen.getByRole('link')).toHaveAttribute('aria-label', 'Личный кабинет')
-  })
-
-  it('программа выключена, но баланс есть: чип появляется', async () => {
-    reset(true)
-    getMeOrNull.mockResolvedValue(profile({ coinBalance: 50 }))
-    render(<AccountLink coinsEnabled={false} />)
-    await waitFor(() => expect(screen.getByText('50')).toBeInTheDocument())
     expect(document.querySelector('[data-account-chip]')).not.toBeNull()
   })
 
-  it('ошибка сети (null) без cookie не вызывается; с cookie профиль без имени берёт почту', async () => {
+  it('программа выключена: человечек, без аватара и чипа, /me не запрашивается, даже с cookie', async () => {
     reset(true)
-    getMeOrNull.mockResolvedValue(profile({ name: null, email: 'buyer@test.local' }))
+    getMeSession.mockResolvedValue(ok({ coinBalance: 50 }))
+    const cb = vi.fn()
+    render(<AccountLink coinsEnabled={false} onBalanceChange={cb} />)
+    await Promise.resolve()
+    expect(getMeSession).not.toHaveBeenCalled()
+    expect(document.querySelector('[data-account-guest]')).not.toBeNull()
+    expect(document.querySelector('[data-account-user]')).toBeNull()
+    expect(document.querySelector('[data-account-chip]')).toBeNull()
+    expect(screen.getByRole('link')).toHaveAttribute('aria-label', 'Личный кабинет')
+    expect(hasSignedInCookie()).toBe(true) // чужую cookie не трогаем
+  })
+
+  it('профиль без имени берёт букву почты', async () => {
+    reset(true)
+    getMeSession.mockResolvedValue(ok({ name: null, email: 'buyer@test.local' }))
     render(<AccountLink coinsEnabled />)
     await waitFor(() => expect(screen.getByText('B')).toBeInTheDocument())
   })
 
   it('узкий экран: в слоте только кружок 20px, чип скрыт до xl, слот не сжимается', async () => {
     reset(true)
-    getMeOrNull.mockResolvedValue(profile())
+    getMeSession.mockResolvedValue(ok())
     render(<AccountLink coinsEnabled />)
     const link = screen.getByRole('link')
     await waitFor(() =>
@@ -114,11 +154,12 @@ describe('<AccountLink>', () => {
   it('сообщает баланс наверх: число для вошедшего, null для протухшей сессии', async () => {
     reset(true)
     const cb = vi.fn()
-    getMeOrNull.mockResolvedValue(profile({ coinBalance: 190 }))
+    getMeSession.mockResolvedValue(ok({ coinBalance: 190 }))
     const { unmount } = render(<AccountLink coinsEnabled onBalanceChange={cb} />)
     await waitFor(() => expect(cb).toHaveBeenCalledWith(190))
     unmount()
-    getMeOrNull.mockResolvedValue(null)
+    reset(true)
+    getMeSession.mockResolvedValue({ status: 'unauthorized' })
     const cb2 = vi.fn()
     render(<AccountLink coinsEnabled onBalanceChange={cb2} />)
     await waitFor(() => expect(cb2).toHaveBeenCalledWith(null))

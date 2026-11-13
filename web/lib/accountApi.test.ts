@@ -1,6 +1,6 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { ApiError } from './api'
-import { getMeOrNull, updateMe, verifyEmailLogin } from './accountApi'
+import { getMeOrNull, getMeSession, updateMe, verifyEmailLogin } from './accountApi'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -52,5 +52,29 @@ describe('accountApi', () => {
       vi.fn(async () => Promise.reject(new TypeError('offline'))),
     )
     expect(await getMeOrNull()).toBeNull()
+  })
+
+  it('getMeSession: профиль — ok, 401 — unauthorized, 500 и сеть — error', async () => {
+    const me = { name: 'Р', email: null, coinBalance: 1 }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(200, { data: me })),
+    )
+    expect(await getMeSession()).toEqual({ status: 'ok', me })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(401, { error: { code: 'auth_required' } })),
+    )
+    expect(await getMeSession()).toEqual({ status: 'unauthorized' })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(500, { error: { code: 'internal' } })),
+    )
+    expect(await getMeSession()).toEqual({ status: 'error' })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Promise.reject(new TypeError('offline'))),
+    )
+    expect(await getMeSession()).toEqual({ status: 'error' })
   })
 })

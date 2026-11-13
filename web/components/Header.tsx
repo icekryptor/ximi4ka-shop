@@ -207,7 +207,7 @@ export function Header({ headerPromoText = null, coinsEnabled = false }: HeaderP
         pathname={pathname}
         navItems={NAV}
         cartCount={itemCount}
-        coinBalance={coinBalance !== null && (coinsEnabled || coinBalance > 0) ? coinBalance : null}
+        coinBalance={coinsEnabled ? coinBalance : null}
       />
     </>
   )

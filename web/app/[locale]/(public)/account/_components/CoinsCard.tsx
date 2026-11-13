@@ -106,12 +106,15 @@ export function CoinsCard({ programEnabled }: Props) {
             </p>
           )}
         </div>
-        <Link
-          href="/himikoiny"
-          className="text-sm text-[var(--color-brand)] underline underline-offset-4 hover:text-[var(--color-brand-dark)]"
-        >
-          Правила программы
-        </Link>
+        {/* Страница правил при выключенной программе отдаёт 404 — ссылку не показываем. */}
+        {programEnabled && (
+          <Link
+            href="/himikoiny"
+            className="text-sm text-[var(--color-brand)] underline underline-offset-4 hover:text-[var(--color-brand-dark)]"
+          >
+            Правила программы
+          </Link>
+        )}
       </div>
 
       {data.transactions.length === 0 ? (
