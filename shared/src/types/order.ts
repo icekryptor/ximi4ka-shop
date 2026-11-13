@@ -4,7 +4,14 @@ import type { CdekShipmentDto } from './cdek.js'
 import type { CisCountry, CisDeliveryDestination } from './cis.js'
 import type { PublicOrderMaterial } from './materials.js'
 
-export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
+export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'failed' | 'cancelled'
+
+/** Статусы оплаченного заказа: деньги получены, заказ не отменён. */
+export const PAID_ORDER_STATUSES = ['paid', 'shipped', 'delivered'] as const
+
+export function isPaidOrderStatus(status: OrderStatus): boolean {
+  return (PAID_ORDER_STATUSES as readonly OrderStatus[]).includes(status)
+}
 
 // Payment provider actually wired to the order. `manual` — no online payment:
 // the order stays pending and a manager contacts the customer. `tbank` —

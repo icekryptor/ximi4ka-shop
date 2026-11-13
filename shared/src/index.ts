@@ -22,6 +22,8 @@ export type {
   PublicOrderStatus,
 } from './types/order.js'
 
+export type { CoinTransactionKind, PublicCoins } from './types/coins.js'
+
 export type {
   NotificationChannel,
   OrderEventKey,
