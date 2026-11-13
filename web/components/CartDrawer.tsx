@@ -14,7 +14,7 @@ import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
 import { SplitInstallmentLineAuto } from '@/components/payments/SplitInstallmentLineAuto'
 
 // Порог бесплатной доставки для прогресс-бара. Единый источник — правила
-// доставки СДЭК ПВЗ (3000 ₽), те же, что показывает чекаут.
+// доставки СДЭК ПВЗ (2900 ₽), те же, что показывает чекаут.
 const FREE_SHIPPING_FROM_RUB = SHIPPING_RULES.cdek_pvz.freeFromRub
 
 export function CartDrawer() {
@@ -177,7 +177,7 @@ export function CartDrawer() {
 
         {items.length > 0 ? (
           <div className="border-t border-[var(--color-lj-rule)] px-6 py-5 flex flex-col gap-3">
-            {/* Прогресс до бесплатной доставки (порог СДЭК ПВЗ, 3000 ₽) */}
+            {/* Прогресс до бесплатной доставки (порог СДЭК ПВЗ, 2900 ₽) */}
             <div data-testid="free-shipping-progress" className="flex flex-col gap-2">
               <p className="m-0 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]">
                 {subtotal >= FREE_SHIPPING_FROM_RUB ? (

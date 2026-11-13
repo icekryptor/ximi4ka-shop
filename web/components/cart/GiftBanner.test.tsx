@@ -50,7 +50,7 @@ describe('GiftBanner', () => {
     render(<GiftBanner totalRub={2400} />)
 
     expect(screen.getByTestId('gift-banner')).toHaveTextContent(/подарок/i)
-    expect(screen.getByTestId('gift-banner')).toHaveTextContent(/600\s*₽/)
+    expect(screen.getByTestId('gift-banner')).toHaveTextContent(/500\s*₽/)
     expect(screen.queryByRole('radio')).not.toBeInTheDocument()
     expect(getPublishedProduct).not.toHaveBeenCalled()
   })

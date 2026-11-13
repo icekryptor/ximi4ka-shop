@@ -41,8 +41,8 @@ describe('gift constants mirror the api', () => {
 
 describe('giftRemainingRub', () => {
   it('сколько не хватает до порога', () => {
-    expect(giftRemainingRub(2400)).toBe(600)
-    expect(giftRemainingRub(2999)).toBe(1)
+    expect(giftRemainingRub(2400)).toBe(500)
+    expect(giftRemainingRub(2899)).toBe(1)
   })
 
   it('от порога и выше — 0', () => {
