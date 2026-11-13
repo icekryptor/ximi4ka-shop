@@ -120,6 +120,17 @@ describe('история химикоинов', () => {
     expect(await balanceOf(customerId)).toBe(await sumTransactions(customerId))
   })
 
+  it('save() устаревшей сущности покупателя не затирает баланс', async () => {
+    const repo = AppDataSource.getRepository(Customer)
+    const stale = await repo.findOneByOrFail({ id: customerId })
+    await apply({ amount: 190, idempotencyKey: 'k1' })
+    stale.name = 'Новое имя'
+    await repo.save(stale)
+    expect(await balanceOf(customerId)).toBe(190)
+    expect(await balanceOf(customerId)).toBe(await sumTransactions(customerId))
+    expect((await repo.findOneByOrFail({ id: customerId })).name).toBe('Новое имя')
+  })
+
   it('amount = 0 и нецелый amount отклоняются до обращения к базе', async () => {
     await expect(apply({ amount: 0, idempotencyKey: 'z' })).rejects.toThrow(/amount/)
     await expect(apply({ amount: 1.5, idempotencyKey: 'f' })).rejects.toThrow(/amount/)

@@ -38,7 +38,8 @@ export class Customer {
   lastLoginAt!: Date | null
 
   // Баланс химикоинов — кэш суммы coin_transactions; меняется только через
-  // lib/coins/ledger.ts. CHECK в миграции не даёт уйти в минус.
-  @Column({ type: 'integer', name: 'coin_balance', default: 0 })
+  // lib/coins/ledger.ts (сырой SQL). update: false — save() устаревшей сущности не затрёт
+  // баланс. CHECK в миграции не даёт уйти в минус.
+  @Column({ type: 'integer', name: 'coin_balance', default: 0, update: false })
   coinBalance!: number
 }
