@@ -340,6 +340,31 @@ describe('Admin blog routes', () => {
       expect(res.body.data.title).toBe('Updated')
       expect(res.body.data.rubric).toBe('Новости')
     })
+
+    // Регрессия: в zod 4 `.default()` срабатывает и после `.partial()`, и PATCH
+    // одного поля сбрасывал blocks, noindex и translations к значениям по умолчанию.
+    it('PATCH одного поля не сбрасывает поля со значением по умолчанию', async () => {
+      const blocks = [{ type: 'paragraph', html: '<p>Текст статьи</p>' }]
+      const translations = { en: { title: 'Article', metaTitle: 'Meta EN' } }
+      const created = await request(app)
+        .post('/api/admin/blog')
+        .set(authHeaders(auth))
+        .send({ slug: 'keep', title: 'Orig', blocks, noindex: true, translations })
+      expect(created.status).toBe(201)
+      const id = created.body.data.id
+
+      const res = await request(app)
+        .patch(`/api/admin/blog/${id}`)
+        .set(authHeaders(auth))
+        .send({ title: 'Renamed' })
+      expect(res.status).toBe(200)
+
+      const after = await request(app).get(`/api/admin/blog/${id}`).set(authHeaders(auth))
+      expect(after.body.data.title).toBe('Renamed')
+      expect(after.body.data.blocks).toEqual(blocks)
+      expect(after.body.data.noindex).toBe(true)
+      expect(after.body.data.translations).toEqual(translations)
+    })
     it('задаёт и снимает автора через PATCH', async () => {
       const {
         body: {
