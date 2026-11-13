@@ -40,7 +40,7 @@ describe('<PromoSlider>', () => {
     render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
     // Неактивные слайды в DOM (текст для индексации), но aria-hidden.
     expect(
-      screen.getByRole('heading', { name: 'Реактив в подарок за заказ от 3000 руб' }),
+      screen.getByRole('heading', { name: 'Реактив в подарок за заказ от 2900 руб' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Новый набор: Химичка ОГЭ' })).toBeNull()
     expect(
@@ -51,7 +51,7 @@ describe('<PromoSlider>', () => {
 
   it('shows the gift slide copy and CTA to the catalog', () => {
     render(<PromoSlider slides={SLIDES} autoPlayMs={0} />)
-    expect(screen.getByText(/любой реактив на выбор за заказ от 3000 рублей/)).toBeInTheDocument()
+    expect(screen.getByText(/любой реактив на выбор за заказ от 2900 рублей/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /В каталог/ })).toHaveAttribute('href', '/catalog')
   })
 

@@ -138,7 +138,7 @@ describe('POST /api/checkout: CloudPayments', () => {
     expect(res.status).toBe(201)
     expect(res.body.data.paymentUrl).toBe('https://orders.cloudpayments.ru/d/gASGZ')
     const order = await findOrder(res.body.data.orderNumber)
-    // BY: доставка 700 ₽ до 3000 ₽ товаров; база 2700, надбавка 216.
+    // BY: доставка 700 ₽ до 2900 ₽ товаров; база 2700, надбавка 216.
     expect(order.shippingRub).toBe(700)
     expect(order.paymentSurchargeRub).toBe(216)
     expect(order.totalRub).toBe(2916)

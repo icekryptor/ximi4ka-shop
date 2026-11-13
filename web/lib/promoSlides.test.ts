@@ -10,7 +10,7 @@ describe('buildPromoSlides', () => {
     const slides = buildPromoSlides(OFF_SEASON)
     expect(slides.map((s) => s.id)).toEqual(['gift', 'oge', 'learn'])
     expect(slides.map(slideTitle)).toEqual([
-      'Реактив в подарок за заказ от 3000 руб',
+      'Реактив в подарок за заказ от 2900 руб',
       'Новый набор: Химичка ОГЭ',
       'Наша обучающая платформа',
     ])

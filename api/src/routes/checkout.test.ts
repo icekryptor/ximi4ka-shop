@@ -246,7 +246,7 @@ describe('POST /api/checkout', () => {
     expect(order.status).toBe('pending')
     expect(order.paymentProvider).toBe('manual')
     expect(order.subtotalRub).toBe(2450)
-    // 2450 < 3000 → ПВЗ доставка 350 ₽
+    // 2450 < 2900 → ПВЗ доставка 350 ₽
     expect(order.shippingRub).toBe(350)
     expect(order.totalRub).toBe(2800)
     expect(order.deliveryMethod).toBe('cdek_pvz')
@@ -281,7 +281,7 @@ describe('POST /api/checkout', () => {
     })
   })
 
-  it('gives free ПВЗ shipping from 3000 ₽', async () => {
+  it('gives free ПВЗ shipping from 2900 ₽', async () => {
     const p = await seedProduct({ priceRub: 3000 })
     const res = await request(app)
       .post('/api/checkout')
@@ -376,7 +376,7 @@ describe('POST /api/checkout', () => {
         .send({ ...cisBody([{ productId: p.id, quantity: 1 }]), promoCode: 'RENATA2026' })
       expect(res.status).toBe(201)
       const order = await orderFor(res)
-      expect(order.shippingRub).toBe(0) // Беларусь: бесплатно от 3000 ₽
+      expect(order.shippingRub).toBe(0) // Беларусь: бесплатно от 2900 ₽
       expect(order.totalRub).toBe(3100 - 155)
     })
 
@@ -420,7 +420,7 @@ describe('POST /api/checkout', () => {
       return res
     }
 
-    it('Беларусь: 700 ₽ ниже 3000 ₽, адрес с городом, без калькулятора СДЭК', async () => {
+    it('Беларусь: 700 ₽ ниже 2900 ₽, адрес с городом, без калькулятора СДЭК', async () => {
       const get = noCdek()
       const res = await placeCis(2000)
       expect(res.status).toBe(201)
@@ -439,7 +439,7 @@ describe('POST /api/checkout', () => {
       expect(get).not.toHaveBeenCalled()
     })
 
-    it('Беларусь: бесплатно от 3000 ₽', async () => {
+    it('Беларусь: бесплатно от 2900 ₽', async () => {
       noCdek()
       const res = await placeCis(3000)
       expect(res.status).toBe(201)
@@ -985,7 +985,7 @@ describe('POST /api/checkout', () => {
     expect(res.status).toBe(201)
     expect(get).not.toHaveBeenCalled()
   })
-  describe('подарок: реактив на выбор от 3000 ₽', () => {
+  describe('подарок: реактив на выбор от 2900 ₽', () => {
     const GIFT_SLUGS = ['iodat-kaliya', 'gidroksid-natriya', 'azotnaya-kislota-10']
 
     async function seedGift(overrides: Partial<Product> = {}): Promise<Product> {
@@ -1041,8 +1041,8 @@ describe('POST /api/checkout', () => {
       expect(order!.items.some((i) => i.isGift)).toBe(false)
     })
 
-    it('не даёт подарок, если на товары меньше 3000 ₽', async () => {
-      const kit = await seedProduct({ priceRub: 2999 })
+    it('не даёт подарок, если на товары меньше 2900 ₽', async () => {
+      const kit = await seedProduct({ priceRub: 2899 })
       const gift = await seedGift()
 
       const { res, order } = await placeOrder(gift.id, [kit])

@@ -72,7 +72,7 @@ describe('POST /api/v1/checkout/delivery/options', () => {
     )
   })
 
-  it('от 3000 ₽ за товары до ПВЗ — бесплатно', async () => {
+  it('от 2900 ₽ за товары до ПВЗ — бесплатно', async () => {
     const p = await seedYcpProduct({ priceRub: 3500 })
     setPickupPointsForTests([makePickupEntry('MSK1', 44)])
     stubCdek(async () => ({ total_sum: 412, period_min: 2, period_max: 4 }))

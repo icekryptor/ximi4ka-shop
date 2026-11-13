@@ -43,7 +43,7 @@ describe('<Hero> — промо-слайдер первого экрана', () 
   it('shows the gift promo first, titled with an <h2>', () => {
     render(<Hero {...BASE} />)
     expect(
-      screen.getByRole('heading', { level: 2, name: 'Реактив в подарок за заказ от 3000 руб' }),
+      screen.getByRole('heading', { level: 2, name: 'Реактив в подарок за заказ от 2900 руб' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('group', { name: 'Акции и новости' })).toBeInTheDocument()
   })
