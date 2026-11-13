@@ -107,3 +107,20 @@ describe('OrdersList', () => {
     expect(screen.queryByRole('button', { name: 'Показать ещё' })).toBeNull()
   })
 })
+
+describe('OrdersList: кэшбек', () => {
+  it('в строке заказа — заметка о кэшбеке по статусу', async () => {
+    getOrders.mockResolvedValue({
+      orders: [
+        order(1, { status: 'paid', cashbackPromisedCoins: 190 }),
+        order(2, { status: 'delivered', cashbackPromisedCoins: 190, cashbackAccrued: true }),
+        order(3, { status: 'cancelled', cashbackPromisedCoins: 190, cashbackAccrued: true }),
+      ],
+      nextCursor: null,
+    })
+    render(<OrdersList />)
+    expect(await screen.findByText('+190 химикоинов после получения')).toBeInTheDocument()
+    expect(screen.getByText('Начислено 190 химикоинов')).toBeInTheDocument()
+    expect(screen.getAllByText(/химикоин/)).toHaveLength(2)
+  })
+})

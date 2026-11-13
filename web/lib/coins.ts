@@ -1,4 +1,6 @@
-// Химикоины в витрине: склонение, формат числа, буква аватарки.
+// Химикоины в витрине: склонение, формат числа, буква аватарки, подписи операций и заказов.
+import type { CoinTransactionKind } from '@ximi4ka-shop/shared/types/coins'
+import type { OrderStatus } from '@ximi4ka-shop/shared'
 
 export function coinsWord(n: number): 'химикоин' | 'химикоина' | 'химикоинов' {
   const abs = Math.abs(Math.trunc(n))
@@ -22,4 +24,44 @@ export function avatarInitial(name: string | null, email: string | null): string
   const src = (name ?? '').trim() || (email ?? '').trim()
   const first = Array.from(src)[0]
   return first ? first.toUpperCase() : '?'
+}
+
+/** Подпись операции в истории; без номера заказа часть «№…» опускается. */
+export function coinOperationLabel(kind: CoinTransactionKind, orderNumber: string | null): string {
+  const no = orderNumber ? ` №${orderNumber}` : ''
+  switch (kind) {
+    case 'order_cashback':
+      return `Кэшбек за заказ${no}`
+    case 'order_cashback_revoke':
+      return `Отмена заказа${no}`
+    case 'admin_adjust':
+      return 'Корректировка'
+  }
+}
+
+/** «+190» / «−1 500» (настоящий минус U+2212); ноль без знака. */
+export function formatSignedCoins(n: number): string {
+  if (n > 0) return `+${formatCoins(n)}`
+  if (n < 0) return `\u2212${formatCoins(-n)}`
+  return '0'
+}
+
+/**
+ * Заметка о кэшбеке у заказа в кабинете. Отменённым, неоплаченным и неудавшимся
+ * не показываем ничего: начисление за них отозвано или ещё не обещано.
+ */
+export function orderCashbackNote(order: {
+  status: OrderStatus
+  cashbackPromisedCoins: number
+  cashbackAccrued: boolean
+}): string | null {
+  const n = order.cashbackPromisedCoins
+  const amount = `${formatCoins(n)} ${coinsWord(n)}`
+  if ((order.status === 'paid' || order.status === 'shipped') && n > 0) {
+    return `+${amount} после получения`
+  }
+  if (order.status === 'delivered' && order.cashbackAccrued && n > 0) {
+    return `Начислено ${amount}`
+  }
+  return null
 }

@@ -44,7 +44,7 @@ export function CashbackRow({ coins, signedIn }: Props) {
       <Link
         href="/himikoiny"
         aria-label="Правила программы"
-        className="relative inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-[10px] leading-none no-underline after:absolute after:-inset-1 after:content-['']"
+        className="relative inline-flex h-4 w-4 items-center justify-center rounded-full border border-current text-[10px] leading-none no-underline after:absolute after:-inset-[5px] after:content-['']"
       >
         i
       </Link>
