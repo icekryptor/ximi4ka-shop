@@ -117,7 +117,7 @@ describe('POST /api/v1/checkout', () => {
     expect(events.map((e) => [e.channel, e.eventKey])).toEqual([['sheets', 'created']])
   })
 
-  it('подарок к заказам из Яндекса не добавляется даже от 3000 ₽', async () => {
+  it('подарок к заказам из Яндекса не добавляется даже от 2900 ₽', async () => {
     const kit = await seedYcpProduct({ priceRub: 3500 })
     const res = await request(app)
       .post(URL)

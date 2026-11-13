@@ -460,7 +460,7 @@ export function SettingsForm({ initial }: Props) {
             onChange={(e) => setHeaderPromoText(e.target.value)}
             rows={2}
             className="input"
-            placeholder="Бесплатная доставка от 3000 ₽"
+            placeholder="Бесплатная доставка от 2900 ₽"
           />
         </Field>
 

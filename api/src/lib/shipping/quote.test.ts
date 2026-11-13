@@ -53,7 +53,7 @@ describe('quoteDelivery', () => {
     })
   })
 
-  it('ПВЗ от 3000 ₽ — бесплатно для покупателя, стоимость СДЭК всё равно известна', async () => {
+  it('ПВЗ от 2900 ₽ — бесплатно для покупателя, стоимость СДЭК всё равно известна', async () => {
     const cdek = cdekReturning({ total_sum: 412, period_min: 3, period_max: 5 })
     const quote = await quoteDelivery(
       { destination: pvz, subtotalRub: 3000, packages },

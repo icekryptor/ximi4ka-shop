@@ -107,7 +107,7 @@ const mockGetPoints = vi.fn<(cityCode: number) => Promise<CdekCityPoints>>(
 const mockQuoteShipping = vi.fn(async ({ destination }: { destination?: QuoteDestination }) => {
   const subtotalRub = loadCart().reduce((sum, i) => sum + i.priceRub * i.quantity, 0)
   const pvz = destination?.method === 'cdek_pvz'
-  const free = subtotalRub >= (pvz ? 3000 : 5000)
+  const free = subtotalRub >= (pvz ? 2900 : 5000)
   return {
     subtotalRub,
     packages: [
@@ -406,7 +406,7 @@ describe('/checkout page', () => {
   })
 
   describe('промокод', () => {
-    // 3099 ₽: ПВЗ бесплатно от 3000 ₽; с промокодом 5% будет 2944 ₽, а доставка — по-прежнему бесплатно.
+    // 3099 ₽: ПВЗ бесплатно от 2900 ₽; с промокодом 5% будет 2944 ₽, а доставка — по-прежнему бесплатно.
     const kit: CartItem[] = [{ ...seed[0]!, priceRub: 3099, quantity: 1 }]
 
     function errorResponse(status: number, code: string, message: string) {
@@ -836,7 +836,7 @@ describe('/checkout page', () => {
         mockGetPublicSettings.mockImplementation(async () => settings as never)
       }
 
-      // Корзина 2000 ₽, Беларусь: доставка 700 ₽ (ниже порога 3000 ₽).
+      // Корзина 2000 ₽, Беларусь: доставка 700 ₽ (ниже порога 2900 ₽).
       async function chooseCisBelarus() {
         await chooseCisRegion()
         fillCis('BY', 'Минск')
@@ -1253,7 +1253,7 @@ describe('/checkout page', () => {
     ])
     render(<CheckoutPage />)
     await chooseCity()
-    // 3500 ≥ 3000 → ПВЗ бесплатно
+    // 3500 ≥ 2900 → ПВЗ бесплатно
     expect(screen.getByRole('radio', { name: /пункт выдачи сдэк — бесплатно/i })).toBeChecked()
     expect(screen.getByTestId('summary-shipping')).toHaveTextContent(/бесплатно/i)
     expect(screen.getByTestId('summary-total')).toHaveTextContent('3 500')

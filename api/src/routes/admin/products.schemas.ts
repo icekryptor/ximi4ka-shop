@@ -10,7 +10,11 @@ export const ProductImageInputSchema = z.object({
   alt: z.string().max(255).default(''),
 })
 
-export const CreateProductSchema = z.object({
+// Базовые поля без значений по умолчанию. В zod 4 `.default()` срабатывает
+// и после `.partial()`, поэтому схема PATCH строится отсюда: иначе PATCH одного
+// поля (быстрая правка в таблице админки) сбрасывал описание, переводы,
+// наличие, порядок и noindex к значениям по умолчанию.
+const ProductBaseSchema = z.object({
   slug: z
     .string()
     .min(1)
@@ -19,21 +23,21 @@ export const CreateProductSchema = z.object({
   sku: z.string().max(64).nullable().optional(),
   name: z.string().min(1).max(500),
   shortDescription: z.string().max(2000).nullable().optional(),
-  longDescriptionBlocks: z.array(z.unknown()).default([]),
+  longDescriptionBlocks: z.array(z.unknown()),
   priceRub: z.number().int().nonnegative(),
   compareAtPriceRub: z.number().int().nonnegative().nullable().optional(),
-  stockStatus: z.enum(['in_stock', 'out_of_stock', 'preorder']).default('in_stock'),
-  sortOrder: z.number().int().default(0),
+  stockStatus: z.enum(['in_stock', 'out_of_stock', 'preorder']),
+  sortOrder: z.number().int(),
   metaTitle: z.string().max(255).nullable().optional(),
   metaDescription: z.string().max(2000).nullable().optional(),
   ogImage: z.string().max(500).nullable().optional(),
   canonicalUrl: z.string().max(500).nullable().optional(),
-  noindex: z.boolean().default(false),
+  noindex: z.boolean(),
   // Кнопка «Купить в 1 клик» в Яндексе (YCP). Без поля — колонка не трогается
   // (при создании — default false из базы).
   ycpEnabled: z.boolean().optional(),
   images: z.array(ProductImageInputSchema).max(50).optional(),
-  translations: TranslationsSchema.default({}),
+  translations: TranslationsSchema,
   // Доставка СДЭК — см. api/src/lib/shipping/pack.ts.
   weightG: z.number().int().positive().max(50_000).nullable().optional(),
   shipBoxes: z.array(ShippingBoxSchema).max(10).optional(),
@@ -41,7 +45,15 @@ export const CreateProductSchema = z.object({
   minBox: ShippingBoxSchema.nullable().optional(),
 })
 
-export const UpdateProductSchema = CreateProductSchema.partial()
+export const CreateProductSchema = ProductBaseSchema.extend({
+  longDescriptionBlocks: ProductBaseSchema.shape.longDescriptionBlocks.default([]),
+  stockStatus: ProductBaseSchema.shape.stockStatus.default('in_stock'),
+  sortOrder: ProductBaseSchema.shape.sortOrder.default(0),
+  noindex: ProductBaseSchema.shape.noindex.default(false),
+  translations: ProductBaseSchema.shape.translations.default({}),
+})
+
+export const UpdateProductSchema = ProductBaseSchema.partial()
 
 export const ListQuerySchema = z.object({
   // Admin listing is paginated; feed-style bulk reads use the public
@@ -49,6 +61,9 @@ export const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   offset: z.coerce.number().int().min(0).default(0),
   q: z.string().trim().min(1).max(100).optional(),
+  // Фильтр по категории — точное совпадение, как на витрине
+  // (/api/public/categories/:slug/products), без подкатегорий.
+  categoryId: z.uuid().optional(),
 })
 
 // Public listing accepts a much larger limit because external consumers

@@ -46,8 +46,12 @@ export function ProductsListSearch({ initialQuery }: { initialQuery: string }) {
           type="button"
           onClick={() => {
             setValue('')
+            // Сбрасываем только поиск — выбранная категория остаётся.
+            const next = new URLSearchParams(params?.toString() ?? '')
+            next.delete('q')
+            next.delete('offset')
             startTransition(() => {
-              router.push('/admin/products')
+              router.push(`/admin/products${next.toString() ? `?${next.toString()}` : ''}`)
             })
           }}
           className="px-4 py-2 rounded-full bg-brand-bg-soft text-brand-text"

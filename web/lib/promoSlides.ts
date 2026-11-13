@@ -61,9 +61,9 @@ export function buildPromoSlides(now: Date = new Date()): PromoSlide[] {
     ...(isBlackFridayActive(now) ? [blackFridaySlide()] : []),
     {
       id: 'gift',
-      titleLines: ['Реактив в подарок', 'за заказ от 3000 руб'],
+      titleLines: ['Реактив в подарок', 'за заказ от 2900 руб'],
       leadLines: [
-        'В честь запуска нового сайта мы дарим любой реактив на выбор за заказ от 3000 рублей + скидки на все товары!',
+        'В честь запуска нового сайта мы дарим любой реактив на выбор за заказ от 2900 рублей + скидки на все товары!',
       ],
       cta: { label: 'В каталог', href: '/catalog' },
       visual: 'gift',
