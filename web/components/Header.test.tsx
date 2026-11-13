@@ -276,6 +276,18 @@ describe('Header v3', () => {
     expect(promo).toHaveTextContent('методичка к каждому опыту')
   })
 
+  it('без акции ленты «Чёрной пятницы» нет', () => {
+    render(<Header />)
+    expect(screen.queryByRole('link', { name: /Чёрная пятница/ })).not.toBeInTheDocument()
+  })
+
+  it('в «Чёрную пятницу» над шапкой лента-ссылка в наборы', () => {
+    render(<Header blackFriday />)
+    const strip = screen.getByRole('link', { name: /Чёрная пятница\. Цены 2023 года\./ })
+    expect(strip).toHaveAttribute('href', '/categories/kits')
+    expect(strip).toHaveTextContent('Налетай!')
+  })
+
   it('uses brand-purple for active route (v3)', () => {
     mockPathname.mockReturnValue('/categories')
     const { container } = render(<Header />)

@@ -206,14 +206,124 @@ function LearnArt() {
   )
 }
 
+/** левая координата макета с учётом сдвига `--ox` (узкий экран показывает правую часть) */
+const ux = (n: number) => `calc(var(--u) * (${n} - var(--ox)))`
+
+const TAPE_WORDS = [
+  'Чёрная пятница',
+  'Цены 2023',
+  'Налетай!',
+  'Чёрная пятница',
+  'Цены 2023',
+  'Налетай!',
+]
+
+interface TapeProps {
+  left: number
+  top: number
+  width: number
+  height: number
+  rotate: number
+  /** лента с надписью; без неё — просто полосатая */
+  text?: boolean
+}
+
+/** Сигнальная лента «опасность», натянутая наискосок через баннер. */
+function Tape({ left, top, width, height, rotate, text = false }: TapeProps) {
+  return (
+    <div
+      className={`absolute flex items-center overflow-hidden whitespace-nowrap ${text ? 'bf-tape-text' : 'bf-stripes'}`}
+      style={
+        {
+          left: ux(left),
+          top: u(top),
+          width: u(width),
+          height: u(height),
+          transform: `rotate(${rotate}deg)`,
+          '--bf-stripe': u(height / 4),
+          boxShadow: `0 0 ${u(36)} rgba(255, 150, 0, 0.45)`,
+        } as CSSProperties
+      }
+    >
+      {text
+        ? TAPE_WORDS.map((word, i) => (
+            <span
+              key={i}
+              className="font-lj-mazzard font-[700] uppercase tracking-[0.04em]"
+              style={{ fontSize: u(height * 0.36), paddingInline: u(18) }}
+            >
+              {word}
+              <span style={{ paddingLeft: u(36) }}>⚠</span>
+            </span>
+          ))
+        : null}
+    </div>
+  )
+}
+
+/**
+ * «Чёрная пятница»: без картинок, всё на CSS — пятно света, огромные «2023»
+ * и три сигнальные ленты. Первый слайд не тянет ни одного файла.
+ */
+function BlackFridayArt() {
+  return (
+    <>
+      {/* пятно оранжевого света за цифрами */}
+      <div
+        className="bf-pulse absolute rounded-full"
+        style={{
+          left: ux(560),
+          top: u(-70),
+          width: u(900),
+          height: u(900),
+          background:
+            'radial-gradient(closest-side, rgba(255,170,0,0.5) 0%, rgba(255,90,0,0.26) 42%, rgba(255,60,0,0) 100%)',
+        }}
+      />
+
+      <Tape left={760} top={40} width={860} height={54} rotate={-12} />
+
+      {/* зачёркнутый нынешний год — над ценами прошлого */}
+      <div
+        className="absolute font-lj-mazzard font-[700] leading-none text-white/45 line-through decoration-[var(--bf-ember)]"
+        style={{ left: ux(770), top: u(206), fontSize: u(60), textDecorationThickness: u(5) }}
+      >
+        2026
+      </div>
+      <div
+        className="bf-fire-text absolute font-lj-mazzard font-[700] leading-none tracking-[-0.04em]"
+        style={{ left: ux(748), top: u(246), fontSize: u(292) }}
+      >
+        2023
+      </div>
+
+      {/* полосатая лента лежит под лентой с надписью — текст не перекрывается */}
+      <Tape left={640} top={640} width={1000} height={44} rotate={9} />
+      <Tape left={600} top={548} width={1000} height={78} rotate={-7} text />
+    </>
+  )
+}
+
 /** Иллюстрации баннера — чисто декоративные (aria-hidden), как фон в макете. */
 export function PromoSlideArt({ visual }: { visual: PromoVisual }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 overflow-hidden [container-type:inline-size]"
+      // «Чёрная пятница» не обрезается по рамке арта: ленты и свечение тянутся
+      // до краёв баннера (его скругление обрезает их само).
+      className={`pointer-events-none absolute inset-0 [container-type:inline-size] ${
+        visual === 'blackFriday' ? '' : 'overflow-hidden'
+      }`}
     >
-      {visual === 'gift' ? <GiftArt /> : visual === 'oge' ? <OgeArt /> : <LearnArt />}
+      {visual === 'blackFriday' ? (
+        <BlackFridayArt />
+      ) : visual === 'gift' ? (
+        <GiftArt />
+      ) : visual === 'oge' ? (
+        <OgeArt />
+      ) : (
+        <LearnArt />
+      )}
     </div>
   )
 }
