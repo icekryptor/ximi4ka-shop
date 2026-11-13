@@ -66,7 +66,12 @@ export function AdminShell({ admin, children }: Props) {
 
   return (
     <div className="flex min-h-screen bg-brand-bg-soft">
-      <aside className="w-64 bg-white border-r border-brand-border flex flex-col">
+      {/* Меню закреплено: остаётся на месте при прокрутке длинных списков,
+          а при нехватке высоты окна прокручивается само. */}
+      <aside
+        data-testid="admin-sidebar"
+        className="sticky top-0 h-screen self-start shrink-0 overflow-y-auto w-64 bg-white border-r border-brand-border flex flex-col"
+      >
         <div className="p-6 text-xl font-bold text-brand">Ximi4ka Admin</div>
         <nav aria-label="Админ навигация" className="px-3 flex-1">
           <ul className="flex flex-col gap-1">

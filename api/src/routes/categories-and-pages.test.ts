@@ -75,6 +75,12 @@ describe('Category routes', () => {
       }
     })
 
+    it('принимает limit=200 — так все категории читает админка', async () => {
+      const res = await request(app).get('/api/admin/categories?limit=200').set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      expect(res.body.pagination.limit).toBe(200)
+    })
+
     it('returns productCount per category', async () => {
       const catA = await request(app)
         .post('/api/admin/categories')

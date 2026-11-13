@@ -27,6 +27,18 @@ afterEach(() => {
 const admin = { id: 'u-1', email: 'admin@example.com', role: 'admin' }
 
 describe('AdminShell', () => {
+  it('сайдбар закреплён на высоту экрана и не уезжает при прокрутке', () => {
+    render(
+      <AdminShell admin={admin}>
+        <div>content</div>
+      </AdminShell>,
+    )
+    const aside = screen.getByTestId('admin-sidebar')
+    for (const cls of ['sticky', 'top-0', 'h-screen', 'self-start', 'overflow-y-auto']) {
+      expect(aside.className.split(' ')).toContain(cls)
+    }
+  })
+
   it('renders all 9 sidebar nav items with correct hrefs', () => {
     render(
       <AdminShell admin={admin}>

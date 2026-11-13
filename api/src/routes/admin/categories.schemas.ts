@@ -19,8 +19,10 @@ export const CreateCategorySchema = z.object({
 
 export const UpdateCategorySchema = CreateCategorySchema.partial()
 
+// Админка читает все категории одним запросом (?limit=200 — страницы
+// категорий и фильтр в списке товаров). С потолком 100 такой запрос получал 400.
 export const ListQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).default(20),
+  limit: z.coerce.number().int().min(1).max(500).default(20),
   offset: z.coerce.number().int().min(0).default(0),
 })
 
