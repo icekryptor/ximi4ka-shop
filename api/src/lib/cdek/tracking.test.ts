@@ -333,9 +333,9 @@ describe('слежение за вручением', () => {
     await run(cdek)
 
     const lines = vi.mocked(console.warn).mock.calls.map((c) => c.join(' '))
-    expect(lines.some((l) => l.includes(o.id) && l.includes('http_error') && l.includes('503'))).toBe(
-      true,
-    )
+    expect(
+      lines.some((l) => l.includes(o.id) && l.includes('http_error') && l.includes('503')),
+    ).toBe(true)
     expect(lines.join('\n')).not.toContain('ПДн')
   })
 

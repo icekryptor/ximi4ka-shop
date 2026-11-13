@@ -52,7 +52,9 @@ describe('<OrderStatusActions>', () => {
   })
 
   it('у отправленного с проблемой доставки — ещё и «Отменить заказ»', async () => {
-    render(<OrderStatusActions orderId="o1" status="shipped" deliveryProblem="cdek_not_delivered" />)
+    render(
+      <OrderStatusActions orderId="o1" status="shipped" deliveryProblem="cdek_not_delivered" />,
+    )
     expect(screen.getByRole('button', { name: /отметить полученным/i })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /отменить заказ/i }))
     await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('o1', { status: 'cancelled' }))
