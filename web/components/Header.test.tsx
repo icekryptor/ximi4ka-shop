@@ -284,7 +284,7 @@ describe('Header v3', () => {
   it('в «Чёрную пятницу» над шапкой лента-ссылка в наборы', () => {
     render(<Header blackFriday />)
     const strip = screen.getByRole('link', { name: /Чёрная пятница\. Цены 2023 года\./ })
-    expect(strip).toHaveAttribute('href', '/categories/kits')
+    expect(strip).toHaveAttribute('href', '/sale')
     expect(strip).toHaveTextContent('Налетай!')
   })
 

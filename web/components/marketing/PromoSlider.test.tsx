@@ -287,7 +287,7 @@ describe('<PromoSlider>', () => {
     const heading = screen.getByRole('heading', { name: 'Чёрная пятница. Цены 2023 года.' })
     expect(heading.querySelector('.bf-fire-text')).toHaveTextContent('Цены 2023 года.')
     const cta = screen.getByRole('link', { name: 'Налетай!' })
-    expect(cta).toHaveAttribute('href', '/categories/kits')
+    expect(cta).toHaveAttribute('href', '/sale')
     expect(cta).toHaveClass('bf-cta')
     expect(container.querySelector('.bf-tape-text')).not.toBeNull()
   })

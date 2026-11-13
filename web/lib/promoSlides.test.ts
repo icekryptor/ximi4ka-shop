@@ -43,7 +43,7 @@ describe('buildPromoSlides', () => {
     expect(bf.leadLines).toEqual([
       'Мы ещё такого не делали — с 14.11 по 28.11 цены на наборы 2023 года',
     ])
-    expect(bf.cta).toEqual({ label: 'Налетай!', href: '/categories/kits' })
+    expect(bf.cta).toEqual({ label: 'Налетай!', href: '/sale' })
     expect(bf.theme).toBe('hazard')
   })
 

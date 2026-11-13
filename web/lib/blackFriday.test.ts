@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BLACK_FRIDAY, isBlackFridayActive } from './blackFriday'
+import { BLACK_FRIDAY, isBlackFridayActive, orderSaleCombos } from './blackFriday'
 
 describe('isBlackFridayActive', () => {
   it('выключена до полуночи 13.11 по Москве', () => {
@@ -25,8 +25,8 @@ describe('isBlackFridayActive', () => {
 })
 
 describe('BLACK_FRIDAY', () => {
-  it('ведёт в категорию наборов', () => {
-    expect(BLACK_FRIDAY.href).toBe('/categories/kits')
+  it('ведёт на страницу распродажи', () => {
+    expect(BLACK_FRIDAY.href).toBe('/sale')
   })
 
   it('в ленте — суть акции, даты и призыв', () => {
@@ -36,5 +36,25 @@ describe('BLACK_FRIDAY', () => {
     expect(text).toContain('14.11')
     expect(text).toContain('28.11')
     expect(text).toContain('Налетай!')
+  })
+})
+
+describe('orderSaleCombos', () => {
+  it('склеивает списки без дублей и ставит крупные комбо первыми', () => {
+    const fromCategory = [
+      { slug: 'himichka-i-elektrohimichka' },
+      { slug: 'zapas-vseh-reaktivov' },
+      { slug: 'vse-tri-nabora' },
+      { slug: 'all-4-kits' },
+    ]
+    const extra = [{ slug: 'all-4-kits' }, { slug: 'zapas-reaktivov-1' }, { slug: 'novoe-kombo' }]
+    expect(orderSaleCombos([fromCategory, extra]).map((p) => p.slug)).toEqual([
+      'all-4-kits',
+      'vse-tri-nabora',
+      'himichka-i-elektrohimichka',
+      'zapas-vseh-reaktivov',
+      'zapas-reaktivov-1',
+      'novoe-kombo',
+    ])
   })
 })
