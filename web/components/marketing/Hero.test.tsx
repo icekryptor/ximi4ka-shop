@@ -29,7 +29,7 @@ beforeEach(() => {
 const BASE = {
   title: 'ХИМИЧКА',
   subtitle: 'Наборы для опытов',
-  slides: buildPromoSlides(),
+  slides: buildPromoSlides(new Date('2026-10-01T12:00:00+03:00')),
 }
 
 describe('<Hero> — промо-слайдер первого экрана', () => {

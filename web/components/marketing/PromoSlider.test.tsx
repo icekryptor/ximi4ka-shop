@@ -33,7 +33,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-const SLIDES = buildPromoSlides()
+const SLIDES = buildPromoSlides(new Date('2026-10-01T12:00:00+03:00'))
 
 describe('<PromoSlider>', () => {
   it('renders all three slides, only the first one exposed to assistive tech', () => {
@@ -279,5 +279,16 @@ describe('<PromoSlider>', () => {
     expect(container).toBeEmptyDOMElement()
     rerender(<PromoSlider slides={[SLIDES[0]]} autoPlayMs={0} />)
     expect(screen.queryByRole('button', { name: 'Следующий слайд' })).toBeNull()
+  })
+
+  it('слайд «Чёрной пятницы»: огненный заголовок и жёлтая кнопка в наборы', () => {
+    const slides = buildPromoSlides(new Date('2026-11-20T12:00:00+03:00'))
+    const { container } = render(<PromoSlider slides={slides} autoPlayMs={0} />)
+    const heading = screen.getByRole('heading', { name: 'Чёрная пятница. Цены 2023 года.' })
+    expect(heading.querySelector('.bf-fire-text')).toHaveTextContent('Цены 2023 года.')
+    const cta = screen.getByRole('link', { name: 'Налетай!' })
+    expect(cta).toHaveAttribute('href', '/categories/kits')
+    expect(cta).toHaveClass('bf-cta')
+    expect(container.querySelector('.bf-tape-text')).not.toBeNull()
   })
 })
