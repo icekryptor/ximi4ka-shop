@@ -1,5 +1,6 @@
 import type { OrderStatus } from '@ximi4ka-shop/shared'
 import { formatCoins } from '@/lib/coins'
+import { deliveryProblemLabel } from '../orderUi'
 
 // Состояние кэшбека заказа для карточки админа. Чистая функция: вся логика
 // «что написать» здесь, компонент только рисует.
@@ -19,17 +20,6 @@ export interface OrderCoinsState {
   shortfallWarning: string | null
   guestNote: string | null
   problem: string | null
-}
-
-const DELIVERY_PROBLEM_LABELS: Record<string, string> = {
-  cdek_not_delivered: 'СДЭК: посылка не вручена',
-  cdek_tracking_timeout: 'СДЭК: 60 дней без вручения',
-  cdek_partial_delivery: 'СДЭК: частичное вручение — решите вручную',
-}
-
-export function deliveryProblemLabel(problem: string | null | undefined): string | null {
-  if (!problem) return null
-  return DELIVERY_PROBLEM_LABELS[problem] ?? problem
 }
 
 function headlineFor(o: OrderCoinsInput): string {

@@ -99,6 +99,26 @@ describe('химикоины в кабинете', () => {
       expect(res.body.data.pending).toBe(150)
     })
 
+    it('pending не включает заказ, который СДЭК не вручил (cdek_not_delivered)', async () => {
+      const auth = await login()
+      const c = await customerByEmail('buyer@test.local')
+      await seedOrder({ customerId: c.id, status: 'shipped', cashbackPromisedCoins: 100 })
+      await seedOrder({
+        customerId: c.id,
+        status: 'shipped',
+        cashbackPromisedCoins: 40,
+        deliveryProblem: 'cdek_not_delivered',
+      })
+      await seedOrder({
+        customerId: c.id,
+        status: 'shipped',
+        cashbackPromisedCoins: 5,
+        deliveryProblem: 'cdek_partial_delivery',
+      })
+      const res = await request(app).get('/api/account/coins').set(customerHeaders(auth))
+      expect(res.body.data.pending).toBe(105)
+    })
+
     it('комментарий админской корректировки скрыт, у операции без заказа orderNumber null', async () => {
       const auth = await login()
       const c = await customerByEmail('buyer@test.local')

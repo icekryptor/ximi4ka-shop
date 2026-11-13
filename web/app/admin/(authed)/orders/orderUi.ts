@@ -73,3 +73,15 @@ export const ORDER_SOURCE_LABELS: Record<OrderSource, string> = {
 export function orderSourceBadge(source: OrderSource | undefined): string | null {
   return source === 'ycp' ? ORDER_SOURCE_LABELS.ycp : null
 }
+
+// Проблема с доставкой, найденная слежением за СДЭК (orders.delivery_problem).
+const DELIVERY_PROBLEM_LABELS: Record<string, string> = {
+  cdek_not_delivered: 'СДЭК: посылка не вручена',
+  cdek_tracking_timeout: 'СДЭК: 60 дней без вручения',
+  cdek_partial_delivery: 'СДЭК: частичное вручение — решите вручную',
+}
+
+export function deliveryProblemLabel(problem: string | null | undefined): string | null {
+  if (!problem) return null
+  return DELIVERY_PROBLEM_LABELS[problem] ?? problem
+}

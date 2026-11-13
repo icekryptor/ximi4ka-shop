@@ -14,11 +14,13 @@ export function createAccountCoinsRouter(): Router {
       const customerId = req.customer!.id
       const [balanceRows, pendingRows, txRows] = await Promise.all([
         AppDataSource.query('SELECT coin_balance FROM customers WHERE id = $1', [customerId]),
-        // Ожидаемый кэшбек: оплачен или отправлен, ещё не вручён.
+        // Ожидаемый кэшбек: оплачен или отправлен, ещё не вручён. Посылка, которую
+        // СДЭК не вручил, ожидающей не считается: владелец решает по ней вручную.
         AppDataSource.query(
           `SELECT COALESCE(SUM(cashback_promised_coins), 0)::int AS pending
              FROM orders
-            WHERE customer_id = $1 AND status IN ('paid', 'shipped') AND deleted_at IS NULL`,
+            WHERE customer_id = $1 AND status IN ('paid', 'shipped') AND deleted_at IS NULL
+              AND delivery_problem IS DISTINCT FROM 'cdek_not_delivered'`,
           [customerId],
         ),
         // Комментарий админа внутренний: покупателю вместо него подпись на клиенте.

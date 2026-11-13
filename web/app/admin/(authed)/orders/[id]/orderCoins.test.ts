@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { deliveryProblemLabel, orderCoinsState, type OrderCoinsInput } from './orderCoins'
+import { orderCoinsState, type OrderCoinsInput } from './orderCoins'
+import { deliveryProblemLabel } from '../orderUi'
 
 const base: OrderCoinsInput = {
   status: 'paid',

@@ -6,8 +6,16 @@ import type { OrderStatus } from '@ximi4ka-shop/shared'
 import { adminSetOrderStatus, ApiError } from '@/lib/adminApi'
 
 // Ручные переходы статуса. pending/failed/cancelled — «оплачен» и «отменить»; paid — только «отправлен»;
-// shipped — только «получен»; delivered — только «отменить».
-export function OrderStatusActions({ orderId, status }: { orderId: string; status: OrderStatus }) {
+// shipped — «получен», а при проблеме доставки от СДЭК ещё и «отменить»; delivered — только «отменить».
+export function OrderStatusActions({
+  orderId,
+  status,
+  deliveryProblem,
+}: {
+  orderId: string
+  status: OrderStatus
+  deliveryProblem?: string | null
+}) {
   const router = useRouter()
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState<'paid' | 'cancelled' | 'shipped' | 'delivered' | null>(null)
@@ -61,14 +69,17 @@ export function OrderStatusActions({ orderId, status }: { orderId: string; statu
         {status === 'delivered' ? (
           cancelButton
         ) : status === 'shipped' ? (
-          <button
-            type="button"
-            onClick={() => transition('delivered')}
-            disabled={busy !== null}
-            className="px-4 py-2 rounded-full bg-brand text-white font-semibold hover:bg-brand-dark transition disabled:opacity-50"
-          >
-            {busy === 'delivered' ? 'Сохраняем…' : 'Отметить полученным'}
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => transition('delivered')}
+              disabled={busy !== null}
+              className="px-4 py-2 rounded-full bg-brand text-white font-semibold hover:bg-brand-dark transition disabled:opacity-50"
+            >
+              {busy === 'delivered' ? 'Сохраняем…' : 'Отметить полученным'}
+            </button>
+            {deliveryProblem && cancelButton}
+          </>
         ) : status === 'paid' ? (
           <button
             type="button"

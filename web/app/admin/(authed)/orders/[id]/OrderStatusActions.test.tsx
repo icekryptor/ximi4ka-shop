@@ -50,4 +50,17 @@ describe('<OrderStatusActions>', () => {
     fireEvent.click(screen.getByRole('button', { name: /отменить заказ/i }))
     await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('o1', { status: 'cancelled' }))
   })
+
+  it('у отправленного с проблемой доставки — ещё и «Отменить заказ»', async () => {
+    render(<OrderStatusActions orderId="o1" status="shipped" deliveryProblem="cdek_not_delivered" />)
+    expect(screen.getByRole('button', { name: /отметить полученным/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /отменить заказ/i }))
+    await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('o1', { status: 'cancelled' }))
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('у оплаченного с deliveryProblem отмены нет — только отправленным', () => {
+    render(<OrderStatusActions orderId="o1" status="paid" deliveryProblem="cdek_not_delivered" />)
+    expect(screen.queryByRole('button', { name: /отменить/i })).toBeNull()
+  })
 })

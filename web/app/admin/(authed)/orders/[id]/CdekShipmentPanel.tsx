@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { CdekShipmentDto, CdekShipmentState, OrderStatus } from '@ximi4ka-shop/shared'
-import { isPaidOrderStatus } from '@ximi4ka-shop/shared/types/order'
 import { adminRetryCdekShipment, ApiError } from '@/lib/adminApi'
 import { formatDateTime } from '../orderUi'
 
@@ -43,7 +42,7 @@ export function CdekShipmentPanel({
   // Обработчику всё равно некому отдать запись — кнопка только плодила бы
   // висящие «в очереди» без единого шанса уйти в СДЭК (F1).
   const workerStopped = enabled && !!workerProblem
-  const paidOrShipped = isPaidOrderStatus(orderStatus)
+  const paidOrShipped = orderStatus === 'paid' || orderStatus === 'shipped'
   const canRetry =
     enabled &&
     !workerStopped &&

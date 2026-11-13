@@ -2,7 +2,6 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { IsNull, In, Not } from 'typeorm'
 import type { CdekShipmentDto, MetrikaConversionDto } from '@ximi4ka-shop/shared'
-import { isPaidOrderStatus } from '@ximi4ka-shop/shared/types/order'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { OrderItem } from '../../entities/OrderItem.js'
@@ -182,7 +181,11 @@ adminOrdersRouter.patch('/:id/status', async (req, res, next) => {
       if (order.status === 'paid' && status !== 'shipped') {
         throw conflict('order_already_paid', 'Оплаченный заказ нельзя изменить вручную')
       }
-      if (order.status === 'shipped' && status !== 'delivered') {
+      // Исключение: СДЭК сообщил о проблеме с вручением (не вручена, частично, не
+      // дождались финала) — владелец решает вручную и может отменить заказ.
+      const shippedCancelAllowed =
+        status === 'cancelled' && order.status === 'shipped' && !!order.deliveryProblem
+      if (order.status === 'shipped' && status !== 'delivered' && !shippedCancelAllowed) {
         throw conflict('order_already_shipped', 'Отправленный заказ нельзя изменить вручную')
       }
       // Полученный заказ можно только отменить (возврат); назад в оплачен/отправлен нельзя.
@@ -251,7 +254,8 @@ adminOrdersRouter.post('/:id/cdek/retry', async (req, res, next) => {
         'Обработчик очереди СДЭК не запущен — проверьте настройки сервера',
       )
     }
-    if (!isPaidOrderStatus(order.status)) {
+    // Полученному заказу новая отправка не нужна — только оплаченный или отправленный.
+    if (order.status !== 'paid' && order.status !== 'shipped') {
       throw conflict('order_not_paid', 'Заказ не оплачен')
     }
     if (!isCdekDelivery(order.deliveryMethod)) {
