@@ -7,7 +7,7 @@ import { Product } from '../entities/Product.js'
 import { AdminSession } from '../entities/AdminSession.js'
 import { SiteSettings } from '../entities/SiteSettings.js'
 import { createApp } from '../app.js'
-import { loginAsAdmin } from './testUtils.js'
+import { loginAsAdmin, setCoinsProgram } from './testUtils.js'
 
 const tbankFetchMock = vi.hoisted(() => vi.fn())
 vi.mock('../lib/payments/tbankTransport.js', () => ({ tbankFetch: tbankFetchMock }))
@@ -158,6 +158,21 @@ describe('POST /api/checkout: CloudPayments', () => {
     const order = await findOrder(res.body.data.orderNumber)
     expect(order.paymentSurchargeRub).toBe(0)
     expect(order.totalRub).toBe(2700)
+  })
+
+  it('надбавка CloudPayments и доставка не входят в обещание кэшбека', async () => {
+    await setCoinsProgram(true, 10)
+    try {
+      stubCloud()
+      const p = await seedProduct(2000)
+      const res = await checkout(cisBody(p.id, { paymentMethod: 'cloudpayments' }))
+      const order = await findOrder(res.body.data.orderNumber)
+      expect(order.paymentSurchargeRub).toBe(216)
+      expect(order.shippingRub).toBe(700)
+      expect(order.cashbackPromisedCoins).toBe(200) // 10% от 2000, без 700 и 216
+    } finally {
+      await setCoinsProgram(false)
+    }
   })
 
   it('промокод уменьшает базу надбавки', async () => {

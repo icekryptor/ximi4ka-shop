@@ -51,6 +51,17 @@ export class CdekShipment {
   @Column({ type: 'timestamptz', name: 'submitted_at', nullable: true })
   submittedAt!: Date | null
 
+  // Опрос трека СДЭК после создания заказа (химикоины: кэшбек за доставленное).
+  // Тип состояния уточнится вместе с самим опросом.
+  @Column({ type: 'varchar', length: 16, name: 'tracking_state', default: 'none' })
+  trackingState!: string
+
+  @Column({ type: 'timestamptz', name: 'next_track_at', nullable: true })
+  nextTrackAt!: Date | null
+
+  @Column({ type: 'varchar', length: 64, name: 'last_cdek_status', nullable: true })
+  lastCdekStatus!: string | null
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date
 

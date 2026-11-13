@@ -36,4 +36,9 @@ export class Customer {
 
   @Column({ type: 'timestamptz', name: 'last_login_at', nullable: true })
   lastLoginAt!: Date | null
+
+  // Баланс химикоинов — кэш суммы coin_transactions; меняется только через
+  // lib/coins/ledger.ts. CHECK в миграции не даёт уйти в минус.
+  @Column({ type: 'integer', name: 'coin_balance', default: 0 })
+  coinBalance!: number
 }

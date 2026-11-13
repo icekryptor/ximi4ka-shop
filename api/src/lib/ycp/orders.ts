@@ -4,6 +4,8 @@ import { AppDataSource } from '../../config/dataSource.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
 import { Customer } from '../../entities/Customer.js'
 import { Order } from '../../entities/Order.js'
+import { promisedCashback } from '../coins/cashback.js'
+import { getSettings } from '../settings.js'
 import { OrderItem } from '../../entities/OrderItem.js'
 import { normalizeEmail } from '../account/emailCodes.js'
 import { enqueueOrderEvent, writeOrderStatusEvent } from '../notifications/outbox.js'
@@ -107,6 +109,11 @@ export async function createYcpOrder(
   const subtotalRub = lines.reduce((sum, l) => sum + l.regularPriceRub * l.quantity, 0)
   const goodsRub = ycpGoodsTotal(lines)
   const shippingRub = Math.round(d.price)
+  // Промокодов в заказах из Яндекса нет: обещание — от суммы товаров по ценам Яндекса.
+  const cashbackPromisedCoins = promisedCashback(
+    { subtotalRub, discountRub: subtotalRub - goodsRub, promoDiscountRub: 0 },
+    await getSettings(),
+  )
   // Тем же правилом, что и публичный чекаут: владелец подтверждённого email.
   // По телефону не связываем — телефон не подтверждён.
   const owner = await AppDataSource.getRepository(Customer).findOneBy({
@@ -159,6 +166,7 @@ export async function createYcpOrder(
           discountRub: subtotalRub - goodsRub,
           shippingRub,
           totalRub: goodsRub + shippingRub,
+          cashbackPromisedCoins,
           paymentProvider: 'ycp',
           idempotencyKey: null,
           statusHistory: [],

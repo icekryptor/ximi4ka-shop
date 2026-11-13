@@ -45,6 +45,9 @@ const UpdateSchema = z.object({
     .min(0)
     .max(MAX_PAYMENT_SURCHARGE_PERCENT)
     .optional(),
+  // Химикоины: рубильник и процент кэшбека от суммы товаров, целые 0–50.
+  coinsEnabled: z.boolean().optional(),
+  coinsCashbackPercent: z.number().int().min(0).max(50).optional(),
   // --- Marketing fields (homepage redesign) ---
   // Header promo strip text — null hides the strip in the header. 500 chars
   // is generous; the admin form is a single-line textarea so a paste of

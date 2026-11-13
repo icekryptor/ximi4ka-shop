@@ -107,7 +107,16 @@ export async function seedOrder(overrides: Partial<Order> = {}): Promise<Order> 
 
 export async function resetAccountTables(): Promise<void> {
   await AppDataSource.query(
-    'TRUNCATE customer_sessions, customer_email_codes, telegram_login_requests, sso_auth_codes, customer_aliases, order_items, orders, customers RESTART IDENTITY CASCADE',
+    'TRUNCATE coin_transactions, customer_sessions, customer_email_codes, telegram_login_requests, sso_auth_codes, customer_aliases, order_items, orders, customers RESTART IDENTITY CASCADE',
+  )
+}
+
+// Рубильник и процент кэшбека (singleton-настройки не чистятся между тестами —
+// тест, включивший программу, возвращает выключенное состояние в afterEach).
+export async function setCoinsProgram(enabled: boolean, percent = 10): Promise<void> {
+  await AppDataSource.query(
+    `UPDATE site_settings SET coins_enabled = $1, coins_cashback_percent = $2 WHERE id = 'default'`,
+    [enabled, percent],
   )
 }
 

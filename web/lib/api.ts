@@ -17,6 +17,7 @@ import type {
   PublicCloudPayments,
 } from '@ximi4ka-shop/shared'
 import type { DeliveryDates } from '@ximi4ka-shop/shared/types/deliveryDates'
+import type { PublicCoins } from '@ximi4ka-shop/shared/types/coins'
 
 // Two audiences, two origins. The browser must use the public origin
 // (NEXT_PUBLIC_API_URL, inlined at build time). Server-side rendering — build,
@@ -340,6 +341,8 @@ export interface PublicSettings {
   yandexPay?: PublicYandexPay | null
   /** CloudPayments для блока ЕАЭС: null — недоступен. */
   cloudPayments?: PublicCloudPayments | null
+  /** Химикоины: null — программа выключена. */
+  coins?: PublicCoins | null
 }
 
 // fresh — мимо HTTP-кеша браузера (у ответа max-age=60): перечитать после того, как
