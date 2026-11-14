@@ -32,8 +32,8 @@ const PVZ_READY: DeliveryFormState = {
 }
 
 describe('shipping rules', () => {
-  it('mirror the server: ПВЗ 350 ₽ / бесплатно от 3000 ₽', () => {
-    expect(SHIPPING_RULES.cdek_pvz).toEqual({ freeFromRub: 3000, priceRub: 350 })
+  it('mirror the server: ПВЗ 350 ₽ / бесплатно от 2900 ₽', () => {
+    expect(SHIPPING_RULES.cdek_pvz).toEqual({ freeFromRub: 2900, priceRub: 350 })
   })
 
   it('mirror the server: курьер 500 ₽ / бесплатно от 5000 ₽', () => {

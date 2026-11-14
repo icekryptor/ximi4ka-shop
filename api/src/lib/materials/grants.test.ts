@@ -163,6 +163,19 @@ describe('выдача материалов', () => {
       expect(await grants().count()).toBe(0)
     })
 
+    it('shipped → delivered новых выдач не создаёт', async () => {
+      const { order } = await pendingOrderWithKit()
+      await saveOrderWithStatusEvent(order, markPaid(order, 'tbank'))
+      await AppDataSource.query('DELETE FROM material_grants')
+
+      order.status = 'shipped'
+      await saveOrderWithStatusEvent(order, 'paid')
+      order.status = 'delivered'
+      await saveOrderWithStatusEvent(order, 'shipped')
+
+      expect(await grants().count()).toBe(0)
+    })
+
     it('отмена оплаченного заказа выдачу не отзывает', async () => {
       const { order } = await pendingOrderWithKit()
       await saveOrderWithStatusEvent(order, markPaid(order, 'tbank'))

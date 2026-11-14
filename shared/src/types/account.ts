@@ -1,3 +1,4 @@
+import type { CoinTransactionKind } from './coins.js'
 import type {
   DeliveryMethod,
   OrderDeliveryMethod,
@@ -33,6 +34,8 @@ export interface CustomerProfile {
   name: string | null
   phone: string | null
   lastDelivery: LastDelivery | null
+  /** Баланс химикоинов (1 химикоин = 1 ₽). */
+  coinBalance: number
 }
 
 export interface AccountOrderSummary {
@@ -68,6 +71,9 @@ export interface AccountOrderSummary {
   /** Адрес доставки одной строкой: «<город>, <ПВЗ или улица>». */
   deliveryAddress: string
   shipment: PublicOrderShipment | null
+  /** Сколько химикоинов обещано за заказ и начислены ли они уже. */
+  cashbackPromisedCoins: number
+  cashbackAccrued: boolean
 }
 
 export interface AccountOrdersPage {
@@ -82,4 +88,70 @@ export interface TelegramLoginStart {
 export interface TelegramLoginPoll {
   // conflict: Telegram уже привязан к другому аккаунту.
   status: 'pending' | 'ok' | 'expired' | 'conflict'
+}
+
+/** Операция по балансу в кабинете: комментарий админа покупателю не показывается. */
+export interface AccountCoinTransaction {
+  id: string
+  amount: number
+  kind: CoinTransactionKind
+  orderNumber: string | null
+  comment: string | null
+  createdAt: string
+}
+
+export interface AccountCoins {
+  balance: number
+  /** Кэшбек по оплаченным, но ещё не врученным заказам (paid/shipped). */
+  pending: number
+  /** Последние 50, новые сверху. */
+  transactions: AccountCoinTransaction[]
+}
+
+// --- админка: покупатели ---
+
+export interface AdminCustomerListItem {
+  id: string
+  email: string | null
+  telegramUsername: string | null
+  name: string | null
+  coinBalance: number
+  ordersCount: number
+}
+
+export interface AdminCustomersPage {
+  items: AdminCustomerListItem[]
+  total: number
+}
+
+export interface AdminCoinTransaction {
+  id: string
+  amount: number
+  kind: CoinTransactionKind
+  orderId: string | null
+  orderNumber: string | null
+  comment: string | null
+  adminUserId: string | null
+  createdAt: string
+}
+
+export interface AdminCustomerDetail {
+  customer: {
+    id: string
+    email: string | null
+    telegramUsername: string | null
+    name: string | null
+    phone: string | null
+    createdAt: string
+  }
+  coinBalance: number
+  transactions: AdminCoinTransaction[]
+  orders: Array<{
+    id: string
+    orderNumber: string
+    status: OrderStatus
+    totalRub: number
+    createdAt: string
+    cashbackPromisedCoins: number
+  }>
 }

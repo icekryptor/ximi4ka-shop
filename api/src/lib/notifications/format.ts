@@ -59,6 +59,7 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: 'создан',
   paid: 'оплачен',
   shipped: 'отправлен',
+  delivered: 'получен',
   cancelled: 'отменён',
   failed: 'оплата не прошла',
 }

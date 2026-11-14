@@ -83,7 +83,7 @@ describe('CartDrawer', () => {
     expect(within(dialog).getByText('Набор B')).toBeInTheDocument()
   })
 
-  it('в корзине от 3000 ₽ предлагает подарок на выбор', async () => {
+  it('в корзине от 2900 ₽ предлагает подарок на выбор', async () => {
     act(() => {
       saveCart(seed)
     })
@@ -249,7 +249,7 @@ describe('CartDrawer', () => {
     expect(within(item).queryByRole('presentation')).not.toBeInTheDocument()
   })
 
-  it('shows remaining amount to free shipping below the 3000 ₽ threshold', () => {
+  it('shows remaining amount to free shipping below the 2900 ₽ threshold', () => {
     act(() => {
       saveCart([{ productId: 'a', slug: 'kit-a', name: 'Набор A', priceRub: 1000, quantity: 1 }])
     })
@@ -259,13 +259,13 @@ describe('CartDrawer', () => {
     })
     const progress = screen.getByTestId('free-shipping-progress')
     expect(progress).toHaveTextContent(/до бесплатной доставки осталось/i)
-    expect(progress.textContent).toMatch(/2[\s ]?000\s?₽/)
-    expect(screen.getByTestId('free-shipping-bar').style.width).toBe('33%')
+    expect(progress.textContent).toMatch(/1[\s ]?900\s?₽/)
+    expect(screen.getByTestId('free-shipping-bar').style.width).toBe('34%')
   })
 
   it('shows free-shipping reached state at/above the threshold', () => {
     act(() => {
-      saveCart(seed) // 2×1000 + 2500 = 4500 ≥ 3000
+      saveCart(seed) // 2×1000 + 2500 = 4500 ≥ 2900
     })
     render(<CartDrawer />)
     act(() => {

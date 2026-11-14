@@ -5,6 +5,7 @@ import { Order } from '../../entities/Order.js'
 import { OrderNotification } from '../../entities/OrderNotification.js'
 import { enqueueCdekShipment } from '../cdek/queue.js'
 import { enqueueMetrikaConversion } from '../metrika/queue.js'
+import { accrueCashbackForOrder, revokeCashbackForOrder } from '../coins/cashback.js'
 import { grantMaterialsForOrder } from '../materials/grants.js'
 
 // Куда сообщаем о каждом событии заказа.
@@ -70,15 +71,24 @@ export async function writeOrderStatusEvent(
   order: Order,
   previousStatus: OrderStatus,
 ): Promise<void> {
+  // Первый переход в «получен» — фиксируем момент получения.
+  const stampDelivered = order.status === 'delivered' && previousStatus !== 'delivered'
+  if (stampDelivered) order.deliveredAt = new Date()
   await em.update(Order, order.id, {
     status: order.status,
     paidAt: order.paidAt,
+    ...(stampDelivered ? { deliveredAt: order.deliveredAt } : {}),
     statusHistory: order.statusHistory,
     // Привязку платежа никто не снимает — null из памяти не пишем.
     ...(order.paymentIntentId ? { paymentIntentId: order.paymentIntentId } : {}),
   })
   const key = order.status === previousStatus ? null : statusEventKey(order.status)
   if (key) await enqueueOrderEvent(em, order.id, key)
+  // Кэшбек: начисляем при первом получении, отзываем при отмене полученного заказа.
+  if (stampDelivered) await accrueCashbackForOrder(em, order)
+  if (order.status === 'cancelled' && previousStatus === 'delivered') {
+    await revokeCashbackForOrder(em, order)
+  }
   // Оплаченный заказ — в очередь создания в СДЭК, той же транзакцией.
   if (order.status === 'paid' && previousStatus !== 'paid') {
     await enqueueCdekShipment(em, order)

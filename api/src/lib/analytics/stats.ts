@@ -33,7 +33,7 @@ export async function getStats(from: string, to: string): Promise<StatsResponse>
          (SELECT COUNT(*) FROM orders o, b
            WHERE o.deleted_at IS NULL AND o.created_at >= b.s AND o.created_at < b.e) AS orders,
          (SELECT COALESCE(SUM(o.total_rub), 0) FROM orders o, b
-           WHERE o.deleted_at IS NULL AND o.status IN ('paid', 'shipped')
+           WHERE o.deleted_at IS NULL AND o.status IN ('paid', 'shipped', 'delivered')
              AND o.paid_at >= b.s AND o.paid_at < b.e) AS revenue,
          (SELECT COUNT(*) FROM customer_sessions c, b
            WHERE c.created_at >= b.s AND c.created_at < b.e) AS logins,
@@ -57,7 +57,7 @@ export async function getStats(from: string, to: string): Promise<StatsResponse>
          LEFT JOIN (
            SELECT (o.paid_at AT TIME ZONE '${TZ}')::date AS day, SUM(o.total_rub) AS revenue
              FROM orders o, b
-            WHERE o.deleted_at IS NULL AND o.status IN ('paid', 'shipped')
+            WHERE o.deleted_at IS NULL AND o.status IN ('paid', 'shipped', 'delivered')
               AND o.paid_at >= b.s AND o.paid_at < b.e
             GROUP BY 1
          ) r ON r.day = d.day::date

@@ -40,6 +40,7 @@ describe('statusEventKey', () => {
     expect(statusEventKey('pending')).toBeNull()
     expect(statusEventKey('paid')).toBe('status:paid')
     expect(statusEventKey('shipped')).toBe('status:shipped')
+    expect(statusEventKey('delivered')).toBe('status:delivered')
     expect(statusEventKey('cancelled')).toBe('status:cancelled')
     expect(statusEventKey('failed')).toBe('status:failed')
   })
@@ -83,6 +84,26 @@ describe('outbox', () => {
     expect((await rows(order.id)).map((r) => [r.channel, r.eventKey])).toEqual([
       ['sheets', 'status:shipped'],
     ])
+  })
+
+  it('status:delivered — тем же путём, что shipped: только в таблицу', async () => {
+    const order = await seedOrder()
+    await AppDataSource.transaction((em) => enqueueOrderEvent(em, order.id, 'status:delivered'))
+    expect((await rows(order.id)).map((r) => [r.channel, r.eventKey])).toEqual([
+      ['sheets', 'status:delivered'],
+    ])
+  })
+
+  it('первый переход в delivered ставит deliveredAt, повторное сохранение его не двигает', async () => {
+    const order = await seedOrder()
+    order.status = 'delivered'
+    await saveOrderWithStatusEvent(order, 'shipped')
+    const first = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
+    expect(first.deliveredAt).toBeInstanceOf(Date)
+
+    await saveOrderWithStatusEvent(first, 'delivered')
+    const again = await AppDataSource.getRepository(Order).findOneByOrFail({ id: order.id })
+    expect(again.deliveredAt?.getTime()).toBe(first.deliveredAt?.getTime())
   })
 
   it('повторная постановка не дублирует записи', async () => {

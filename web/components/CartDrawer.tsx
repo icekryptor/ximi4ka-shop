@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { OPEN_CART_EVENT, backfillCartCategories, useCart } from '@/lib/cart'
-import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
+import { CartSummaryWithCashback } from '@/components/cart/CartSummaryWithCashback'
 import { GiftBanner } from '@/components/cart/GiftBanner'
 import { SHIPPING_RULES } from '@/lib/checkout'
 import { METRIKA_GOALS, reachGoal } from '@/lib/metrika'
@@ -14,7 +14,7 @@ import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
 import { SplitInstallmentLineAuto } from '@/components/payments/SplitInstallmentLineAuto'
 
 // Порог бесплатной доставки для прогресс-бара. Единый источник — правила
-// доставки СДЭК ПВЗ (3000 ₽), те же, что показывает чекаут.
+// доставки СДЭК ПВЗ (2900 ₽), те же, что показывает чекаут.
 const FREE_SHIPPING_FROM_RUB = SHIPPING_RULES.cdek_pvz.freeFromRub
 
 export function CartDrawer() {
@@ -177,7 +177,7 @@ export function CartDrawer() {
 
         {items.length > 0 ? (
           <div className="border-t border-[var(--color-lj-rule)] px-6 py-5 flex flex-col gap-3">
-            {/* Прогресс до бесплатной доставки (порог СДЭК ПВЗ, 3000 ₽) */}
+            {/* Прогресс до бесплатной доставки (порог СДЭК ПВЗ, 2900 ₽) */}
             <div data-testid="free-shipping-progress" className="flex flex-col gap-2">
               <p className="m-0 font-lj-mono text-[length:var(--text-lj-mono-xs)] uppercase tracking-[0.06em] text-[var(--color-lj-ink)]">
                 {subtotal >= FREE_SHIPPING_FROM_RUB ? (
@@ -213,7 +213,7 @@ export function CartDrawer() {
 
             <GiftBanner totalRub={totals.totalRub} />
 
-            <CartSummaryRows totals={totals} itemCount={itemCount} />
+            <CartSummaryWithCashback totals={totals} itemCount={itemCount} />
             <div className="flex items-baseline justify-between font-lj-display font-[900] text-xl tracking-[-0.04em] text-[var(--color-lj-ink)]">
               <span>Итого</span>
               <span data-testid="drawer-total">{formatRub(totals.totalRub)}</span>

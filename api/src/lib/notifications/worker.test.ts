@@ -22,11 +22,16 @@ import {
 
 const NOW = new Date('2026-09-25T12:00:00Z')
 
+// Номера по счётчику, а не случайные: тест на партию заводит 21 заказ подряд, и
+// случайный пятизначный номер изредка повторялся (уникальный индекс order_number).
+let orderSeq = 10000
+
 async function seedOrder(overrides: Partial<Order> = {}): Promise<Order> {
   const repo = AppDataSource.getRepository(Order)
+  orderSeq += 1
   const order = await repo.save(
     repo.create({
-      orderNumber: `XM-2026-${Math.floor(Math.random() * 90000 + 10000)}`,
+      orderNumber: `XM-2026-${orderSeq}`,
       status: 'pending',
       customerName: 'Мария',
       customerPhone: '+79123456789',

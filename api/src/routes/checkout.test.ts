@@ -12,7 +12,8 @@ import { createApp } from '../app.js'
 import { setCdekClientForTests } from '../lib/cdek/index.js'
 import { clearCdekLocationCache } from '../lib/cdek/locations.js'
 import { setMailerForTests } from '../lib/mail/mailer.js'
-import { loginAsCustomer, resetAccountTables } from './testUtils.js'
+import { cashbackCoins } from '@ximi4ka-shop/shared/types/coins'
+import { loginAsCustomer, resetAccountTables, setCoinsProgram } from './testUtils.js'
 
 // TBankProvider (когда его строит getPaymentProvider()) по умолчанию ходит
 // через tbankFetch (undici + доверие корню Минцифры), а не через глобальный
@@ -246,7 +247,7 @@ describe('POST /api/checkout', () => {
     expect(order.status).toBe('pending')
     expect(order.paymentProvider).toBe('manual')
     expect(order.subtotalRub).toBe(2450)
-    // 2450 < 3000 → ПВЗ доставка 350 ₽
+    // 2450 < 2900 → ПВЗ доставка 350 ₽
     expect(order.shippingRub).toBe(350)
     expect(order.totalRub).toBe(2800)
     expect(order.deliveryMethod).toBe('cdek_pvz')
@@ -281,7 +282,7 @@ describe('POST /api/checkout', () => {
     })
   })
 
-  it('gives free ПВЗ shipping from 3000 ₽', async () => {
+  it('gives free ПВЗ shipping from 2900 ₽', async () => {
     const p = await seedProduct({ priceRub: 3000 })
     const res = await request(app)
       .post('/api/checkout')
@@ -305,6 +306,64 @@ describe('POST /api/checkout', () => {
     })
     expect(order.shippingRub).toBe(500)
     expect(order.totalRub).toBe(4500)
+  })
+
+  describe('обещание кэшбека', () => {
+    afterEach(async () => {
+      await setCoinsProgram(false)
+    })
+
+    async function place(body: Record<string, unknown>): Promise<Order> {
+      const res = await request(app).post('/api/checkout').send(body)
+      expect(res.status).toBe(201)
+      return AppDataSource.getRepository(Order).findOneByOrFail({
+        orderNumber: res.body.data.orderNumber,
+      })
+    }
+
+    it('товары за вычетом промокода; доставка в обещание не входит и совпадает с расчётом витрины', async () => {
+      await setCoinsProgram(true, 10)
+      const p = await seedProduct({ priceRub: 4000 })
+      const body = checkoutBody([{ productId: p.id, quantity: 1 }])
+      body.delivery = { method: 'cdek_courier', address: 'Москва, ул. Тверская, 1, кв. 5' }
+      const order = await place({ ...body, promoCode: 'RENATA2026' })
+      expect(order.promoDiscountRub).toBe(200)
+      expect(order.shippingRub).toBe(500)
+      expect(order.cashbackPromisedCoins).toBe(380)
+      expect(order.cashbackPromisedCoins).toBe(cashbackCoins(4000 - 200, 10))
+      expect(order.cashbackShortfallCoins).toBe(0)
+    })
+
+    it('оптовая скидка тоже вычитается', async () => {
+      await setCoinsProgram(true, 10)
+      const reagent = await seedProduct({ slug: 'copper-sulfate', priceRub: 100, sku: 'CU-9' })
+      await seedCategory('reagents', [reagent])
+      const order = await place(checkoutBody([{ productId: reagent.id, quantity: 10 }]))
+      expect(order.discountRub).toBe(200)
+      expect(order.cashbackPromisedCoins).toBe(80) // 10% от 1000 − 200
+    })
+
+    it('процент берётся из настроек', async () => {
+      await setCoinsProgram(true, 5)
+      const p = await seedProduct({ priceRub: 2000 })
+      const order = await place(checkoutBody([{ productId: p.id, quantity: 1 }]))
+      expect(order.cashbackPromisedCoins).toBe(100)
+    })
+
+    it('гостевой заказ тоже получает обещание', async () => {
+      await setCoinsProgram(true, 10)
+      const p = await seedProduct({ priceRub: 2000 })
+      const order = await place(checkoutBody([{ productId: p.id, quantity: 1 }]))
+      expect(order.customerId).toBeNull()
+      expect(order.cashbackPromisedCoins).toBe(200)
+    })
+
+    it('программа выключена — обещание 0', async () => {
+      await setCoinsProgram(false, 10)
+      const p = await seedProduct({ priceRub: 2000 })
+      const order = await place(checkoutBody([{ productId: p.id, quantity: 1 }]))
+      expect(order.cashbackPromisedCoins).toBe(0)
+    })
   })
 
   describe('промокод', () => {
@@ -376,7 +435,7 @@ describe('POST /api/checkout', () => {
         .send({ ...cisBody([{ productId: p.id, quantity: 1 }]), promoCode: 'RENATA2026' })
       expect(res.status).toBe(201)
       const order = await orderFor(res)
-      expect(order.shippingRub).toBe(0) // Беларусь: бесплатно от 3000 ₽
+      expect(order.shippingRub).toBe(0) // Беларусь: бесплатно от 2900 ₽
       expect(order.totalRub).toBe(3100 - 155)
     })
 
@@ -420,7 +479,7 @@ describe('POST /api/checkout', () => {
       return res
     }
 
-    it('Беларусь: 700 ₽ ниже 3000 ₽, адрес с городом, без калькулятора СДЭК', async () => {
+    it('Беларусь: 700 ₽ ниже 2900 ₽, адрес с городом, без калькулятора СДЭК', async () => {
       const get = noCdek()
       const res = await placeCis(2000)
       expect(res.status).toBe(201)
@@ -439,7 +498,7 @@ describe('POST /api/checkout', () => {
       expect(get).not.toHaveBeenCalled()
     })
 
-    it('Беларусь: бесплатно от 3000 ₽', async () => {
+    it('Беларусь: бесплатно от 2900 ₽', async () => {
       noCdek()
       const res = await placeCis(3000)
       expect(res.status).toBe(201)
@@ -985,7 +1044,7 @@ describe('POST /api/checkout', () => {
     expect(res.status).toBe(201)
     expect(get).not.toHaveBeenCalled()
   })
-  describe('подарок: реактив на выбор от 3000 ₽', () => {
+  describe('подарок: реактив на выбор от 2900 ₽', () => {
     const GIFT_SLUGS = ['iodat-kaliya', 'gidroksid-natriya', 'azotnaya-kislota-10']
 
     async function seedGift(overrides: Partial<Product> = {}): Promise<Product> {
@@ -1041,8 +1100,8 @@ describe('POST /api/checkout', () => {
       expect(order!.items.some((i) => i.isGift)).toBe(false)
     })
 
-    it('не даёт подарок, если на товары меньше 3000 ₽', async () => {
-      const kit = await seedProduct({ priceRub: 2999 })
+    it('не даёт подарок, если на товары меньше 2900 ₽', async () => {
+      const kit = await seedProduct({ priceRub: 2899 })
       const gift = await seedGift()
 
       const { res, order } = await placeOrder(gift.id, [kit])

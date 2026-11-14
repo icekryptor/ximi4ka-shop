@@ -206,14 +206,190 @@ function LearnArt() {
   )
 }
 
+/** левая координата макета с учётом сдвига `--ox` (узкий экран показывает правую часть) */
+const ux = (n: number) => `calc(var(--u) * (${n} - var(--ox)))`
+
+const TAPE_WORDS = [
+  'Чёрная пятница',
+  'Цены 2023',
+  'Налетай!',
+  'Чёрная пятница',
+  'Цены 2023',
+  'Налетай!',
+]
+
+interface TapeProps {
+  left: number
+  top: number
+  width: number
+  height: number
+  rotate: number
+  /** лента с надписью; без неё — просто полосатая */
+  text?: boolean
+}
+
+/** Сигнальная лента «опасность», натянутая наискосок через баннер. */
+function Tape({ left, top, width, height, rotate, text = false }: TapeProps) {
+  return (
+    <div
+      className={`absolute flex items-center overflow-hidden whitespace-nowrap ${text ? 'bf-tape-text' : 'bf-stripes'}`}
+      style={
+        {
+          left: ux(left),
+          top: u(top),
+          width: u(width),
+          height: u(height),
+          transform: `rotate(${rotate}deg)`,
+          '--bf-stripe': u(height / 4),
+          boxShadow: `0 0 ${u(36)} rgba(255, 150, 0, 0.45)`,
+        } as CSSProperties
+      }
+    >
+      {text
+        ? TAPE_WORDS.map((word, i) => (
+            <span
+              key={i}
+              className="font-lj-mazzard font-[700] uppercase tracking-[0.04em]"
+              style={{ fontSize: u(height * 0.36), paddingInline: u(18) }}
+            >
+              {word}
+              <span style={{ paddingLeft: u(36) }}>⚠</span>
+            </span>
+          ))
+        : null}
+    </div>
+  )
+}
+
+interface KitShotProps {
+  src: string
+  /** исходный размер файла — нужен next/image, на вёрстку не влияет */
+  intrinsic: readonly [number, number]
+  /** левый край и верх в пикселях макета 1440×760; высота — по пропорциям файла */
+  left: number
+  top: number
+  width: number
+  rotate?: number
+  priority?: boolean
+}
+
+/** Фото набора без подложки (вырезано из белого фона, тень сохранена). */
+function KitShot({ src, intrinsic, left, top, width, rotate = 0, priority }: KitShotProps) {
+  return (
+    <Image
+      src={src}
+      alt=""
+      width={intrinsic[0]}
+      height={intrinsic[1]}
+      {...imageLoadingProps(priority ? 'priority' : 'eager')}
+      sizes="(min-width: 1280px) 30vw, 45vw"
+      className="absolute h-auto max-w-none drop-shadow-[0_18px_30px_rgba(0,0,0,0.65)]"
+      style={{
+        left: ux(left),
+        top: u(top),
+        width: u(width),
+        transform: rotate ? `rotate(${rotate}deg)` : undefined,
+      }}
+    />
+  )
+}
+
+/**
+ * «Чёрная пятница»: на переднем плане — четыре набора, за ними фоном огромные
+ * «2023» в оранжевом свечении и сигнальные ленты.
+ */
+function BlackFridayArt() {
+  return (
+    <>
+      {/* пятно оранжевого света за цифрами */}
+      <div
+        className="bf-pulse absolute rounded-full"
+        style={{
+          left: ux(560),
+          top: u(-70),
+          width: u(900),
+          height: u(900),
+          background:
+            'radial-gradient(closest-side, rgba(255,170,0,0.5) 0%, rgba(255,90,0,0.26) 42%, rgba(255,60,0,0) 100%)',
+        }}
+      />
+
+      <Tape left={760} top={22} width={860} height={54} rotate={-8} text />
+
+      {/* фон: зачёркнутый нынешний год и огромные «2023» за наборами */}
+      <div
+        className="absolute font-lj-mazzard font-[700] leading-none text-white/40 line-through decoration-[var(--bf-ember)]"
+        style={{ left: ux(1220), top: u(108), fontSize: u(56), textDecorationThickness: u(5) }}
+      >
+        2026
+      </div>
+      <div
+        className="bf-fire-text absolute font-lj-mazzard font-[700] leading-none tracking-[-0.05em] opacity-55"
+        style={{ left: ux(716), top: u(140), fontSize: u(320) }}
+      >
+        2023
+      </div>
+
+      <Tape left={600} top={668} width={1000} height={40} rotate={-4} />
+
+      {/* передний план: наборы, от дальних к ближним */}
+      <KitShot
+        src="/img/promo/bf-mini.webp"
+        intrinsic={[616, 592]}
+        left={1170}
+        top={300}
+        width={230}
+        rotate={6}
+      />
+      <KitShot
+        src="/img/promo/bf-oge.webp"
+        intrinsic={[760, 680]}
+        left={1040}
+        top={372}
+        width={330}
+        rotate={-2}
+      />
+      <KitShot
+        src="/img/promo/bf-elektro.webp"
+        intrinsic={[720, 485]}
+        left={640}
+        top={430}
+        width={370}
+        rotate={-7}
+      />
+      <KitShot
+        src="/img/promo/bf-himichka.webp"
+        intrinsic={[720, 519]}
+        left={830}
+        top={392}
+        width={350}
+        rotate={4}
+        priority
+      />
+    </>
+  )
+}
+
 /** Иллюстрации баннера — чисто декоративные (aria-hidden), как фон в макете. */
 export function PromoSlideArt({ visual }: { visual: PromoVisual }) {
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 overflow-hidden [container-type:inline-size]"
+      // «Чёрная пятница» не обрезается по рамке арта: ленты и свечение тянутся
+      // до краёв баннера (его скругление обрезает их само).
+      className={`pointer-events-none absolute inset-0 [container-type:inline-size] ${
+        visual === 'blackFriday' ? '' : 'overflow-hidden'
+      }`}
     >
-      {visual === 'gift' ? <GiftArt /> : visual === 'oge' ? <OgeArt /> : <LearnArt />}
+      {visual === 'blackFriday' ? (
+        <BlackFridayArt />
+      ) : visual === 'gift' ? (
+        <GiftArt />
+      ) : visual === 'oge' ? (
+        <OgeArt />
+      ) : (
+        <LearnArt />
+      )}
     </div>
   )
 }

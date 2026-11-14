@@ -90,7 +90,7 @@ describe('прокси виджета СДЭК', () => {
       .post(`${PATH}?subtotal=4000`)
       .send({ action: 'calculate', to_location: { code: 270 }, packages: [] })
     expect(res.body.tariff_codes).toEqual([
-      { tariff_code: 136, delivery_sum: 0 }, // ПВЗ от 3000 ₽ — бесплатно
+      { tariff_code: 136, delivery_sum: 0 }, // ПВЗ от 2900 ₽ — бесплатно
       { tariff_code: 137, delivery_sum: 600 }, // курьер — только от 5000 ₽
     ])
   })

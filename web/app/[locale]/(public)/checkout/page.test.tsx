@@ -21,7 +21,15 @@ const mockPush = vi.fn<(path: string) => void>()
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => '/checkout',
 }))
+
+// Программа химикоинов подменена: настоящий хук ходил бы за настройками и сдвигал бы
+// счётчики/очередь ответов getPublicSettings в тестах оплаты.
+const coinsProgram = vi.hoisted(() => ({
+  value: { percent: null, signedIn: false } as { percent: number | null; signedIn: boolean },
+}))
+vi.mock('@/lib/useCoinsProgram', () => ({ useCoinsProgram: () => coinsProgram.value }))
 
 const mockRedirectTo = vi.fn<(url: string) => void>()
 
@@ -99,7 +107,7 @@ const mockGetPoints = vi.fn<(cityCode: number) => Promise<CdekCityPoints>>(
 const mockQuoteShipping = vi.fn(async ({ destination }: { destination?: QuoteDestination }) => {
   const subtotalRub = loadCart().reduce((sum, i) => sum + i.priceRub * i.quantity, 0)
   const pvz = destination?.method === 'cdek_pvz'
-  const free = subtotalRub >= (pvz ? 3000 : 5000)
+  const free = subtotalRub >= (pvz ? 2900 : 5000)
   return {
     subtotalRub,
     packages: [
@@ -160,6 +168,7 @@ beforeEach(() => {
   mockCloudPaymentsPreview.mockImplementation(async () => null)
   resetPublicYandexPayCacheForTests()
   resetPublicCloudPaymentsCacheForTests()
+  coinsProgram.value = { percent: null, signedIn: false }
   window.localStorage.clear()
   window.sessionStorage.clear()
   mockPush.mockReset()
@@ -397,7 +406,7 @@ describe('/checkout page', () => {
   })
 
   describe('промокод', () => {
-    // 3099 ₽: ПВЗ бесплатно от 3000 ₽; с промокодом 5% будет 2944 ₽, а доставка — по-прежнему бесплатно.
+    // 3099 ₽: ПВЗ бесплатно от 2900 ₽; с промокодом 5% будет 2944 ₽, а доставка — по-прежнему бесплатно.
     const kit: CartItem[] = [{ ...seed[0]!, priceRub: 3099, quantity: 1 }]
 
     function errorResponse(status: number, code: string, message: string) {
@@ -419,6 +428,24 @@ describe('/checkout page', () => {
       expect(screen.getByTestId('summary-promo')).toHaveTextContent('155')
       expect(screen.getByTestId('summary-promo')).toHaveTextContent('RENATA2026')
       expect(screen.getByTestId('summary-total')).toHaveTextContent('2 944')
+    })
+
+    it('строка кэшбека стоит после промокода и считается от суммы после него', async () => {
+      coinsProgram.value = { percent: 10, signedIn: true }
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('RENATA2026')
+
+      const cashback = await screen.findByTestId('summary-cashback')
+      expect(cashback).toHaveTextContent('294 химикоина')
+      const promoRow = screen.getByTestId('summary-promo')
+      const shippingRow = screen.getByTestId('summary-shipping').parentElement!
+      expect(
+        promoRow.compareDocumentPosition(cashback) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        cashback.compareDocumentPosition(shippingRow) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
 
     it('доставка остаётся бесплатной, хотя сумма после скидки ниже порога', async () => {
@@ -809,7 +836,7 @@ describe('/checkout page', () => {
         mockGetPublicSettings.mockImplementation(async () => settings as never)
       }
 
-      // Корзина 2000 ₽, Беларусь: доставка 700 ₽ (ниже порога 3000 ₽).
+      // Корзина 2000 ₽, Беларусь: доставка 700 ₽ (ниже порога 2900 ₽).
       async function chooseCisBelarus() {
         await chooseCisRegion()
         fillCis('BY', 'Минск')
@@ -1226,7 +1253,7 @@ describe('/checkout page', () => {
     ])
     render(<CheckoutPage />)
     await chooseCity()
-    // 3500 ≥ 3000 → ПВЗ бесплатно
+    // 3500 ≥ 2900 → ПВЗ бесплатно
     expect(screen.getByRole('radio', { name: /пункт выдачи сдэк — бесплатно/i })).toBeChecked()
     expect(screen.getByTestId('summary-shipping')).toHaveTextContent(/бесплатно/i)
     expect(screen.getByTestId('summary-total')).toHaveTextContent('3 500')
@@ -1530,6 +1557,7 @@ describe('чекаут для вошедшего покупателя', () => {
     name: 'Иван',
     phone: '+79001234567',
     lastDelivery: null,
+    coinBalance: 0,
   }
 
   it('подставляет контакты из профиля и не показывает подсказку входа', async () => {

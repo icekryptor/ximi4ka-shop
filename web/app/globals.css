@@ -609,3 +609,110 @@ body {
     width: var(--w) !important;
   }
 }
+
+/* Шапка: вариант кабинета выбирает html[data-signed-in] (ставит статичный скрипт
+   по читаемой CSRF-cookie до первой отрисовки) — без сдвигов вёрстки. Подмена
+   работает только при включённой программе: ссылка помечена [data-coins]. */
+.account-user {
+  display: none;
+}
+html[data-signed-in] [data-coins] .account-guest {
+  display: none;
+}
+html[data-signed-in] [data-coins] .account-user {
+  display: inline-flex;
+}
+
+/* === «Чёрная пятница» 14.11–28.11.2026 — слайд на главной и лента над шапкой ===
+   Чёрный фон, оранжево-жёлтое свечение, сигнальные ленты. Свечение сделано
+   градиентами и text-shadow, без filter: blur — он тормозит первый кадр на
+   слабых устройствах. После акции блок можно удалить вместе с lib/blackFriday.ts. */
+:root {
+  --bf-yellow: #ffd000;
+  --bf-orange: #ff8a00;
+  --bf-ember: #ff4d00;
+  --bf-black: #050505;
+}
+/* Сигнальная лента: косые жёлто-чёрные полосы; шаг полос — --bf-stripe. */
+.bf-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--bf-yellow) 0 var(--bf-stripe, 12px),
+    var(--bf-black) var(--bf-stripe, 12px) calc(var(--bf-stripe, 12px) * 2)
+  );
+}
+/* Лента с надписью: жёлтое поле, полосатые кромки сверху и снизу. */
+.bf-tape-text {
+  background:
+    linear-gradient(var(--bf-yellow), var(--bf-yellow)) center / 100% 62% no-repeat,
+    repeating-linear-gradient(
+      -45deg,
+      var(--bf-yellow) 0 var(--bf-stripe, 12px),
+      var(--bf-black) var(--bf-stripe, 12px) calc(var(--bf-stripe, 12px) * 2)
+    );
+  color: var(--bf-black);
+}
+/* Огненный текст: жёлто-оранжевая заливка и свечение вокруг букв. */
+.bf-fire-text {
+  background-image: linear-gradient(
+    180deg,
+    #fff3b0 0%,
+    var(--bf-yellow) 34%,
+    var(--bf-orange) 72%,
+    var(--bf-ember) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow:
+    0 0 0.18em rgba(255, 170, 0, 0.55),
+    0 0 0.55em rgba(255, 110, 0, 0.45);
+}
+.bf-white-glow {
+  color: #ffffff;
+  text-shadow: 0 0 0.5em rgba(255, 150, 0, 0.4);
+}
+/* Кнопка «Налетай!» — жёлтая, с ореолом. */
+.bf-cta {
+  background-image: linear-gradient(180deg, var(--bf-yellow) 0%, var(--bf-orange) 100%);
+  color: var(--bf-black);
+  font-weight: 700;
+  box-shadow:
+    0 0 0 1px rgba(255, 208, 0, 0.6),
+    0 0 28px rgba(255, 138, 0, 0.55);
+  transition:
+    transform 0.2s var(--ease-out-quart),
+    box-shadow 0.2s var(--ease-out-quart);
+}
+.bf-cta:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 0 1px rgba(255, 208, 0, 0.9),
+    0 0 44px rgba(255, 138, 0, 0.8);
+}
+.bf-cta:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 3px;
+}
+@keyframes bf-pulse {
+  0%,
+  100% {
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.bf-pulse {
+  animation: bf-pulse 3.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bf-pulse {
+    animation: none;
+  }
+  .bf-cta,
+  .bf-cta:hover {
+    transition: none;
+    transform: none;
+  }
+}

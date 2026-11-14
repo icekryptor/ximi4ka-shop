@@ -124,7 +124,7 @@ describe('/cart page v3 calm', () => {
     expect(loadCart().find((i) => i.productId === 'a')?.quantity).toBe(3)
   })
 
-  it('показывает плашку подарка с тремя реактивами, когда на товары от 3000 ₽', async () => {
+  it('показывает плашку подарка с тремя реактивами, когда на товары от 2900 ₽', async () => {
     act(() => {
       saveCart(seed)
     })
@@ -135,13 +135,13 @@ describe('/cart page v3 calm', () => {
     expect(screen.getByRole('radio', { name: /Йодат калия/ })).toBeInTheDocument()
   })
 
-  it('ниже 3000 ₽ подсказывает, сколько добавить до подарка', () => {
+  it('ниже 2900 ₽ подсказывает, сколько добавить до подарка', () => {
     act(() => {
       saveCart([seed[0]!])
     })
     render(<CartPage />)
     expect(screen.queryByText('Вам подарок!')).not.toBeInTheDocument()
-    expect(screen.getByTestId('gift-banner')).toHaveTextContent(/1\s000\s*₽/)
+    expect(screen.getByTestId('gift-banner')).toHaveTextContent(/900\s*₽/)
   })
   it('под «Итого» — чип «4 платежа в Сплит» на сумму корзины, без скрипта Яндекса', async () => {
     settingsMock.yandexPay = { split: true, merchantId: 'merchant-public-id' }

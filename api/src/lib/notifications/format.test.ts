@@ -88,6 +88,10 @@ describe('sheetRow', () => {
     expect(sheetRow(order)).toHaveLength(SHEET_HEADER.length)
   })
 
+  it('полученный заказ подписан «получен»', () => {
+    expect(sheetRow({ ...order, status: 'delivered' })[11]).toBe('получен')
+  })
+
   it('курьер, пустые почта и Telegram, товар без артикула', () => {
     const row = sheetRow({
       ...order,

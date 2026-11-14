@@ -1,4 +1,5 @@
 import type {
+  AccountCoins,
   AccountMaterial,
   AccountOrdersPage,
   AuthConfig,
@@ -70,12 +71,30 @@ export async function getMeOrNull(): Promise<CustomerProfile | null> {
     return null
   }
 }
+
+export type MeSession =
+  | { status: 'ok'; me: CustomerProfile }
+  | { status: 'unauthorized' }
+  | { status: 'error' }
+
+// Как getMeOrNull, но отличает «сессии нет» (401) от сбоя сети/сервера: шапка при 401
+// снимает устаревшую подсказку о входе, а при сбое ничего не трогает.
+export async function getMeSession(): Promise<MeSession> {
+  try {
+    return { status: 'ok', me: await getMe() }
+  } catch (err) {
+    return err instanceof ApiError && err.status === 401
+      ? { status: 'unauthorized' }
+      : { status: 'error' }
+  }
+}
 export const updateMe = (patch: { name?: string; phone?: string }) =>
   call<CustomerProfile>('/api/account/me', { method: 'PATCH', body: JSON.stringify(patch) })
 export const getOrders = (cursor?: string | null) =>
   call<AccountOrdersPage>(
     `/api/account/orders${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
   )
+export const getCoins = () => call<AccountCoins>('/api/account/coins')
 export const getMaterials = () => call<AccountMaterial[]>('/api/account/materials')
 
 export const startLinkEmail = (email: string) =>

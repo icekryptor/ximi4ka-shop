@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { href: '/admin/pages', label: 'Страницы' },
   { href: '/admin/blog', label: 'Блог' },
   { href: '/admin/orders', label: 'Заказы', adminOnly: true },
+  { href: '/admin/customers', label: 'Покупатели', adminOnly: true },
   { href: '/admin/redirects', label: 'Редиректы' },
   { href: '/admin/media', label: 'Медиа' },
   { href: '/admin/settings', label: 'Настройки', adminOnly: true },

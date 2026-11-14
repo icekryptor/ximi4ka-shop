@@ -15,6 +15,7 @@ import {
   ycpAuth,
   ycpCheckoutBody,
 } from './testHelpers.js'
+import { setCoinsProgram } from '../testUtils.js'
 
 const URL = '/api/v1/checkout'
 
@@ -37,6 +38,27 @@ describe('POST /api/v1/checkout', () => {
   afterEach(() => {
     vi.unstubAllEnvs()
     setPickupPointsForTests(null)
+  })
+
+  it('заказ из Яндекса получает обещание кэшбека от суммы товаров без доставки', async () => {
+    await setCoinsProgram(true, 10)
+    try {
+      const reagent = await seedYcpProduct({ slug: 'sernaya-kislota', priceRub: 119, sku: 'H2SO4' })
+      await seedCategory('reagents', [reagent])
+      setPickupPointsForTests([makePickupEntry('MSK1', 44)])
+      const res = await request(app)
+        .post(URL)
+        .set(ycpAuth)
+        .send(
+          ycpCheckoutBody([{ id: reagent.id, quantity: 5, regular_price: 119, final_price: 101 }]),
+        )
+      expect(res.status).toBe(201)
+      const [order] = await orders()
+      // Товары по ценам Яндекса: 5 × 101 = 505 ₽ (доставка 350 не входит).
+      expect(order.cashbackPromisedCoins).toBe(50)
+    } finally {
+      await setCoinsProgram(false)
+    }
   })
 
   async function orders(): Promise<Order[]> {
@@ -95,7 +117,7 @@ describe('POST /api/v1/checkout', () => {
     expect(events.map((e) => [e.channel, e.eventKey])).toEqual([['sheets', 'created']])
   })
 
-  it('подарок к заказам из Яндекса не добавляется даже от 3000 ₽', async () => {
+  it('подарок к заказам из Яндекса не добавляется даже от 2900 ₽', async () => {
     const kit = await seedYcpProduct({ priceRub: 3500 })
     const res = await request(app)
       .post(URL)

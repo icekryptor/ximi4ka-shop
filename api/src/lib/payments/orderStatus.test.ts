@@ -13,3 +13,14 @@ describe('applyPaymentStatus: автор yandex_pay', () => {
     ])
   })
 })
+
+describe('applyPaymentStatus: полученный заказ', () => {
+  it('запоздавшая оплата или отказ не трогают delivered', () => {
+    const order = { status: 'delivered', paidAt: null, statusHistory: [] } as unknown as Order
+    expect(applyPaymentStatus(order, 'paid', 'tbank')).toBe(false)
+    expect(order.status).toBe('delivered')
+    expect(applyPaymentStatus(order, 'failed', 'tbank')).toBe(false)
+    expect(order.status).toBe('delivered')
+    expect(order.statusHistory).toEqual([])
+  })
+})
