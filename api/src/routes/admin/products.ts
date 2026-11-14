@@ -1,10 +1,11 @@
 import { Router } from 'express'
-import { Brackets, IsNull } from 'typeorm'
+import { Brackets, In, IsNull } from 'typeorm'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Product } from '../../entities/Product.js'
 import { ProductImage } from '../../entities/ProductImage.js'
+import { ProductCategory } from '../../entities/ProductCategory.js'
 import { CreateProductSchema, UpdateProductSchema, ListQuerySchema } from './products.schemas.js'
-import { conflict, notFound } from '../errors.js'
+import { badRequest, conflict, notFound } from '../errors.js'
 import { requireAdminAuth, requireCsrfToken } from '../middleware/requireAdminAuth.js'
 import { writeRevision } from '../../lib/revisions.js'
 
@@ -15,12 +16,44 @@ adminProductsRouter.use(requireCsrfToken)
 
 type ImageInput = { url: string; alt: string }
 
+// Проверяет id категорий до записи: неизвестный id — 400, а не тихий пропуск,
+// иначе админка показала бы «сохранено», а связь не появилась бы.
+// Возвращает id без повторов в исходном порядке.
+async function resolveCategoryIds(ids: string[] | undefined): Promise<string[] | undefined> {
+  if (ids === undefined) return undefined
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return unique
+  const found = await AppDataSource.getRepository(ProductCategory).find({
+    select: { id: true },
+    where: { id: In(unique) },
+  })
+  const known = new Set(found.map((c) => c.id))
+  const missing = unique.filter((id) => !known.has(id))
+  if (missing.length > 0) {
+    throw badRequest('unknown_category', 'Unknown category id', { missing })
+  }
+  return unique
+}
+
 // Фото лежат в таблице product_images, а витрина читает именно её. Галерею
-// заменяем целиком в той же транзакции, что и сохранение товара: иначе при
-// сбое посередине товар остался бы без фото.
-async function saveWithImages(entity: Product, images: ImageInput[] | undefined): Promise<Product> {
+// и категории заменяем целиком в той же транзакции, что и сохранение товара:
+// иначе при сбое посередине товар остался бы без фото или без категорий.
+async function saveWithRelations(
+  entity: Product,
+  images: ImageInput[] | undefined,
+  categoryIds: string[] | undefined,
+): Promise<Product> {
   return AppDataSource.transaction(async (manager) => {
     const saved = await manager.getRepository(Product).save(entity)
+    if (categoryIds !== undefined) {
+      await manager.query('DELETE FROM product_category_links WHERE product_id = $1', [saved.id])
+      if (categoryIds.length > 0) {
+        await manager.query(
+          'INSERT INTO product_category_links (product_id, category_id) SELECT $1, unnest($2::uuid[])',
+          [saved.id, categoryIds],
+        )
+      }
+    }
     if (images !== undefined) {
       const imageRepo = manager.getRepository(ProductImage)
       await imageRepo.delete({ productId: saved.id })
@@ -39,13 +72,22 @@ async function saveWithImages(entity: Product, images: ImageInput[] | undefined)
   })
 }
 
-async function loadWithImages(id: string): Promise<Product | null> {
+type AdminProductView = Omit<Product, 'categories'> & { categoryIds: string[] }
+
+// Ответ админки: товар с галереей по порядку и плоским categoryIds вместо
+// связанных сущностей — форма товара отмечает по нему категории.
+async function loadForAdmin(id: string): Promise<AdminProductView | null> {
   const product = await AppDataSource.getRepository(Product).findOne({
     where: { id, deletedAt: IsNull() },
-    relations: { images: true },
+    relations: { images: true, categories: true },
   })
-  if (product) product.images = [...product.images].sort((a, b) => a.sortOrder - b.sortOrder)
-  return product
+  if (!product) return null
+  const { categories, ...rest } = product
+  return {
+    ...rest,
+    images: [...rest.images].sort((a, b) => a.sortOrder - b.sortOrder),
+    categoryIds: (categories ?? []).map((c) => c.id),
+  }
 }
 
 function isUniqueViolation(err: unknown): boolean {
@@ -92,7 +134,7 @@ adminProductsRouter.get('/', async (req, res, next) => {
 // Get by id
 adminProductsRouter.get('/:id', async (req, res, next) => {
   try {
-    const product = await loadWithImages(req.params.id)
+    const product = await loadForAdmin(req.params.id)
     if (!product) throw notFound('product_not_found', 'Product not found')
     res.json({ data: product })
   } catch (err) {
@@ -103,12 +145,13 @@ adminProductsRouter.get('/:id', async (req, res, next) => {
 // Create
 adminProductsRouter.post('/', async (req, res, next) => {
   try {
-    const { images, ...fields } = CreateProductSchema.parse(req.body)
+    const { images, categoryIds, ...fields } = CreateProductSchema.parse(req.body)
+    const categories = await resolveCategoryIds(categoryIds)
     const repo = AppDataSource.getRepository(Product)
-    const saved = await saveWithImages(repo.create(fields), images)
+    const saved = await saveWithRelations(repo.create(fields), images, categories)
     // Snapshot the initial state so the revision history has a "t=0" row.
     await writeRevision('product', saved.id, req.adminUser?.id ?? null)
-    res.status(201).json({ data: await loadWithImages(saved.id) })
+    res.status(201).json({ data: await loadForAdmin(saved.id) })
   } catch (err) {
     if (isUniqueViolation(err)) {
       next(conflict('slug_conflict', 'A product with this slug already exists'))
@@ -121,7 +164,8 @@ adminProductsRouter.post('/', async (req, res, next) => {
 // Update
 adminProductsRouter.patch('/:id', async (req, res, next) => {
   try {
-    const { images, ...fields } = UpdateProductSchema.parse(req.body)
+    const { images, categoryIds, ...fields } = UpdateProductSchema.parse(req.body)
+    const categories = await resolveCategoryIds(categoryIds)
     const repo = AppDataSource.getRepository(Product)
     const existing = await repo.findOne({
       where: { id: req.params.id, deletedAt: IsNull() },
@@ -130,8 +174,8 @@ adminProductsRouter.patch('/:id', async (req, res, next) => {
     // Snapshot the prior state before mutating.
     await writeRevision('product', existing.id, req.adminUser?.id ?? null)
     const merged = repo.merge(existing, fields)
-    const saved = await saveWithImages(merged, images)
-    res.json({ data: await loadWithImages(saved.id) })
+    const saved = await saveWithRelations(merged, images, categories)
+    res.json({ data: await loadForAdmin(saved.id) })
   } catch (err) {
     if (isUniqueViolation(err)) {
       next(conflict('slug_conflict', 'A product with this slug already exists'))

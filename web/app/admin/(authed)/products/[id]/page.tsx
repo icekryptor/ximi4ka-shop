@@ -1,11 +1,11 @@
 import { cookies } from 'next/headers'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import type { Product } from '@ximi4ka-shop/shared'
+import type { AdminProduct } from '@/lib/adminApi'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import { ProductEditClient } from './ProductEditClient'
 
-async function fetchProduct(id: string): Promise<Product | null> {
+async function fetchProduct(id: string): Promise<AdminProduct | null> {
   const store = await cookies()
   const cookieHeader = store.toString()
   const res = await fetch(`${ADMIN_API_URL_SERVER}/api/admin/products/${encodeURIComponent(id)}`, {
@@ -14,7 +14,7 @@ async function fetchProduct(id: string): Promise<Product | null> {
   })
   if (res.status === 404) return null
   if (!res.ok) throw new Error(`Fetch product failed: ${res.status}`)
-  const body = (await res.json()) as { data: Product }
+  const body = (await res.json()) as { data: AdminProduct }
   return body.data
 }
 

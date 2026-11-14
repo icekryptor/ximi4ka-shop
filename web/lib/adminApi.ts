@@ -66,8 +66,13 @@ export interface AdminProductInput {
   ycpEnabled?: boolean
   /** Галерея целиком: массив заменяет фото, пустой очищает, без поля — без изменений. */
   images?: Array<{ url: string; alt: string }>
+  /** Категории целиком: массив заменяет связи, пустой снимает все, без поля — без изменений. */
+  categoryIds?: string[]
   translations?: Record<string, unknown>
 }
+
+/** Товар в ответе админки: GET, POST и PATCH отдают id его категорий. */
+export type AdminProduct = Product & { categoryIds?: string[] }
 
 function readCsrfToken(): string {
   if (typeof document === 'undefined') return ''
@@ -128,15 +133,15 @@ export async function adminListProducts(
   return authedRequest<Paginated<Product>>(`/api/admin/products${qs ? `?${qs}` : ''}`)
 }
 
-export async function adminGetProduct(id: string): Promise<Product> {
-  const body = await authedRequest<{ data: Product }>(
+export async function adminGetProduct(id: string): Promise<AdminProduct> {
+  const body = await authedRequest<{ data: AdminProduct }>(
     `/api/admin/products/${encodeURIComponent(id)}`,
   )
   return body.data
 }
 
-export async function adminCreateProduct(input: AdminProductInput): Promise<Product> {
-  const body = await authedRequest<{ data: Product }>(`/api/admin/products`, {
+export async function adminCreateProduct(input: AdminProductInput): Promise<AdminProduct> {
+  const body = await authedRequest<{ data: AdminProduct }>(`/api/admin/products`, {
     method: 'POST',
     body: JSON.stringify(input),
   })
@@ -146,8 +151,8 @@ export async function adminCreateProduct(input: AdminProductInput): Promise<Prod
 export async function adminUpdateProduct(
   id: string,
   input: Partial<AdminProductInput>,
-): Promise<Product> {
-  const body = await authedRequest<{ data: Product }>(
+): Promise<AdminProduct> {
+  const body = await authedRequest<{ data: AdminProduct }>(
     `/api/admin/products/${encodeURIComponent(id)}`,
     { method: 'PATCH', body: JSON.stringify(input) },
   )

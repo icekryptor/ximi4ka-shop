@@ -37,6 +37,10 @@ const ProductBaseSchema = z.object({
   // (при создании — default false из базы).
   ycpEnabled: z.boolean().optional(),
   images: z.array(ProductImageInputSchema).max(50).optional(),
+  // Категории товара (таблица product_category_links) — как images: массив
+  // заменяет связи целиком, пустой снимает все, отсутствие поля — не трогает.
+  // Неизвестный id — 400 unknown_category.
+  categoryIds: z.array(z.uuid()).max(200).optional(),
   translations: TranslationsSchema,
   // Доставка СДЭК — см. api/src/lib/shipping/pack.ts.
   weightG: z.number().int().positive().max(50_000).nullable().optional(),
