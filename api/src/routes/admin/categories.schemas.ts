@@ -1,7 +1,10 @@
 import { z } from 'zod'
 import { TranslationsSchema } from './i18n.js'
 
-export const CreateCategorySchema = z.object({
+// Базовые поля без значений по умолчанию. В zod 4 `.default()` срабатывает
+// и после `.partial()`, поэтому схема PATCH строится отсюда: иначе PATCH одного
+// поля сбрасывал sortOrder и переводы к значениям по умолчанию.
+const CategoryBaseSchema = z.object({
   slug: z
     .string()
     .min(1)
@@ -11,13 +14,18 @@ export const CreateCategorySchema = z.object({
   parentId: z.string().uuid().nullable().optional(),
   metaTitle: z.string().max(255).nullable().optional(),
   metaDescription: z.string().max(2000).nullable().optional(),
-  sortOrder: z.number().int().default(0),
+  sortOrder: z.number().int(),
   // Как blocks у страниц и статей: форма блоков проверяется при выводе (isBlock).
   seoBlocks: z.array(z.unknown()).nullable().optional(),
-  translations: TranslationsSchema.default({}),
+  translations: TranslationsSchema,
 })
 
-export const UpdateCategorySchema = CreateCategorySchema.partial()
+export const CreateCategorySchema = CategoryBaseSchema.extend({
+  sortOrder: CategoryBaseSchema.shape.sortOrder.default(0),
+  translations: CategoryBaseSchema.shape.translations.default({}),
+})
+
+export const UpdateCategorySchema = CategoryBaseSchema.partial()
 
 // Админка читает все категории одним запросом (?limit=200 — страницы
 // категорий и фильтр в списке товаров). С потолком 100 такой запрос получал 400.
