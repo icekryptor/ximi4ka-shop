@@ -162,6 +162,60 @@ describe('вход через Telegram', () => {
     expect(statuses).toEqual(['expired', 'ok'])
   })
 
+  // Повторы после удачного входа: вкладка t.me в Safari снова открывает бота
+  // с тем же start, кнопку жмут второй раз, пока медленный Telegram не ответил.
+  // Человек уже вошёл — «Ссылка устарела» его пугала (06.11.2026, @aistovva).
+  it('повторный /start тем же Telegram после входа — «уже подтвердили», не «устарела»', async () => {
+    const { agent, nonce } = await startLogin()
+    await hook(startMsg(nonce))
+    const data = lastButtonData()
+    await hook(confirm(data.slice(6)))
+    await hook(startMsg(nonce))
+    const confirmedReply = calls.filter((c) => c.method === 'sendMessage').pop()!
+    expect(String(confirmedReply.body.text)).toMatch(/уже подтвердили/)
+    expect(String(confirmedReply.body.text)).not.toMatch(/устарела/)
+    // Повтор не выдаёт новую кнопку.
+    expect(confirmedReply.body.reply_markup).toBeUndefined()
+
+    expect((await agent.get('/api/account/auth/telegram/status')).body.data.status).toBe('ok')
+    await hook(startMsg(nonce))
+    const consumedReply = calls.filter((c) => c.method === 'sendMessage').pop()!
+    expect(String(consumedReply.body.text)).toMatch(/уже подтвердили/)
+  })
+
+  it('повторное «Подтвердить» после входа — «уже подтверждено», вход не ломается', async () => {
+    const { agent, nonce } = await startLogin()
+    await hook(startMsg(nonce))
+    const id = lastButtonData().slice(6)
+    await hook(confirm(id))
+    const edits = calls.filter((c) => c.method === 'editMessageText').length
+    // Двойное нажатие до того, как сайт забрал вход (статус confirmed).
+    await hook(confirm(id))
+    const early = calls.filter((c) => c.method === 'answerCallbackQuery').pop()!
+    expect(String(early.body.text)).toMatch(/уже подтверждено/i)
+    expect((await agent.get('/api/account/auth/telegram/status')).body.data.status).toBe('ok')
+
+    await hook(confirm(id))
+    const answer = calls.filter((c) => c.method === 'answerCallbackQuery').pop()!
+    expect(String(answer.body.text)).toMatch(/уже подтверждено/i)
+    expect(String(answer.body.text)).not.toMatch(/устарела/)
+    expect(calls.filter((c) => c.method === 'editMessageText')).toHaveLength(edits)
+  })
+
+  it('чужой Telegram с той же ссылкой после входа — «устарела», без подробностей', async () => {
+    const { nonce } = await startLogin()
+    await hook(startMsg(nonce, 1001))
+    const id = lastButtonData().slice(6)
+    await hook(confirm(id, 1001))
+
+    await hook(startMsg(nonce, 2002))
+    const sent = calls.filter((c) => c.method === 'sendMessage').pop()!
+    expect(String(sent.body.text)).toMatch(/устарела/)
+    await hook(confirm(id, 2002))
+    const answer = calls.filter((c) => c.method === 'answerCallbackQuery').pop()!
+    expect(String(answer.body.text)).toMatch(/устарела/)
+  })
+
   it('неверный секрет webhook — 401', async () => {
     const res = await hook(startMsg('x'), 'wrong')
     expect(res.status).toBe(401)
