@@ -26,9 +26,10 @@ export function CashbackRow({ coins, signedIn }: Props) {
       data-testid="summary-cashback"
       className="flex items-center gap-1.5 font-lj-mono text-[length:var(--text-lj-mono-sm)] tracking-[0.02em]"
     >
-      <span className="inline-flex items-center gap-1.5 opacity-70">
+      <span className="inline-flex items-center gap-1.5">
+        {/* Монета вне приглушения: золото на 70% выглядит грязным. */}
         <CoinIcon size={14} />
-        <span>
+        <span className="opacity-70">
           {signedIn ? (
             `Вернём ${amount}`
           ) : (

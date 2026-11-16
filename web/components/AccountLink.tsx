@@ -111,7 +111,7 @@ export function AccountLink({
           </span>
           <span
             data-account-chip=""
-            className="hidden h-7 min-w-[calc(7ch+2.25rem)] items-center justify-center xl:inline-flex gap-1 whitespace-nowrap rounded-full border border-[var(--color-lj-rule)] px-2 font-lj-mono text-[length:var(--text-lj-mono-sm)] leading-none tabular-nums"
+            className="hidden h-7 shrink-0 items-center xl:inline-flex gap-1 whitespace-nowrap rounded-full border border-[var(--color-lj-rule)] px-2 font-lj-mono text-[length:var(--text-lj-mono-sm)] leading-none tabular-nums"
           >
             <CoinIcon />
             <span>{loaded ? formatCoins(loaded.balance) : ''}</span>
