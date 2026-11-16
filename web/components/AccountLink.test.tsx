@@ -146,8 +146,11 @@ describe('<AccountLink>', () => {
     const chip = document.querySelector('[data-account-chip]') as HTMLElement
     expect(chip.className).toMatch(/(^|\s)hidden(\s|$)/)
     expect(chip.className).toMatch(/(^|\s)xl:inline-flex(\s|$)/)
-    // ширина резервируется по содержимому: 7 знаков «123 456» + обвязка
-    expect(chip.className).toContain('min-w-[calc(7ch+2.25rem)]')
+    // ширина — по содержимому: без резерва под N знаков, «0» не тонет в пустой плашке,
+    // а «1 234 567» не вылезает за рамку; в ряду шапки чип не сжимается
+    expect(chip.className).not.toMatch(/(^|\s)(min-w|w)-/)
+    expect(chip.className).toMatch(/(^|\s)shrink-0(\s|$)/)
+    expect(chip.className).toMatch(/(^|\s)whitespace-nowrap(\s|$)/)
     expect(chip.className).toContain('tabular-nums')
   })
 

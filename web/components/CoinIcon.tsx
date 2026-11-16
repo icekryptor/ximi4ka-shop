@@ -1,19 +1,23 @@
-// Монетка-химикоин: кольцо и колба внутри. currentColor, без внешних файлов.
+import Image from 'next/image'
+
+// Монетка-химикоин: золотая монета с «Х» из public/img/brand/ximicoin.svg.
+// Файл 188×166 — монета наклонена, поэтому size задаёт высоту, ширина по пропорции.
+const COIN_W = 188
+const COIN_H = 166
+
 export function CoinIcon({ size = 14 }: { size?: number }) {
+  const width = Math.round((size * COIN_W) / COIN_H)
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+    <Image
+      src="/img/brand/ximicoin.svg"
+      alt=""
       aria-hidden="true"
-    >
-      <circle cx="8" cy="8" r="6.5" />
-      <path d="M6.8 4.5h2.4M7.4 4.5v2.6L5.6 10.6a.9.9 0 0 0 .8 1.4h3.2a.9.9 0 0 0 .8-1.4L8.6 7.1V4.5" />
-    </svg>
+      width={width}
+      height={size}
+      unoptimized
+      data-coin-icon=""
+      className="shrink-0"
+      style={{ width, height: size }}
+    />
   )
 }
