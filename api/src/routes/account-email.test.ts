@@ -8,7 +8,7 @@ import { CustomerEmailCode } from '../entities/CustomerEmailCode.js'
 import { Order } from '../entities/Order.js'
 import { MemoryMailer, setMailerForTests, type Mailer } from '../lib/mail/mailer.js'
 import { issueEmailCode } from '../lib/account/emailCodes.js'
-import { customerAuthFrom, resetAccountTables, seedOrder } from './testUtils.js'
+import { altchaFor, customerAuthFrom, resetAccountTables, seedOrder } from './testUtils.js'
 
 const EMAIL = 'ivan@example.com'
 
@@ -29,8 +29,10 @@ describe('вход по email', () => {
   })
   afterEach(() => setMailerForTests(null))
 
-  const start = (email = EMAIL) =>
-    request(app).post('/api/account/auth/email/start').send({ email })
+  const start = async (email = EMAIL) =>
+    request(app)
+      .post('/api/account/auth/email/start')
+      .send({ email, altcha: await altchaFor(app) })
   const verify = (code: string, email = EMAIL) =>
     request(app).post('/api/account/auth/email/verify').send({ email, code })
 

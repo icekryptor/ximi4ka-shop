@@ -7,6 +7,8 @@ import type {
   TelegramLoginPoll,
   TelegramLoginStart,
 } from '@ximi4ka-shop/shared'
+import { solveChallenge, type Challenge } from 'altcha-lib'
+import { deriveKey as pbkdf2DeriveKey } from 'altcha-lib/algorithms/web/pbkdf2'
 import { ApiError } from './api'
 
 // Клиент личного кабинета для браузера. Как adminApi.ts: cookie сессии
@@ -55,8 +57,18 @@ const post = <T>(path: string, body?: unknown) =>
   call<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
 
 export const getAuthConfig = () => call<AuthConfig>('/api/account/auth/config')
-export const startEmailLogin = (email: string) =>
-  post<void>('/api/account/auth/email/start', { email })
+// Перед письмом с кодом браузер решает задачу ALTCHA (защита от ботов, которые
+// подставляли в форму чужие адреса, — см. api/src/lib/account/altcha.ts). Человек
+// ничего не видит: доля секунды на ноутбуке, около секунды на слабом телефоне.
+export async function startEmailLogin(email: string): Promise<void> {
+  const challenge = await call<Challenge>('/api/account/auth/email/challenge')
+  const solution = await solveChallenge({ challenge, deriveKey: pbkdf2DeriveKey, timeout: 30_000 })
+  if (!solution) {
+    throw new ApiError(400, 'captcha_failed', 'Проверка не прошла — попробуйте ещё раз')
+  }
+  const altcha = btoa(JSON.stringify({ challenge, solution }))
+  return post<void>('/api/account/auth/email/start', { email, altcha })
+}
 export const verifyEmailLogin = (email: string, code: string) =>
   post<{ ok: true }>('/api/account/auth/email/verify', { email, code })
 export const startTelegramLogin = () => post<TelegramLoginStart>('/api/account/auth/telegram/start')

@@ -4,6 +4,8 @@ import type { Express } from 'express'
 import { AppDataSource } from '../config/dataSource.js'
 import { AdminUser } from '../entities/AdminUser.js'
 import { Order } from '../entities/Order.js'
+import { solveChallenge, type Challenge } from 'altcha-lib'
+import { deriveKey as pbkdf2DeriveKey } from 'altcha-lib/algorithms/pbkdf2'
 import { MemoryMailer, setMailerForTests } from '../lib/mail/mailer.js'
 
 export const TEST_ADMIN_EMAIL = 'admin@test.local'
@@ -139,6 +141,17 @@ export function customerHeaders(auth: CustomerAuth): Record<string, string> {
   return { Cookie: auth.cookie, 'X-CSRF-Token': auth.csrfToken }
 }
 
+// Решает задачу ALTCHA так же, как браузер в форме входа, и отдаёт поле `altcha`
+// для POST /email/start. В тестах ALTCHA_COST=1 (vitest.config.ts) — решается мгновенно.
+export async function altchaFor(app: Express): Promise<string> {
+  const res = await request(app).get('/api/account/auth/email/challenge')
+  if (res.status !== 200) throw new Error(`altchaFor: challenge ${res.status}`)
+  const challenge = res.body.data as Challenge
+  const solution = await solveChallenge({ challenge, deriveKey: pbkdf2DeriveKey })
+  if (!solution) throw new Error('altchaFor: задача не решилась')
+  return Buffer.from(JSON.stringify({ challenge, solution })).toString('base64')
+}
+
 // Настоящий вход по коду: почта в памяти, код из письма.
 export async function loginAsCustomer(
   app: Express,
@@ -146,7 +159,9 @@ export async function loginAsCustomer(
   mailer = new MemoryMailer(),
 ): Promise<CustomerAuth> {
   setMailerForTests(mailer)
-  const start = await request(app).post('/api/account/auth/email/start').send({ email })
+  const start = await request(app)
+    .post('/api/account/auth/email/start')
+    .send({ email, altcha: await altchaFor(app) })
   if (start.status !== 204) throw new Error(`loginAsCustomer: start ${start.status}`)
   const code = mailer.lastCodeFor(email)
   const res = await request(app).post('/api/account/auth/email/verify').send({ email, code })

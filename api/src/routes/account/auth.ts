@@ -3,7 +3,12 @@ import type { Response } from 'express'
 import type { AuthConfig } from '@ximi4ka-shop/shared'
 import { AppDataSource } from '../../config/dataSource.js'
 import { CustomerSession } from '../../entities/CustomerSession.js'
-import { getMailer } from '../../lib/mail/mailer.js'
+import {
+  getMailer,
+  getMailHealth,
+  recordMailFailure,
+  recordMailSuccess,
+} from '../../lib/mail/mailer.js'
 import { getLoginBot, isLoginBotUsable } from '../../lib/telegram/loginBot.js'
 import { getLoginPollerHealth } from '../../lib/telegram/loginPoller.js'
 import {
@@ -24,6 +29,9 @@ import {
 } from '../../lib/account/customers.js'
 import { maskEmail } from '../../lib/mail/mailer.js'
 import { Customer } from '../../entities/Customer.js'
+import { CustomerEmailCode } from '../../entities/CustomerEmailCode.js'
+import { MoreThan } from 'typeorm'
+import { createLoginChallenge, verifyLoginAltcha } from '../../lib/account/altcha.js'
 import {
   consumeConfirmedRequest,
   createTelegramLoginRequest,
@@ -34,10 +42,33 @@ import { TG_LOGIN_TTL_MS, TG_POLL_COOKIE } from './constants.js'
 // Выпуск кода и письмо. Бросает ApiError: 503 — почта не настроена, 429 —
 // лимит (со Retry-After на res, если он передан), 502 — SMTP не принял
 // письмо (код удалён, повтор сразу возможен).
+// Общий потолок писем с кодом в час на весь магазин (env EMAIL_CODES_GLOBAL_PER_HOUR).
+// Обычно их единицы в день; рост — это боты, и каждое лишнее письмо чужому человеку —
+// риск жалобы на спам и новой блокировки ящика. Строки неудачных отправок удаляются
+// (discardEmailCode), так что считаются только ушедшие письма.
+function globalHourlyCap(): number {
+  const n = Number(process.env.EMAIL_CODES_GLOBAL_PER_HOUR)
+  return Number.isInteger(n) && n > 0 ? n : 40
+}
+
 export async function sendLoginCode(email: string, res?: Response): Promise<void> {
   const mailer = getMailer()
   if (!mailer) {
     throw new ApiError(503, 'email_login_unavailable', 'Вход по почте временно недоступен')
+  }
+  const lastHour = await AppDataSource.getRepository(CustomerEmailCode).count({
+    where: { createdAt: MoreThan(new Date(Date.now() - 60 * 60 * 1000)) },
+  })
+  if (lastHour >= globalHourlyCap()) {
+    console.error(
+      `account: общий лимит писем с кодом (${globalHourlyCap()}/ч) исчерпан — похоже на ботов`,
+    )
+    res?.setHeader('Retry-After', '600')
+    throw new ApiError(
+      429,
+      'email_login_busy',
+      'Вход по почте временно перегружен — войдите через Telegram или попробуйте позже',
+    )
   }
   const issued = await issueEmailCode(email)
   if (!issued.ok) {
@@ -60,7 +91,9 @@ export async function sendLoginCode(email: string, res?: Response): Promise<void
       text: `Код для входа на ximi4ka.ru: ${issued.code}\n\nОн действует 10 минут. Если вы не запрашивали код, просто удалите это письмо.`,
       html: `<p>Код для входа на ximi4ka.ru:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${issued.code}</p><p>Он действует 10 минут. Если вы не запрашивали код, просто удалите это письмо.</p>`,
     })
+    recordMailSuccess()
   } catch (err) {
+    recordMailFailure(err)
     await discardEmailCode(issued.id)
     console.error(
       `account: письмо с кодом на ${maskEmail(email)} не ушло — ${(err as Error).message}`,
@@ -94,7 +127,8 @@ export function createAccountAuthRouter(): Router {
     // будет. Прячем — остаётся почта.
     const usable = isLoginBotUsable(bot) && getLoginPollerHealth().healthy
     const data: AuthConfig = {
-      email: getMailer() !== null,
+      // Почта, в которую SMTP сейчас не пускает, — тоже не способ входа (см. mailer.ts).
+      email: getMailer() !== null && getMailHealth().healthy,
       telegram: usable,
       telegramBot: usable ? bot.username : null,
     }
@@ -114,12 +148,34 @@ export function createAccountAuthRouter(): Router {
     }
   })
 
+  // Задача ALTCHA для формы входа: браузер решает её до запроса кода (lib/account/altcha.ts).
+  router.get(
+    '/email/challenge',
+    rateLimit({ limit: 60, windowMs: 10 * 60 * 1000 }),
+    async (_req, res, next) => {
+      try {
+        res.set('Cache-Control', 'no-store')
+        res.json({ data: await createLoginChallenge() })
+      } catch (err) {
+        next(err)
+      }
+    },
+  )
+
+  // 10 в час с IP: класс за одним NAT должен успеть войти, а задача ALTCHA и общий
+  // потолок отсекают ботов и без жёсткого лимита по адресу.
   router.post(
     '/email/start',
-    rateLimit({ limit: 20, windowMs: 60 * 60 * 1000 }),
+    rateLimit({ limit: 10, windowMs: 60 * 60 * 1000 }),
     async (req, res, next) => {
       try {
         const { email } = EmailStartSchema.parse(req.body)
+        const check = await verifyLoginAltcha(req.body?.altcha)
+        if (!check.ok) {
+          throw check.reason === 'missing'
+            ? badRequest('captcha_required', 'Обновите страницу и попробуйте ещё раз')
+            : badRequest('captcha_failed', 'Проверка не прошла — попробуйте ещё раз')
+        }
         await sendLoginCode(email, res)
         res.status(204).end()
       } catch (err) {

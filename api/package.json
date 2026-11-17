@@ -38,6 +38,7 @@
   },
   "dependencies": {
     "@ximi4ka-shop/shared": "^0.0.0",
+    "altcha-lib": "2.8.0",
     "argon2": "^0.44.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

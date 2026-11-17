@@ -11,6 +11,12 @@ export default defineConfig({
     // Все запросы тестов идут с одного IP: лимиты входа, заказа и смены пароля в проде
     // (10, 20 и 5) их бы заблокировали. 1000 — потолок envLimit в app.ts. Тесты самих лимитов ставят низкие значения
     // через vi.stubEnv (см. routes/abuse-protection.test.ts).
-    env: { LOGIN_RATE_LIMIT: '1000', CHECKOUT_RATE_LIMIT: '1000', PASSWORD_RATE_LIMIT: '1000' },
+    // ALTCHA_COST=1: задача входа по почте решается в тестах мгновенно (в проде 1000).
+    env: {
+      LOGIN_RATE_LIMIT: '1000',
+      CHECKOUT_RATE_LIMIT: '1000',
+      PASSWORD_RATE_LIMIT: '1000',
+      ALTCHA_COST: '1',
+    },
   },
 })
