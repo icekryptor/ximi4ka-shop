@@ -6,7 +6,7 @@ import { createApp } from '../app.js'
 import { Customer } from '../entities/Customer.js'
 import { CustomerSession } from '../entities/CustomerSession.js'
 import { hashSessionToken } from './middleware/requireAdminAuth.js'
-import { resetAccountTables } from './testUtils.js'
+import { altchaFor, resetAccountTables } from './testUtils.js'
 import { MemoryMailer, setMailerForTests } from '../lib/mail/mailer.js'
 import { TelegramLoginBot, setLoginBotForTests } from '../lib/telegram/loginBot.js'
 
@@ -113,7 +113,7 @@ describe('сессия покупателя', () => {
     const start = await request(app)
       .post('/api/account/auth/email/start')
       .set('Cookie', cookieA)
-      .send({ email: 'b@b.ru' })
+      .send({ email: 'b@b.ru', altcha: await altchaFor(app) })
     expect(start.status).toBe(204)
     const verify = await request(app)
       .post('/api/account/auth/email/verify')
