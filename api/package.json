@@ -22,7 +22,6 @@
     "import:seo-blog-drafts": "tsx src/seeds/import-seo-blog-drafts.ts",
     "import:seo-product-texts": "tsx src/seeds/import-seo-product-texts.ts",
     "import:seo-category-texts": "tsx src/seeds/import-seo-category-texts.ts",
-    "import:seo-landings": "tsx src/seeds/import-seo-landings.ts",
     "import:seo-article-refresh": "tsx src/seeds/import-seo-article-refresh.ts",
     "apply:oge-card": "tsx src/seeds/apply-oge-card.ts",
     "apply:himichka-30-composition": "tsx src/seeds/apply-himichka-30-composition.ts",

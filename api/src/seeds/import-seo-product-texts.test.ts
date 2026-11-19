@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
+import { AGE_FORMULA } from '@ximi4ka-shop/shared/content/kidsPositioning'
 import {
   META_DESCRIPTION_MAX,
   META_TITLE_MAX,
@@ -68,7 +69,7 @@ const SHORT_SLUGS = [
   'oksid-kremniya',
 ]
 
-// Реактивы из SHORT_SLUGS: в тексте обязательны очки, перчатки и взрослые.
+// Реактивы из SHORT_SLUGS: в тексте обязательны очки, перчатки и формула возраста (решение Р1).
 const SHORT_REAGENT_SLUGS = SHORT_SLUGS.filter(
   (s) =>
     ![
@@ -227,16 +228,17 @@ describe('data/seo-product-texts.json', () => {
     }
   })
 
-  it('реактивы из кратких карточек упоминают защитные очки, перчатки и взрослых', async () => {
+  it('реактивы из кратких карточек упоминают защитные очки, перчатки и формулу возраста', async () => {
     const entries = await readJson<SeoProductText[]>('seo-product-texts.json')
     for (const slug of SHORT_REAGENT_SLUGS) {
       const text = (entries.find((e) => e.slug === slug)?.longDescription ?? [])
         .map((b) => b.text)
         .join(' ')
+        .replace(/\s+/g, ' ')
         .toLowerCase()
       expect(text, slug).toContain('очк')
       expect(text, slug).toContain('перчатк')
-      expect(text, slug).toContain('взросл')
+      expect(text, slug).toContain(AGE_FORMULA.toLowerCase())
     }
   })
 
@@ -270,7 +272,7 @@ describe('data/seo-product-texts.json', () => {
     }
   })
 
-  it('описания реактивов-приоритетов упоминают защитные очки, перчатки и взрослых', async () => {
+  it('описания реактивов-приоритетов упоминают защитные очки, перчатки и формулу возраста', async () => {
     const entries = await readJson<SeoProductText[]>('seo-product-texts.json')
     const reagents = [
       'sernaya-kislota',
@@ -284,10 +286,11 @@ describe('data/seo-product-texts.json', () => {
       const text = (entries.find((e) => e.slug === slug)?.longDescription ?? [])
         .map((b) => b.text)
         .join(' ')
+        .replace(/\s+/g, ' ')
         .toLowerCase()
       expect(text, slug).toContain('очк')
       expect(text, slug).toContain('перчатк')
-      expect(text, slug).toContain('взросл')
+      expect(text, slug).toContain(AGE_FORMULA.toLowerCase())
     }
   })
 
