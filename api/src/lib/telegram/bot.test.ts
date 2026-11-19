@@ -106,6 +106,64 @@ describe('TelegramBot', () => {
     expect((err as RateLimitError).retryAfterMs).toBe(30_000)
   })
 
+  describe('чат стал супергруппой', () => {
+    const migrated = () =>
+      json(400, {
+        ok: false,
+        error_code: 400,
+        description: 'Bad Request: group chat was upgraded to a supergroup chat',
+        parameters: { migrate_to_chat_id: -1004645242483 },
+      })
+
+    it('переходит на новый id, шлёт туда и называет id в логе', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const f = vi
+        .fn()
+        .mockResolvedValueOnce(migrated())
+        .mockImplementation(async () => json(200, { ok: true, result: { message_id: 5 } }))
+      const b = bot(f)
+      expect(await b.sendMessage('x')).toBe(5)
+      expect(JSON.parse(f.mock.calls[0][1].body).chat_id).toBe('-1001234')
+      expect(JSON.parse(f.mock.calls[1][1].body).chat_id).toBe('-1004645242483')
+      expect(warn).toHaveBeenCalledTimes(1)
+      expect(warn.mock.calls[0].join(' ')).toContain('TELEGRAM_CHAT_ID=-1004645242483')
+      expect(warn.mock.calls[0].join(' ')).not.toContain('TOKEN')
+
+      // Дальше — сразу в новый чат, без лишнего запроса и повторного предупреждения.
+      await b.sendMessage('y')
+      expect(f).toHaveBeenCalledTimes(3)
+      expect(JSON.parse(f.mock.calls[2][1].body).chat_id).toBe('-1004645242483')
+      expect(warn).toHaveBeenCalledTimes(1)
+      warn.mockRestore()
+    })
+
+    it('ответ на карточку сохраняет reply_parameters при повторе', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const f = vi
+        .fn()
+        .mockResolvedValueOnce(migrated())
+        .mockImplementation(async () => json(200, { ok: true, result: { message_id: 6 } }))
+      await bot(f).sendMessage('x', 77)
+      expect(JSON.parse(f.mock.calls[1][1].body).reply_parameters).toEqual({
+        message_id: 77,
+        allow_sending_without_reply: true,
+      })
+      warn.mockRestore()
+    })
+
+    it('если и новый чат отвечает переездом — ошибка настройки, без цикла', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const f = vi.fn().mockImplementation(async () => migrated())
+      const err = await bot(f)
+        .sendMessage('x')
+        .catch((e: unknown) => e)
+      expect(err).toBeInstanceOf(TelegramConfigError)
+      expect((err as Error).message).toContain('-1004645242483')
+      expect(f).toHaveBeenCalledTimes(2)
+      warn.mockRestore()
+    })
+  })
+
   it('fromEnv без токена или чата — null', () => {
     expect(TelegramBot.fromEnv({})).toBeNull()
     expect(TelegramBot.fromEnv({ TELEGRAM_BOT_TOKEN: 't' })).toBeNull()
