@@ -4,6 +4,7 @@ import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
 import { Product } from '../entities/Product.js'
 import { createApp } from '../app.js'
+import { CdekError } from '../lib/cdek/client.js'
 import { setCdekClientForTests } from '../lib/cdek/index.js'
 import { clearEtaCache } from '../lib/shipping/eta.js'
 import { moscowDate } from '@ximi4ka-shop/shared/types/deliveryDates'
@@ -59,6 +60,32 @@ describe('POST /api/public/shipping/quote', () => {
     expect(res.body.data.packages[0].weightG).toBe(1300 + 2 * 50)
     expect(res.body.data.quote).toBeNull()
     expect(res.body.data.tariffs).toEqual({ pvz: 136, courier: 137 })
+  })
+
+  it('тариф СДЭК в город недоступен — 400 delivery_unavailable вместо фиксированной ставки', async () => {
+    setCdekClientForTests({
+      post: vi
+        .fn()
+        .mockRejectedValue(
+          new CdekError(400, 'err_result_service_empty', 'выбранный тариф недоступен'),
+        ),
+      get: vi.fn(),
+      raw: vi.fn(),
+    })
+    const p = await seedProduct({ priceRub: 500 })
+    const res = await request(app)
+      .post('/api/public/shipping/quote')
+      .send({
+        items: [{ productId: p.id, quantity: 1 }],
+        destination: {
+          method: 'cdek_pvz',
+          cityCode: 24221,
+          deliveryPointCode: 'PIT4',
+          address: 'Питерка',
+        },
+      })
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('delivery_unavailable')
   })
 
   it('с ПВЗ считает цену для покупателя по правилу порога', async () => {

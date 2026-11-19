@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } 
 import request from 'supertest'
 import { AppDataSource } from '../../config/dataSource.js'
 import { createApp } from '../../app.js'
+import { CdekError } from '../../lib/cdek/client.js'
 import { setCdekClientForTests } from '../../lib/cdek/index.js'
 import { clearCdekLocationCache } from '../../lib/cdek/locations.js'
 import { setPickupPointsForTests } from '../../lib/ycp/pickupPoints.js'
@@ -142,6 +143,23 @@ describe('POST /api/v1/checkout/delivery/options', () => {
       })
     expect(res.status).toBe(400)
     expect(res.body.error).toContain('pickup_point_id')
+  })
+
+  it('тариф СДЭК в город пункта недоступен — 400, а не фиксированная ставка', async () => {
+    const p = await seedYcpProduct()
+    setPickupPointsForTests([makePickupEntry('PIT4', 24221)])
+    stubCdek(async () => {
+      throw new CdekError(400, 'err_result_service_empty', 'выбранный тариф недоступен')
+    })
+    const res = await request(app)
+      .post(URL)
+      .set(ycpAuth)
+      .send({
+        items: [{ id: p.id, quantity: 1 }],
+        delivery_target: { delivery_method: 'pickup_point', address: { pickup_point_id: 'PIT4' } },
+      })
+    expect(res.status).toBe(400)
+    expect(res.body).toEqual({ error: 'Delivery is not available for this address' })
   })
 
   it('неизвестный пункт при собранном кеше — 400', async () => {

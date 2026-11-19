@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { CdekError } from '../cdek/client.js'
-import { quoteDelivery, deliveryConfigFromEnv } from './quote.js'
+import { DeliveryUnavailableError, quoteDelivery, deliveryConfigFromEnv } from './quote.js'
 import type { ShippingPackage } from '@ximi4ka-shop/shared'
 
 const packages: ShippingPackage[] = [
@@ -129,6 +129,55 @@ describe('quoteDelivery', () => {
       { cdek, config },
     )
     expect(quote).toMatchObject({ customerPriceRub: 350, cdekPriceRub: null, source: 'fallback' })
+  })
+
+  // XM-2026-00153: ПВЗ PIT4 (Питерка) СДЭК возит только экспрессом. Фиксированная
+  // ставка пропустила заказ к оплате, а создать его в СДЭК было уже нельзя.
+  it('тариф в этот город недоступен — ошибка delivery_unavailable, а не фиксированная ставка', async () => {
+    const cdek = {
+      post: vi
+        .fn()
+        .mockRejectedValue(
+          new CdekError(
+            400,
+            'err_result_service_empty',
+            'По данному направлению при заданных условиях выбранный тариф недоступен',
+          ),
+        ),
+    }
+    const err = await quoteDelivery(
+      { destination: pvz, subtotalRub: 3500, packages },
+      { cdek, config },
+    ).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(DeliveryUnavailableError)
+    expect(err).toMatchObject({ status: 400, code: 'delivery_unavailable' })
+  })
+
+  it('код недоступности не первым в списке ошибок СДЭК — тоже delivery_unavailable', async () => {
+    const cdek = {
+      post: vi.fn().mockRejectedValue(
+        new CdekError(400, 'v2_other', 'другое', [
+          { code: 'v2_other', message: 'другое' },
+          { code: 'err_result_service_empty', message: 'выбранный тариф недоступен' },
+        ]),
+      ),
+    }
+    const err = await quoteDelivery(
+      { destination: courier, subtotalRub: 1000, packages },
+      { cdek, config },
+    ).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(DeliveryUnavailableError)
+  })
+
+  it('прочие отказы СДЭК (4xx) — по-прежнему фиксированная ставка', async () => {
+    const cdek = {
+      post: vi.fn().mockRejectedValue(new CdekError(400, 'v2_bad_request', 'что-то иное')),
+    }
+    const quote = await quoteDelivery(
+      { destination: pvz, subtotalRub: 1000, packages },
+      { cdek, config },
+    )
+    expect(quote).toMatchObject({ source: 'fallback' })
   })
 
   it('СДЭК не ответил, но заказ от порога — всё равно бесплатно', async () => {

@@ -36,6 +36,7 @@ function methodLabel(method: DeliveryMethod, view: QuoteView): string {
   const title = METHOD_TITLES[method]
   if (view.status === 'loading') return `${title} — ${view.refining ? 'пересчитываем' : 'считаем'}…`
   if (view.status === 'error') return `${title} — не удалось рассчитать`
+  if (view.status === 'unavailable') return `${title} — СДЭК сюда не доставляет`
   if (!view.quote) return title
   const price =
     view.quote.customerPriceRub === 0 ? 'бесплатно' : formatRub(view.quote.customerPriceRub)

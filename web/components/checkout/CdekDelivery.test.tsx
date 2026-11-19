@@ -379,6 +379,22 @@ describe('<CdekDelivery>', () => {
     ).toBeInTheDocument()
   })
 
+  // XM-2026-00153: в Питерку тариф 136 не возит — повтор расчёта не поможет.
+  it('тариф СДЭК в город недоступен — «СДЭК сюда не доставляет», без «Повторить расчёт»', async () => {
+    const { ApiError } = await import('@/lib/api')
+    const unavailable = new ApiError(400, 'delivery_unavailable', 'СДЭК не доставляет')
+    mockQuote.mockRejectedValueOnce(unavailable).mockRejectedValueOnce(unavailable)
+    render(<Harness />)
+    await chooseCity(MOSCOW)
+    expect(
+      await screen.findByRole('radio', { name: /Пункт выдачи СДЭК — СДЭК сюда не доставляет/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', { name: /Курьер СДЭК — СДЭК сюда не доставляет/ }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Повторить расчёт' })).toBeNull()
+  })
+
   it('курьер: полный адрес пересчитывается тем же destination, что уйдёт в заказ', async () => {
     render(<Harness />)
     await chooseCity(MOSCOW)
