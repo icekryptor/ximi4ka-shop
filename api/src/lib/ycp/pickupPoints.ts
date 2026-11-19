@@ -2,6 +2,8 @@ import { AppDataSource } from '../../config/dataSource.js'
 import type { CdekClient } from '../cdek/client.js'
 import { getCdekClient } from '../cdek/index.js'
 import { describeCdekError } from '../cdek/locations.js'
+import { deliveryConfigFromEnv } from '../shipping/quote.js'
+import { type CityCheck, filterServedPickupPoints } from './cityTariff.js'
 import { ycpTokenFromEnv } from './config.js'
 
 // Пункты выдачи СДЭК по всей России для GET /checkout/delivery/pickup_points
@@ -10,8 +12,12 @@ import { ycpTokenFromEnv } from './config.js'
 // ycp_pickup_points_snapshot (переживает перезапуск api), а метод только режет
 // готовый массив. Объём: ~450 байт JSON на пункт, единицы мегабайт на всю
 // Россию; срез на 1000 пунктов — миллисекунды, далеко от предела в 5 секунд.
+// В список попадают только пункты городов, куда возит тариф ПВЗ
+// (lib/ycp/cityTariff.ts) — иначе покупатель выберет пункт, на котором
+// /delivery/options ответит 400.
 
 type CdekGet = Pick<CdekClient, 'get'>
+type CdekGetPost = Pick<CdekClient, 'get' | 'post'>
 
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 
@@ -172,10 +178,83 @@ export function lookupPickupPoint(code: string): PickupPointEntry | 'unknown' | 
   return snapshot.byCode.get(code.trim()) ?? 'unknown'
 }
 
-export async function refreshPickupPoints(cdek: CdekGet, now: Date = new Date()): Promise<number> {
-  const entries = await fetchCdekPickupPoints(cdek)
+// Проверки городов тарифом ПВЗ: в памяти и в ycp_city_tariff_checks. Ключ
+// кеша в памяти — тариф, на котором он собран.
+let cityChecks: { tariffCode: number; byCity: Map<number, CityCheck> } | null = null
+
+// Для тестов: имитирует перезапуск api — следующий сбор прочитает кеш из базы.
+export function resetCityChecksForTests(): void {
+  cityChecks = null
+}
+
+async function loadCityChecks(tariffCode: number): Promise<Map<number, CityCheck>> {
+  if (cityChecks?.tariffCode === tariffCode) return cityChecks.byCity
+  const rows = (await AppDataSource.query(
+    `SELECT city_code, served, checked_at FROM ycp_city_tariff_checks WHERE tariff_code = $1`,
+    [tariffCode],
+  )) as { city_code: number; served: boolean; checked_at: Date }[]
+  const byCity = new Map(
+    rows.map((r) => [r.city_code, { served: r.served, checkedAt: new Date(r.checked_at) }]),
+  )
+  cityChecks = { tariffCode, byCity }
+  return byCity
+}
+
+async function saveCityChecks(tariffCode: number, fresh: Map<number, CityCheck>): Promise<void> {
+  if (fresh.size === 0) return
+  const rows = [...fresh].map(([city, c]) => ({
+    city,
+    served: c.served,
+    at: c.checkedAt.toISOString(),
+  }))
+  await AppDataSource.query(
+    `INSERT INTO ycp_city_tariff_checks (tariff_code, city_code, served, checked_at)
+     SELECT $1, r.city, r.served, r.at
+       FROM jsonb_to_recordset($2::jsonb) AS r(city integer, served boolean, at timestamptz)
+     ON CONFLICT (tariff_code, city_code)
+     DO UPDATE SET served = EXCLUDED.served, checked_at = EXCLUDED.checked_at`,
+    [tariffCode, JSON.stringify(rows)],
+  )
+}
+
+// Города без ответа калькулятора не мешают сборке: их пункты остаются.
+async function servedOnly(
+  entries: PickupPointEntry[],
+  cdek: CdekGetPost,
+  now: Date,
+): Promise<PickupPointEntry[]> {
+  const { tariffPvz: tariffCode, fromCityCode } = deliveryConfigFromEnv()
+  const cache = await loadCityChecks(tariffCode)
+  const result = await filterServedPickupPoints(entries, {
+    cdek,
+    tariffCode,
+    fromCityCode,
+    now,
+    cache,
+  })
+  await saveCityChecks(tariffCode, result.fresh).catch((err) =>
+    console.error(
+      'ycp: проверки городов не сохранены —',
+      err instanceof Error ? err.message : String(err),
+    ),
+  )
+  if (result.removedPoints > 0 || result.unknownCities > 0) {
+    console.info(
+      `ycp: тариф ${tariffCode} не возит в пункты — ${result.removedPoints}, ` +
+        `городов без ответа СДЭК — ${result.unknownCities}`,
+    )
+  }
+  return result.entries
+}
+
+export async function refreshPickupPoints(
+  cdek: CdekGetPost,
+  now: Date = new Date(),
+): Promise<number> {
+  const all = await fetchCdekPickupPoints(cdek)
   // Пустой список — скорее сбой СДЭК, чем Россия без ПВЗ: прежний снимок не трогаем.
-  if (entries.length === 0) throw new Error('СДЭК вернул пустой список пунктов выдачи')
+  if (all.length === 0) throw new Error('СДЭК вернул пустой список пунктов выдачи')
+  const entries = await servedOnly(all, cdek, now)
   await AppDataSource.query(
     `INSERT INTO ycp_pickup_points_snapshot (id, entries, built_at) VALUES (1, $1::jsonb, $2)
      ON CONFLICT (id) DO UPDATE SET entries = EXCLUDED.entries, built_at = EXCLUDED.built_at`,
@@ -198,7 +277,7 @@ export async function loadPickupPointsSnapshot(): Promise<boolean> {
 // Запускается из api/src/index.ts: снимок из базы сразу, затем свежий список
 // из СДЭК и обновление раз в 12 часов. No-op без YCP_API_TOKEN.
 export function startPickupPointsJob(
-  opts: { cdek?: CdekGet; intervalMs?: number; env?: NodeJS.ProcessEnv } = {},
+  opts: { cdek?: CdekGetPost; intervalMs?: number; env?: NodeJS.ProcessEnv } = {},
 ): NodeJS.Timeout | null {
   if (!ycpTokenFromEnv(opts.env)) return null
   let running = false
