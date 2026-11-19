@@ -39,7 +39,7 @@ describe('AdminShell', () => {
     }
   })
 
-  it('renders all 10 sidebar nav items with correct hrefs', () => {
+  it('renders all 11 sidebar nav items with correct hrefs', () => {
     render(
       <AdminShell admin={admin}>
         <div>content</div>
@@ -48,6 +48,7 @@ describe('AdminShell', () => {
     const nav = screen.getByRole('navigation', { name: 'Админ навигация' })
     const labels: Array<[string, string]> = [
       ['Главная', '/admin'],
+      ['Трафик и рост', '/admin/traffic'],
       ['Товары', '/admin/products'],
       ['Категории', '/admin/categories'],
       ['Страницы', '/admin/pages'],
@@ -63,7 +64,7 @@ describe('AdminShell', () => {
     }
   })
 
-  it('редактору в меню нет «Заказов» и «Настроек», контентные разделы на месте', () => {
+  it('редактору в меню нет «Заказов», «Настроек» и «Трафика и роста», контентные разделы на месте', () => {
     render(
       <AdminShell admin={{ ...admin, role: 'editor' }}>
         <div>content</div>
@@ -73,6 +74,7 @@ describe('AdminShell', () => {
     expect(within(nav).queryByRole('link', { name: 'Заказы' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: 'Покупатели' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: 'Настройки' })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: 'Трафик и рост' })).not.toBeInTheDocument()
     for (const label of [
       'Главная',
       'Товары',
@@ -96,6 +98,7 @@ describe('AdminShell', () => {
     expect(within(nav).queryByRole('link', { name: 'Заказы' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: 'Покупатели' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: 'Настройки' })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: 'Трафик и рост' })).not.toBeInTheDocument()
   })
 
   it('в шапке есть ссылка на смену пароля', () => {

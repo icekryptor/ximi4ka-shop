@@ -66,6 +66,14 @@ describe('resolvePeriod', () => {
     })
   })
 
+  it('quarter — 90 дней, включая сегодня', () => {
+    expect(resolvePeriod({ preset: 'quarter' }, new Date('2026-10-28T09:00:00Z'))).toEqual({
+      preset: 'quarter',
+      from: '2026-07-31',
+      to: '2026-10-28',
+    })
+  })
+
   it('ровно 366 дней допустимо', () => {
     expect(
       resolvePeriod({ preset: 'custom', from: '2025-10-07', to: '2026-10-07' }, NOW).preset,

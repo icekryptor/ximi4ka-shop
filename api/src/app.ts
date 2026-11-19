@@ -32,6 +32,7 @@ import { publicOrdersRouter } from './routes/public/orders.js'
 import { adminOrdersRouter } from './routes/admin/orders.js'
 import { adminCustomersRouter } from './routes/admin/customers.js'
 import { adminStatsRouter } from './routes/admin/stats.js'
+import { adminTrafficRouter } from './routes/admin/traffic.js'
 import { adminCloudPaymentsRouter } from './routes/admin/cloudpayments.js'
 import { publicShippingRouter } from './routes/public/shipping.js'
 import { cdekWidgetRouter } from './routes/public/cdek-widget.js'
@@ -172,6 +173,7 @@ export function createApp(): Express {
   app.use('/api/admin/orders', adminOrdersRouter)
   app.use('/api/admin/customers', adminCustomersRouter)
   app.use('/api/admin/stats', adminStatsRouter)
+  app.use('/api/admin/traffic', adminTrafficRouter)
   app.use('/api/public/products', publicProductsRouter)
   app.use('/api/admin/products', adminProductsRouter)
   app.use('/api/public/categories', publicCategoriesRouter)

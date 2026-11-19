@@ -42,8 +42,8 @@ const PRESETS: Array<{ value: Exclude<PeriodPreset, 'custom'>; label: string }> 
   { value: 'month', label: 'Месяц' },
 ]
 
-const CHIP_ACTIVE = 'px-3 py-1.5 rounded-full bg-brand text-white text-sm font-semibold'
-const CHIP_IDLE =
+export const CHIP_ACTIVE = 'px-3 py-1.5 rounded-full bg-brand text-white text-sm font-semibold'
+export const CHIP_IDLE =
   'px-3 py-1.5 rounded-full bg-white border border-brand-border text-sm text-brand-text-secondary hover:bg-brand-bg-soft'
 
 function isEmpty(stats: StatsResponse): boolean {
