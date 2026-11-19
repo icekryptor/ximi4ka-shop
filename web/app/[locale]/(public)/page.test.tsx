@@ -231,3 +231,62 @@ describe('HomePage: отзывы', () => {
     expect(screen.getByText('Опыты получились с первого раза.')).toBeInTheDocument()
   })
 })
+
+describe('HomePage: блок «Комбо»', () => {
+  let spies: { mockRestore: () => void }[] = []
+  afterEach(() => {
+    spies.forEach((s) => s.mockRestore())
+    spies = []
+  })
+
+  const combo = (slug: string) =>
+    ({ id: `id-${slug}`, slug, name: slug, images: [] }) as unknown as Awaited<
+      ReturnType<typeof api.listProductsByCategory>
+    >['data'][number]
+
+  const renderHome = async (combos: () => Promise<unknown>) => {
+    const { render } = await import('@testing-library/react')
+    spies = [
+      vi.spyOn(api, 'getPage').mockRejectedValue(new Error('down')),
+      vi.spyOn(api, 'listPublishedProducts').mockRejectedValue(new Error('down')),
+      vi.spyOn(api, 'getPublicSettings').mockRejectedValue(new Error('down')),
+      vi.spyOn(api, 'listCategories').mockRejectedValue(new Error('down')),
+      vi
+        .spyOn(api, 'listProductsByCategory')
+        .mockImplementation(() => combos() as ReturnType<typeof api.listProductsByCategory>),
+    ]
+    render(await HomePage({ params: Promise.resolve({ locale: 'ru' }) }))
+  }
+
+  it('идёт сразу после «Готовых наборов» и ведёт в категорию комбо', async () => {
+    const { screen } = await import('@testing-library/react')
+    await renderHome(() =>
+      Promise.resolve({ data: [combo('vse-tri-nabora'), combo('all-4-kits')], meta: {} }),
+    )
+
+    expect(api.listProductsByCategory).toHaveBeenCalledWith('combo', expect.anything())
+    const heading = screen.getByRole('heading', { level: 2, name: 'Комбо' })
+    const kits = screen.getByRole('heading', { level: 2, name: /Готовые наборы/ })
+    const section = document.getElementById('combo')
+    expect(section).toContainElement(heading)
+    expect(kits.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // между наборами и комбо других секций нет
+    expect(kits.closest('section')!.nextElementSibling).toBe(section)
+    expect(screen.getByRole('link', { name: 'Все комбо →' })).toHaveAttribute(
+      'href',
+      '/categories/combo',
+    )
+  })
+
+  it('без комбо (пустая категория или api недоступен) блока нет', async () => {
+    const { screen } = await import('@testing-library/react')
+    await renderHome(() => Promise.resolve({ data: [], meta: {} }))
+    expect(screen.queryByRole('heading', { name: 'Комбо' })).toBeNull()
+
+    const { cleanup } = await import('@testing-library/react')
+    cleanup()
+    spies.forEach((s) => s.mockRestore())
+    await renderHome(() => Promise.reject(new Error('down')))
+    expect(screen.queryByRole('heading', { name: 'Комбо' })).toBeNull()
+  })
+})

@@ -1,4 +1,5 @@
 import 'reflect-metadata'
+import { randomUUID } from 'node:crypto'
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import request from 'supertest'
 import { AppDataSource } from '../config/dataSource.js'
@@ -244,6 +245,35 @@ describe('Product routes', () => {
       expect(res.body.data.priceRub).toBe(200)
       expect(res.body.data.slug).toBe('upd')
     })
+    // Быстрая правка в таблице админки шлёт одно поле. Значения по умолчанию
+    // из схемы создания не должны подставляться в PATCH и затирать товар.
+    it('PATCH одного поля не сбрасывает остальные поля к значениям по умолчанию', async () => {
+      const created = await request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({
+          slug: 'partial-patch',
+          name: 'P',
+          priceRub: 100,
+          longDescriptionBlocks: [{ type: 'paragraph', text: 'Описание' }],
+          stockStatus: 'preorder',
+          sortOrder: 7,
+          noindex: true,
+          translations: { en: { name: 'P en' } },
+        })
+      expect(created.status).toBe(201)
+      const res = await request(app)
+        .patch(`/api/admin/products/${created.body.data.id}`)
+        .set(authHeaders(auth))
+        .send({ priceRub: 300 })
+      expect(res.status).toBe(200)
+      expect(res.body.data.priceRub).toBe(300)
+      expect(res.body.data.longDescriptionBlocks).toEqual([{ type: 'paragraph', text: 'Описание' }])
+      expect(res.body.data.stockStatus).toBe('preorder')
+      expect(res.body.data.sortOrder).toBe(7)
+      expect(res.body.data.noindex).toBe(true)
+      expect(res.body.data.translations).toEqual({ en: { name: 'P en' } })
+    })
     it('returns 404 for missing id', async () => {
       const res = await request(app)
         .patch('/api/admin/products/00000000-0000-0000-0000-000000000000')
@@ -405,6 +435,185 @@ describe('Product routes', () => {
       expect(res.status).toBe(200)
       expect(res.body.data).toHaveLength(1)
       expect(res.body.data[0].slug).toBe('c')
+    })
+  })
+
+  describe('GET /api/admin/products?categoryId=', () => {
+    async function seed() {
+      const create = (slug: string) =>
+        request(app)
+          .post('/api/admin/products')
+          .set(authHeaders(auth))
+          .send({ slug, name: slug, priceRub: 100 })
+      const [p1, p2, p3] = await Promise.all([create('in-a'), create('in-a-b'), create('in-b')])
+      const catA = await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug: 'filter-a', name: 'A' })
+      const catB = await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug: 'filter-b', name: 'B' })
+      await AppDataSource.query(
+        'INSERT INTO product_category_links (category_id, product_id) VALUES ($1, $2), ($1, $3), ($4, $3), ($4, $5)',
+        [catA.body.data.id, p1.body.data.id, p2.body.data.id, catB.body.data.id, p3.body.data.id],
+      )
+      return { catA: catA.body.data.id as string }
+    }
+    it('возвращает только товары категории, total — по фильтру', async () => {
+      const { catA } = await seed()
+      const res = await request(app)
+        .get(`/api/admin/products?categoryId=${catA}`)
+        .set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      expect(res.body.data.map((p: { slug: string }) => p.slug).sort()).toEqual(['in-a', 'in-a-b'])
+      expect(res.body.pagination.total).toBe(2)
+    })
+    it('сочетается с поиском q', async () => {
+      const { catA } = await seed()
+      const res = await request(app)
+        .get(`/api/admin/products?categoryId=${catA}&q=in-a-b`)
+        .set(authHeaders(auth))
+      expect(res.body.data.map((p: { slug: string }) => p.slug)).toEqual(['in-a-b'])
+    })
+    it('некорректный categoryId → 400', async () => {
+      const res = await request(app)
+        .get('/api/admin/products?categoryId=bad')
+        .set(authHeaders(auth))
+      expect(res.status).toBe(400)
+    })
+  })
+
+  describe('categoryIds в админке товара', () => {
+    async function makeCategory(slug: string): Promise<string> {
+      const res = await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug, name: slug })
+      expect(res.status).toBe(201)
+      return res.body.data.id
+    }
+    async function linkedIds(productId: string): Promise<string[]> {
+      const rows: Array<{ category_id: string }> = await AppDataSource.query(
+        'SELECT category_id FROM product_category_links WHERE product_id = $1',
+        [productId],
+      )
+      return rows.map((r) => r.category_id).sort()
+    }
+    async function createProduct(body: Record<string, unknown> = {}) {
+      return request(app)
+        .post('/api/admin/products')
+        .set(authHeaders(auth))
+        .send({ slug: 'kit-cat', name: 'Набор', priceRub: 1000, ...body })
+    }
+
+    it('POST с categoryIds заводит связи и отдаёт categoryIds', async () => {
+      const a = await makeCategory('cat-a')
+      const b = await makeCategory('cat-b')
+      const res = await createProduct({ categoryIds: [a, b, a] })
+      expect(res.status).toBe(201)
+      expect([...res.body.data.categoryIds].sort()).toEqual([a, b].sort())
+      expect(res.body.data.categories).toBeUndefined()
+      expect(await linkedIds(res.body.data.id)).toEqual([a, b].sort())
+    })
+
+    it('POST без categoryIds — товар без категорий, GET отдаёт []', async () => {
+      const res = await createProduct()
+      expect(res.status).toBe(201)
+      const get = await request(app)
+        .get(`/api/admin/products/${res.body.data.id}`)
+        .set(authHeaders(auth))
+      expect(get.body.data.categoryIds).toEqual([])
+    })
+
+    it('GET отдаёт categoryIds', async () => {
+      const a = await makeCategory('cat-a')
+      const { body } = await createProduct({ categoryIds: [a] })
+      const get = await request(app)
+        .get(`/api/admin/products/${body.data.id}`)
+        .set(authHeaders(auth))
+      expect(get.status).toBe(200)
+      expect(get.body.data.categoryIds).toEqual([a])
+    })
+
+    it('PATCH с categoryIds заменяет связи целиком', async () => {
+      const a = await makeCategory('cat-a')
+      const b = await makeCategory('cat-b')
+      const c = await makeCategory('cat-c')
+      const { body } = await createProduct({ categoryIds: [a, b] })
+      const res = await request(app)
+        .patch(`/api/admin/products/${body.data.id}`)
+        .set(authHeaders(auth))
+        .send({ categoryIds: [c] })
+      expect(res.status).toBe(200)
+      expect(res.body.data.categoryIds).toEqual([c])
+      expect(await linkedIds(body.data.id)).toEqual([c])
+    })
+
+    it('PATCH без categoryIds не трогает связи', async () => {
+      const a = await makeCategory('cat-a')
+      const b = await makeCategory('cat-b')
+      const { body } = await createProduct({ categoryIds: [a, b] })
+      const res = await request(app)
+        .patch(`/api/admin/products/${body.data.id}`)
+        .set(authHeaders(auth))
+        .send({ name: 'Новое имя' })
+      expect(res.status).toBe(200)
+      expect(res.body.data.name).toBe('Новое имя')
+      expect(await linkedIds(body.data.id)).toEqual([a, b].sort())
+    })
+
+    it('PATCH с пустым массивом снимает все категории', async () => {
+      const a = await makeCategory('cat-a')
+      const { body } = await createProduct({ categoryIds: [a] })
+      const res = await request(app)
+        .patch(`/api/admin/products/${body.data.id}`)
+        .set(authHeaders(auth))
+        .send({ categoryIds: [] })
+      expect(res.status).toBe(200)
+      expect(res.body.data.categoryIds).toEqual([])
+      expect(await linkedIds(body.data.id)).toEqual([])
+    })
+
+    it('неизвестный id категории → 400, связи и товар не меняются', async () => {
+      const a = await makeCategory('cat-a')
+      const { body } = await createProduct({ categoryIds: [a] })
+      const ghost = randomUUID()
+      const res = await request(app)
+        .patch(`/api/admin/products/${body.data.id}`)
+        .set(authHeaders(auth))
+        .send({ name: 'Не должно сохраниться', categoryIds: [a, ghost] })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('unknown_category')
+      expect(res.body.error.details).toEqual({ missing: [ghost] })
+      expect(await linkedIds(body.data.id)).toEqual([a])
+      const get = await request(app)
+        .get(`/api/admin/products/${body.data.id}`)
+        .set(authHeaders(auth))
+      expect(get.body.data.name).toBe('Набор')
+    })
+
+    it('POST с неизвестным id → 400 и товар не создаётся', async () => {
+      const res = await createProduct({ categoryIds: [randomUUID()] })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('unknown_category')
+      const list = await request(app).get('/api/admin/products').set(authHeaders(auth))
+      expect(list.body.data).toHaveLength(0)
+    })
+
+    it('не-uuid в categoryIds → 400 validation_error', async () => {
+      const res = await createProduct({ categoryIds: ['not-a-uuid'] })
+      expect(res.status).toBe(400)
+      expect(res.body.error.code).toBe('validation_error')
+    })
+
+    it('связи из админки видит публичная страница категории', async () => {
+      const a = await makeCategory('cat-a')
+      const { body } = await createProduct({ categoryIds: [a] })
+      await request(app).post(`/api/admin/products/${body.data.id}/publish`).set(authHeaders(auth))
+      const pub = await request(app).get('/api/public/categories/cat-a/products')
+      expect(pub.status).toBe(200)
+      expect(pub.body.data.map((p: { slug: string }) => p.slug)).toEqual(['kit-cat'])
     })
   })
 

@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AccountOrderSummary } from '@ximi4ka-shop/shared'
 import { getOrders } from '@/lib/accountApi'
+import { orderCashbackNote } from '@/lib/coins'
 import { orderStatusLabel } from '@/lib/orderStatus'
 import { formatRub } from '@/lib/stockLabel'
+import { CoinIcon } from '@/components/CoinIcon'
 import { Button } from '@/components/ui'
 import { ERROR_CLASS } from '@/components/checkout/fieldStyles'
 import { OrderDetails } from './OrderDetails'
@@ -78,6 +80,7 @@ export function OrdersList() {
         {orders.map((o) => {
           const isOpen = open.has(o.orderNumber)
           const panelId = `order-details-${o.orderNumber}`
+          const cashbackNote = orderCashbackNote(o)
           return (
             <li
               key={o.orderNumber}
@@ -93,6 +96,12 @@ export function OrdersList() {
                 <span className="flex flex-col gap-1">
                   <span className="font-lj-mono">{o.orderNumber}</span>
                   <span className="text-sm opacity-70">{DATE.format(new Date(o.createdAt))}</span>
+                  {cashbackNote && (
+                    <span className="inline-flex items-center gap-1.5 text-sm">
+                      <CoinIcon size={14} />
+                      {cashbackNote}
+                    </span>
+                  )}
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="rounded-full bg-[var(--color-lj-ink)] px-3 py-1 text-xs text-[var(--color-lj-cream)]">

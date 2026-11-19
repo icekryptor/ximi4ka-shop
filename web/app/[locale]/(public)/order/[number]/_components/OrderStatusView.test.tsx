@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import type { PublicOrderStatus } from '@ximi4ka-shop/shared'
 import { OrderStatusView } from './OrderStatusView'
 import { rememberPendingPurchase, setMetrikaCounterId } from '@/lib/metrika'
@@ -450,7 +450,8 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     rememberPendingPurchase('XM-2026-00042', products)
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
     await screen.findByTestId('order-status-label')
-    expect(packages()).toHaveLength(1)
+    // Покупка уходит эффектом после отрисовки статуса — на медленном CI позже метки.
+    await waitFor(() => expect(packages()).toHaveLength(1))
     expect(w.ym).toHaveBeenCalledTimes(1)
   })
 
@@ -533,7 +534,8 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     )
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
     await screen.findByTestId('order-status-label')
-    expect(packages()).toHaveLength(1)
+    // Покупка уходит эффектом после отрисовки статуса — на медленном CI позже метки.
+    await waitFor(() => expect(packages()).toHaveLength(1))
   })
 
   it('возврат из банка ?payment=failed: покупка не уходит, снимок остаётся для повторной оплаты', async () => {
@@ -573,6 +575,7 @@ describe('<OrderStatusView>: покупка для Метрики', () => {
     )
     render(<OrderStatusView orderNumber="XM-2026-00042" celebrate />)
     await screen.findByTestId('order-status-label')
-    expect(packages()).toHaveLength(1)
+    // Покупка уходит эффектом после отрисовки статуса — на медленном CI позже метки.
+    await waitFor(() => expect(packages()).toHaveLength(1))
   })
 })

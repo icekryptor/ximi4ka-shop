@@ -23,6 +23,8 @@ interface Props {
   value: CdekCity | null
   onChange: (city: CdekCity | null) => void
   error?: string
+  /** Подпись поля; на чекауте город обязателен — «Город *». */
+  label?: string
 }
 
 // «Нальчик · Кабардино-Балкария»; у Москвы региона нет — просто «Москва».
@@ -34,7 +36,7 @@ function cityLine(city: CdekCity): string {
 // Поле «Город» с подсказками СДЭК (спека §5.1, п. 1): от 2 символов, задержка
 // 250 мс, прошлый запрос отменяется. Разметка — как у HeaderSearch, но
 // role="combobox" стоит на самом поле (ARIA 1.2): так у него есть подпись.
-export function CityCombobox({ id, value, onChange, error }: Props) {
+export function CityCombobox({ id, value, onChange, error, label = 'Город *' }: Props) {
   const listboxId = useId()
   const optionIdBase = useId()
   const [query, setQuery] = useState(value?.name ?? '')
@@ -146,7 +148,7 @@ export function CityCombobox({ id, value, onChange, error }: Props) {
   return (
     <div className="flex flex-col gap-2">
       <label htmlFor={id} className={LABEL_CLASS}>
-        Город *
+        {label}
       </label>
       <div className="relative">
         <input

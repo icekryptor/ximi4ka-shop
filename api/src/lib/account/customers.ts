@@ -1,5 +1,6 @@
 import type { EntityManager } from 'typeorm'
 import { Customer } from '../../entities/Customer.js'
+import { accrueCashbackForCustomer } from '../coins/cashback.js'
 
 export interface TelegramIdentity {
   id: number
@@ -66,6 +67,8 @@ export async function claimOrdersByEmail(
      WHERE customer_id IS NULL AND email = $2`,
     [customerId, email],
   )
+  // Гостевой заказ мог быть получен ещё до входа — кэшбек по нему начисляем сейчас.
+  await accrueCashbackForCustomer(em, customerId)
 }
 
 // Слияние аккаунтов (спека §4.5): пользователь только что доказал владение
@@ -77,6 +80,18 @@ export async function mergeCustomers(
 ): Promise<void> {
   if (keepId === dropId) return
   const repo = em.getRepository(Customer)
+  // Порядок блокировок как у начисления/отзыва кэшбека: сначала строки заказов, потом
+  // строки покупателей (по возрастанию id) — иначе взаимная блокировка с параллельной
+  // сменой статуса заказа.
+  await em.query('SELECT id FROM orders WHERE customer_id IN ($1, $2) ORDER BY id FOR UPDATE', [
+    keepId,
+    dropId,
+  ])
+  const locked: { id: string; coin_balance: number }[] = await em.query(
+    'SELECT id, coin_balance FROM customers WHERE id IN ($1, $2) ORDER BY id FOR UPDATE',
+    [keepId, dropId],
+  )
+  const dropCoins = locked.find((r) => r.id === dropId)?.coin_balance ?? 0
   const keep = await repo.findOneByOrFail({ id: keepId })
   const drop = await repo.findOneByOrFail({ id: dropId })
   await em.query('UPDATE orders SET customer_id = $1 WHERE customer_id = $2', [keepId, dropId])
@@ -96,8 +111,21 @@ export async function mergeCustomers(
      ON CONFLICT (former_id) DO UPDATE SET customer_id = EXCLUDED.customer_id`,
     [dropId, keepId],
   )
+  // История монет переезжает на keep ДО удаления (внешний ключ без каскада), баланс —
+  // сырым SQL: coinBalance в сущности `update: false`, save(keep) его не запишет. Новых
+  // записей журнала слияние не создаёт — сумма истории остаётся равной балансу.
+  await em.query('UPDATE coin_transactions SET customer_id = $1 WHERE customer_id = $2', [
+    keepId,
+    dropId,
+  ])
   // Сначала удаляем, потом заполняем keep — иначе уникальные email/telegram_id столкнутся.
   await repo.delete({ id: dropId })
+  if (dropCoins > 0) {
+    await em.query('UPDATE customers SET coin_balance = coin_balance + $1 WHERE id = $2', [
+      dropCoins,
+      keepId,
+    ])
+  }
   keep.email ??= drop.email
   // telegramId и telegramUsername — пара: username чужого telegram_id не
   // подходит текущему, поэтому переносим их только вместе.

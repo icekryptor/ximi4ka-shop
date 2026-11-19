@@ -11,9 +11,9 @@ import {
 } from './cis.js'
 
 describe('cisShippingRub', () => {
-  it('Беларусь: 700 ₽ ниже 3000, бесплатно от 3000', () => {
-    expect(cisShippingRub('BY', 2999)).toBe(700)
-    expect(cisShippingRub('BY', 3000)).toBe(0)
+  it('Беларусь: 700 ₽ ниже 2900, бесплатно от 2900', () => {
+    expect(cisShippingRub('BY', 2899)).toBe(700)
+    expect(cisShippingRub('BY', 2900)).toBe(0)
   })
 
   it('Казахстан и Киргизия: 900 ₽ ниже 5000, бесплатно от 5000', () => {

@@ -38,6 +38,7 @@ describe('order UI helpers', () => {
       pending: 'Ожидает оплаты',
       paid: 'Оплачен',
       shipped: 'Отправлен',
+      delivered: 'Получен',
       failed: 'Ошибка оплаты',
       cancelled: 'Отменён',
     })

@@ -1,4 +1,5 @@
 import { Router, type ErrorRequestHandler, type Request, type Response } from 'express'
+import { isPaidOrderStatus } from '@ximi4ka-shop/shared/types/order'
 import { AppDataSource } from '../../config/dataSource.js'
 import { Order } from '../../entities/Order.js'
 import { saveOrderWithStatusEvent } from '../../lib/notifications/outbox.js'
@@ -172,7 +173,7 @@ cloudPaymentsWebhookRouter.post('/pay', async (req, res, next) => {
           `cloudpayments pay: оплата пришла по заказу ${order.orderNumber} в статусе ${previousStatus} — заказ переведён в «оплачен», проверьте вручную`,
         )
       }
-    } else if (order.status === 'paid' || order.status === 'shipped') {
+    } else if (isPaidOrderStatus(order.status)) {
       await onPayForPaidOrder(order, n)
     }
     res.status(200).json({ code: CODE.OK })

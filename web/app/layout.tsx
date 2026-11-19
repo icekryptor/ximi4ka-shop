@@ -39,7 +39,7 @@ export default async function RootLayout({
 }>) {
   const settings = await loadPublicSettings()
   return (
-    <html lang="ru" className={`${fontVariables} h-full antialiased`}>
+    <html lang="ru" suppressHydrationWarning className={`${fontVariables} h-full antialiased`}>
       <head>
         {/* Подтверждение сайта в Яндекс Мерчантах (merchants.yandex.ru). Не зависит от БД. */}
         <meta name="yandex-verification" content="02c1ec697bf7da58" />

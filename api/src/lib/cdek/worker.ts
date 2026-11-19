@@ -1,3 +1,4 @@
+import { isPaidOrderStatus } from '@ximi4ka-shop/shared/types/order'
 import { AppDataSource } from '../../config/dataSource.js'
 import { CdekShipment } from '../../entities/CdekShipment.js'
 import { Order } from '../../entities/Order.js'
@@ -11,6 +12,7 @@ import {
 import { CdekClient, CdekError, PROD_BASE_URL, TEST_BASE_URL } from './client.js'
 import { getCdekClient } from './index.js'
 import { loadShipmentInput } from './orderInput.js'
+import { CDEK_TRACK_INTERVAL_MS, processDueTracking } from './tracking.js'
 import {
   buildCdekOrder,
   CdekDataError,
@@ -56,8 +58,6 @@ interface CdekOrderInfo {
 
 type Outcome = 'submitted' | 'created' | 'waiting' | 'retried' | 'failed'
 
-const PAID_STATUSES = new Set(['paid', 'shipped'])
-
 function createRequest(info: CdekOrderInfo | null): CdekRequestState | undefined {
   return info?.requests?.find((r) => r.type === 'CREATE')
 }
@@ -99,7 +99,7 @@ function asDataError(err: unknown): CdekDataError | null {
 
 // Код ошибки в лог сервера — без текста СДЭК: он может содержать эхо данных
 // покупателя (design §9 — полный текст виден только в админке, в last_error).
-function errCode(err: unknown): string {
+export function errCode(err: unknown): string {
   if (err instanceof CdekError) return err.code
   if (err instanceof Error) return err.name
   return 'unknown_error'
@@ -141,7 +141,7 @@ async function submit(
   now: Date,
 ): Promise<Outcome> {
   const repo = AppDataSource.getRepository(CdekShipment)
-  if (!PAID_STATUSES.has(order.status)) {
+  if (!isPaidOrderStatus(order.status)) {
     const message =
       order.status === 'cancelled'
         ? 'Заказ отменён — в СДЭК не отправляем'
@@ -195,7 +195,15 @@ async function poll(s: CdekShipment, { cdek }: CdekShipmentDeps, now: Date): Pro
   if (request?.state === 'INVALID') throw new CdekDataError(errorsText(request))
   const cdekNumber = info?.entity?.cdek_number
   if (request?.state === 'SUCCESSFUL' && cdekNumber) {
-    await repo.update(s.id, { state: 'created', cdekNumber, lastError: null })
+    await repo.update(s.id, {
+      state: 'created',
+      cdekNumber,
+      lastError: null,
+      // Дальше следим за вручением (tracking.ts); отправления, созданные до этой
+      // версии, остаются в 'none' и не опрашиваются.
+      trackingState: 'tracking',
+      nextTrackAt: new Date(now.getTime() + CDEK_TRACK_INTERVAL_MS),
+    })
     return 'created'
   }
   const since = s.submittedAt ?? s.updatedAt
@@ -340,6 +348,10 @@ export function startCdekShipmentWorker({
     running = true
     processDueShipments(deps)
       .catch((err) => console.error('cdek: тик обработчика упал', err))
+      // Слежение — после создания заказов и отдельным catch: его сбой не должен
+      // мешать регистрации отправлений в том же тике.
+      .then(() => processDueTracking(deps, new Date()))
+      .catch((err) => console.error('cdek: слежение за вручением упало', err))
       .finally(() => {
         running = false
       })

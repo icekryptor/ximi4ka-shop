@@ -5,7 +5,10 @@ import { TranslationsSchema } from './i18n.js'
 // image, rubric, author). Publish state is NOT accepted here — it changes only
 // through the dedicated /publish and /unpublish endpoints, which also own
 // the published_at bookkeeping.
-export const CreateBlogPostSchema = z.object({
+// Базовые поля без значений по умолчанию. В zod 4 `.default()` срабатывает
+// и после `.partial()`, поэтому схема PATCH строится отсюда: иначе PATCH одного
+// поля сбрасывал блоки, noindex и переводы к значениям по умолчанию.
+const BlogPostBaseSchema = z.object({
   slug: z
     .string()
     .min(1)
@@ -27,16 +30,22 @@ export const CreateBlogPostSchema = z.object({
     .nullable()
     .optional(),
   authorPhotoUrl: z.string().max(500).nullable().optional(),
-  blocks: z.array(z.unknown()).default([]),
+  blocks: z.array(z.unknown()),
   metaTitle: z.string().max(255).nullable().optional(),
   metaDescription: z.string().max(2000).nullable().optional(),
   ogImage: z.string().max(500).nullable().optional(),
   canonicalUrl: z.string().max(500).nullable().optional(),
-  noindex: z.boolean().default(false),
-  translations: TranslationsSchema.default({}),
+  noindex: z.boolean(),
+  translations: TranslationsSchema,
 })
 
-export const UpdateBlogPostSchema = CreateBlogPostSchema.partial()
+export const CreateBlogPostSchema = BlogPostBaseSchema.extend({
+  blocks: BlogPostBaseSchema.shape.blocks.default([]),
+  noindex: BlogPostBaseSchema.shape.noindex.default(false),
+  translations: BlogPostBaseSchema.shape.translations.default({}),
+})
+
+export const UpdateBlogPostSchema = BlogPostBaseSchema.partial()
 
 export const ListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),

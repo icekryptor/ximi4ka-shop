@@ -11,6 +11,7 @@ import type {
   LastDelivery,
 } from '@ximi4ka-shop/shared'
 import { getCdekPoints, quoteShipping } from '@/lib/api'
+import { CITY_STORAGE_KEY, loadSavedCity, saveCity } from '@/lib/deliveryCity'
 import {
   EMPTY_COURIER_ADDRESS,
   courierDestination,
@@ -21,7 +22,8 @@ import {
   type WidgetOffice,
 } from '@/lib/shipping'
 
-export const CITY_STORAGE_KEY = 'ximi4ka-checkout-city'
+// Город доставки — общий с чипом срока на витрине (lib/deliveryCity).
+export { CITY_STORAGE_KEY, loadSavedCity, saveCity }
 // Пересчёт курьера по полному адресу ждёт, пока покупатель допечатает: на
 // каждую букву в СДЭК не ходим.
 export const COURIER_REQUOTE_DELAY_MS = 400
@@ -71,47 +73,6 @@ export interface CdekDeliveryModel {
   rejectPoint: (message: string) => void
   // Доставка из прошлого заказа вошедшего покупателя (спека кабинета §6).
   applyLastDelivery: (last: LastDelivery) => void
-}
-
-// Сохранённый город (спека §5.1): только код и название, без персональных
-// данных (§7). Хранилище может быть недоступно (приватный режим) или
-// содержать мусор — тогда сохранённого города просто нет.
-export function loadSavedCity(): CdekCity | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = window.localStorage.getItem(CITY_STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<CdekCity> | null
-    if (
-      !parsed ||
-      typeof parsed.code !== 'number' ||
-      !Number.isInteger(parsed.code) ||
-      parsed.code <= 0 ||
-      typeof parsed.name !== 'string' ||
-      parsed.name === '' ||
-      typeof parsed.fullName !== 'string'
-    ) {
-      return null
-    }
-    return { code: parsed.code, name: parsed.name, fullName: parsed.fullName }
-  } catch {
-    return null
-  }
-}
-
-export function saveCity(city: CdekCity | null): void {
-  try {
-    if (city) {
-      window.localStorage.setItem(
-        CITY_STORAGE_KEY,
-        JSON.stringify({ code: city.code, name: city.name, fullName: city.fullName }),
-      )
-    } else {
-      window.localStorage.removeItem(CITY_STORAGE_KEY)
-    }
-  } catch {
-    // Хранилище недоступно — город просто не запомнится.
-  }
 }
 
 // Ответ засчитывается только под своим ключом (город и попытка, для цен ещё и

@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useEffect } from 'react'
 import { LabSection } from '@/components/ui/LabSection'
 import { GridOverlay } from '@/components/ui/GridOverlay'
+import { CoinIcon } from '@/components/CoinIcon'
+import { formatCoins } from '@/lib/coins'
 
 interface NavItem {
   href: string
@@ -18,9 +20,18 @@ interface Props {
   pathname: string
   navItems: NavItem[]
   cartCount: number
+  /** Строка «Химикоины: N» для вошедшего; null — не показывать. */
+  coinBalance?: number | null
 }
 
-export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount }: Props) {
+export function MobileMenuOverlay({
+  open,
+  onClose,
+  pathname,
+  navItems,
+  cartCount,
+  coinBalance = null,
+}: Props) {
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -100,10 +111,22 @@ export function MobileMenuOverlay({ open, onClose, pathname, navItems, cartCount
             })}
           </ul>
 
+          {coinBalance !== null ? (
+            <Link
+              href="/account"
+              onClick={onClose}
+              data-menu-coins=""
+              className="mt-12 inline-flex items-center gap-2 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] tabular-nums"
+            >
+              <CoinIcon size={16} />
+              Химикоины: {formatCoins(coinBalance)}
+            </Link>
+          ) : null}
+
           <Link
             href="/account"
             onClick={onClose}
-            className="block mt-12 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em]"
+            className={`block ${coinBalance !== null ? 'mt-6' : 'mt-12'} font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em]`}
           >
             ЛИЧНЫЙ КАБИНЕТ →
           </Link>

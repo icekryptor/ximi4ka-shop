@@ -19,7 +19,7 @@ export const CIS_FLAG_CODES = { BY: 'by', KZ: 'kz', AM: 'am', KG: 'kg' } as cons
 
 // Условия от владельца, 17.10.2026. Порог — по сумме товаров за вычетом скидки.
 export const CIS_DELIVERY_RULES: Record<CisCountry, { freeFromRub: number; priceRub: number }> = {
-  BY: { freeFromRub: 3000, priceRub: 700 },
+  BY: { freeFromRub: 2900, priceRub: 700 },
   KZ: { freeFromRub: 5000, priceRub: 900 },
   KG: { freeFromRub: 5000, priceRub: 900 },
   AM: { freeFromRub: 5000, priceRub: 1200 },

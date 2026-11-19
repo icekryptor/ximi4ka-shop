@@ -6,7 +6,7 @@ import { isPostalCode } from './shipping'
 // для подсказки в интерфейсе. Саму цену доставки считает сервер
 // (/api/public/shipping/quote) по калькулятору СДЭК.
 export const SHIPPING_RULES: Record<DeliveryMethod, { freeFromRub: number; priceRub: number }> = {
-  cdek_pvz: { freeFromRub: 3000, priceRub: 350 },
+  cdek_pvz: { freeFromRub: 2900, priceRub: 350 },
   cdek_courier: { freeFromRub: 5000, priceRub: 500 },
 }
 

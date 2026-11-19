@@ -239,14 +239,18 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
               ))}
             </div>
           ) : (
-            // Карточки наборов ~360–380px, до 4 в ряд на широких экранах.
+            // Карточки наборов ~300–330px: 4 в ряд с 1280px — все наборы в одну строку.
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {products.map((p, i) => {
                 // v3.5: первая карточка первой страницы — featured (широкая,
-                // на 2 колонки), больше визуала продукта.
+                // на 2 колонки), больше визуала продукта. На десктопе (xl+) —
+                // обычной ширины: все четыре набора стоят в один ряд.
                 const isFeatured = page === 1 && i === 0 && products.length > 2
                 return (
-                  <div key={p.id} className={isFeatured ? 'sm:col-span-2' : undefined}>
+                  <div
+                    key={p.id}
+                    className={isFeatured ? 'sm:col-span-2 xl:col-span-1' : undefined}
+                  >
                     {/* TODO(Task 4.4): wire real catalog stats + asymmetric grid */}
                     <ProductCard
                       product={p}

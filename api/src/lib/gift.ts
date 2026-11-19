@@ -5,12 +5,12 @@ import { Product } from '../entities/Product.js'
 // Подарок к заказу: один реактив на выбор из списка, если за товары (после
 // оптовых скидок) платят не меньше порога. Зеркало — web/lib/gift.ts: правки
 // вносим в оба файла.
-export const GIFT_THRESHOLD_RUB = 3000
+export const GIFT_THRESHOLD_RUB = 2900
 
 export const GIFT_SLUGS: readonly string[] = [
-  'azotnaya-kislota-10',
-  'solyanaya-kislota',
   'iodat-kaliya',
+  'gidroksid-natriya',
+  'azotnaya-kislota-10',
 ]
 
 // Подарок, как его выбрал покупатель, проверяем на сервере: id приходит от

@@ -44,6 +44,8 @@ describe('Site settings', () => {
         cloudpayments_enabled = false,
         cloudpayments_mode = 'test',
         cloudpayments_surcharge_percent = 0,
+        coins_enabled = false,
+        coins_cashback_percent = 10,
         header_promo_text = NULL,
         trust_strip_items = '[]'::jsonb,
         testimonials = '[]'::jsonb
@@ -351,5 +353,38 @@ describe('Site settings', () => {
     const res = await request(app).get('/api/public/settings')
     expect(res.body.data.cloudPayments).toEqual({ surchargePercent: 8 })
     expect(JSON.stringify(res.body)).not.toContain('secret_test')
+  })
+
+  it('химикоины: админ сохраняет рубильник и процент; процент вне 0…50 или дробный — 400', async () => {
+    const adminPatch = (body: Record<string, unknown>) =>
+      request(app).patch('/api/admin/settings').set(authHeaders(auth)).send(body)
+    const ok = await adminPatch({ coinsEnabled: true, coinsCashbackPercent: 7 })
+    expect(ok.status).toBe(200)
+    expect(ok.body.data).toMatchObject({ coinsEnabled: true, coinsCashbackPercent: 7 })
+    expect((await adminPatch({ coinsCashbackPercent: 0 })).status).toBe(200)
+    expect((await adminPatch({ coinsCashbackPercent: 50 })).status).toBe(200)
+    expect((await adminPatch({ coinsCashbackPercent: 51 })).status).toBe(400)
+    expect((await adminPatch({ coinsCashbackPercent: -1 })).status).toBe(400)
+    expect((await adminPatch({ coinsCashbackPercent: 7.5 })).status).toBe(400)
+  })
+
+  it('публичные настройки: coins null при выключенной программе, { cashbackPercent } при включённой', async () => {
+    const off = await request(app).get('/api/public/settings')
+    expect(off.body.data.coins).toBeNull()
+    await request(app)
+      .patch('/api/admin/settings')
+      .set(authHeaders(auth))
+      .send({ coinsEnabled: true })
+      .expect(200)
+    const on = await request(app).get('/api/public/settings')
+    expect(on.body.data.coins).toEqual({ cashbackPercent: 10 })
+    await request(app)
+      .patch('/api/admin/settings')
+      .set(authHeaders(auth))
+      .send({ coinsCashbackPercent: 15 })
+      .expect(200)
+    expect((await request(app).get('/api/public/settings')).body.data.coins).toEqual({
+      cashbackPercent: 15,
+    })
   })
 })

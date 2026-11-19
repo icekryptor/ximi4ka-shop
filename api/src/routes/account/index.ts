@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { createAccountAuthRouter } from './auth.js'
+import { createAccountCoinsRouter } from './coins.js'
 import { createAccountLinkRouter } from './link.js'
 import { createAccountMaterialsRouter } from './materials.js'
 import { createAccountProfileRouter } from './profile.js'
@@ -14,5 +15,6 @@ export function createAccountRouter(): Router {
   router.use(createAccountLinkRouter())
   router.use(createAccountProfileRouter())
   router.use(createAccountMaterialsRouter())
+  router.use(createAccountCoinsRouter())
   return router
 }

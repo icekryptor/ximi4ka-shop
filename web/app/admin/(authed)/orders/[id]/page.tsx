@@ -9,6 +9,7 @@ import { OrderStatusActions } from './OrderStatusActions'
 import { OrderNotifications } from './OrderNotifications'
 import { CdekShipmentPanel } from './CdekShipmentPanel'
 import { OrderAttribution } from './OrderAttribution'
+import { OrderCoinsPanel } from './OrderCoinsPanel'
 import {
   DELIVERY_METHOD_LABELS,
   HISTORY_ACTOR_LABELS,
@@ -244,6 +245,18 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
             </dl>
           </section>
 
+          {/* Химикоины */}
+          <OrderCoinsPanel
+            order={{
+              status: order.status,
+              customerId: order.customerId ?? null,
+              cashbackPromisedCoins: order.cashbackPromisedCoins ?? 0,
+              cashbackAccruedCoins: order.cashbackAccruedCoins ?? 0,
+              cashbackShortfallCoins: order.cashbackShortfallCoins ?? 0,
+              deliveryProblem: order.deliveryProblem ?? null,
+            }}
+          />
+
           {/* Источник */}
           <OrderAttribution
             attribution={order.attribution}
@@ -342,13 +355,11 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
           <section className="bg-white rounded-2xl border border-brand-border p-4">
             <h2 className="text-lg font-semibold text-brand-text">Действия</h2>
             <div className="mt-3">
-              {order.status === 'shipped' ? (
-                <p className="text-sm text-brand-text-secondary">
-                  Заказ отправлен — ручное изменение статуса недоступно.
-                </p>
-              ) : (
-                <OrderStatusActions orderId={order.id} status={order.status} />
-              )}
+              <OrderStatusActions
+                orderId={order.id}
+                status={order.status}
+                deliveryProblem={order.deliveryProblem}
+              />
             </div>
           </section>
 

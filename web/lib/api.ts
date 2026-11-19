@@ -16,6 +16,8 @@ import type {
   PublicYandexPay,
   PublicCloudPayments,
 } from '@ximi4ka-shop/shared'
+import type { DeliveryDates } from '@ximi4ka-shop/shared/types/deliveryDates'
+import type { PublicCoins } from '@ximi4ka-shop/shared/types/coins'
 
 // Two audiences, two origins. The browser must use the public origin
 // (NEXT_PUBLIC_API_URL, inlined at build time). Server-side rendering — build,
@@ -276,6 +278,14 @@ export async function quoteShipping(payload: {
   return body.data
 }
 
+// Когда заказ приедет в город (чип с грузовиком). Без города — самый быстрый
+// возможный срок; null — СДЭК не ответил.
+export async function getDeliveryEta(cityCode?: number): Promise<DeliveryDates | null> {
+  const query = cityCode ? `?cityCode=${cityCode}` : ''
+  const body = await request<DataEnvelope<DeliveryDates | null>>(`/api/public/shipping/eta${query}`)
+  return body.data
+}
+
 // Адрес прокси виджета СДЭК (api/src/routes/public/cdek-widget.ts). Сумма
 // корзины в query — только чтобы карта показала 0 ₽ от порога бесплатной
 // доставки; сколько заплатит покупатель, считает сервер.
@@ -331,6 +341,8 @@ export interface PublicSettings {
   yandexPay?: PublicYandexPay | null
   /** CloudPayments для блока ЕАЭС: null — недоступен. */
   cloudPayments?: PublicCloudPayments | null
+  /** Химикоины: null — программа выключена. */
+  coins?: PublicCoins | null
 }
 
 // fresh — мимо HTTP-кеша браузера (у ответа max-age=60): перечитать после того, как

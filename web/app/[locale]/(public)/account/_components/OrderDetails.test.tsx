@@ -35,6 +35,8 @@ const order = (extra: Partial<AccountOrderSummary> = {}): AccountOrderSummary =>
   deliveryMethod: 'cdek_pvz',
   deliveryAddress: 'Москва, ул. Ленина, 1',
   shipment: null,
+  cashbackPromisedCoins: 0,
+  cashbackAccrued: false,
   ...extra,
 })
 

@@ -32,6 +32,30 @@ const baseProduct = {
 } as unknown as Product
 
 describe('<ProductCard> v3', () => {
+  describe('чип срока доставки', () => {
+    const card = (stockStatus: Product['stockStatus']) => (
+      <ProductCard
+        product={{ ...baseProduct, stockStatus }}
+        stats={{ reagents: 18, instruments: 12, reactions: 161 }}
+        statMaxes={{ reagents: 18, instruments: 20, reactions: 161 }}
+        images={[]}
+      />
+    )
+
+    it('товар в наличии — на карточке есть место под чип', () => {
+      render(card('in_stock'))
+      expect(screen.getByTestId('delivery-eta')).toBeInTheDocument()
+    })
+
+    it('товара нет в наличии или он под заказ — срок доставки не обещаем', () => {
+      const { unmount } = render(card('out_of_stock'))
+      expect(screen.queryByTestId('delivery-eta')).not.toBeInTheDocument()
+      unmount()
+      render(card('preorder'))
+      expect(screen.queryByTestId('delivery-eta')).not.toBeInTheDocument()
+    })
+  })
+
   it('has no SKU / badge row above the photo (Figma «Карточки», Density=Kit)', () => {
     const images = [{ id: 'i1', productId: '1', url: '/a.png', alt: 'a', sortOrder: 0 }]
     render(

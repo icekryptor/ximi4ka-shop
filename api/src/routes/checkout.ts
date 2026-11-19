@@ -10,6 +10,8 @@ import {
 import { paymentSurchargeRub } from '@ximi4ka-shop/shared/types/payment'
 import { findPromo, promoDiscountRub } from '@ximi4ka-shop/shared/types/promo'
 import { AppDataSource } from '../config/dataSource.js'
+import { promisedCashback } from '../lib/coins/cashback.js'
+import { getSettings } from '../lib/settings.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { Customer } from '../entities/Customer.js'
@@ -243,6 +245,11 @@ checkoutRouter.post('/', async (req, res, next) => {
       ? paymentSurchargeRub(baseTotalRub, cloudConfig.surchargePercent)
       : 0
     const totalRub = baseTotalRub + surchargeRub
+    // Кэшбек обещаем при оформлении, даже гостю: заказ привяжется к аккаунту позже.
+    const cashbackPromisedCoins = promisedCashback(
+      { subtotalRub, discountRub, promoDiscountRub: promoRub },
+      await getSettings(),
+    )
     // В заказ идёт расчёт СДЭК без лишних полей; у стран ЕАЭС расчёта нет (null).
     const carrierQuote = quote
       ? {
@@ -320,6 +327,7 @@ checkoutRouter.post('/', async (req, res, next) => {
             shippingRub,
             paymentSurchargeRub: surchargeRub,
             totalRub,
+            cashbackPromisedCoins,
             paymentProvider: yandexMethod
               ? 'yandex_pay'
               : cloudMethod

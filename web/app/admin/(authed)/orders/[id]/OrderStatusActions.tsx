@@ -5,16 +5,23 @@ import { useRouter } from 'next/navigation'
 import type { OrderStatus } from '@ximi4ka-shop/shared'
 import { adminSetOrderStatus, ApiError } from '@/lib/adminApi'
 
-// Ручные переходы статуса. pending/failed/cancelled — «оплачен» и «отменить»; paid — только «отправлен»; shipped — ничего.
-export function OrderStatusActions({ orderId, status }: { orderId: string; status: OrderStatus }) {
+// Ручные переходы статуса. pending/failed/cancelled — «оплачен» и «отменить»; paid — только «отправлен»;
+// shipped — «получен», а при проблеме доставки от СДЭК ещё и «отменить»; delivered — только «отменить».
+export function OrderStatusActions({
+  orderId,
+  status,
+  deliveryProblem,
+}: {
+  orderId: string
+  status: OrderStatus
+  deliveryProblem?: string | null
+}) {
   const router = useRouter()
   const [comment, setComment] = useState('')
-  const [busy, setBusy] = useState<'paid' | 'cancelled' | 'shipped' | null>(null)
+  const [busy, setBusy] = useState<'paid' | 'cancelled' | 'shipped' | 'delivered' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  if (status === 'shipped') return null
-
-  async function transition(target: 'paid' | 'cancelled' | 'shipped') {
+  async function transition(target: 'paid' | 'cancelled' | 'shipped' | 'delivered') {
     setBusy(target)
     setError(null)
     try {
@@ -30,6 +37,17 @@ export function OrderStatusActions({ orderId, status }: { orderId: string; statu
       setBusy(null)
     }
   }
+
+  const cancelButton = (
+    <button
+      type="button"
+      onClick={() => transition('cancelled')}
+      disabled={busy !== null}
+      className="px-4 py-2 rounded-full bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50 transition disabled:opacity-50"
+    >
+      {busy === 'cancelled' ? 'Отменяем…' : 'Отменить заказ'}
+    </button>
+  )
 
   return (
     <div className="space-y-3">
@@ -48,7 +66,21 @@ export function OrderStatusActions({ orderId, status }: { orderId: string; statu
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <div className="flex flex-wrap gap-2">
-        {status === 'paid' ? (
+        {status === 'delivered' ? (
+          cancelButton
+        ) : status === 'shipped' ? (
+          <>
+            <button
+              type="button"
+              onClick={() => transition('delivered')}
+              disabled={busy !== null}
+              className="px-4 py-2 rounded-full bg-brand text-white font-semibold hover:bg-brand-dark transition disabled:opacity-50"
+            >
+              {busy === 'delivered' ? 'Сохраняем…' : 'Отметить полученным'}
+            </button>
+            {deliveryProblem && cancelButton}
+          </>
+        ) : status === 'paid' ? (
           <button
             type="button"
             onClick={() => transition('shipped')}
@@ -67,16 +99,7 @@ export function OrderStatusActions({ orderId, status }: { orderId: string; statu
             >
               {busy === 'paid' ? 'Сохраняем…' : 'Отметить оплаченным'}
             </button>
-            {status !== 'cancelled' && (
-              <button
-                type="button"
-                onClick={() => transition('cancelled')}
-                disabled={busy !== null}
-                className="px-4 py-2 rounded-full bg-white border border-red-200 text-red-600 font-semibold hover:bg-red-50 transition disabled:opacity-50"
-              >
-                {busy === 'cancelled' ? 'Отменяем…' : 'Отменить заказ'}
-              </button>
-            )}
+            {status !== 'cancelled' && cancelButton}
           </>
         )}
       </div>

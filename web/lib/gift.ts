@@ -5,12 +5,12 @@ import { useCallback, useMemo, useSyncExternalStore } from 'react'
 // Подарок к заказу: один реактив на выбор, если за товары (после скидок)
 // платят не меньше порога. Порог и список — зеркало api/src/lib/gift.ts; сервер
 // перепроверяет выбор, здесь они нужны для плашки.
-export const GIFT_THRESHOLD_RUB = 3000
+export const GIFT_THRESHOLD_RUB = 2900
 
 export const GIFT_SLUGS: readonly string[] = [
-  'azotnaya-kislota-10',
-  'solyanaya-kislota',
   'iodat-kaliya',
+  'gidroksid-natriya',
+  'azotnaya-kislota-10',
 ]
 
 /** Выбранный подарок: название храним сразу, чтобы чекаут показал строку без запроса. */

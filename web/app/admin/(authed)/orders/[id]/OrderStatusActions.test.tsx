@@ -34,8 +34,35 @@ describe('<OrderStatusActions>', () => {
     expect(screen.queryByRole('button', { name: /отправленным/i })).toBeNull()
   })
 
-  it('у отправленного — кнопок нет', () => {
-    const { container } = render(<OrderStatusActions orderId="o1" status="shipped" />)
-    expect(container).toBeEmptyDOMElement()
+  it('у отправленного — только «Отметить полученным»', async () => {
+    render(<OrderStatusActions orderId="o1" status="shipped" />)
+    expect(screen.queryByRole('button', { name: /оплаченным/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /отменить/i })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /отметить полученным/i }))
+    await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('o1', { status: 'delivered' }))
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('у полученного — только «Отменить заказ»', async () => {
+    render(<OrderStatusActions orderId="o1" status="delivered" />)
+    expect(screen.queryByRole('button', { name: /оплаченным/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /полученным/i })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: /отменить заказ/i }))
+    await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('o1', { status: 'cancelled' }))
+  })
+
+  it('у отправленного с проблемой доставки — ещё и «Отменить заказ»', async () => {
+    render(
+      <OrderStatusActions orderId="o1" status="shipped" deliveryProblem="cdek_not_delivered" />,
+    )
+    expect(screen.getByRole('button', { name: /отметить полученным/i })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /отменить заказ/i }))
+    await vi.waitFor(() => expect(setStatus).toHaveBeenCalledWith('o1', { status: 'cancelled' }))
+    expect(refresh).toHaveBeenCalled()
+  })
+
+  it('у оплаченного с deliveryProblem отмены нет — только отправленным', () => {
+    render(<OrderStatusActions orderId="o1" status="paid" deliveryProblem="cdek_not_delivered" />)
+    expect(screen.queryByRole('button', { name: /отменить/i })).toBeNull()
   })
 })

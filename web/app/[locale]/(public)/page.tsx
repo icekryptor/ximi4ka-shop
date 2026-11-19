@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
   getPage,
   getPublishedProduct,
   getPublicSettings,
   listCategories,
+  listProductsByCategory,
   listPublishedProducts,
   type PublicSettings,
 } from '@/lib/api'
@@ -46,7 +48,7 @@ export const SITE_CATALOG = [
     name: 'Химичка 3.0',
     shortDescription:
       'Флагман: настоящая лаборатория у вас дома. От реакций меди до выращивания кристаллов.',
-    priceRub: 3399,
+    priceRub: 3190,
     emphasisWord: 'Химичка',
     hoverFormula: 'Cu + 2 AgNO₃ → Cu(NO₃)₂ + 2 Ag↓',
     chips: ['по методичке', 'ярко', '14+'],
@@ -59,7 +61,7 @@ export const SITE_CATALOG = [
     name: 'Мини-Химичка',
     shortDescription:
       'Те же реакции, компактнее. Базовая посуда, идеален как первый набор или подарок.',
-    priceRub: 1799,
+    priceRub: 1699,
     emphasisWord: 'Мини-',
     hoverFormula: 'Pocket lab · 18 реактивов',
     chips: ['подарок', '14+'],
@@ -71,7 +73,7 @@ export const SITE_CATALOG = [
     slug: 'elektrohimichka',
     name: 'Электрохимичка',
     shortDescription: 'Электролиз, гальваника, батарея. Полный комплект для опытов с током.',
-    priceRub: 3299,
+    priceRub: 3190,
     emphasisWord: 'Электро',
     hoverFormula: '2 H₂O → 2 H₂↑ + O₂↑',
     chips: ['ток', 'гальваника', '14+'],
@@ -84,7 +86,7 @@ export const SITE_CATALOG = [
     name: 'Химичка ОГЭ',
     shortDescription:
       'Подготовка к экспериментальной части ОГЭ по химии: 29 реактивов, 2 индикатора, методичка на 110+ реакций.',
-    priceRub: 3099,
+    priceRub: 3590,
     emphasisWord: 'ОГЭ',
     hoverFormula: 'CuSO₄ + Fe → FeSO₄ + Cu↓',
     chips: ['ОГЭ', 'методичка', '9 класс'],
@@ -117,14 +119,21 @@ interface FetchResult {
   products: Product[]
   settings: PublicSettings | null
   categories: ProductCategory[]
+  combos: Product[]
 }
 
+// Категория комбо (наборы вместе, запасы реактивов) — блок под «Готовыми наборами».
+// Состав и порядок — из админки: какие товары лежат в категории и их sortOrder.
+const COMBO_CATEGORY_SLUG = 'combo'
+const COMBO_HOME_LIMIT = 8
+
 async function fetchHome(): Promise<FetchResult> {
-  const [pageRes, productsRes, settingsRes, categoriesRes] = await Promise.allSettled([
+  const [pageRes, productsRes, settingsRes, categoriesRes, combosRes] = await Promise.allSettled([
     getPage('home'),
     listPublishedProducts({ limit: 8 }),
     getPublicSettings(),
     listCategories({ limit: 100 }),
+    listProductsByCategory(COMBO_CATEGORY_SLUG, { limit: COMBO_HOME_LIMIT }),
   ])
   return {
     page: pageRes.status === 'fulfilled' ? pageRes.value : null,
@@ -132,6 +141,7 @@ async function fetchHome(): Promise<FetchResult> {
     settings: settingsRes.status === 'fulfilled' ? settingsRes.value : null,
     categories:
       categoriesRes.status === 'fulfilled' && categoriesRes.value ? categoriesRes.value.data : [],
+    combos: combosRes.status === 'fulfilled' && combosRes.value ? combosRes.value.data : [],
   }
 }
 
@@ -180,7 +190,7 @@ export default async function HomePage({ params }: Props) {
   const { locale: rawLocale } = await params
   if (!isLocale(rawLocale)) notFound()
   const locale: Locale = rawLocale
-  const { page, products, settings, categories } = await fetchHome()
+  const { page, products, settings, categories, combos } = await fetchHome()
 
   // Слайды hero зашиты в код (web/lib/promoSlides.ts): это акционные плашки,
   // а не CMS-контент.
@@ -297,6 +307,46 @@ export default async function HomePage({ params }: Props) {
           </div>
         </div>
       </section>
+
+      {/* 2а. Комбо (LAB CREAM) — продолжение витрины наборов; без комбо блока нет */}
+      {combos.length > 0 && (
+        <section
+          id="combo"
+          aria-labelledby="combo-heading"
+          className="bg-[var(--color-lj-cream)] px-6 pb-32 relative"
+        >
+          <div className="max-w-[var(--max-lj-content)] mx-auto">
+            <div className="flex justify-between items-end mb-16 gap-x-8 gap-y-4 flex-wrap">
+              <h2
+                id="combo-heading"
+                className="font-lj-display font-[900] text-[clamp(1.5rem,8vw,2.5rem)] sm:text-[clamp(2.5rem,5vw,4.75rem)] leading-[0.92] tracking-[-0.045em]"
+              >
+                <em className="italic text-[var(--color-lj-brand)] font-[900]">Комбо</em>
+              </h2>
+              <Link
+                href={`/categories/${COMBO_CATEGORY_SLUG}`}
+                className="font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.03em] opacity-70 hover:opacity-100 hover:text-[var(--color-lj-brand-deep)] transition-opacity"
+              >
+                Все комбо →
+              </Link>
+            </div>
+
+            {/* Сетка как у наборов в каталоге: 4 в ряд с 1280px. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {combos.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  stats={{ reagents: 0, instruments: 0, reactions: 0 }}
+                  statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
+                  images={p.images}
+                  splitInstallments={splitOn}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 3. Manifesto (DARK) */}
       <Manifesto

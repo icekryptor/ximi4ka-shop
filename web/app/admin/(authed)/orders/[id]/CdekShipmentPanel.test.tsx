@@ -194,4 +194,16 @@ describe('<CdekShipmentPanel>', () => {
     expect(screen.getByText(label)).toBeInTheDocument()
     expect(screen.queryByRole('button')).toBeNull()
   })
+
+  it('у полученного заказа кнопки «Создать в СДЭК ещё раз» нет, даже при ошибке', () => {
+    render(
+      <CdekShipmentPanel
+        orderId="o1"
+        orderStatus="delivered"
+        shipment={{ ...base, state: 'failed', cdekNumber: null, attempts: 8, lastError: 'x' }}
+        enabled
+      />,
+    )
+    expect(screen.queryByRole('button')).toBeNull()
+  })
 })

@@ -26,6 +26,7 @@ export function toProfile(c: Customer, last: LastDelivery | null): CustomerProfi
     name: c.name,
     phone: c.phone,
     lastDelivery: last,
+    coinBalance: c.coinBalance,
   }
 }
 
@@ -124,6 +125,12 @@ export async function listCustomerOrders(
     }),
     AppDataSource.getRepository(CdekShipment).find({ where: { orderId: In(ids) } }),
   ])
+  // Кэшбек начислен ⇔ есть операция order_cashback:<id>: одним запросом на страницу.
+  const accruedKeys: { idempotency_key: string }[] = await AppDataSource.query(
+    'SELECT idempotency_key FROM coin_transactions WHERE idempotency_key = ANY($1)',
+    [ids.map((id) => `order_cashback:${id}`)],
+  )
+  const accruedSet = new Set(accruedKeys.map((r) => r.idempotency_key))
   const productIds = [...new Set(items.map((i) => i.productId))]
   const images = productIds.length
     ? await AppDataSource.getRepository(ProductImage).find({
@@ -161,6 +168,8 @@ export async function listCustomerOrders(
       deliveryMethod: o.deliveryMethod as OrderDeliveryMethod,
       deliveryAddress: o.deliveryAddress.address ?? '',
       shipment: shipmentView(shipments.find((s) => s.orderId === o.id)),
+      cashbackPromisedCoins: o.cashbackPromisedCoins,
+      cashbackAccrued: accruedSet.has(`order_cashback:${o.id}`),
     }
   })
   const last = page[page.length - 1]

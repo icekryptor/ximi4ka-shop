@@ -30,6 +30,7 @@ import {
 } from './routes/webhooks/cloudpayments.js'
 import { publicOrdersRouter } from './routes/public/orders.js'
 import { adminOrdersRouter } from './routes/admin/orders.js'
+import { adminCustomersRouter } from './routes/admin/customers.js'
 import { adminStatsRouter } from './routes/admin/stats.js'
 import { adminTrafficRouter } from './routes/admin/traffic.js'
 import { adminCloudPaymentsRouter } from './routes/admin/cloudpayments.js'
@@ -170,6 +171,7 @@ export function createApp(): Express {
   app.use('/api/webhooks/tbank', tbankWebhookRouter)
   app.use('/api/public/orders', publicOrdersRouter)
   app.use('/api/admin/orders', adminOrdersRouter)
+  app.use('/api/admin/customers', adminCustomersRouter)
   app.use('/api/admin/stats', adminStatsRouter)
   app.use('/api/admin/traffic', adminTrafficRouter)
   app.use('/api/public/products', publicProductsRouter)

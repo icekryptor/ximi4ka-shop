@@ -9,6 +9,7 @@ import { startPickupPointsJob } from './lib/ycp/pickupPoints.js'
 import { startMetrikaConversionWorker } from './lib/metrika/worker.js'
 import { startSearchStatsWorker } from './lib/searchStats/worker.js'
 import { startLoginBotPolling } from './lib/telegram/loginPoller.js'
+import { startMailHealthProbe } from './lib/mail/mailer.js'
 import { flagDefaultPasswordUsers } from './lib/auth/passwordMaintenance.js'
 import { startWebVitalsRetentionJob } from './lib/analytics/retention.js'
 
@@ -72,6 +73,12 @@ async function bootstrap() {
   // Бот входа в кабинет забирает update сам. No-op без TELEGRAM_LOGIN_POLLING=1.
   if (startLoginBotPolling()) {
     logger.info('telegram login bot polling started')
+  }
+
+  // Проверка входа в SMTP раз в 5 минут: пока ящик не пускает, форма прячет
+  // вход по почте (lib/mail/mailer.ts). No-op без SMTP_HOST.
+  if (startMailHealthProbe()) {
+    logger.info('mail health probe started')
   }
 }
 

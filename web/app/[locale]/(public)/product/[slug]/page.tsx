@@ -30,7 +30,7 @@ import { ProductCard } from '@/components/ProductCard'
 import { PreFooterCta } from '@/components/marketing/PreFooterCta'
 import { parseCharacteristics } from '@/lib/parseCharacteristics'
 import {
-  ALL_REAGENTS_SKU,
+  allReagentsPerSet,
   fetchReagentsForContents,
   withAllReagentsContents,
 } from '@/lib/allReagents'
@@ -39,7 +39,10 @@ import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
 import { ProductViewTracker } from './_components/ProductViewTracker'
 import { SplitWidget } from '@/components/payments/SplitWidget'
+import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
+import { BlackFridayChip } from '@/components/marketing/BlackFridayChip'
 import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
+import { WbPriceCompare } from '@/components/payments/WbPriceCompare'
 import { densityForSlug } from '@/lib/catalogApi'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 
@@ -205,10 +208,16 @@ export default async function ProductPage({ params }: Props) {
   const shortDescription = pickField<string>(product, 'shortDescription', locale)
   const ownDescriptionBlocks = (pickField<unknown[]>(product, 'longDescriptionBlocks', locale) ??
     product.longDescriptionBlocks) as unknown[]
-  // У «Запаса всех реактивов» состав — весь каталог реактивов, его собираем.
+  // У комплектов всех реактивов («Запас», «по 1 шт») состав — весь каталог
+  // реактивов, его собираем.
+  const reagentsPerSet = allReagentsPerSet(product.sku)
   const longDescriptionBlocks =
-    product.sku === ALL_REAGENTS_SKU && Array.isArray(ownDescriptionBlocks)
-      ? withAllReagentsContents(ownDescriptionBlocks, await fetchReagentsForContents())
+    reagentsPerSet !== null && Array.isArray(ownDescriptionBlocks)
+      ? withAllReagentsContents(
+          ownDescriptionBlocks,
+          await fetchReagentsForContents(),
+          reagentsPerSet,
+        )
       : ownDescriptionBlocks
 
   const characteristics = parseCharacteristics(longDescriptionBlocks)
@@ -289,7 +298,10 @@ export default async function ProductPage({ params }: Props) {
           <div className="flex flex-col gap-10 min-w-0">
             <div className="flex flex-col gap-5">
               <div className="flex flex-col items-start gap-5">
-                <StockChip status={product.stockStatus} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <StockChip status={product.stockStatus} />
+                  <BlackFridayChip slug={product.slug} />
+                </div>
 
                 <h1 className="font-lj-mazzard font-light italic text-[clamp(2rem,5vw,3rem)] leading-[1.02] tracking-[-0.04em] text-[var(--color-lj-ink)]">
                   <span className="text-[var(--color-lj-brand)]">{firstWord}</span>
@@ -310,7 +322,10 @@ export default async function ProductPage({ params }: Props) {
                 />
                 <AddToCartWithQuantity product={product} />
               </div>
+              <WbPriceCompare slug={product.slug} priceRub={product.priceRub} />
               {splitOn && <SplitInstallmentLine priceRub={product.priceRub} />}
+              {/* Срок обещаем только тому, что можно отправить сейчас. */}
+              {product.stockStatus === 'in_stock' && <DeliveryEtaChip caption />}
               {splitOn && yandexPay?.merchantId && (
                 <SplitWidget
                   merchantId={yandexPay.merchantId}

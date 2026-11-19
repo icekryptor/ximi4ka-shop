@@ -45,6 +45,8 @@ publicSettingsRouter.get('/', async (_req, res, next) => {
         yandexPay: publicYandexPay(yandexPayConfigFrom(s)),
         // CloudPayments для блока ЕАЭС: null — недоступен; наружу — только процент надбавки.
         cloudPayments: publicCloudPayments(cloudPaymentsConfigFrom(s)),
+        // Химикоины: null при выключенной программе; наружу — только процент.
+        coins: s.coinsEnabled ? { cashbackPercent: s.coinsCashbackPercent } : null,
       },
     })
   } catch (err) {

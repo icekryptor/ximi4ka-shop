@@ -15,13 +15,14 @@ import { getMeOrNull } from '@/lib/accountApi'
 import { loadAttribution, safeLocalStorage } from '@/lib/attribution'
 import { useCart } from '@/lib/cart'
 import { giftRemainingRub, saveGiftChoice, useGiftChoice } from '@/lib/gift'
-import { CartSummaryRows } from '@/components/cart/CartSummaryRows'
+import { CartSummaryWithCashback } from '@/components/cart/CartSummaryWithCashback'
 import { ApiError, quoteShipping, submitCheckout, type ShippingQuoteResponse } from '@/lib/api'
 import { formatRub } from '@/lib/stockLabel'
 import { METRIKA_GOALS, reachGoal, rememberPendingPurchase } from '@/lib/metrika'
 import { CdekDelivery } from '@/components/checkout/CdekDelivery'
 import { CisDelivery } from '@/components/checkout/CisDelivery'
 import { PromoCodeField } from '@/components/checkout/PromoCodeField'
+import { CheckoutEtaChip } from '@/components/delivery/CheckoutEtaChip'
 import { PaymentMethodField } from '@/components/checkout/PaymentMethodField'
 import { CisPaymentMethodField } from '@/components/checkout/CisPaymentMethodField'
 import { loadPublicYandexPay, reloadPublicYandexPay } from '@/lib/yandexPay'
@@ -614,16 +615,22 @@ export default function CheckoutPage() {
                 />
 
                 <div className="flex flex-col gap-2">
-                  <CartSummaryRows totals={totals} itemCount={itemCount} />
-                  {promo && promoRub > 0 && (
-                    <div
-                      data-testid="summary-promo"
-                      className="flex justify-between gap-4 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)]"
-                    >
-                      <span>Промокод {promo.code}</span>
-                      <span className="whitespace-nowrap">−{formatRub(promoRub)}</span>
-                    </div>
-                  )}
+                  <CartSummaryWithCashback
+                    totals={totals}
+                    itemCount={itemCount}
+                    cashbackBaseRub={totals.totalRub - promoRub}
+                    signedIn={signedIn ?? null}
+                  >
+                    {promo && promoRub > 0 && (
+                      <div
+                        data-testid="summary-promo"
+                        className="flex justify-between gap-4 font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] text-[var(--color-lj-brand-deep)]"
+                      >
+                        <span>Промокод {promo.code}</span>
+                        <span className="whitespace-nowrap">−{formatRub(promoRub)}</span>
+                      </div>
+                    )}
+                  </CartSummaryWithCashback>
                   <div className="flex justify-between font-lj-mono text-[length:var(--text-lj-mono-sm)] uppercase tracking-[0.06em] opacity-70">
                     <span>Доставка</span>
                     <span data-testid="summary-shipping">
@@ -646,6 +653,9 @@ export default function CheckoutPage() {
                     <span>Итого</span>
                     <span data-testid="summary-total">{formatRub(totalRub)}</span>
                   </div>
+                  {/* Срок — рядом с итогом, как в корзине. В ЕАЭС отправку оформляет
+                      оператор: срока СДЭК там нет. */}
+                  {!isCis && <CheckoutEtaChip period={quote} />}
                 </div>
 
                 {/* Способ оплаты — прямо над кнопкой: внизу левой колонки его было не найти. */}

@@ -1,6 +1,12 @@
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { ApiError } from './api'
-import { getMeOrNull, updateMe, verifyEmailLogin } from './accountApi'
+import {
+  getMeOrNull,
+  getMeSession,
+  startEmailLogin,
+  updateMe,
+  verifyEmailLogin,
+} from './accountApi'
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -25,6 +31,40 @@ describe('accountApi', () => {
     expect(init.method).toBe('PATCH')
     expect(init.credentials).toBe('include')
     expect((init.headers as Record<string, string>)['X-CSRF-Token']).toBe('abc')
+  })
+
+  it('запрос кода: берёт задачу ALTCHA, решает её и отправляет решение вместе с почтой', async () => {
+    const { createChallenge, verifySolution } = await import('altcha-lib')
+    const { deriveKey } = await import('altcha-lib/algorithms/web/pbkdf2')
+    const secret = 'test-secret'
+    const challenge = await createChallenge({
+      algorithm: 'PBKDF2/SHA-256',
+      cost: 1,
+      deriveKey,
+      hmacSignatureSecret: secret,
+    })
+    const f = vi.fn(async (url: string) =>
+      url.endsWith('/email/challenge')
+        ? json(200, { data: challenge })
+        : new Response(null, { status: 204 }),
+    )
+    vi.stubGlobal('fetch', f)
+    await startEmailLogin('ivan@example.com')
+
+    const [challengeUrl] = f.mock.calls[0] as unknown as [string]
+    expect(challengeUrl).toMatch(/\/api\/account\/auth\/email\/challenge$/)
+    const [startUrl, init] = f.mock.calls[1] as unknown as [string, RequestInit]
+    expect(startUrl).toMatch(/\/api\/account\/auth\/email\/start$/)
+    const body = JSON.parse(init.body as string) as { email: string; altcha: string }
+    expect(body.email).toBe('ivan@example.com')
+    const payload = JSON.parse(atob(body.altcha))
+    const result = await verifySolution({
+      challenge: payload.challenge,
+      solution: payload.solution,
+      deriveKey,
+      hmacSignatureSecret: secret,
+    })
+    expect(result.verified).toBe(true)
   })
 
   it('ошибка api — ApiError с кодом и деталями', async () => {
@@ -52,5 +92,29 @@ describe('accountApi', () => {
       vi.fn(async () => Promise.reject(new TypeError('offline'))),
     )
     expect(await getMeOrNull()).toBeNull()
+  })
+
+  it('getMeSession: профиль — ok, 401 — unauthorized, 500 и сеть — error', async () => {
+    const me = { name: 'Р', email: null, coinBalance: 1 }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(200, { data: me })),
+    )
+    expect(await getMeSession()).toEqual({ status: 'ok', me })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(401, { error: { code: 'auth_required' } })),
+    )
+    expect(await getMeSession()).toEqual({ status: 'unauthorized' })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => json(500, { error: { code: 'internal' } })),
+    )
+    expect(await getMeSession()).toEqual({ status: 'error' })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Promise.reject(new TypeError('offline'))),
+    )
+    expect(await getMeSession()).toEqual({ status: 'error' })
   })
 })

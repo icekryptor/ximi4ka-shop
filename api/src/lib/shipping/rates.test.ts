@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest'
 import { calcShippingRub } from './rates.js'
 
 describe('calcShippingRub', () => {
-  it('СДЭК ПВЗ: 350 ₽ below 3000 ₽, free from 3000 ₽ (inclusive)', () => {
+  it('СДЭК ПВЗ: 350 ₽ below 2900 ₽, free from 2900 ₽ (inclusive)', () => {
     expect(calcShippingRub('cdek_pvz', 0)).toBe(350)
-    expect(calcShippingRub('cdek_pvz', 2999)).toBe(350)
-    expect(calcShippingRub('cdek_pvz', 3000)).toBe(0)
+    expect(calcShippingRub('cdek_pvz', 2899)).toBe(350)
+    expect(calcShippingRub('cdek_pvz', 2900)).toBe(0)
     expect(calcShippingRub('cdek_pvz', 10000)).toBe(0)
   })
 
