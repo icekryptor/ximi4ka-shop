@@ -22,7 +22,9 @@ export class TelegramConfigError extends Error {
 
 export class TelegramBot {
   private readonly token: string
-  private readonly chatId: string
+  // Не readonly: если группу превратили в супергруппу, Telegram сообщает новый
+  // id, и бот переходит на него до перезапуска (см. sendMessage).
+  private chatId: string
   private readonly fetchImpl: Fetch
 
   constructor(opts: { token: string; chatId: string; fetch?: Fetch }) {
@@ -39,6 +41,14 @@ export class TelegramBot {
   }
 
   async sendMessage(html: string, replyTo?: number | null): Promise<number> {
+    return this.send(html, replyTo, true)
+  }
+
+  private async send(
+    html: string,
+    replyTo: number | null | undefined,
+    mayFollowMigration: boolean,
+  ): Promise<number> {
     const res = await this.fetchImpl(`https://api.telegram.org/bot${this.token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -57,11 +67,27 @@ export class TelegramBot {
       ok?: boolean
       result?: { message_id?: number }
       description?: string
-      parameters?: { retry_after?: number }
+      parameters?: { retry_after?: number; migrate_to_chat_id?: number }
     } | null
     if (res.ok && data?.ok && typeof data.result?.message_id === 'number')
       return data.result.message_id
     const message = `Telegram ${res.status}: ${data?.description ?? 'без описания'}`
+    // Группу превратили в супергруппу (19.11.2026 так пропали 5 карточек):
+    // старый id мёртв навсегда, новый Telegram называет сам. Переходим на него,
+    // а в лог — точная строка для deploy/app.env, иначе после перезапуска api
+    // каждая первая карточка будет тратить лишний запрос.
+    const migrateTo = data?.parameters?.migrate_to_chat_id
+    if (res.status === 400 && typeof migrateTo === 'number') {
+      const newChatId = String(migrateTo)
+      if (!mayFollowMigration || newChatId === this.chatId)
+        throw new TelegramConfigError(`${message} (новый id ${newChatId})`)
+      console.warn(
+        `telegram: чат ${this.chatId} стал супергруппой, шлю в ${newChatId}. ` +
+          `Поменяйте в deploy/app.env: TELEGRAM_CHAT_ID=${newChatId}`,
+      )
+      this.chatId = newChatId
+      return this.send(html, replyTo, false)
+    }
     if (res.status === 429) {
       const seconds = data?.parameters?.retry_after
       throw new RateLimitError(
