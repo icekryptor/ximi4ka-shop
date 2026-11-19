@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { getCdekClient } from '../../lib/cdek/index.js'
+import { DeliveryUnavailableError } from '../../lib/shipping/quote.js'
 import { ycpCdekTimeoutMs } from '../../lib/ycp/config.js'
 import {
   UnknownPickupPointError,
@@ -48,6 +49,11 @@ ycpDeliveryRouter.post('/options', async (req, res, next) => {
     // Схема Яндекса называет ключ delivery_options, а пример — options: отдаём оба.
     res.json({ options: [option], delivery_options: [option] })
   } catch (err) {
-    next(err instanceof UnknownPickupPointError ? ycpBadRequest('Unknown pickup point') : err)
+    if (err instanceof UnknownPickupPointError) next(ycpBadRequest('Unknown pickup point'))
+    // Тариф СДЭК туда не возит — вариант не предлагаем: иначе заказ оплатят,
+    // а создать его в СДЭК будет нельзя (XM-2026-00153).
+    else if (err instanceof DeliveryUnavailableError) {
+      next(ycpBadRequest('Delivery is not available for this address'))
+    } else next(err)
   }
 })

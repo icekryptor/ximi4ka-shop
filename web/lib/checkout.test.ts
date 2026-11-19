@@ -143,6 +143,9 @@ describe('validateCheckoutForm — доставка', () => {
     expect(validateCheckoutForm(validFields, { ...PVZ_READY, quoteStatus: 'error' }).delivery).toBe(
       'Не удалось рассчитать доставку — нажмите «Повторить расчёт»',
     )
+    expect(
+      validateCheckoutForm(validFields, { ...PVZ_READY, quoteStatus: 'unavailable' }).delivery,
+    ).toBe('СДЭК не доставляет сюда этим способом — выберите другой город или способ доставки')
   })
 })
 

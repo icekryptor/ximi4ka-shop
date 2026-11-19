@@ -97,7 +97,7 @@ export interface DeliveryFormState {
   point: { code: string } | null
   courier: { street: string; postalCode: string }
   // Расчёт выбранного способа: оформить можно только с готовой ценой.
-  quoteStatus: 'idle' | 'loading' | 'ready' | 'error'
+  quoteStatus: 'idle' | 'loading' | 'ready' | 'error' | 'unavailable'
 }
 
 // Общие проверки контактов: имя, телефон, email, ник Telegram. Для заказа в
@@ -153,6 +153,9 @@ export function validateCheckoutForm(
     }
     if (delivery.quoteStatus === 'loading') {
       errors.delivery = 'Считаем доставку — подождите секунду'
+    } else if (delivery.quoteStatus === 'unavailable') {
+      errors.delivery =
+        'СДЭК не доставляет сюда этим способом — выберите другой город или способ доставки'
     } else if (delivery.quoteStatus !== 'ready') {
       errors.delivery = 'Не удалось рассчитать доставку — нажмите «Повторить расчёт»'
     }

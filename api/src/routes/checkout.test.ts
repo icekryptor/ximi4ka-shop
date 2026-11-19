@@ -9,6 +9,7 @@ import { OrderItem } from '../entities/OrderItem.js'
 import { OrderNotification } from '../entities/OrderNotification.js'
 import { Customer } from '../entities/Customer.js'
 import { createApp } from '../app.js'
+import { CdekError } from '../lib/cdek/client.js'
 import { setCdekClientForTests } from '../lib/cdek/index.js'
 import { clearCdekLocationCache } from '../lib/cdek/locations.js'
 import { setMailerForTests } from '../lib/mail/mailer.js'
@@ -651,6 +652,27 @@ describe('POST /api/checkout', () => {
     const [, calc] = post.mock.calls[0]
     expect(calc.to_location).toEqual({ code: 44 })
     expect(calc.packages).toEqual([{ weight: 180, length: 10, width: 10, height: 4 }])
+  })
+
+  // XM-2026-00153: город, куда тариф 136 не возит, прошёл по фиксированной
+  // ставке, был оплачен и навсегда застрял без трек-номера.
+  it('тариф СДЭК в город недоступен — 400 delivery_unavailable, заказ не создаётся', async () => {
+    setCdekClientForTests({
+      post: vi
+        .fn()
+        .mockRejectedValue(
+          new CdekError(400, 'err_result_service_empty', 'выбранный тариф недоступен'),
+        ),
+      get: vi.fn(),
+      raw: vi.fn(),
+    })
+    const p = await seedProduct({ priceRub: 3000 })
+    const res = await request(app)
+      .post('/api/checkout')
+      .send(checkoutBody([{ productId: p.id, quantity: 1 }]))
+    expect(res.status).toBe(400)
+    expect(res.body.error.code).toBe('delivery_unavailable')
+    expect(await AppDataSource.getRepository(Order).count()).toBe(0)
   })
 
   it('от порога доставка бесплатна, даже если СДЭК назвал цену', async () => {

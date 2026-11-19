@@ -5,6 +5,8 @@ import type {
   ShippingPackage,
 } from '@ximi4ka-shop/shared'
 import { handoverDateTime } from '@ximi4ka-shop/shared/types/deliveryDates'
+import { ApiError } from '../../routes/errors.js'
+import { CdekError } from '../cdek/client.js'
 import { SHIPPING_RULES } from './rates.js'
 
 // Отгрузка всегда одна: магазин относит посылку в ПВЗ СДЭК в Москве.
@@ -97,10 +99,37 @@ function toLocation(destination: QuoteDestination): Record<string, unknown> {
   return loc
 }
 
+// СДЭК не возит в этот город нашим тарифом (например, ПВЗ партнёра в селе —
+// только экспресс). Фиксированная ставка тут вредна: заказ оплатят, а создать
+// его в СДЭК будет нельзя (XM-2026-00153). Узнаём только по этому коду — любая
+// другая ошибка калькулятора не должна закрывать чекаут.
+const TARIFF_UNAVAILABLE_CODES = new Set(['err_result_service_empty'])
+
+export class DeliveryUnavailableError extends ApiError {
+  constructor(method: DeliveryDestination['method']) {
+    super(
+      400,
+      'delivery_unavailable',
+      method === 'cdek_pvz'
+        ? 'СДЭК не доставляет в пункты выдачи этого города — выберите другой город'
+        : 'СДЭК не доставляет курьером по этому адресу — выберите пункт выдачи или другой адрес',
+    )
+  }
+}
+
+// CdekError.code — код только первой ошибки ответа; остальные лежат в details.
+function isTariffUnavailable(err: unknown): boolean {
+  if (!(err instanceof CdekError)) return false
+  const details: unknown[] = Array.isArray(err.details) ? err.details : []
+  const codes = [err.code, ...details.map((d) => (d as { code?: unknown })?.code)]
+  return codes.some((c) => typeof c === 'string' && TARIFF_UNAVAILABLE_CODES.has(c.toLowerCase()))
+}
+
 // Единственное место, где считается цена доставки для покупателя — его
 // вызывают и расчёт в корзине, и чекаут. Бесплатный порог: ПВЗ — от 2900 ₽,
 // курьер — от 5000 ₽ (SHIPPING_RULES). Ниже порога — цена СДЭК. Если СДЭК не
-// ответил, заказ не теряем: берём прежнюю фиксированную ставку.
+// ответил, заказ не теряем: берём прежнюю фиксированную ставку. Если ответил,
+// что тариф сюда недоступен, — DeliveryUnavailableError.
 export async function quoteDelivery(
   input: { destination: QuoteDestination; subtotalRub: number; packages: ShippingPackage[] },
   { cdek, config, now = () => new Date() }: QuoteDeps,
@@ -135,7 +164,8 @@ export async function quoteDelivery(
       free,
       source: 'cdek',
     }
-  } catch {
+  } catch (err) {
+    if (isTariffUnavailable(err)) throw new DeliveryUnavailableError(destination.method)
     return {
       method: destination.method,
       tariffCode,

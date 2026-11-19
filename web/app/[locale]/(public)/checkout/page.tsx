@@ -359,7 +359,11 @@ export default function CheckoutPage() {
           // Пункт закрылся, пока покупатель оформлял (§4.3): ошибка у поля
           // «Пункт получения», выбор сброшен, список города грузится заново.
           delivery.rejectPoint(err.message)
-        } else if (err.code === 'delivery_city_unavailable' || err.code === 'email_required') {
+        } else if (
+          err.code === 'delivery_city_unavailable' ||
+          err.code === 'delivery_unavailable' ||
+          err.code === 'email_required'
+        ) {
           // Список городов или правило про email разошлись с сервером: показываем его текст.
           setServerError(`${err.message}.`)
         } else if (err.status === 409) {

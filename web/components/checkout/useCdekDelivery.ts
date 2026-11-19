@@ -10,7 +10,7 @@ import type {
   DeliveryQuote,
   LastDelivery,
 } from '@ximi4ka-shop/shared'
-import { getCdekPoints, quoteShipping } from '@/lib/api'
+import { ApiError, getCdekPoints, quoteShipping } from '@/lib/api'
 import { CITY_STORAGE_KEY, loadSavedCity, saveCity } from '@/lib/deliveryCity'
 import {
   EMPTY_COURIER_ADDRESS,
@@ -33,8 +33,9 @@ const EMPTY_POINTS: CdekPoint[] = []
 
 export type LoadStatus = 'idle' | 'loading' | 'ready' | 'error'
 
+// 'unavailable' — СДЭК не возит сюда этим способом: повтор расчёта не поможет.
 export interface QuoteView {
-  status: LoadStatus
+  status: LoadStatus | 'unavailable'
   quote: DeliveryQuote | null
   // Идёт пересчёт курьера по полному адресу: цена по городу уже не та, что
   // спишет сервер.
@@ -89,12 +90,26 @@ interface PointsResult {
 
 interface QuotesResult {
   key: string
-  byMethod: Partial<Record<DeliveryMethod, DeliveryQuote | null>> // null — ошибка
+  byMethod: Partial<Record<DeliveryMethod, QuoteOutcome>>
+}
+
+// null — ошибка (сеть, СДЭК молчит), 'unavailable' — тариф сюда не возит.
+type QuoteOutcome = DeliveryQuote | null | 'unavailable'
+
+function failedQuote(err: unknown): QuoteOutcome {
+  return err instanceof ApiError && err.code === 'delivery_unavailable' ? 'unavailable' : null
+}
+
+function quoteView(q: QuoteOutcome, refining = false): QuoteView {
+  if (q === 'unavailable') return { status: 'unavailable', quote: null, refining: false }
+  return q
+    ? { status: 'ready', quote: q, refining }
+    : { status: 'error', quote: null, refining: false }
 }
 
 interface CourierQuoteResult {
   key: string
-  quote: DeliveryQuote | null // null — ошибка
+  quote: QuoteOutcome
 }
 
 // Состояние блока «Доставка» чекаута (спека §5): город → способ → пункт или
@@ -168,7 +183,7 @@ export function useCdekDelivery(
       quantity: i.quantity,
     }))
     let cancelled = false
-    const record = (m: DeliveryMethod, quote: DeliveryQuote | null) => {
+    const record = (m: DeliveryMethod, quote: QuoteOutcome) => {
       if (cancelled) return
       setQuotesResult((prev) => ({
         key,
@@ -183,7 +198,7 @@ export function useCdekDelivery(
         destination: quoteDestination(m, { code: cityCode, name: cityName }),
       })
         .then((data) => record(m, data.quote))
-        .catch(() => record(m, null))
+        .catch((err: unknown) => record(m, failedQuote(err)))
     }
     return () => {
       cancelled = true
@@ -207,8 +222,8 @@ export function useCdekDelivery(
         .then((data) => {
           if (!cancelled) setCourierQuote({ key, quote: data.quote })
         })
-        .catch(() => {
-          if (!cancelled) setCourierQuote({ key, quote: null })
+        .catch((err: unknown) => {
+          if (!cancelled) setCourierQuote({ key, quote: failedQuote(err) })
         })
     }, COURIER_REQUOTE_DELAY_MS)
     return () => {
@@ -245,18 +260,14 @@ export function useCdekDelivery(
     if (quotesKey === null) return { status: 'idle', quote: null, refining: false }
     const q = quotesHit?.[m]
     if (q === undefined) return { status: 'loading', quote: null, refining: false }
-    return q
-      ? { status: 'ready', quote: q, refining: false }
-      : { status: 'error', quote: null, refining: false }
+    return quoteView(q)
   }
   const courierView: QuoteView =
     courierKey === null
       ? cityQuoteView('cdek_courier')
       : courierQuote?.key !== courierKey
         ? { status: 'loading', quote: null, refining: true }
-        : courierQuote.quote
-          ? { status: 'ready', quote: courierQuote.quote, refining: false }
-          : { status: 'error', quote: null, refining: false }
+        : quoteView(courierQuote.quote)
   const quotes: Record<DeliveryMethod, QuoteView> = {
     cdek_pvz: cityQuoteView('cdek_pvz'),
     cdek_courier: courierView,
