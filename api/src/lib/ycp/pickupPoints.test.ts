@@ -1,6 +1,7 @@
 import 'reflect-metadata'
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest'
 import { AppDataSource } from '../../config/dataSource.js'
+import { CdekError } from '../cdek/client.js'
 import {
   CDEK_PAGE_SIZE,
   approxTimeZone,
@@ -9,6 +10,7 @@ import {
   lookupPickupPoint,
   pickupPointsPage,
   refreshPickupPoints,
+  resetCityChecksForTests,
   setPickupPointsForTests,
   startPickupPointsJob,
   toPickupPointEntry,
@@ -40,13 +42,26 @@ function rawPoint(code: string) {
   return { ...RAW_POINT, code }
 }
 
-function fakeCdek(pages: unknown[][]) {
+// Калькулятор: города из unavailableCities тариф ПВЗ не обслуживает.
+function fakeCdek(pages: unknown[][], unavailableCities: number[] = []) {
   const get = vi.fn(async (_path: string, query?: Record<string, unknown>) => {
     return pages[Number(query?.page ?? 0)] ?? []
   })
-  return { get } as unknown as Parameters<typeof fetchCdekPickupPoints>[0] & {
+  const post = vi.fn(async (_path: string, body: unknown) => {
+    const code = (body as { to_location: { code: number } }).to_location.code
+    if (unavailableCities.includes(code)) {
+      throw new CdekError(400, 'err_result_service_empty', 'Выбранный тариф недоступен')
+    }
+    return { delivery_sum: 300 }
+  })
+  return { get, post } as unknown as Parameters<typeof refreshPickupPoints>[0] & {
     get: typeof get
+    post: typeof post
   }
+}
+
+function rawPointIn(code: string, cityCode: number) {
+  return { ...RAW_POINT, code, location: { ...RAW_POINT.location, city_code: cityCode } }
 }
 
 describe('toPickupPointEntry', () => {
@@ -155,8 +170,9 @@ describe('снимок пунктов выдачи', () => {
     if (AppDataSource.isInitialized) await AppDataSource.destroy()
   })
   beforeEach(async () => {
-    await AppDataSource.query('TRUNCATE ycp_pickup_points_snapshot')
+    await AppDataSource.query('TRUNCATE ycp_pickup_points_snapshot, ycp_city_tariff_checks')
     setPickupPointsForTests(null)
+    resetCityChecksForTests()
   })
   afterEach(() => {
     setPickupPointsForTests(null)
@@ -197,5 +213,41 @@ describe('снимок пунктов выдачи', () => {
     expect(timer).not.toBeNull()
     await vi.waitFor(() => expect(pickupPointsPage(10, 0)?.total).toBe(1))
     clearInterval(timer!)
+  })
+
+  it('не отдаёт Яндексу пункты города, куда тариф ПВЗ не возит (PIT4)', async () => {
+    const cdek = fakeCdek(
+      [[rawPointIn('MSK1', 44), rawPointIn('PIT4', 24221), rawPointIn('PIT5', 24221)]],
+      [24221],
+    )
+    expect(await refreshPickupPoints(cdek)).toBe(1)
+    expect(pickupPointsPage(10, 0)?.points.map((p) => p.id)).toEqual(['MSK1'])
+    expect(lookupPickupPoint('PIT4')).toBe('unknown')
+    expect(cdek.post).toHaveBeenCalledTimes(2)
+  })
+
+  it('проверки городов переживают перезапуск: второй сбор не дёргает калькулятор', async () => {
+    await refreshPickupPoints(
+      fakeCdek([[rawPointIn('MSK1', 44), rawPointIn('PIT4', 24221)]], [24221]),
+    )
+    const rows = (await AppDataSource.query(
+      'SELECT tariff_code, city_code, served FROM ycp_city_tariff_checks ORDER BY city_code',
+    )) as { tariff_code: number; city_code: number; served: boolean }[]
+    expect(rows).toEqual([
+      { tariff_code: 136, city_code: 44, served: true },
+      { tariff_code: 136, city_code: 24221, served: false },
+    ])
+    resetCityChecksForTests()
+    const again = fakeCdek([[rawPointIn('MSK1', 44), rawPointIn('PIT4', 24221)]])
+    expect(await refreshPickupPoints(again)).toBe(1)
+    expect(again.post).not.toHaveBeenCalled()
+  })
+
+  it('СДЭК не ответил калькулятором — пункт остаётся в списке', async () => {
+    const cdek = fakeCdek([[rawPointIn('PIT4', 24221)]])
+    cdek.post.mockRejectedValue(new CdekError(0, 'network_error', 'СДЭК недоступен'))
+    expect(await refreshPickupPoints(cdek)).toBe(1)
+    const rows = await AppDataSource.query('SELECT 1 FROM ycp_city_tariff_checks')
+    expect(rows).toHaveLength(0)
   })
 })
