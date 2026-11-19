@@ -75,6 +75,12 @@ describe('Category routes', () => {
       }
     })
 
+    it('принимает limit=200 — так все категории читает админка', async () => {
+      const res = await request(app).get('/api/admin/categories?limit=200').set(authHeaders(auth))
+      expect(res.status).toBe(200)
+      expect(res.body.pagination.limit).toBe(200)
+    })
+
     it('returns productCount per category', async () => {
       const catA = await request(app)
         .post('/api/admin/categories')
@@ -298,6 +304,29 @@ describe('Category routes', () => {
         .send({ name: 'Updated' })
       expect(res.status).toBe(200)
       expect(res.body.data.name).toBe('Updated')
+    })
+
+    // Регрессия: в zod 4 `.default()` срабатывает и после `.partial()`, и PATCH
+    // одного поля сбрасывал sortOrder и translations к значениям по умолчанию.
+    it('PATCH одного поля не сбрасывает поля со значением по умолчанию', async () => {
+      const translations = { en: { name: 'Reagents', metaTitle: 'Meta EN' } }
+      const created = await request(app)
+        .post('/api/admin/categories')
+        .set(authHeaders(auth))
+        .send({ slug: 'keep', name: 'Orig', sortOrder: 7, translations })
+      expect(created.status).toBe(201)
+      const id = created.body.data.id
+
+      const res = await request(app)
+        .patch(`/api/admin/categories/${id}`)
+        .set(authHeaders(auth))
+        .send({ name: 'Renamed' })
+      expect(res.status).toBe(200)
+
+      const after = await request(app).get(`/api/admin/categories/${id}`).set(authHeaders(auth))
+      expect(after.body.data.name).toBe('Renamed')
+      expect(after.body.data.sortOrder).toBe(7)
+      expect(after.body.data.translations).toEqual(translations)
     })
     describe('seoBlocks (SEO-текст категории)', () => {
       const SEO_BLOCKS = [
@@ -645,6 +674,31 @@ describe('Page routes', () => {
         .send({ title: 'Updated' })
       expect(res.status).toBe(200)
       expect(res.body.data.title).toBe('Updated')
+    })
+
+    // Регрессия: в zod 4 `.default()` срабатывает и после `.partial()`, и PATCH
+    // одного поля сбрасывал blocks, noindex и translations к значениям по умолчанию.
+    it('PATCH одного поля не сбрасывает поля со значением по умолчанию', async () => {
+      const blocks = [{ type: 'paragraph', html: '<p>Текст страницы</p>' }]
+      const translations = { en: { title: 'About', metaTitle: 'Meta EN' } }
+      const created = await request(app)
+        .post('/api/admin/pages')
+        .set(authHeaders(auth))
+        .send({ slug: 'keep', title: 'Orig', blocks, noindex: true, translations })
+      expect(created.status).toBe(201)
+      const id = created.body.data.id
+
+      const res = await request(app)
+        .patch(`/api/admin/pages/${id}`)
+        .set(authHeaders(auth))
+        .send({ title: 'Renamed' })
+      expect(res.status).toBe(200)
+
+      const after = await request(app).get(`/api/admin/pages/${id}`).set(authHeaders(auth))
+      expect(after.body.data.title).toBe('Renamed')
+      expect(after.body.data.blocks).toEqual(blocks)
+      expect(after.body.data.noindex).toBe(true)
+      expect(after.body.data.translations).toEqual(translations)
     })
     it('404 for missing', async () => {
       const res = await request(app)

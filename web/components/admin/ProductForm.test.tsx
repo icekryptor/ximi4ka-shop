@@ -1,7 +1,44 @@
-import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { ProductForm } from './ProductForm'
-import type { AdminProductInput } from '@/lib/adminApi'
+import { adminListCategories, type AdminProductInput } from '@/lib/adminApi'
+
+vi.mock('@/lib/adminApi', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/adminApi')>()),
+  adminListCategories: vi.fn(),
+}))
+
+function cat(id: string, name: string, parentId: string | null = null, sortOrder = 0) {
+  return { id, slug: id, name, parentId, sortOrder, translations: {}, productCount: 0 }
+}
+
+const CATEGORIES = [
+  cat('c-sub', 'Наборы ОГЭ', 'c-kits', 1),
+  cat('c-kits', 'Наборы', null, 0),
+  cat('c-reag', 'Реактивы', null, 1),
+]
+
+function listResult(data: unknown[]) {
+  return { data, pagination: { limit: 200, offset: 0, total: data.length } } as never
+}
+
+beforeEach(() => {
+  vi.mocked(adminListCategories).mockReset()
+  vi.mocked(adminListCategories).mockResolvedValue(listResult(CATEGORIES))
+})
+
+const EDIT_PRODUCT = {
+  id: 'p1',
+  slug: 'oge',
+  name: 'ОГЭ',
+  priceRub: 100,
+  stockStatus: 'in_stock',
+  sortOrder: 0,
+  longDescriptionBlocks: [],
+  noindex: false,
+  translations: {},
+  images: [],
+}
 
 describe('ProductForm', () => {
   it('renders all sections', () => {
@@ -124,4 +161,83 @@ describe('ProductForm', () => {
       expect(input).not.toHaveFocus()
     },
   )
+
+  describe('категории', () => {
+    it('показывает дерево: подкатегория под родителем с отступом', async () => {
+      render(<ProductForm mode="create" onSubmit={async () => undefined} submitting={false} />)
+      const group = await screen.findByRole('group', { name: 'Категории товара' })
+      const labels = within(group)
+        .getAllByRole('checkbox')
+        .map((cb) => cb.closest('label'))
+      expect(labels.map((l) => l?.textContent)).toEqual(['Наборы', 'Наборы ОГЭ', 'Реактивы'])
+      const indent = (l: HTMLElement | null | undefined) => parseFloat(l?.style.paddingLeft ?? '0')
+      expect(indent(labels[1])).toBeGreaterThan(indent(labels[0]))
+    })
+
+    it('при создании отправляет отмеченные categoryIds', async () => {
+      const onSubmit = vi.fn<(input: AdminProductInput) => Promise<void>>(async () => undefined)
+      render(<ProductForm mode="create" onSubmit={onSubmit} submitting={false} />)
+      fireEvent.change(screen.getByLabelText('Slug'), { target: { value: 'kit' } })
+      fireEvent.change(screen.getByLabelText('Название'), { target: { value: 'Набор' } })
+      fireEvent.click(await screen.findByRole('checkbox', { name: 'Наборы ОГЭ' }))
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Реактивы' }))
+      expect(screen.getByText('Выбрано: Наборы ОГЭ, Реактивы')).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Создать' }))
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0].categoryIds).toEqual(['c-sub', 'c-reag'])
+    })
+
+    it('при правке отмечает текущие категории, снятие всех отправляет []', async () => {
+      const onSubmit = vi.fn<(input: AdminProductInput) => Promise<void>>(async () => undefined)
+      render(
+        <ProductForm
+          mode="edit"
+          initialValue={{ ...EDIT_PRODUCT, categoryIds: ['c-kits'] } as never}
+          onSubmit={onSubmit}
+          submitting={false}
+        />,
+      )
+      const kits = await screen.findByRole('checkbox', { name: 'Наборы' })
+      expect(kits).toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Реактивы' })).not.toBeChecked()
+      fireEvent.click(kits)
+      expect(screen.getByText(/Категории не выбраны/)).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0].categoryIds).toEqual([])
+    })
+
+    it('не отправляет categoryIds, если текущие связи товара неизвестны', async () => {
+      const onSubmit = vi.fn<(input: AdminProductInput) => Promise<void>>(async () => undefined)
+      render(
+        <ProductForm
+          mode="edit"
+          initialValue={EDIT_PRODUCT as never}
+          onSubmit={onSubmit}
+          submitting={false}
+        />,
+      )
+      await screen.findByRole('group', { name: 'Категории товара' })
+      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('categoryIds')
+    })
+
+    it('список не загрузился — предупреждает и не трогает категории', async () => {
+      vi.mocked(adminListCategories).mockRejectedValue(new Error('network'))
+      const onSubmit = vi.fn<(input: AdminProductInput) => Promise<void>>(async () => undefined)
+      render(
+        <ProductForm
+          mode="edit"
+          initialValue={{ ...EDIT_PRODUCT, categoryIds: ['c-kits'] } as never}
+          onSubmit={onSubmit}
+          submitting={false}
+        />,
+      )
+      expect(await screen.findByText(/Не удалось загрузить категории/)).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }))
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
+      expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('categoryIds')
+    })
+  })
 })

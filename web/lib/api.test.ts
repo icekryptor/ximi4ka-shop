@@ -486,8 +486,20 @@ describe('api client', () => {
       const result = await getPublicSettings()
 
       expect(result).toEqual(settings)
-      const [url] = fetchMock.mock.calls[0]
+      const [url, init] = fetchMock.mock.calls[0]
       expect(url).toBe('http://localhost:3001/api/public/settings')
+      expect(init?.cache).toBeUndefined()
+    })
+
+    it('fresh — мимо HTTP-кеша браузера (у ответа max-age=60)', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { data: {} }))
+      vi.stubGlobal('fetch', fetchMock)
+
+      await getPublicSettings({ fresh: true })
+
+      const [url, init] = fetchMock.mock.calls[0]
+      expect(url).toBe('http://localhost:3001/api/public/settings')
+      expect(init.cache).toBe('no-store')
     })
   })
 

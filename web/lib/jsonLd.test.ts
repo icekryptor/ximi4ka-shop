@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { existsSync } from 'node:fs'
+import path from 'node:path'
 import type { Page, Product } from '@ximi4ka-shop/shared'
 import {
   articleJsonLd,
@@ -59,6 +61,7 @@ describe('JSON-LD helpers', () => {
     expect(out.url).toBe('https://new.ximi4ka.ru')
     // Файл логотипа должен существовать в web/public.
     expect(out.logo).toBe('https://new.ximi4ka.ru/logo-himichka.svg')
+    expect(existsSync(path.join(__dirname, '..', 'public', new URL(out.logo).pathname))).toBe(true)
     expect(out.sameAs).toContain('https://t.me/ximi4kapublic')
   })
 

@@ -27,7 +27,19 @@ afterEach(() => {
 const admin = { id: 'u-1', email: 'admin@example.com', role: 'admin' }
 
 describe('AdminShell', () => {
-  it('renders all 9 sidebar nav items with correct hrefs', () => {
+  it('сайдбар закреплён на высоту экрана и не уезжает при прокрутке', () => {
+    render(
+      <AdminShell admin={admin}>
+        <div>content</div>
+      </AdminShell>,
+    )
+    const aside = screen.getByTestId('admin-sidebar')
+    for (const cls of ['sticky', 'top-0', 'h-screen', 'self-start', 'overflow-y-auto']) {
+      expect(aside.className.split(' ')).toContain(cls)
+    }
+  })
+
+  it('renders all 10 sidebar nav items with correct hrefs', () => {
     render(
       <AdminShell admin={admin}>
         <div>content</div>
@@ -41,6 +53,7 @@ describe('AdminShell', () => {
       ['Страницы', '/admin/pages'],
       ['Блог', '/admin/blog'],
       ['Заказы', '/admin/orders'],
+      ['Покупатели', '/admin/customers'],
       ['Редиректы', '/admin/redirects'],
       ['Медиа', '/admin/media'],
       ['Настройки', '/admin/settings'],
@@ -58,6 +71,7 @@ describe('AdminShell', () => {
     )
     const nav = screen.getByRole('navigation', { name: 'Админ навигация' })
     expect(within(nav).queryByRole('link', { name: 'Заказы' })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: 'Покупатели' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: 'Настройки' })).not.toBeInTheDocument()
     for (const label of [
       'Главная',
@@ -80,6 +94,7 @@ describe('AdminShell', () => {
     )
     const nav = screen.getByRole('navigation', { name: 'Админ навигация' })
     expect(within(nav).queryByRole('link', { name: 'Заказы' })).not.toBeInTheDocument()
+    expect(within(nav).queryByRole('link', { name: 'Покупатели' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: 'Настройки' })).not.toBeInTheDocument()
   })
 

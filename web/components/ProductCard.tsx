@@ -6,6 +6,10 @@ import { StatBar } from '@/components/ui/StatBar'
 import { SpecimenCard } from './ui/SpecimenCard'
 import { CompactProductCard } from './catalog/CompactProductCard'
 import { imageLoadingProps, type ImageLoading } from '@/lib/imageLoading'
+import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
+import { WbPriceCompare } from '@/components/payments/WbPriceCompare'
+import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
+import { BlackFridayChip } from '@/components/marketing/BlackFridayChip'
 
 interface Stats {
   reagents: number
@@ -25,7 +29,8 @@ interface Props {
   images: ProductImage[]
   hoverFormula?: string
   // v3.5: увеличенная карточка (первая в категорийной сетке) — широкая
-  // фото-плита вместо портретной.
+  // фото-плита вместо портретной. Только до десктопа (xl): там широкая плита
+  // обрезала фото набора и выталкивала четвёртый набор во второй ряд.
   featured?: boolean
   // Плотность карточки. 'kit' (по умолчанию) — крупная фото-форвард карточка
   // набора с описанием/статами. 'compact' — плотная карточка реактива
@@ -37,6 +42,8 @@ interface Props {
   // виден в первом экране; 'priority' — главный кадр страницы (LCP). См.
   // lib/imageLoading.ts. Вторая картинка (подмена при наведении) всегда ленива.
   imageLoading?: ImageLoading
+  // Строка «Сплит: 4 платежа по N ₽» под ценой — когда Сплит включён на сайте.
+  splitInstallments?: boolean
 }
 
 // Ширина фото на телефоне — экран минус поля страницы (px-6 = 48px). С «100vw»
@@ -45,7 +52,7 @@ interface Props {
 // в images.qualities, next.config.ts).
 const PHOTO_QUALITY = 65
 const PHOTO_SIZES = '(max-width: 768px) calc(100vw - 48px), 33vw'
-const PHOTO_SIZES_FEATURED = '(max-width: 768px) calc(100vw - 48px), 66vw'
+const PHOTO_SIZES_FEATURED = '(max-width: 768px) calc(100vw - 48px), (max-width: 1279px) 66vw, 25vw'
 
 export function ProductCard({
   product,
@@ -58,6 +65,7 @@ export function ProductCard({
   featured = false,
   density = 'kit',
   imageLoading = 'lazy',
+  splitInstallments = false,
 }: Props) {
   // Компактная плотность — отдельная клиентская карточка со степпером.
   // Возврат до вычислений «kit»-разметки: у compact своя структура.
@@ -97,7 +105,7 @@ export function ProductCard({
       ) : (
         <Link href={`/product/${product.slug}`} className="block">
           <div
-            className={`relative ${featured ? 'aspect-[16/10]' : 'aspect-square'} bg-white rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color,box-shadow] duration-500 group-hover/pcard:border-[var(--color-lj-brand)] group-hover/pcard:shadow-[var(--shadow-lj-bright)]`}
+            className={`relative ${featured ? 'aspect-[16/10] xl:aspect-square' : 'aspect-square'} bg-white rounded-[var(--radius-lj-bright-sm)] border border-[var(--color-lj-rule)] overflow-hidden transition-[border-color,box-shadow] duration-500 group-hover/pcard:border-[var(--color-lj-brand)] group-hover/pcard:shadow-[var(--shadow-lj-bright)]`}
           >
             <Image
               src={images[0].url}
@@ -118,6 +126,7 @@ export function ProductCard({
                 className="absolute inset-0 object-cover opacity-0 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:scale-[1.04]"
               />
             )}
+            <BlackFridayChip slug={product.slug} className="absolute left-3.5 top-3.5 z-10" />
             {hoverFormula && (
               <div className="absolute bottom-3.5 left-3.5 z-10 font-lj-mono text-[length:var(--text-lj-mono-xs)] tracking-[0.04em] text-[var(--color-lj-ink)] bg-[var(--color-lj-cream)] px-2.5 py-1.5 border border-[var(--color-lj-ink)] opacity-0 translate-y-2 transition-[opacity,transform] duration-500 group-hover/pcard:opacity-100 group-hover/pcard:translate-y-0">
                 {hoverFormula}
@@ -143,6 +152,10 @@ export function ProductCard({
               Заказать набор →
             </Link>
           </div>
+          <WbPriceCompare slug={product.slug} priceRub={product.priceRub} />
+          {splitInstallments && <SplitInstallmentLine priceRub={product.priceRub} />}
+          {/* Срок обещаем только тому, что можно отправить сейчас. */}
+          {product.stockStatus === 'in_stock' && <DeliveryEtaChip />}
         </div>
 
         {product.shortDescription && (

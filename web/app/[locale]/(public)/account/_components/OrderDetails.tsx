@@ -76,6 +76,11 @@ export function OrderDetails({ order }: Readonly<{ order: AccountOrderSummary }>
         <TotalRow label="Доставка">
           {order.shippingRub === 0 ? 'бесплатно' : formatRub(order.shippingRub)}
         </TotalRow>
+        {order.paymentSurchargeRub > 0 && (
+          <TotalRow label="Надбавка за оплату картой">
+            {formatRub(order.paymentSurchargeRub)}
+          </TotalRow>
+        )}
         <TotalRow label="Итого" strong>
           {formatRub(order.totalRub)}
         </TotalRow>

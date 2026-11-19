@@ -1,4 +1,5 @@
 import type { StatsDay, StatsResponse, StatsTotals } from '@ximi4ka-shop/shared'
+import { ANALYTICS_GOAL_TYPES } from '@ximi4ka-shop/shared/types/analytics'
 import { AppDataSource } from '../../config/dataSource.js'
 
 const TZ = 'Europe/Moscow'
@@ -25,19 +26,21 @@ export async function getStats(from: string, to: string): Promise<StatsResponse>
       `${PERIOD_CTE}
        SELECT
          (SELECT COUNT(*) FROM analytics_events x, b
-           WHERE x.occurred_at >= b.s AND x.occurred_at < b.e) AS clicks,
+           WHERE x.type = ANY($3::text[])
+             AND x.occurred_at >= b.s AND x.occurred_at < b.e) AS clicks,
          (SELECT COUNT(DISTINCT x.visitor_id) FROM analytics_events x, b
            WHERE x.type = 'add_to_cart' AND x.occurred_at >= b.s AND x.occurred_at < b.e) AS carts,
          (SELECT COUNT(*) FROM orders o, b
            WHERE o.deleted_at IS NULL AND o.created_at >= b.s AND o.created_at < b.e) AS orders,
          (SELECT COALESCE(SUM(o.total_rub), 0) FROM orders o, b
-           WHERE o.deleted_at IS NULL AND o.status IN ('paid', 'shipped')
+           WHERE o.deleted_at IS NULL AND o.status IN ('paid', 'shipped', 'delivered')
              AND o.paid_at >= b.s AND o.paid_at < b.e) AS revenue,
          (SELECT COUNT(*) FROM customer_sessions c, b
            WHERE c.created_at >= b.s AND c.created_at < b.e) AS logins,
          (SELECT COUNT(*) FROM customers c, b
            WHERE c.created_at >= b.s AND c.created_at < b.e) AS new_users`,
-      [from, to],
+      // clicks — только цели: полевые Web Vitals (web_vital) в той же таблице не клики.
+      [from, to, [...ANALYTICS_GOAL_TYPES]],
     ) as Promise<TotalsRow[]>,
     AppDataSource.query(
       `${PERIOD_CTE}
@@ -54,7 +57,7 @@ export async function getStats(from: string, to: string): Promise<StatsResponse>
          LEFT JOIN (
            SELECT (o.paid_at AT TIME ZONE '${TZ}')::date AS day, SUM(o.total_rub) AS revenue
              FROM orders o, b
-            WHERE o.deleted_at IS NULL AND o.status IN ('paid', 'shipped')
+            WHERE o.deleted_at IS NULL AND o.status IN ('paid', 'shipped', 'delivered')
               AND o.paid_at >= b.s AND o.paid_at < b.e
             GROUP BY 1
          ) r ON r.day = d.day::date

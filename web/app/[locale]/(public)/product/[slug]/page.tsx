@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
+import type { Product, ProductCategory, PublicYandexPay } from '@ximi4ka-shop/shared'
 import {
   ApiError,
+  getPublicSettings,
   getPublishedProduct,
   listCategories,
   listPublishedProducts,
@@ -29,7 +30,7 @@ import { ProductCard } from '@/components/ProductCard'
 import { PreFooterCta } from '@/components/marketing/PreFooterCta'
 import { parseCharacteristics } from '@/lib/parseCharacteristics'
 import {
-  ALL_REAGENTS_SKU,
+  allReagentsPerSet,
   fetchReagentsForContents,
   withAllReagentsContents,
 } from '@/lib/allReagents'
@@ -37,6 +38,12 @@ import { primaryCategory, productBreadcrumbs } from '@/lib/breadcrumbs'
 import { AddToCartWithQuantity } from './_components/AddToCartWithQuantity'
 import { MobileBuyBarMount } from './_components/MobileBuyBarMount'
 import { ProductViewTracker } from './_components/ProductViewTracker'
+import { SplitWidget } from '@/components/payments/SplitWidget'
+import { DeliveryEtaChip } from '@/components/delivery/DeliveryEtaChip'
+import { BlackFridayChip } from '@/components/marketing/BlackFridayChip'
+import { SplitInstallmentLine } from '@/components/payments/SplitInstallmentLine'
+import { WbPriceCompare } from '@/components/payments/WbPriceCompare'
+import { densityForSlug } from '@/lib/catalogApi'
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, isLocale, pickField, type Locale } from '@/lib/i18n'
 
 export const revalidate = 60
@@ -170,6 +177,16 @@ async function fetchPrimaryCategory(
   }
 }
 
+// Яндекс Пэй для плашки Сплита. Api недоступен — плашки нет, карточка как обычно.
+// Не импортировать lib/yandexPay: там клиентский хук.
+async function fetchYandexPaySafe(): Promise<PublicYandexPay | null> {
+  try {
+    return (await getPublicSettings())?.yandexPay ?? null
+  } catch {
+    return null
+  }
+}
+
 export default async function ProductPage({ params }: Props) {
   const { locale: rawLocale, slug } = await params
   if (!isLocale(rawLocale)) notFound()
@@ -191,10 +208,16 @@ export default async function ProductPage({ params }: Props) {
   const shortDescription = pickField<string>(product, 'shortDescription', locale)
   const ownDescriptionBlocks = (pickField<unknown[]>(product, 'longDescriptionBlocks', locale) ??
     product.longDescriptionBlocks) as unknown[]
-  // У «Запаса всех реактивов» состав — весь каталог реактивов, его собираем.
+  // У комплектов всех реактивов («Запас», «по 1 шт») состав — весь каталог
+  // реактивов, его собираем.
+  const reagentsPerSet = allReagentsPerSet(product.sku)
   const longDescriptionBlocks =
-    product.sku === ALL_REAGENTS_SKU && Array.isArray(ownDescriptionBlocks)
-      ? withAllReagentsContents(ownDescriptionBlocks, await fetchReagentsForContents())
+    reagentsPerSet !== null && Array.isArray(ownDescriptionBlocks)
+      ? withAllReagentsContents(
+          ownDescriptionBlocks,
+          await fetchReagentsForContents(),
+          reagentsPerSet,
+        )
       : ownDescriptionBlocks
 
   const characteristics = parseCharacteristics(longDescriptionBlocks)
@@ -236,10 +259,15 @@ export default async function ProductPage({ params }: Props) {
     })
   }
 
-  const [related, category] = await Promise.all([
+  const [related, category, yandexPay] = await Promise.all([
     fetchRelatedProducts(product.id),
     fetchPrimaryCategory(product.id),
+    fetchYandexPaySafe(),
   ])
+  // Сплит — только у наборов: у мелких товаров (реактивы, оборудование, печать) его нет,
+  // и если категорию узнать не удалось — тоже нет.
+  const splitOn =
+    Boolean(yandexPay?.split) && category !== undefined && densityForSlug(category.slug) === 'kit'
   const crumbs = productBreadcrumbs({ locale, name, slug: product.slug, category })
 
   // Первое слово названия — фиолетовое (Figma: «Набор» lj/brand).
@@ -270,7 +298,10 @@ export default async function ProductPage({ params }: Props) {
           <div className="flex flex-col gap-10 min-w-0">
             <div className="flex flex-col gap-5">
               <div className="flex flex-col items-start gap-5">
-                <StockChip status={product.stockStatus} />
+                <div className="flex flex-wrap items-center gap-2">
+                  <StockChip status={product.stockStatus} />
+                  <BlackFridayChip slug={product.slug} />
+                </div>
 
                 <h1 className="font-lj-mazzard font-light italic text-[clamp(2rem,5vw,3rem)] leading-[1.02] tracking-[-0.04em] text-[var(--color-lj-ink)]">
                   <span className="text-[var(--color-lj-brand)]">{firstWord}</span>
@@ -291,6 +322,18 @@ export default async function ProductPage({ params }: Props) {
                 />
                 <AddToCartWithQuantity product={product} />
               </div>
+              <WbPriceCompare slug={product.slug} priceRub={product.priceRub} />
+              {splitOn && <SplitInstallmentLine priceRub={product.priceRub} />}
+              {/* Срок обещаем только тому, что можно отправить сейчас. */}
+              {product.stockStatus === 'in_stock' && <DeliveryEtaChip caption />}
+              {splitOn && yandexPay?.merchantId && (
+                <SplitWidget
+                  merchantId={yandexPay.merchantId}
+                  totalRub={product.priceRub}
+                  fallback={null}
+                  indent={false}
+                />
+              )}
             </div>
 
             <ProductTabsLJ tabs={tabs} />
@@ -323,6 +366,7 @@ export default async function ProductPage({ params }: Props) {
                       stats={{ reagents: 0, instruments: 0, reactions: 0 }}
                       statMaxes={{ reagents: 1, instruments: 1, reactions: 1 }}
                       images={p.images}
+                      splitInstallments={splitOn}
                     />
                   </div>
                 )

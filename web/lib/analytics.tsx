@@ -9,20 +9,23 @@ import { MetrikaCounterId } from '@/components/MetrikaCounterId'
 // window.dataLayer (события — web/lib/metrika.ts). Вебвизор не включён.
 // dataLayer общий с GA4 (Ga4Script) и Метрикой. Метрика понимает и gtag-формат,
 // поэтому при включённом ecommerce:"dataLayer" НЕ добавлять
-// gtag('event','purchase',…) и т.п. — покупка задвоится. GTM подключён
-// (GtmScript), поэтому перед каждым ecommerce-пакетом lib/metrika.ts делает
-// dataLayer.push({ ecommerce: null }), чтобы данные прошлого события не склеились
-// со следующим.
+// gtag('event','purchase',…) и т.п. — покупка задвоится.
+// Google Tag Manager (GTM-NGJJLKQB) снят 23.10.2026: контейнер был пуст, а gtm.js
+// занимал ~100 мс главного потока после load и ухудшал INP. Возвращать вместе с
+// первым тегом и проверить, что теги контейнера не дублируют Метрику и GA4.
 // Счётчики грузятся `lazyOnload` (после события load): на медленном 4G
 // tag.js Метрики (69 КБ) и код mail.ru (47 КБ) стартовали сразу после
 // гидратации и отбирали канал у главной картинки (PSI mobile: LCP 8,9 с).
 // Ранние события не теряются: reachGoal (lib/metrika.ts) складывает вызовы в
 // очередь ym, а стаб ниже её подхватывает.
+// window.dataLayer создаётся до счётчика (так советует Яндекс для
+// ecommerce:"dataLayer"); раньше его заводил GTM.
 export function MetrikaScript({ counterId }: { counterId: string }) {
   return (
     <>
       <MetrikaCounterId counterId={counterId} />
       <Script id="metrika" strategy="lazyOnload">{`
+        window.dataLayer = window.dataLayer || [];
         (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
         m[i].l=1*new Date();
         for (var j = 0; j < document.scripts.length; j++) {if (document.scripts[j].src === r) { return; }}
@@ -120,45 +123,5 @@ export function VkPixelScript({ pixelId = VK_PIXEL_ID }: { pixelId?: string }) {
         </div>
       </noscript>
     </>
-  )
-}
-
-// Google Tag Manager. ID контейнера — не секрет и общий для всех окружений,
-// поэтому зашит в код, как пиксель VK и тег Яндекс Мерчантов: GTM работает, даже
-// если API настроек лежит. Грузится `lazyOnload`, как остальные счётчики, —
-// иначе gtm.js отбирает канал у главной картинки (см. MetrikaScript). События,
-// которые страница положила в dataLayer раньше, GTM подхватывает при старте.
-// В контейнере не заводить второй тег GA4 / Метрики, пока их же ставят
-// Ga4Script и MetrikaScript, — просмотры и покупки задвоятся.
-export const GTM_ID = 'GTM-NGJJLKQB'
-
-export function GtmScript({ containerId = GTM_ID }: { containerId?: string }) {
-  return (
-    <Script id="gtm" strategy="lazyOnload">{`
-      window.dataLayer = window.dataLayer || [];
-      window.dataLayer.push({'gtm.start': new Date().getTime(), event: 'gtm.js'});
-      (function (d, s, id) {
-        var f = d.getElementsByTagName(s)[0], j = d.createElement(s);
-        j.async = true;
-        j.src = 'https://www.googletagmanager.com/gtm.js?id=' + id;
-        f.parentNode.insertBefore(j, f);
-      })(document, 'script', ${JSON.stringify(containerId)});
-    `}</Script>
-  )
-}
-
-// Вариант GTM без JavaScript. Google требует разместить его сразу после
-// открывающего <body> — см. app/layout.tsx.
-export function GtmNoscript({ containerId = GTM_ID }: { containerId?: string }) {
-  return (
-    <noscript>
-      <iframe
-        src={`https://www.googletagmanager.com/ns.html?id=${encodeURIComponent(containerId)}`}
-        height="0"
-        width="0"
-        style={{ display: 'none', visibility: 'hidden' }}
-        title="Google Tag Manager"
-      />
-    </noscript>
   )
 }

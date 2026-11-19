@@ -3,9 +3,15 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import CartPage from './page'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
 
+import { resetPublicYandexPayCacheForTests } from '@/lib/yandexPay'
+
+vi.mock('next/script', () => ({ default: () => null }))
+
+const settingsMock = vi.hoisted(() => ({ yandexPay: null as unknown }))
+
 const GIFT_PRODUCTS: Record<string, string> = {
   'azotnaya-kislota-10': 'Азотная кислота',
-  'solyanaya-kislota': 'Соляная кислота',
+  'gidroksid-natriya': 'Гидроксид натрия',
   'iodat-kaliya': 'Йодат калия',
 }
 
@@ -13,6 +19,7 @@ const GIFT_PRODUCTS: Record<string, string> = {
 // категорий корзины молча пропускается).
 vi.mock('@/lib/api', async (importActual) => ({
   ...(await importActual<typeof import('@/lib/api')>()),
+  getPublicSettings: async () => ({ yandexPay: settingsMock.yandexPay }),
   getPublishedProduct: async (slug: string) => {
     const name = GIFT_PRODUCTS[slug]
     if (!name) throw new Error('not found')
@@ -22,6 +29,8 @@ vi.mock('@/lib/api', async (importActual) => ({
 
 beforeEach(() => {
   window.localStorage.clear()
+  resetPublicYandexPayCacheForTests()
+  settingsMock.yandexPay = null
 })
 
 afterEach(() => {
@@ -115,23 +124,42 @@ describe('/cart page v3 calm', () => {
     expect(loadCart().find((i) => i.productId === 'a')?.quantity).toBe(3)
   })
 
-  it('показывает плашку подарка с тремя реактивами, когда на товары от 3000 ₽', async () => {
+  it('показывает плашку подарка с тремя реактивами, когда на товары от 2900 ₽', async () => {
     act(() => {
       saveCart(seed)
     })
     render(<CartPage />)
     expect(screen.getByText('Вам подарок!')).toBeInTheDocument()
     expect(await screen.findByRole('radio', { name: /Азотная кислота/ })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: /Соляная кислота/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: /Гидроксид натрия/ })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /Йодат калия/ })).toBeInTheDocument()
   })
 
-  it('ниже 3000 ₽ подсказывает, сколько добавить до подарка', () => {
+  it('ниже 2900 ₽ подсказывает, сколько добавить до подарка', () => {
     act(() => {
       saveCart([seed[0]!])
     })
     render(<CartPage />)
     expect(screen.queryByText('Вам подарок!')).not.toBeInTheDocument()
-    expect(screen.getByTestId('gift-banner')).toHaveTextContent(/1\s000\s*₽/)
+    expect(screen.getByTestId('gift-banner')).toHaveTextContent(/900\s*₽/)
+  })
+  it('под «Итого» — чип «4 платежа в Сплит» на сумму корзины, без скрипта Яндекса', async () => {
+    settingsMock.yandexPay = { split: true, merchantId: 'merchant-public-id' }
+    act(() => {
+      saveCart(seed)
+    })
+    const { container } = render(<CartPage />)
+    const chip = await screen.findByTestId('split-installments')
+    expect(chip).toHaveTextContent(/1\s125\s₽\s*× 4 платежа в Сплит/)
+    expect(container.querySelector('yandex-pay-badge')).toBeNull()
+  })
+
+  it('Яндекс недоступен — плашки нет', async () => {
+    act(() => {
+      saveCart(seed)
+    })
+    render(<CartPage />)
+    await act(async () => {})
+    expect(screen.queryByTestId('split-badge')).toBeNull()
   })
 })

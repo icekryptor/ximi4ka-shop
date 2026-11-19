@@ -3,6 +3,8 @@ import { AdminOnly } from '@/components/admin/AdminOnly'
 import AdminOrdersPage from './orders/page'
 import AdminOrderDetailPage from './orders/[id]/page'
 import AdminSettingsPage from './settings/page'
+import AdminCustomersPage from './customers/page'
+import AdminCustomerDetailPage from './customers/[id]/page'
 
 // Заказы и настройки закрыты для редактора проверкой внутри самой страницы:
 // layout и page рендерятся параллельно, поэтому защита в layout страницу не
@@ -33,6 +35,15 @@ describe('страницы только для admin', () => {
     const tree = await AdminSettingsPage()
 
     expect(tree.type).toBe(AdminOnly)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('покупатели обёрнуты в AdminOnly и сами ничего не запрашивают', async () => {
+    const list = await AdminCustomersPage({ searchParams: Promise.resolve({}) })
+    const card = await AdminCustomerDetailPage({ params: Promise.resolve({ id: 'x' }) })
+
+    expect(list.type).toBe(AdminOnly)
+    expect(card.type).toBe(AdminOnly)
     expect(fetchMock).not.toHaveBeenCalled()
   })
 })

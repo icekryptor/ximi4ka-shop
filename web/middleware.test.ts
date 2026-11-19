@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { readdirSync, statSync } from 'node:fs'
+import path from 'node:path'
 import { NextRequest } from 'next/server'
+import { unstable_doesMiddlewareMatch } from 'next/experimental/testing/server'
 import { middleware, matchRedirect, config, __resetCache } from './middleware'
 
 // Light-weight unit tests for the edge middleware. We exercise the
@@ -596,5 +599,50 @@ describe('middleware matcher', () => {
 
   it('still intercepts regular pages', () => {
     expect(matcher.test('/catalog')).toBe(true)
+  })
+})
+
+describe('files from web/public', () => {
+  // Middleware в Next работает раньше, чем отдача файлов из public/. Если файл
+  // не исключён, локальный rewrite превращает /logo-himichka.svg в
+  // /ru/logo-himichka.svg, и вместо логотипа из JSON-LD приходит 404.
+  const publicDir = path.join(__dirname, 'public')
+  // Скрытые файлы (.DS_Store от Finder) в git не попадают — пропускаем их.
+  const publicFiles = readdirSync(publicDir, { recursive: true, encoding: 'utf8' })
+    .filter((rel) => !path.basename(rel).startsWith('.'))
+    .filter((rel) => statSync(path.join(publicDir, rel)).isFile())
+    .map((rel) => `/${rel.split(path.sep).join('/')}`)
+
+  const fetchMock = vi.fn<typeof fetch>()
+  const originalFetch = global.fetch
+
+  beforeEach(() => {
+    global.fetch = fetchMock as unknown as typeof fetch
+    fetchMock.mockReset()
+    __resetCache()
+  })
+
+  afterEach(() => {
+    global.fetch = originalFetch
+  })
+
+  it('finds the logo used in JSON-LD', () => {
+    expect(publicFiles).toContain('/logo-himichka.svg')
+  })
+
+  it.each(publicFiles)('matcher does not intercept %s', (url) => {
+    expect(unstable_doesMiddlewareMatch({ config, url })).toBe(false)
+  })
+
+  it.each(publicFiles)('middleware leaves %s to the static handler', async (url) => {
+    const res = await middleware(makeRequest(url))
+    expect(res.headers.get('x-middleware-rewrite')).toBeNull()
+    expect(res.headers.get('location')).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('still runs middleware for pages and old Tilda .html addresses', () => {
+    expect(unstable_doesMiddlewareMatch({ config, url: '/catalog' })).toBe(true)
+    expect(unstable_doesMiddlewareMatch({ config, url: '/page131110046.html' })).toBe(true)
   })
 })

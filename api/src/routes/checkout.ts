@@ -1,8 +1,17 @@
 import { Router } from 'express'
 import type { CheckoutResponse, DeliveryQuote, OrderAttribution } from '@ximi4ka-shop/shared'
-import { cisShippingRub, isCisCity } from '@ximi4ka-shop/shared/types/cis'
+import {
+  CIS_TAX_ID,
+  cisShippingRub,
+  cisTaxIdError,
+  isCisCity,
+  normalizeTaxId,
+} from '@ximi4ka-shop/shared/types/cis'
+import { paymentSurchargeRub } from '@ximi4ka-shop/shared/types/payment'
 import { findPromo, promoDiscountRub } from '@ximi4ka-shop/shared/types/promo'
 import { AppDataSource } from '../config/dataSource.js'
+import { promisedCashback } from '../lib/coins/cashback.js'
+import { getSettings } from '../lib/settings.js'
 import { Order } from '../entities/Order.js'
 import { OrderItem } from '../entities/OrderItem.js'
 import { Customer } from '../entities/Customer.js'
@@ -10,8 +19,16 @@ import type { Product } from '../entities/Product.js'
 import { getCdekClient } from '../lib/cdek/index.js'
 import { isKnownDeliveryPoint } from '../lib/cdek/locations.js'
 import { enqueueOrderEvent } from '../lib/notifications/outbox.js'
+import { createCloudPaymentsOrder } from '../lib/payments/cloudpayments/client.js'
+import {
+  getCloudPaymentsConfig,
+  isCloudPaymentsCheckoutAvailable,
+  type CloudPaymentsConfig,
+} from '../lib/payments/cloudpayments/config.js'
 import { getPaymentProvider } from '../lib/payments/index.js'
 import { MAX_EMAIL_LENGTH } from '../lib/payments/receipt.js'
+import { createYandexOrder } from '../lib/payments/yandexPay/client.js'
+import { isYandexPayAvailable } from '../lib/payments/yandexPay/config.js'
 import { loadGift } from '../lib/gift.js'
 import { loadCart } from '../lib/shipping/cart.js'
 import { packCart, type PackLine } from '../lib/shipping/pack.js'
@@ -21,6 +38,7 @@ import { isUniqueViolation } from '../lib/pgErrors.js'
 import { findCustomerSession } from '../lib/account/session.js'
 import { normalizeEmail } from '../lib/account/emailCodes.js'
 import { badRequest } from './errors.js'
+import { findAdminSession } from './middleware/requireAdminAuth.js'
 import { CheckoutSchema } from './checkout.schemas.js'
 
 export const checkoutRouter: Router = Router()
@@ -127,6 +145,53 @@ checkoutRouter.post('/', async (req, res, next) => {
           'Доставка в этот город недоступна — выберите город из списка',
         )
       }
+      // Казахстану и Киргизии нужен ИИН/ПИН получателя: без него посылку не пропустит таможня.
+      const taxIdError = cisTaxIdError(parsed.delivery.country, parsed.delivery.taxId ?? '')
+      if (taxIdError) throw badRequest('tax_id_invalid', taxIdError)
+    }
+
+    // Яндекс Пэй / Сплит: проверяем до расчёта доставки и до заказа — недоступный
+    // способ даёт 400 без заказа. При доставке в ЕАЭС пунктов Яндекса нет (спека),
+    // правило проверяет и сервер. Без paymentMethod или с tbank — всё как раньше.
+    const yandexMethod =
+      parsed.paymentMethod === 'yandex_pay' || parsed.paymentMethod === 'yandex_split'
+    if (yandexMethod) {
+      if (parsed.delivery.method === 'cdek_manual_cis') {
+        throw badRequest(
+          'payment_method_unavailable',
+          'Яндекс Пэй и Сплит недоступны при доставке в страны ЕАЭС',
+        )
+      }
+      if (!(await isYandexPayAvailable())) {
+        throw badRequest('payment_method_unavailable', 'Яндекс Пэй сейчас недоступен')
+      }
+    }
+
+    // CloudPayments — карты Visa / Mastercard банков стран ЕАЭС, только при доставке
+    // туда (B7). Недоступный способ — 400 без заказа. Конфигурация нужна ниже: процент
+    // надбавки берём из неё, клиенту не доверяем. Режим «Тест» на проде — только
+    // вошедшему админу; сессию ищем лишь в этом случае, остальные заказы не замедляем.
+    const cloudMethod = parsed.paymentMethod === 'cloudpayments'
+    let cloudConfig: CloudPaymentsConfig | null = null
+    if (cloudMethod) {
+      if (parsed.delivery.method !== 'cdek_manual_cis') {
+        throw badRequest(
+          'payment_method_unavailable',
+          'Оплата картой банка другой страны доступна только при доставке в страны ЕАЭС',
+        )
+      }
+      const cfg = await getCloudPaymentsConfig()
+      // Сессия важна только для режима «Тест» на production — иначе без запроса к базе.
+      const adminMatters =
+        cfg?.enabled === true && cfg.mode === 'test' && process.env.NODE_ENV === 'production'
+      const admin = adminMatters && (await findAdminSession(req)) !== null
+      if (!isCloudPaymentsCheckoutAvailable(cfg, process.env, { admin })) {
+        throw badRequest(
+          'payment_method_unavailable',
+          'Оплата картой банка другой страны сейчас недоступна',
+        )
+      }
+      cloudConfig = cfg
     }
 
     // Пункт сверяем со списком города из того же кеша, что видел покупатель
@@ -173,7 +238,18 @@ checkoutRouter.post('/', async (req, res, next) => {
     // Промо берётся с суммы товаров после оптовых скидок. Доставка и порог
     // бесплатной доставки выше посчитаны от суммы ДО промокода и не меняются.
     const promoRub = promo ? promoDiscountRub(subtotalRub - discountRub, promo.percent) : 0
-    const totalRub = subtotalRub - discountRub - promoRub + shippingRub
+    // Надбавка за оплату через CloudPayments — от суммы к оплате без неё самой (B6);
+    // порог бесплатной доставки и промокод выше её не учитывают.
+    const baseTotalRub = subtotalRub - discountRub - promoRub + shippingRub
+    const surchargeRub = cloudConfig
+      ? paymentSurchargeRub(baseTotalRub, cloudConfig.surchargePercent)
+      : 0
+    const totalRub = baseTotalRub + surchargeRub
+    // Кэшбек обещаем при оформлении, даже гостю: заказ привяжется к аккаунту позже.
+    const cashbackPromisedCoins = promisedCashback(
+      { subtotalRub, discountRub, promoDiscountRub: promoRub },
+      await getSettings(),
+    )
     // В заказ идёт расчёт СДЭК без лишних полей; у стран ЕАЭС расчёта нет (null).
     const carrierQuote = quote
       ? {
@@ -225,6 +301,10 @@ checkoutRouter.post('/', async (req, res, next) => {
                     comment: delivery.comment ?? null,
                     country: delivery.country,
                     city: delivery.city,
+                    // Номер храним только там, где он нужен таможне (CIS_TAX_ID).
+                    ...(CIS_TAX_ID[delivery.country] && delivery.taxId
+                      ? { taxId: normalizeTaxId(delivery.taxId) }
+                      : {}),
                     quote: null,
                     packages,
                   }
@@ -245,8 +325,14 @@ checkoutRouter.post('/', async (req, res, next) => {
             promoCode: promo?.code ?? null,
             promoDiscountRub: promoRub,
             shippingRub,
+            paymentSurchargeRub: surchargeRub,
             totalRub,
-            paymentProvider: provider.name,
+            cashbackPromisedCoins,
+            paymentProvider: yandexMethod
+              ? 'yandex_pay'
+              : cloudMethod
+                ? 'cloudpayments'
+                : provider.name,
             idempotencyKey,
             attribution: (parsed.attribution as OrderAttribution | undefined) ?? null,
             clientIp: req.ip?.replace(/^::ffff:/, '').slice(0, 45) || null,
@@ -317,7 +403,13 @@ checkoutRouter.post('/', async (req, res, next) => {
     // provider must never roll back an already-taken order. createPayment
     // returning null (manual mode / Init failure) leaves the order pending
     // for manager follow-up.
-    const payment = await provider.createPayment(order)
+    // Через Яндекс продаём именно Сплит: форма всегда открывается на нём (yandex_pay от старых
+    // вкладок — тоже); карта в форме остаётся запасной, если Сплит не одобрили.
+    const payment = yandexMethod
+      ? await createYandexOrder(order, { preferSplit: true })
+      : cloudMethod
+        ? await createCloudPaymentsOrder(order)
+        : await provider.createPayment(order)
     if (payment) {
       order.paymentIntentId = payment.externalId
       order.paymentUrl = payment.paymentUrl

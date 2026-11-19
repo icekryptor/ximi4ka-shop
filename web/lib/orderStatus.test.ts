@@ -71,6 +71,18 @@ describe('статус shipped', () => {
   })
 })
 
+describe('статус delivered', () => {
+  it('подпись «Получен» и последний шаг таймлайна после «Отправлен»', () => {
+    expect(orderStatusLabel('delivered', 'manual')).toBe('Получен')
+    expect(orderTimelineSteps('delivered', 'tbank')).toEqual([
+      { label: 'Создан', state: 'done', tone: 'default' },
+      { label: 'Оплачен', state: 'done', tone: 'default' },
+      { label: 'Отправлен', state: 'done', tone: 'default' },
+      { label: 'Получен', state: 'active', tone: 'success' },
+    ])
+  })
+})
+
 describe('poll constants', () => {
   it('polls every 5 seconds for at most 5 minutes', () => {
     expect(ORDER_POLL_INTERVAL_MS).toBe(5000)

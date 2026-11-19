@@ -40,6 +40,7 @@ const profile: CustomerProfile = {
   name: 'Иван',
   phone: '+79001234567',
   lastDelivery: null,
+  coinBalance: 0,
 }
 
 async function openEdit() {

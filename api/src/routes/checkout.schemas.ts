@@ -25,12 +25,14 @@ const CourierDeliverySchema = z.object({
 
 // Доставка в Беларусь, Казахстан, Армению, Киргизию: город — из списка городов
 // с ПВЗ СДЭК (проверяет маршрут), адрес пункта покупатель пишет сам. Расчёта СДЭК
-// и кода пункта здесь нет: отправку оформляет оператор.
+// и кода пункта здесь нет: отправку оформляет оператор. ИИН/ПИН для таможни
+// Казахстана и Киргизии проверяет маршрут (cisTaxIdError в shared).
 const CisDeliverySchema = z.object({
   method: z.literal('cdek_manual_cis'),
   country: z.enum(CIS_COUNTRIES),
   city: z.string().trim().min(1).max(100),
   address: z.string().trim().min(1).max(1000),
+  taxId: z.string().max(32).optional(),
   comment,
 })
 
@@ -121,6 +123,9 @@ export const CheckoutSchema = z.object({
   // Промокод: пустая строка — «без промокода». Неизвестный код отклоняет роут
   // (promo_invalid), а не молча игнорирует: покупатель ждёт скидку.
   promoCode: z.string().max(64).optional(),
+  // Способ оплаты: нет или tbank — как раньше (PAYMENT_PROVIDER); yandex_* и cloudpayments
+  // роут принимает, только когда способ доступен (иначе 400 payment_method_unavailable).
+  paymentMethod: z.enum(['tbank', 'yandex_pay', 'yandex_split', 'cloudpayments']).optional(),
   customer: z.object({
     name: z.string().trim().min(1).max(255),
     phone: z.string().trim().min(5).max(64),

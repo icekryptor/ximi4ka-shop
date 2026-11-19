@@ -5,6 +5,8 @@ import { AppDataSource } from '../config/dataSource.js'
 import { Product } from '../entities/Product.js'
 import { createApp } from '../app.js'
 import { setCdekClientForTests } from '../lib/cdek/index.js'
+import { clearEtaCache } from '../lib/shipping/eta.js'
+import { moscowDate } from '@ximi4ka-shop/shared/types/deliveryDates'
 
 async function seedProduct(overrides: Partial<Product> = {}): Promise<Product> {
   const repo = AppDataSource.getRepository(Product)
@@ -127,5 +129,63 @@ describe('POST /api/public/shipping/quote', () => {
     expect(res.status).toBe(200)
     expect(res.body.data.quote).toMatchObject({ method: 'cdek_courier', customerPriceRub: 600 })
     expect(post.mock.calls[0][1].to_location).toEqual({ code: 44, address: 'Москва' })
+  })
+})
+
+describe('GET /api/public/shipping/eta', () => {
+  let app: ReturnType<typeof createApp>
+
+  beforeAll(async () => {
+    if (!AppDataSource.isInitialized) await AppDataSource.initialize()
+    app = createApp()
+  })
+  afterAll(async () => {
+    if (AppDataSource.isInitialized) await AppDataSource.destroy()
+  })
+  afterEach(() => {
+    setCdekClientForTests(null)
+    clearEtaCache()
+  })
+
+  it('с городом — дата доставки: сегодня + сутки на сборку + срок СДЭК', async () => {
+    const post = vi.fn().mockResolvedValue({ total_sum: 300, calendar_min: 2, calendar_max: 4 })
+    setCdekClientForTests({ post, get: vi.fn(), raw: vi.fn() })
+    const now = new Date()
+    const res = await request(app).get('/api/public/shipping/eta?cityCode=424')
+    expect(res.status).toBe(200)
+    expect(res.body.data).toEqual({
+      today: moscowDate(now, 0),
+      dateMin: moscowDate(now, 3),
+      dateMax: moscowDate(now, 5),
+    })
+    expect(post.mock.calls[0][1]).toMatchObject({ tariff_code: 136, to_location: { code: 424 } })
+  })
+
+  it('без города — самый быстрый срок: доставка по городу отправки', async () => {
+    const post = vi.fn().mockResolvedValue({ total_sum: 160, calendar_min: 1, calendar_max: 1 })
+    setCdekClientForTests({ post, get: vi.fn(), raw: vi.fn() })
+    const res = await request(app).get('/api/public/shipping/eta')
+    expect(res.status).toBe(200)
+    expect(res.body.data.dateMin).toBe(moscowDate(new Date(), 2))
+    expect(post.mock.calls[0][1].to_location).toEqual({ code: 44 })
+  })
+
+  it('СДЭК не ответил — 200 и пустой срок: витрина просто не покажет чип', async () => {
+    setCdekClientForTests({
+      post: vi.fn().mockRejectedValue(new Error('timeout')),
+      get: vi.fn(),
+      raw: vi.fn(),
+    })
+    const res = await request(app).get('/api/public/shipping/eta?cityCode=424')
+    expect(res.status).toBe(200)
+    expect(res.body.data).toBeNull()
+  })
+
+  it('мусор вместо кода города — 400, в СДЭК не идём', async () => {
+    const post = vi.fn()
+    setCdekClientForTests({ post, get: vi.fn(), raw: vi.fn() })
+    const res = await request(app).get('/api/public/shipping/eta?cityCode=abc')
+    expect(res.status).toBe(400)
+    expect(post).not.toHaveBeenCalled()
   })
 })

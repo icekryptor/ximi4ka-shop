@@ -12,6 +12,7 @@ import {
   saveCart,
   setQuantity,
   useCart,
+  useCartActions,
 } from './cart'
 
 const itemA: Omit<CartItem, 'quantity'> = {
@@ -314,6 +315,84 @@ describe('useCart hook', () => {
       saveCart([{ ...itemA, quantity: 2 }])
     })
     expect(result.current.items).toEqual([{ ...itemA, quantity: 2 }])
+  })
+})
+
+describe('useCart: снапшот корзины', () => {
+  const STORAGE_KEY = 'ximi4ka-shop-cart'
+
+  it('одно изменение разбирает строку корзины один раз, а не по разу на подписчика', () => {
+    // На /catalog подписчиков useCart больше сотни: разбор строки на каждого
+    // растягивал обработку клика «В корзину».
+    const hooks = Array.from({ length: 5 }, () => renderHook(() => useCart()))
+    const parse = vi.spyOn(JSON, 'parse')
+    act(() => {
+      hooks[0]!.result.current.add(itemA)
+    })
+    const stored = window.localStorage.getItem(STORAGE_KEY)
+    expect(parse.mock.calls.filter(([text]) => text === stored)).toHaveLength(1)
+    for (const { result } of hooks) {
+      expect(result.current.items).toEqual([{ ...itemA, quantity: 1 }])
+    }
+  })
+
+  it('запись той же корзины (тот же JSON) не перерисовывает подписчиков', () => {
+    let renders = 0
+    const { result } = renderHook(() => {
+      renders += 1
+      return useCart()
+    })
+    act(() => {
+      result.current.add(itemA)
+    })
+    const before = renders
+    const items = result.current.items
+    act(() => {
+      saveCart(loadCart())
+    })
+    expect(renders).toBe(before)
+    expect(result.current.items).toBe(items)
+  })
+
+  it('прямая запись в localStorage мимо saveCart + событие storage обновляет подписчиков', () => {
+    const hooks = Array.from({ length: 2 }, () => renderHook(() => useCart()))
+    act(() => {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify([{ ...itemB, quantity: 3 }]))
+      window.dispatchEvent(new StorageEvent('storage', { key: STORAGE_KEY }))
+    })
+    for (const { result } of hooks) {
+      expect(result.current.items).toEqual([{ ...itemB, quantity: 3 }])
+    }
+  })
+})
+
+describe('useCartActions', () => {
+  it('отдаёт те же стабильные функции, что и useCart', () => {
+    const actions = renderHook(() => useCartActions())
+    const cart = renderHook(() => useCart())
+    const first = actions.result.current
+    actions.rerender()
+    for (const name of ['add', 'remove', 'setQty', 'clear'] as const) {
+      expect(actions.result.current[name]).toBe(first[name])
+      expect(cart.result.current[name]).toBe(first[name])
+    }
+  })
+
+  it('изменение корзины не перерисовывает компонент, которому нужны только действия', () => {
+    let renders = 0
+    const { result } = renderHook(() => {
+      renders += 1
+      return useCartActions()
+    })
+    const initial = renders
+    act(() => {
+      result.current.add(itemA)
+    })
+    act(() => {
+      saveCart([{ ...itemB, quantity: 2 }])
+    })
+    expect(renders).toBe(initial)
+    expect(loadCart()).toEqual([{ ...itemB, quantity: 2 }])
   })
 })
 

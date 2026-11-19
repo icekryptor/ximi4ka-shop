@@ -75,4 +75,15 @@ describe('<MobileMenuOverlay>', () => {
     )
     expect(screen.getByText(/корзина.*0/i)).toBeInTheDocument()
   })
+
+  it('строка «Химикоины: N» есть только при переданном балансе', () => {
+    const base = { open: true, onClose: () => {}, pathname: '/', navItems: NAV, cartCount: 0 }
+    const { rerender } = render(<MobileMenuOverlay {...base} coinBalance={12345} />)
+    const row = screen.getByText(/Химикоины: 12 345/)
+    expect(row.closest('a')).toHaveAttribute('href', '/account')
+    rerender(<MobileMenuOverlay {...base} coinBalance={null} />)
+    expect(screen.queryByText(/Химикоины/)).toBeNull()
+    rerender(<MobileMenuOverlay {...base} />)
+    expect(screen.queryByText(/Химикоины/)).toBeNull()
+  })
 })

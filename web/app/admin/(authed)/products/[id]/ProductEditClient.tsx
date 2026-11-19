@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import type { Product } from '@ximi4ka-shop/shared'
 import { ProductForm } from '@/components/admin/ProductForm'
 import { RevisionsPanel } from '@/components/admin/RevisionsPanel'
 import {
@@ -11,16 +10,17 @@ import {
   adminPublishProduct,
   adminUnpublishProduct,
   adminUpdateProduct,
+  type AdminProduct,
   type AdminProductInput,
 } from '@/lib/adminApi'
 
 interface Props {
-  initial: Product
+  initial: AdminProduct
 }
 
 export function ProductEditClient({ initial }: Props) {
   const router = useRouter()
-  const [product, setProduct] = useState<Product>(initial)
+  const [product, setProduct] = useState<AdminProduct>(initial)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<ApiError | null>(null)
   const [publishBusy, setPublishBusy] = useState(false)

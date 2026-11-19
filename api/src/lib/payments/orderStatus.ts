@@ -1,4 +1,5 @@
 import type { Order } from '../../entities/Order.js'
+import { isPaidOrderStatus } from '@ximi4ka-shop/shared/types/order'
 import type { PaymentStatus } from './types.js'
 
 // Applies a provider-reported payment status to an order in place.
@@ -13,6 +14,8 @@ import type { PaymentStatus } from './types.js'
 //   * `shipped` is terminal the same way: Т-Касса retries unanswered
 //     notifications for up to a month, and a late CONFIRMED must not turn
 //     an already shipped order back into «оплачен»;
+//   * `delivered` is terminal the same way: a late retry must not touch
+//     a received order;
 //   * `failed` only applies to `pending` orders — a manually cancelled
 //     order stays cancelled;
 //   * `paid` DOES apply to cancelled/failed orders: if the money actually
@@ -20,12 +23,12 @@ import type { PaymentStatus } from './types.js'
 export function applyPaymentStatus(
   order: Order,
   status: PaymentStatus,
-  by: 'tbank' | 'reconcile',
+  by: 'tbank' | 'yandex_pay' | 'cloudpayments' | 'reconcile',
   now: Date = new Date(),
 ): boolean {
   if (status === 'pending') return false
   if (order.status === status) return false
-  if (order.status === 'paid' || order.status === 'shipped') return false
+  if (isPaidOrderStatus(order.status)) return false
   if (status === 'failed' && order.status !== 'pending') return false
 
   const from = order.status

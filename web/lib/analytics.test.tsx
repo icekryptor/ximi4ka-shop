@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render } from '@testing-library/react'
-import { renderToStaticMarkup } from 'react-dom/server'
 
 // next/script в jsdom не исполняет код — подменяем на <script> с тем же телом.
 vi.mock('next/script', () => ({
@@ -11,7 +10,8 @@ vi.mock('next/script', () => ({
   ),
 }))
 
-import { GtmNoscript, GtmScript, MetrikaScript, VarioqubScript, VkPixelScript } from './analytics'
+import * as analytics from './analytics'
+import { MetrikaScript, VarioqubScript, VkPixelScript } from './analytics'
 import { reachGoal, setMetrikaCounterId } from './metrika'
 
 afterEach(() => {
@@ -32,6 +32,12 @@ describe('MetrikaScript', () => {
     expect(code).toContain('ecommerce:"dataLayer"')
     expect(code).toContain('clickmap:true')
     expect(code).not.toContain('webvisor')
+  })
+
+  it('создаёт window.dataLayer до счётчика — раньше это делал GTM', () => {
+    const { getByTestId } = render(<MetrikaScript counterId="12345" />)
+    const code = (getByTestId('metrika').textContent ?? '').trim()
+    expect(code.startsWith('window.dataLayer = window.dataLayer || [];')).toBe(true)
   })
 
   it('отдаёт ID счётчика хелперам: reachGoal начинает работать', () => {
@@ -92,31 +98,9 @@ describe('VkPixelScript', () => {
   })
 })
 
-describe('GtmScript', () => {
-  it('грузится после load, чтобы не мешать главной картинке', () => {
-    const { getByTestId } = render(<GtmScript />)
-    expect(getByTestId('gtm')).toHaveAttribute('data-strategy', 'lazyOnload')
-  })
-
-  it('стартует контейнер GTM-NGJJLKQB и кладёт gtm.start в dataLayer', () => {
-    const { getByTestId } = render(<GtmScript />)
-    const code = getByTestId('gtm').textContent ?? ''
-    expect(code).toContain("'gtm.start': new Date().getTime(), event: 'gtm.js'")
-    expect(code).toContain('https://www.googletagmanager.com/gtm.js?id=')
-    expect(code).toContain('"GTM-NGJJLKQB"')
-  })
-
-  it('экранирует ID через JSON.stringify', () => {
-    const { getByTestId } = render(<GtmScript containerId={'1"});alert(1);//'} />)
-    expect(getByTestId('gtm').textContent).toContain('"1\\"});alert(1);//"')
-  })
-})
-
-describe('GtmNoscript', () => {
-  it('отдаёт скрытый iframe ns.html с ID контейнера', () => {
-    // В jsdom скрипты «включены», и React не рендерит содержимое noscript, — как в SSR.
-    const html = renderToStaticMarkup(<GtmNoscript />)
-    expect(html).toContain('https://www.googletagmanager.com/ns.html?id=GTM-NGJJLKQB')
-    expect(html).toContain('display:none')
+// GTM снят 23.10.2026 (пустой контейнер, ~100 мс главного потока после load).
+describe('GTM', () => {
+  it('модуль больше не экспортирует GTM', () => {
+    expect(Object.keys(analytics).filter((name) => /^gtm/i.test(name))).toEqual([])
   })
 })

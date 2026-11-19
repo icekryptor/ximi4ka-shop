@@ -4,6 +4,7 @@ import { ApiError, getCategory, listProductsByCategory } from '@/lib/api'
 import type { Product, ProductCategory } from '@ximi4ka-shop/shared'
 import { Breadcrumbs } from '@/components/Breadcrumbs'
 import { ProductCard } from '@/components/ProductCard'
+import { fetchSplitAvailable } from '@/lib/splitInstallments'
 import { LabSection } from '@/components/ui/LabSection'
 import { PaginationLJ } from '@/components/ui/PaginationLJ'
 import { PreFooterCta } from '@/components/marketing'
@@ -137,14 +138,13 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
   const pageRaw = sp.page
   const page = Math.max(1, parseInt(typeof pageRaw === 'string' ? pageRaw : '1', 10) || 1)
 
-  const {
-    category,
-    products: unsorted,
-    totalCount,
-  } = await fetchCategoryAndProducts(slug, {
-    limit: PAGE_SIZE,
-    offset: (page - 1) * PAGE_SIZE,
-  })
+  const [{ category, products: unsorted, totalCount }, splitOn] = await Promise.all([
+    fetchCategoryAndProducts(slug, {
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    }),
+    fetchSplitAvailable(),
+  ])
   // NOTE: sortProducts orders only the current page in memory. Once the public
   // products API supports a sort param, lift this into the API call so that
   // ordering applies across the full result set rather than just the page slice.
@@ -239,14 +239,18 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
               ))}
             </div>
           ) : (
-            // Карточки наборов ~360–380px, до 4 в ряд на широких экранах.
+            // Карточки наборов ~300–330px: 4 в ряд с 1280px — все наборы в одну строку.
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {products.map((p, i) => {
                 // v3.5: первая карточка первой страницы — featured (широкая,
-                // на 2 колонки), больше визуала продукта.
+                // на 2 колонки), больше визуала продукта. На десктопе (xl+) —
+                // обычной ширины: все четыре набора стоят в один ряд.
                 const isFeatured = page === 1 && i === 0 && products.length > 2
                 return (
-                  <div key={p.id} className={isFeatured ? 'sm:col-span-2' : undefined}>
+                  <div
+                    key={p.id}
+                    className={isFeatured ? 'sm:col-span-2 xl:col-span-1' : undefined}
+                  >
                     {/* TODO(Task 4.4): wire real catalog stats + asymmetric grid */}
                     <ProductCard
                       product={p}
@@ -255,6 +259,7 @@ export default async function CategoryDetailPage({ params, searchParams }: Props
                       images={p.images}
                       featured={isFeatured}
                       imageLoading={firstScreenCardLoading('kit', i)}
+                      splitInstallments={splitOn}
                     />
                   </div>
                 )

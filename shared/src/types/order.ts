@@ -4,13 +4,42 @@ import type { CdekShipmentDto } from './cdek.js'
 import type { CisCountry, CisDeliveryDestination } from './cis.js'
 import type { PublicOrderMaterial } from './materials.js'
 
-export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'failed' | 'cancelled'
+export type OrderStatus = 'pending' | 'paid' | 'shipped' | 'delivered' | 'failed' | 'cancelled'
+
+/** Статусы оплаченного заказа: деньги получены, заказ не отменён. */
+export const PAID_ORDER_STATUSES = ['paid', 'shipped', 'delivered'] as const
+
+export function isPaidOrderStatus(status: OrderStatus): boolean {
+  return (PAID_ORDER_STATUSES as readonly OrderStatus[]).includes(status)
+}
 
 // Payment provider actually wired to the order. `manual` — no online payment:
 // the order stays pending and a manager contacts the customer. `tbank` —
 // Т-Касса (Т-Банк, ex-Tinkoff Kassa) internet acquiring. `ycp` — оплату принял
 // Яндекс (Яндекс Пэй, Сплит) в «Купить в 1 клик»; в Т-Кассу такие заказы не идут.
-export type PaymentProvider = 'manual' | 'tbank' | 'ycp'
+// `yandex_pay` — Яндекс Пэй на чекауте сайта (картой или Сплитом): заказ в Яндексе
+// создаёт наш сервер, статус приходит вебхуком и сверкой. `cloudpayments` —
+// платёжная ссылка CloudPayments (Visa / Mastercard банков стран ЕАЭС).
+export type PaymentProvider = 'manual' | 'tbank' | 'ycp' | 'yandex_pay' | 'cloudpayments'
+
+/**
+ * Способ оплаты на чекауте. Оба способа Яндекса создают заказ провайдера
+ * yandex_pay; yandex_split открывает форму Яндекса сразу на Сплите.
+ */
+export type CheckoutPaymentMethod = 'tbank' | 'yandex_pay' | 'yandex_split' | 'cloudpayments'
+
+/** Яндекс Пэй в публичных настройках; null — недоступен. */
+export interface PublicYandexPay {
+  split: true
+  /** Только в боевом режиме: в песочнице Merchant ID служит ключом API. */
+  merchantId?: string
+}
+
+/** CloudPayments в публичных настройках; null — способ недоступен. */
+export interface PublicCloudPayments {
+  /** Надбавка за способ оплаты, целые проценты; 0 — без надбавки. */
+  surchargePercent: number
+}
 
 // Откуда пришёл заказ: витрина или «Купить в 1 клик» в Яндексе (YCP).
 export type OrderSource = 'site' | 'ycp'
@@ -50,6 +79,8 @@ export interface DeliveryAddress {
   // Доставка в страну ЕАЭС (cdek_manual_cis): страна и город из списка городов с ПВЗ.
   country?: CisCountry | null
   city?: string | null
+  // ИИН (Казахстан) или ПИН (Киргизия) получателя — для таможни; другим странам не нужен.
+  taxId?: string | null
   // Расчёт доставки на момент заказа. source: 'fallback' — калькулятор СДЭК
   // не ответил, взята фиксированная ставка: такой заказ стоит проверить.
   quote?: {
@@ -70,7 +101,7 @@ export interface OrderStatusHistoryEntry {
   from: OrderStatus | null
   to: OrderStatus
   at: string
-  by: 'tbank' | 'admin' | 'reconcile' | 'ycp'
+  by: 'tbank' | 'admin' | 'reconcile' | 'ycp' | 'yandex_pay' | 'cloudpayments' | 'cdek'
   comment?: string
 }
 
@@ -132,12 +163,14 @@ export interface OrderDto {
   source?: OrderSource
   /** Товары по обычным ценам. */
   subtotalRub: number
-  /** Оптовая скидка (наборы, проценты на реагенты, цены партий); totalRub = subtotalRub − discountRub + shippingRub. */
+  /** Оптовая скидка (наборы, проценты на реагенты, цены партий). */
   discountRub: number
-  /** Промокод заказа (null — без промокода) и его скидка; totalRub = subtotalRub − discountRub − promoDiscountRub + shippingRub. */
+  /** Промокод заказа (null — без промокода) и его скидка; totalRub = subtotalRub − discountRub − promoDiscountRub + shippingRub + paymentSurchargeRub. */
   promoCode?: string | null
   promoDiscountRub?: number
   shippingRub: number
+  /** Надбавка за оплату через CloudPayments; 0 — у остальных способов и при проценте 0. */
+  paymentSurchargeRub: number
   totalRub: number
   paymentProvider: PaymentProvider
   paymentIntentId: string | null
@@ -161,6 +194,15 @@ export interface OrderDto {
   createdAt: string
   paidAt: string | null
   erpSyncedAt: string | null
+  /** Кэшбек: обещано, сколько начислено (только в деталях админки), недобор из-за возврата. */
+  /** Покупатель, к которому привязан заказ (null — гостевой); только в деталях админки. */
+  customerId?: string | null
+  cashbackPromisedCoins?: number
+  cashbackAccruedCoins?: number
+  cashbackShortfallCoins?: number
+  /** Когда заказ вручён (СДЭК) и проблема с доставкой, если есть. */
+  deliveredAt?: string | null
+  deliveryProblem?: string | null
 }
 
 // --- checkout API contract ---
@@ -176,6 +218,8 @@ export interface CheckoutRequest {
   giftProductId?: string
   /** Промокод; сервер сверяет его сам и отвечает 400 promo_invalid на неизвестный. */
   promoCode?: string
+  /** Способ оплаты; не указан или tbank — как раньше. Недоступный Яндекс сервер отклоняет 400. */
+  paymentMethod?: CheckoutPaymentMethod
   customer: { name: string; phone: string; email?: string; telegram?: string }
   // Куда везём — из виджета СДЭК (см. DeliveryDestination) + комментарий.
   delivery: CheckoutDelivery
@@ -219,4 +263,9 @@ export interface PublicOrderStatus {
    * не отозванные. Выдачи появляются при оплате, поэтому до неё список пуст.
    */
   materials?: PublicOrderMaterial[]
+  /**
+   * Только при верном секрете заказа (?t=) и только у неоплаченного заказа
+   * Яндекс Пэй: ссылка на форму Яндекса для кнопки «Оплатить».
+   */
+  paymentUrl?: string | null
 }

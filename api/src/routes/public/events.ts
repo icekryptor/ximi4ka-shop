@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { ANALYTICS_EVENT_TYPES } from '@ximi4ka-shop/shared/types/analytics'
 import { AppDataSource } from '../../config/dataSource.js'
 
-// Приём событий собственной аналитики витрины (add_to_cart, open_cart, ...).
+// Приём событий собственной аналитики витрины: цели (add_to_cart, open_cart, ...)
+// и полевые Web Vitals (web_vital, по событию на метрику за загрузку страницы).
 // Публичный и анонимный, поэтому: белый список типов, жёсткие размеры, лимит
 // частоты на уровне app.ts и тихий отброс ботов. IP и User-Agent не храним.
 const MAX_META_CHARS = 1000

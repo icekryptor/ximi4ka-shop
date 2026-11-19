@@ -92,10 +92,14 @@ beforeEach(() => {
     products: [tube, reagent, soldOut, himichka, electro],
     posts: [],
   })
+  // Мини-каталог стартует сразу, если нет IntersectionObserver (заглушка из
+  // vitest.setup.ts никогда не срабатывает).
+  vi.stubGlobal('IntersectionObserver', undefined)
 })
 afterEach(() => {
   cleanup()
   window.localStorage.clear()
+  vi.unstubAllGlobals()
 })
 
 describe('WholesaleOrder', () => {

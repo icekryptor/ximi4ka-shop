@@ -1,4 +1,5 @@
 import type {
+  AccountCoins,
   AccountMaterial,
   AccountOrdersPage,
   AuthConfig,
@@ -6,6 +7,8 @@ import type {
   TelegramLoginPoll,
   TelegramLoginStart,
 } from '@ximi4ka-shop/shared'
+import { solveChallenge, type Challenge } from 'altcha-lib'
+import { deriveKey as pbkdf2DeriveKey } from 'altcha-lib/algorithms/web/pbkdf2'
 import { ApiError } from './api'
 
 // Клиент личного кабинета для браузера. Как adminApi.ts: cookie сессии
@@ -54,8 +57,18 @@ const post = <T>(path: string, body?: unknown) =>
   call<T>(path, { method: 'POST', body: body === undefined ? undefined : JSON.stringify(body) })
 
 export const getAuthConfig = () => call<AuthConfig>('/api/account/auth/config')
-export const startEmailLogin = (email: string) =>
-  post<void>('/api/account/auth/email/start', { email })
+// Перед письмом с кодом браузер решает задачу ALTCHA (защита от ботов, которые
+// подставляли в форму чужие адреса, — см. api/src/lib/account/altcha.ts). Человек
+// ничего не видит: доля секунды на ноутбуке, около секунды на слабом телефоне.
+export async function startEmailLogin(email: string): Promise<void> {
+  const challenge = await call<Challenge>('/api/account/auth/email/challenge')
+  const solution = await solveChallenge({ challenge, deriveKey: pbkdf2DeriveKey, timeout: 30_000 })
+  if (!solution) {
+    throw new ApiError(400, 'captcha_failed', 'Проверка не прошла — попробуйте ещё раз')
+  }
+  const altcha = btoa(JSON.stringify({ challenge, solution }))
+  return post<void>('/api/account/auth/email/start', { email, altcha })
+}
 export const verifyEmailLogin = (email: string, code: string) =>
   post<{ ok: true }>('/api/account/auth/email/verify', { email, code })
 export const startTelegramLogin = () => post<TelegramLoginStart>('/api/account/auth/telegram/start')
@@ -70,12 +83,30 @@ export async function getMeOrNull(): Promise<CustomerProfile | null> {
     return null
   }
 }
+
+export type MeSession =
+  | { status: 'ok'; me: CustomerProfile }
+  | { status: 'unauthorized' }
+  | { status: 'error' }
+
+// Как getMeOrNull, но отличает «сессии нет» (401) от сбоя сети/сервера: шапка при 401
+// снимает устаревшую подсказку о входе, а при сбое ничего не трогает.
+export async function getMeSession(): Promise<MeSession> {
+  try {
+    return { status: 'ok', me: await getMe() }
+  } catch (err) {
+    return err instanceof ApiError && err.status === 401
+      ? { status: 'unauthorized' }
+      : { status: 'error' }
+  }
+}
 export const updateMe = (patch: { name?: string; phone?: string }) =>
   call<CustomerProfile>('/api/account/me', { method: 'PATCH', body: JSON.stringify(patch) })
 export const getOrders = (cursor?: string | null) =>
   call<AccountOrdersPage>(
     `/api/account/orders${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
   )
+export const getCoins = () => call<AccountCoins>('/api/account/coins')
 export const getMaterials = () => call<AccountMaterial[]>('/api/account/materials')
 
 export const startLinkEmail = (email: string) =>

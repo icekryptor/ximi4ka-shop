@@ -1,4 +1,5 @@
 import { Header } from '@/components/Header'
+import { SignedInHintScript } from '@/components/SignedInHintScript'
 import { Footer } from '@/components/Footer'
 import { CartDrawer } from '@/components/CartDrawer'
 import { AttributionTracker } from '@/components/AttributionTracker'
@@ -6,6 +7,7 @@ import { getPublicSettings } from '@/lib/api'
 import { JsonLd } from '@/components/seo/JsonLd'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonLd'
 import { EMAIL, PHONE, SUPPORT_URL } from '@/lib/contacts'
+import { isBlackFridayActive } from '@/lib/blackFriday'
 
 // Public storefront chrome. All non-admin routes live under this group so
 // they all get the same sticky Header + Footer + shared CartDrawer without
@@ -20,7 +22,13 @@ export default async function PublicLayout({ children }: Readonly<{ children: Re
       {/* Organization и WebSite — на каждой публичной странице (SEO-аудит). */}
       <JsonLd data={organizationJsonLd({ phone: PHONE, email: EMAIL, supportUrl: SUPPORT_URL })} />
       <JsonLd data={websiteJsonLd()} />
-      <Header headerPromoText={settings?.headerPromoText ?? null} />
+      {/* Статичный скрипт: до отрисовки шапки помечает html[data-signed-in] по cookie. */}
+      <SignedInHintScript />
+      <Header
+        headerPromoText={settings?.headerPromoText ?? null}
+        coinsEnabled={settings?.coins != null}
+        blackFriday={isBlackFridayActive()}
+      />
       <main className="flex-1">{children}</main>
       <Footer />
       <CartDrawer />

@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type {
   CdekCity,
@@ -191,13 +191,19 @@ beforeEach(() => {
 })
 
 describe('<CdekDelivery>', () => {
+  // Один тест замораживает дату — размораживаем, даже если он упал.
+  afterEach(() => vi.useRealTimers())
+
   it('после выбора города — пункты города и цены обоих способов с сервера', async () => {
+    // 11 ноября 2026 по Москве: срок СДЭК 3–5 и 2 дня + сутки на сборку.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-11T12:00:00Z'))
     render(<Harness />)
     await chooseCity(MOSCOW)
     expect(
-      await screen.findByRole('radio', { name: /Пункт выдачи СДЭК — 390\s₽, 3–5 дн\./ }),
+      await screen.findByRole('radio', { name: /Пункт выдачи СДЭК — 390\s₽, 15–17 ноября/ }),
     ).toBeChecked()
-    expect(screen.getByRole('radio', { name: /Курьер СДЭК — 600\s₽, 2 дн\./ })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: /Курьер СДЭК — 600\s₽, 14 ноября/ })).not.toBeChecked()
     expect(mockGetPoints).toHaveBeenCalledWith(44, expect.anything())
     expect(mockQuote).toHaveBeenCalledWith({
       items: ITEMS,

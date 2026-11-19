@@ -15,6 +15,7 @@ const EVENT_LABELS: Record<OrderEventKey, string> = {
   created: 'новый заказ',
   'status:paid': 'оплачен',
   'status:shipped': 'отправлен',
+  'status:delivered': 'получен',
   'status:cancelled': 'отменён',
   'status:failed': 'оплата не прошла',
   'ycp:on_delivery': 'Яндекс: оплата при получении',

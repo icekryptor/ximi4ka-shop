@@ -57,6 +57,19 @@ function isLive(r: TelegramLoginRequest | null): r is TelegramLoginRequest {
   return !!r && r.status === 'pending' && r.expiresAt.getTime() > Date.now()
 }
 
+// Повтор от того же Telegram после «Подтвердить»: вкладка t.me в Safari снова
+// открывает бота с тем же start, кнопку жмут второй раз, пока медленный
+// Telegram не ответил. Человек уже вошёл — «Ссылка устарела» его только пугает.
+// Чужому Telegram по-прежнему отвечаем «устарела», без подробностей.
+function isConfirmedBy(r: TelegramLoginRequest | null, telegramId: number): boolean {
+  return !!r && (r.status === 'confirmed' || r.status === 'consumed') && r.telegramId === telegramId
+}
+
+const START_STALE_TEXT = `Ссылка устарела — начните вход на сайте ${SITE} заново.`
+const START_DONE_TEXT = `Вы уже подтвердили — вернитесь на сайт ${SITE}. Если там ничего не произошло, начните заново.`
+const BUTTON_STALE_TEXT = 'Ссылка устарела — начните заново на сайте'
+const BUTTON_DONE_TEXT = 'Уже подтверждено — вернитесь на сайт'
+
 // Ошибки Telegram не пробрасываем: webhook отвечает 200 всегда, иначе
 // Telegram будет повторять тот же update.
 async function safe(what: string, p: Promise<void>): Promise<void> {
@@ -102,7 +115,10 @@ export async function handleTelegramUpdate(
     if (!isLive(req)) {
       await safe(
         'ссылка устарела',
-        bot.sendMessage(msg.chat.id, `Ссылка устарела — начните вход на сайте ${SITE} заново.`),
+        bot.sendMessage(
+          msg.chat.id,
+          isConfirmedBy(req, msg.from.id) ? START_DONE_TEXT : START_STALE_TEXT,
+        ),
       )
       return
     }
@@ -115,9 +131,13 @@ export async function handleTelegramUpdate(
       { telegramId: msg.from.id },
     )
     if (started.affected !== 1) {
+      const fresh = await repo.findOneBy({ id: req.id })
       await safe(
         'ссылка устарела (гонка со «Старт»)',
-        bot.sendMessage(msg.chat.id, `Ссылка устарела — начните вход на сайте ${SITE} заново.`),
+        bot.sendMessage(
+          msg.chat.id,
+          isConfirmedBy(fresh, msg.from.id) ? START_DONE_TEXT : START_STALE_TEXT,
+        ),
       )
       return
     }
@@ -141,7 +161,10 @@ export async function handleTelegramUpdate(
     if (!isLive(req) || req.telegramId !== cb.from.id) {
       await safe(
         'ответ на кнопку',
-        bot.answerCallbackQuery(cb.id, 'Ссылка устарела — начните заново на сайте'),
+        bot.answerCallbackQuery(
+          cb.id,
+          isConfirmedBy(req, cb.from.id) ? BUTTON_DONE_TEXT : BUTTON_STALE_TEXT,
+        ),
       )
       return
     }
@@ -158,9 +181,13 @@ export async function handleTelegramUpdate(
       },
     )
     if (confirmed.affected !== 1) {
+      const fresh = await repo.findOneBy({ id: req.id })
       await safe(
         'ответ на кнопку (гонка со «Старт»)',
-        bot.answerCallbackQuery(cb.id, 'Ссылка устарела — начните заново на сайте'),
+        bot.answerCallbackQuery(
+          cb.id,
+          isConfirmedBy(fresh, cb.from.id) ? BUTTON_DONE_TEXT : BUTTON_STALE_TEXT,
+        ),
       )
       return
     }

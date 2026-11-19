@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
+  ALL_REAGENTS_ONE_SKU,
   ALL_REAGENTS_SKU,
+  allReagentsPerSet,
   SHEET_HEADER,
   TELEGRAM_TEXT_LIMIT,
   sheetRow,
@@ -55,6 +57,18 @@ describe('sheetRow', () => {
     expect(row.slice(-4, -1)).toEqual([950, 350, 1300])
   })
 
+  it('надбавка за оплату картой идёт в «Доставка, ₽»: Товары + Доставка = Итого', () => {
+    const row = sheetRow({
+      ...order,
+      subtotalRub: 2000,
+      shippingRub: 700,
+      paymentProvider: 'cloudpayments',
+      paymentSurchargeRub: 216,
+      totalRub: 2916,
+    })
+    expect(row.slice(-4, -1)).toEqual([2000, 916, 2916])
+  })
+
   it('строка заказа по колонкам листа', () => {
     expect(sheetRow(order)).toEqual([
       'XM-2026-00042',
@@ -72,6 +86,10 @@ describe('sheetRow', () => {
     ])
     expect(SHEET_HEADER).toHaveLength(12)
     expect(sheetRow(order)).toHaveLength(SHEET_HEADER.length)
+  })
+
+  it('полученный заказ подписан «получен»', () => {
+    expect(sheetRow({ ...order, status: 'delivered' })[11]).toBe('получен')
   })
 
   it('курьер, пустые почта и Telegram, товар без артикула', () => {
@@ -335,6 +353,25 @@ describe('telegramCard', () => {
       /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/,
     )
   })
+
+  it('CloudPayments: способ оплаты и надбавка в карточке; без надбавки — без строки', () => {
+    const card = telegramCard({
+      ...order,
+      paymentProvider: 'cloudpayments',
+      paymentSurchargeRub: 216,
+      totalRub: order.totalRub + 216,
+    })
+    expect(card).toContain('Оплата: карта банка другой страны (CloudPayments)')
+    expect(card).toContain('надбавка за способ оплаты +')
+    const zero = telegramCard({
+      ...order,
+      paymentProvider: 'cloudpayments',
+      paymentSurchargeRub: 0,
+    })
+    expect(zero).not.toContain('надбавка')
+    const tbank = telegramCard({ ...order, paymentProvider: 'tbank' })
+    expect(tbank).not.toContain('CloudPayments')
+  })
 })
 
 describe('telegramCard: «Запас всех реактивов»', () => {
@@ -359,6 +396,29 @@ describe('telegramCard: «Запас всех реактивов»', () => {
   it('количество умножается на число комплектов', () => {
     expect(telegramCard(reserve(3), ['Хлорид бария 3%, 35 мл'])).toContain(
       '— Хлорид бария 3%, 35 мл — 6 шт',
+    )
+  })
+
+  it('«Все реактивы по 1 шт» (RRR1) — реактивы каталога по 1 шт на комплект', () => {
+    const card = telegramCard(
+      {
+        ...order,
+        items: [
+          {
+            productSnapshot: {
+              name: 'Все реактивы по 1 шт',
+              sku: ALL_REAGENTS_ONE_SKU,
+              priceRub: 3990,
+            },
+            quantity: 2,
+            unitPriceRub: 3990,
+          },
+        ],
+      },
+      ['Хлорид бария 3%, 35 мл'],
+    )
+    expect(card).toContain(
+      'Все реактивы по 1 шт · RRR1 · 2 × 3 990 ₽\n— Хлорид бария 3%, 35 мл — 2 шт',
     )
   })
 
@@ -423,6 +483,24 @@ describe('доставка в страны ЕАЭС (cdek_manual_cis)', () => {
     expect(telegramCard(o)).toContain(`Адрес: ${label}`)
   })
 
+  // Без ИИН/ПИН посылку не пропустит таможня — оператору номер нужен под рукой.
+  it.each([
+    ['KZ', '850101300500', 'ИИН'],
+    ['KG', '21501199012345', 'ПИН'],
+  ] as const)('%s: номер для таможни в таблице и в карточке', (country, taxId, label) => {
+    const o: NotifiableOrder = {
+      ...cisOrder,
+      deliveryAddress: { ...cisOrder.deliveryAddress, country, taxId },
+    }
+    expect(sheetRow(o)[6]).toContain(` · ${label} ${taxId}`)
+    expect(telegramCard(o)).toContain(`${label}: ${taxId}`)
+  })
+
+  it('без номера строки ИИН/ПИН нет', () => {
+    expect(telegramCard(cisOrder)).not.toMatch(/ИИН|ПИН/)
+    expect(String(sheetRow(cisOrder)[6])).not.toMatch(/ИИН|ПИН/)
+  })
+
   it('без страны в заказе — «другую страну»', () => {
     const o: NotifiableOrder = {
       ...cisOrder,
@@ -431,5 +509,15 @@ describe('доставка в страны ЕАЭС (cdek_manual_cis)', () => {
     const label = 'Доставка в другую страну (СДЭК, адрес вручную)'
     expect(sheetRow(o)[6]).toContain(label)
     expect(telegramCard(o)).toContain(`Адрес: ${label}`)
+  })
+})
+
+describe('allReagentsPerSet', () => {
+  it('RRR — по 2 шт, RRR1 — по 1 шт, прочие товары — не комплект реактивов', () => {
+    expect(allReagentsPerSet(ALL_REAGENTS_SKU)).toBe(2)
+    expect(allReagentsPerSet(ALL_REAGENTS_ONE_SKU)).toBe(1)
+    expect(allReagentsPerSet('7V25')).toBeNull()
+    expect(allReagentsPerSet(null)).toBeNull()
+    expect(allReagentsPerSet(undefined)).toBeNull()
   })
 })

@@ -1,5 +1,10 @@
-import type { DeliveryAddress, OrderEventKey, OrderStatus } from '@ximi4ka-shop/shared'
-import type { CisCountry } from '@ximi4ka-shop/shared/types/cis'
+import type {
+  DeliveryAddress,
+  OrderEventKey,
+  OrderStatus,
+  PaymentProvider,
+} from '@ximi4ka-shop/shared'
+import { CIS_TAX_ID, type CisCountry } from '@ximi4ka-shop/shared/types/cis'
 
 // Что показываем людям в таблице и в чате. Чистые функции без сети — вся
 // логика вида уведомлений тестируется здесь.
@@ -21,6 +26,9 @@ export interface NotifiableOrder {
   promoDiscountRub?: number
   shippingRub: number
   totalRub: number
+  paymentProvider?: PaymentProvider
+  /** Надбавка за оплату через CloudPayments, уже в totalRub. */
+  paymentSurchargeRub?: number
   items: {
     productSnapshot: { name: string; sku: string | null; priceRub: number }
     quantity: number
@@ -51,16 +59,28 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   pending: 'создан',
   paid: 'оплачен',
   shipped: 'отправлен',
+  delivered: 'получен',
   cancelled: 'отменён',
   failed: 'оплата не прошла',
 }
 
 export const TELEGRAM_TEXT_LIMIT = 4096
 
-// «Запас всех реактивов» — товар без собственного состава: это все реактивы
-// каталога по 2 шт. Сборщику в чате нужен список, а не одна строка.
+// Комплекты «все реактивы» — товары без собственного состава: это все реактивы
+// каталога по N шт. Сборщику в чате нужен список, а не одна строка.
+// «Запас всех реактивов» — по 2 шт, «Все реактивы по 1 шт» — по 1 шт.
+// Зеркало — web/lib/allReagents.ts.
 export const ALL_REAGENTS_SKU = 'RRR'
-export const ALL_REAGENTS_PER_SET = 2
+export const ALL_REAGENTS_ONE_SKU = 'RRR1'
+const ALL_REAGENTS_PER_SET: Readonly<Record<string, number>> = {
+  [ALL_REAGENTS_SKU]: 2,
+  [ALL_REAGENTS_ONE_SKU]: 1,
+}
+
+/** Сколько штук каждого реактива в одном комплекте; null — товар не комплект реактивов. */
+export function allReagentsPerSet(sku: string | null | undefined): number | null {
+  return sku ? (ALL_REAGENTS_PER_SET[sku] ?? null) : null
+}
 
 // Дата и время по Москве. Собираем из частей сами: у Intl в ru-RU между
 // датой и временем запятая, а нам нужен пробел.
@@ -160,12 +180,23 @@ function cisLabel(order: NotifiableOrder): string {
   return `Доставка в ${name} (СДЭК, адрес вручную)`
 }
 
+// ИИН (Казахстан) или ПИН (Киргизия) получателя для таможни; null — номера нет.
+function cisTaxId(order: NotifiableOrder): { label: string; value: string } | null {
+  const { country, taxId } = order.deliveryAddress
+  const rule = country ? CIS_TAX_ID[country] : undefined
+  return rule && taxId ? { label: rule.label, value: taxId } : null
+}
+
 function deliveryCell(order: NotifiableOrder): string {
   const { address, deliveryPointCode } = order.deliveryAddress
   if (isPickupPoint(order)) {
     return deliveryPointCode ? `ПВЗ ${deliveryPointCode} · ${address}` : `ПВЗ · ${address}`
   }
-  if (order.deliveryMethod === 'cdek_manual_cis') return `${cisLabel(order)} · ${address}`
+  if (order.deliveryMethod === 'cdek_manual_cis') {
+    const taxId = cisTaxId(order)
+    const tail = taxId ? ` · ${taxId.label} ${taxId.value}` : ''
+    return `${cisLabel(order)} · ${address}${tail}`
+  }
   return `Курьер · ${address}`
 }
 
@@ -179,20 +210,21 @@ export function sheetRow(order: NotifiableOrder): (string | number)[] {
     order.customerTelegram ?? '',
     deliveryCell(order),
     giftLast(order.items).map(itemLine).join('\n'),
-    // «Товары» — со всеми скидками: колонки таблицы не менялись, Товары + Доставка = Итого.
+    // Колонки таблицы не менялись, Товары + Доставка = Итого: «Товары» — со всеми
+    // скидками, «Доставка» — вместе с надбавкой за оплату картой (CloudPayments).
     order.subtotalRub - order.discountRub - (order.promoDiscountRub ?? 0),
-    order.shippingRub,
+    order.shippingRub + (order.paymentSurchargeRub ?? 0),
     order.totalRub,
     STATUS_LABELS[order.status],
   ]
 }
 
 // Состав комплекта под строкой товара: реактив — количество в заказе.
-function compositionLines(names: string[], sets: number): string[] {
-  return names.map((name) => `— ${name} — ${ALL_REAGENTS_PER_SET * sets} шт`)
+function compositionLines(names: string[], perSet: number, sets: number): string[] {
+  return names.map((name) => `— ${name} — ${perSet * sets} шт`)
 }
 
-// `reagentNames` — реактивы каталога; нужны только заказу с «Запасом всех реактивов».
+// `reagentNames` — реактивы каталога; нужны только заказу с комплектом всех реактивов.
 export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []): string {
   const { deliveryPointCode } = order.deliveryAddress
   const address = clip(order.deliveryAddress.address, CARD_TEXT_LIMIT)
@@ -216,6 +248,11 @@ export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []
   ]
   if (order.customerTelegram) client.push(`Телеграм: ${escapeHtml(order.customerTelegram)}`)
   client.push(`Адрес: ${escapeHtml(where)}`)
+  const taxId = order.deliveryMethod === 'cdek_manual_cis' ? cisTaxId(order) : null
+  if (taxId) client.push(`${taxId.label}: ${escapeHtml(taxId.value)}`)
+  if (order.paymentProvider === 'cloudpayments') {
+    client.push('Оплата: карта банка другой страны (CloudPayments)')
+  }
   if (comment) client.push(`Комментарий: ${escapeHtml(comment)}`)
 
   const goods = [`Товары ${rub(order.subtotalRub)}`]
@@ -223,7 +260,11 @@ export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []
   if (order.promoCode && (order.promoDiscountRub ?? 0) > 0) {
     goods.push(`промокод ${escapeHtml(order.promoCode)} −${rub(order.promoDiscountRub ?? 0)}`)
   }
-  const totals = `${goods.join(' · ')} · ${shipping} · итого ${rub(order.totalRub)}`
+  const surcharge =
+    (order.paymentSurchargeRub ?? 0) > 0
+      ? ` · надбавка за способ оплаты +${rub(order.paymentSurchargeRub ?? 0)}`
+      : ''
+  const totals = `${goods.join(' · ')} · ${shipping}${surcharge} · итого ${rub(order.totalRub)}`
 
   // Позиции добавляем, пока влезает в лимит, оставляя место на хвост и на
   // строку «…и ещё N позиций».
@@ -237,9 +278,10 @@ export function telegramCard(order: NotifiableOrder, reagentNames: string[] = []
     lines.push(line)
     length += line.length + 1
     shown += 1
-    if (item.productSnapshot.sku === ALL_REAGENTS_SKU && reagentNames.length > 0) {
+    const perSet = allReagentsPerSet(item.productSnapshot.sku)
+    if (perSet !== null && reagentNames.length > 0) {
       // Состав — сколько влезет: хвост, который не поместился, считаем строкой.
-      const parts = compositionLines(reagentNames, item.quantity).map(escapeHtml)
+      const parts = compositionLines(reagentNames, perSet, item.quantity).map(escapeHtml)
       let added = 0
       for (const part of parts) {
         if (length + part.length + 1 > TELEGRAM_TEXT_LIMIT) break

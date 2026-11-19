@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useCart } from '@/lib/cart'
 import { Ticker } from '@/components/ui'
+import { BlackFridayStrip } from '@/components/marketing/BlackFridayStrip'
 import { AccountLink } from './AccountLink'
 import { CartButton } from './CartButton'
 import { HeaderLogo } from './HeaderLogo'
@@ -37,12 +38,21 @@ function isActive(pathname: string, item: NavItem): boolean {
 
 interface HeaderProps {
   headerPromoText?: string | null
+  /** Химикоины включены в настройках: резервировать место под чип баланса. */
+  coinsEnabled?: boolean
+  /** идёт «Чёрная пятница» — над шапкой показываем её ленту (даты считает сервер) */
+  blackFriday?: boolean
 }
 
-export function Header({ headerPromoText = null }: HeaderProps) {
+export function Header({
+  headerPromoText = null,
+  coinsEnabled = false,
+  blackFriday = false,
+}: HeaderProps) {
   const pathnameRaw = usePathname()
   const { itemCount } = useCart()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [coinBalance, setCoinBalance] = useState<number | null>(null)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
 
   const pathname = pathnameRaw?.replace(/^\/(ru|en)(?=\/|$)/, '') || '/'
@@ -73,6 +83,8 @@ export function Header({ headerPromoText = null }: HeaderProps) {
 
   return (
     <>
+      {blackFriday ? <BlackFridayStrip /> : null}
+
       {showPromo ? (
         <div role="region" aria-label="Промо">
           <Ticker surface="dark" items={promoItems} />
@@ -167,7 +179,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
               </svg>
             </button>
 
-            <AccountLink />
+            <AccountLink coinsEnabled={coinsEnabled} onBalanceChange={setCoinBalance} />
 
             {/* Кнопка корзины видна ВСЕГДА (и на мобильном) и открывает
                 CartDrawer мгновенно — навигация на /cart только из drawer. */}
@@ -204,6 +216,7 @@ export function Header({ headerPromoText = null }: HeaderProps) {
         pathname={pathname}
         navItems={NAV}
         cartCount={itemCount}
+        coinBalance={coinsEnabled ? coinBalance : null}
       />
     </>
   )

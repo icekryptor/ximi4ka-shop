@@ -93,6 +93,27 @@ describe('fetchCatalog', () => {
     expect(groups[0].products).toHaveLength(2)
   })
 
+  it('отдаёт товарам слаги их категорий — корзине не нужен отдельный запрос', async () => {
+    vi.mocked(listPublishedProducts).mockResolvedValue({
+      data: [product('1', ['cr', 'ce']), product('2', ['cr', 'unknown'])],
+      pagination: { limit: 1000, offset: 0, total: 2 },
+    } as never)
+    vi.mocked(listCategories).mockResolvedValue({
+      data: [category('cr', 'reagents'), category('ce', 'equipment')],
+      pagination: { limit: 100, offset: 0, total: 2 },
+    } as never)
+
+    const { groups } = await fetchCatalog()
+    const reagents = groups.find((g) => g.category.slug === 'reagents')!
+    expect(reagents.products.find((p) => p.id === '1')?.categorySlugs).toEqual([
+      'reagents',
+      'equipment',
+    ])
+    // Не все категории известны — слагов нет, их докачает корзина: неполный
+    // список дал бы неверную оптовую скидку в превью.
+    expect(reagents.products.find((p) => p.id === '2')?.categorySlugs).toBeUndefined()
+  })
+
   it('drops empty categories from the groups', async () => {
     vi.mocked(listPublishedProducts).mockResolvedValue({
       data: [product('1', ['ck'])],

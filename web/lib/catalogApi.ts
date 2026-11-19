@@ -59,7 +59,9 @@ export async function fetchCatalog(): Promise<CatalogData> {
 
   const counts: Record<string, number> = {}
   const byCategory = new Map<string, Product[]>()
-  for (const p of productsRes) {
+  const slugById = new Map(categoriesRes.map((c) => [c.id, c.slug]))
+  for (const raw of productsRes) {
+    const p = withCategorySlugs(raw, slugById)
     for (const cid of p.categoryIds ?? []) {
       counts[cid] = (counts[cid] ?? 0) + 1
       const bucket = byCategory.get(cid)
@@ -78,4 +80,18 @@ export async function fetchCatalog(): Promise<CatalogData> {
     .sort((a, b) => orderIndex(a.category.slug) - orderIndex(b.category.slug))
 
   return { groups, counts, totalProducts: productsRes.length }
+}
+
+// Слаги категорий товара — те же, что отдаёт карточка товара (categorySlugs):
+// корзина считает по ним оптовую скидку и без них докачивает товар отдельным
+// запросом. Если хоть одна категория не нашлась в списке, слаги не ставим —
+// неполный список дал бы неверную скидку, а докачка его поправит.
+function withCategorySlugs(
+  p: ProductWithCategories,
+  slugById: Map<string, string>,
+): ProductWithCategories {
+  if (!Array.isArray(p.categoryIds)) return p
+  const slugs = p.categoryIds.map((id) => slugById.get(id))
+  if (slugs.some((s) => s === undefined)) return p
+  return { ...p, categorySlugs: slugs as string[] }
 }

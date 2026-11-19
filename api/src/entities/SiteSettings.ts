@@ -1,5 +1,6 @@
 import 'reflect-metadata'
 import { Entity, PrimaryColumn, Column, UpdateDateColumn } from 'typeorm'
+import { DEFAULT_CASHBACK_PERCENT } from '@ximi4ka-shop/shared/types/coins'
 
 // Singleton table. The app only ever reads/writes a single row with
 // id = 'default'. Modelled as a table (rather than a JSON blob in a
@@ -89,6 +90,24 @@ export class SiteSettings {
     default: 'sandbox',
   })
   yandexPayMode!: 'sandbox' | 'production'
+
+  // CloudPayments: ключи — в env (CLOUDPAYMENTS_PUBLIC_ID, CLOUDPAYMENTS_API_SECRET),
+  // здесь рубильник, режим и надбавка за способ оплаты в целых процентах.
+  @Column({ type: 'boolean', name: 'cloudpayments_enabled', default: false })
+  cloudpaymentsEnabled!: boolean
+
+  @Column({ type: 'varchar', length: 16, name: 'cloudpayments_mode', default: 'test' })
+  cloudpaymentsMode!: 'test' | 'live'
+
+  @Column({ type: 'integer', name: 'cloudpayments_surcharge_percent', default: 0 })
+  cloudpaymentsSurchargePercent!: number
+
+  // Химикоины: рубильник программы кэшбека и его процент от суммы товаров (0–50).
+  @Column({ type: 'boolean', name: 'coins_enabled', default: false })
+  coinsEnabled!: boolean
+
+  @Column({ type: 'integer', name: 'coins_cashback_percent', default: DEFAULT_CASHBACK_PERCENT })
+  coinsCashbackPercent!: number
 
   // --- Marketing (homepage redesign) ---
   // Free-text promo strip rendered in the site header. Null hides the strip.

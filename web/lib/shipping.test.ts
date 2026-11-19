@@ -3,7 +3,7 @@ import {
   EMPTY_COURIER_ADDRESS,
   courierAddressLine,
   courierDestination,
-  formatPeriod,
+  formatDeliveryDates,
   isPostalCode,
   pvzDestination,
   quoteDestination,
@@ -28,11 +28,21 @@ describe('widgetGoods', () => {
   })
 })
 
-describe('formatPeriod', () => {
-  it('диапазон и один день', () => {
-    expect(formatPeriod(3, 5)).toBe('3–5 дн.')
-    expect(formatPeriod(2, 2)).toBe('2 дн.')
-    expect(formatPeriod(null, null)).toBeNull()
+describe('formatDeliveryDates', () => {
+  // 11 ноября 2026, 15:00 по Москве; к сроку СДЭК прибавляются сутки на сборку.
+  const now = new Date('2026-11-11T12:00:00Z')
+
+  it('вилка срока — вилка дат', () => {
+    expect(formatDeliveryDates(3, 5, now)).toBe('15–17 ноября')
+  })
+
+  it('один день — одна дата, ближайшие дни — словом', () => {
+    expect(formatDeliveryDates(2, 2, now)).toBe('14 ноября')
+    expect(formatDeliveryDates(1, 1, now)).toBe('послезавтра')
+  })
+
+  it('СДЭК не назвал срок — подписи нет', () => {
+    expect(formatDeliveryDates(null, null, now)).toBeNull()
   })
 })
 

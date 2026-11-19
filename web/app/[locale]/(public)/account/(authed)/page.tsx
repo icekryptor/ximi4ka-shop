@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { getPublicSettings } from '@/lib/api'
+import { CoinsCard } from '../_components/CoinsCard'
 import { MaterialsLink } from '../_components/MaterialsLink'
 import { OrdersList } from '../_components/OrdersList'
 import { ProfileCard } from '../_components/ProfileCard'
@@ -9,10 +11,20 @@ export const metadata: Metadata = {
 }
 
 // Одна страница: сверху плашка с личными данными, ниже история заказов.
-export default function AccountPage() {
+async function coinsProgramEnabled(): Promise<boolean> {
+  try {
+    return Boolean((await getPublicSettings())?.coins)
+  } catch {
+    return false
+  }
+}
+
+export default async function AccountPage() {
+  const programEnabled = await coinsProgramEnabled()
   return (
     <div className="flex flex-col gap-10">
       <ProfileCard />
+      <CoinsCard programEnabled={programEnabled} />
       <MaterialsLink />
       <section aria-labelledby="account-orders-heading" className="flex flex-col gap-4">
         <h2

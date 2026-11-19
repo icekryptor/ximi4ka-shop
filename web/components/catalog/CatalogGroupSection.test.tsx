@@ -68,4 +68,31 @@ describe('CatalogGroupSection', () => {
     fireEvent.click(list)
     expect(screen.getByTestId('catalog-list')).toBeInTheDocument()
   })
+
+  it('отрисовывает нажатие кнопки до тяжёлого монтирования группы', () => {
+    // Карточка-зонд при монтировании смотрит в DOM: если выбор вида уже
+    // закоммичен (aria-pressed="true"), клик отрисовался раньше, чем
+    // монтировалась вся группа карточек.
+    const seen: Array<string | null | undefined> = []
+    function Probe() {
+      seen.push(
+        document.querySelector('button[aria-label="Плиткой"]')?.getAttribute('aria-pressed'),
+      )
+      return <div>карточка-зонд</div>
+    }
+    render(
+      <CatalogGroupSection
+        headingId="cat-1"
+        title="Реактивы"
+        href="/categories/reagents"
+        layout="compact"
+        list={<div>строка 1</div>}
+      >
+        <Probe />
+      </CatalogGroupSection>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Плиткой' }))
+    expect(screen.getByText('карточка-зонд')).toBeInTheDocument()
+    expect(seen).toEqual(['true'])
+  })
 })

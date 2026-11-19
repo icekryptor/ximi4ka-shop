@@ -51,10 +51,10 @@ describe('buildDeliveryZones', () => {
     expect(codes).toEqual(['ru', 'by', 'kz', 'am', 'kg', 'uz', 'az', 'tj'])
   })
 
-  it('пишет пороги: РФ 3000/5000, Беларусь 3000, ЕАЭС 5000, СНГ отдельно', () => {
+  it('пишет пороги: РФ 2900/5000, Беларусь 2900, ЕАЭС 5000, СНГ отдельно', () => {
     const [ru, by, eaeu, cis] = buildDeliveryZones()
-    expect(ru.condition).toMatch(/от 3\D000\D*₽ до пункта выдачи, курьером — от 5\D000\D*₽/u)
-    expect(by.condition).toMatch(/^Бесплатно от 3\D000\D*₽, иначе 700\D*₽$/u)
+    expect(ru.condition).toMatch(/от 2\D900\D*₽ до пункта выдачи, курьером — от 5\D000\D*₽/u)
+    expect(by.condition).toMatch(/^Бесплатно от 2\D900\D*₽, иначе 700\D*₽$/u)
     expect(eaeu.condition).toMatch(
       /^Бесплатно от 5\D000\D*₽, иначе 900\D*₽ \(Казахстан, Киргизия\), 1\D200\D*₽ \(Армения\)$/u,
     )

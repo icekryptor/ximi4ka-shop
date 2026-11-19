@@ -32,8 +32,8 @@ const PVZ_READY: DeliveryFormState = {
 }
 
 describe('shipping rules', () => {
-  it('mirror the server: ПВЗ 350 ₽ / бесплатно от 3000 ₽', () => {
-    expect(SHIPPING_RULES.cdek_pvz).toEqual({ freeFromRub: 3000, priceRub: 350 })
+  it('mirror the server: ПВЗ 350 ₽ / бесплатно от 2900 ₽', () => {
+    expect(SHIPPING_RULES.cdek_pvz).toEqual({ freeFromRub: 2900, priceRub: 350 })
   })
 
   it('mirror the server: курьер 500 ₽ / бесплатно от 5000 ₽', () => {
@@ -198,7 +198,7 @@ const cisFields: CheckoutFormFields = {
   telegram: '',
   comment: '',
 }
-const cisOk = { country: 'BY', city: 'Минск', address: 'ул. Ленина, 5' } as const
+const cisOk = { country: 'BY', city: 'Минск', address: 'ул. Ленина, 5', taxId: '' } as const
 
 describe('международный телефон', () => {
   it('оставляет только цифры, без маски +7', () => {
@@ -249,14 +249,37 @@ describe('validateCisCheckoutForm', () => {
 
   it('страна и город обязательны, город — только из списка страны', () => {
     expect(
-      validateCisCheckoutForm(cisFields, { country: null, city: '', address: 'x' }).country,
+      validateCisCheckoutForm(cisFields, { country: null, city: '', address: 'x', taxId: '' })
+        .country,
     ).toBe('Выберите страну')
     expect(
-      validateCisCheckoutForm(cisFields, { country: 'BY', city: '', address: 'x' }).cisCity,
+      validateCisCheckoutForm(cisFields, { country: 'BY', city: '', address: 'x', taxId: '' })
+        .cisCity,
     ).toBe('Выберите город из списка')
     expect(
-      validateCisCheckoutForm(cisFields, { country: 'BY', city: 'Алматы', address: 'x' }).cisCity,
+      validateCisCheckoutForm(cisFields, { country: 'BY', city: 'Алматы', address: 'x', taxId: '' })
+        .cisCity,
     ).toBe('Доставка в этот город недоступна')
+  })
+
+  it('Казахстан: ИИН обязателен и проверяется по контрольной цифре', () => {
+    const kz = { country: 'KZ', city: 'Алматы', address: 'ул. Абая, 1' } as const
+    expect(validateCisCheckoutForm(cisFields, { ...kz, taxId: '' }).cisTaxId).toBe(
+      'Укажите ИИН — без него посылку не пропустит таможня',
+    )
+    expect(validateCisCheckoutForm(cisFields, { ...kz, taxId: '850101300501' }).cisTaxId).toBe(
+      'Проверьте ИИН — в номере опечатка',
+    )
+    expect(validateCisCheckoutForm(cisFields, { ...kz, taxId: '850101300500' })).toEqual({})
+  })
+
+  it('Киргизия: ПИН из 14 цифр; Беларуси номер не нужен', () => {
+    const kg = { country: 'KG', city: 'Бишкек', address: 'ул. Киевская, 1' } as const
+    expect(validateCisCheckoutForm(cisFields, { ...kg, taxId: '123' }).cisTaxId).toBe(
+      'ПИН — 14 цифр',
+    )
+    expect(validateCisCheckoutForm(cisFields, { ...kg, taxId: '21501199012345' })).toEqual({})
+    expect(validateCisCheckoutForm(cisFields, cisOk).cisTaxId).toBeUndefined()
   })
 
   it('адрес пункта обязателен', () => {

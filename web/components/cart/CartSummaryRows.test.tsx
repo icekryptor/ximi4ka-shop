@@ -46,3 +46,17 @@ describe('CartSummaryRows', () => {
     expect(screen.queryByTestId('summary-discount')).toBeNull()
   })
 })
+
+describe('CartSummaryRows cashback', () => {
+  it('renders no cashback row without the prop', () => {
+    render(<CartSummaryRows totals={base} itemCount={1} />)
+    expect(screen.queryByTestId('summary-cashback')).toBeNull()
+  })
+
+  it('renders the cashback row with the prop', () => {
+    render(
+      <CartSummaryRows totals={base} itemCount={1} cashback={{ coins: 190, signedIn: true }} />,
+    )
+    expect(screen.getByTestId('summary-cashback')).toHaveTextContent('Вернём 190 химикоинов')
+  })
+})

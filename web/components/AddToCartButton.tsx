@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import type { Product } from '@ximi4ka-shop/shared'
-import { useCart } from '@/lib/cart'
+import { useCartActions } from '@/lib/cart'
 import { AddToCartBurst } from '@/components/AddToCartBurst'
 
 interface Props {
@@ -22,7 +22,7 @@ interface Props {
 }
 
 export function AddToCartButton({ product, quantity = 1, compact = false }: Props) {
-  const { add } = useCart()
+  const { add } = useCartActions()
   const [pending, setPending] = useState(false)
   const [toastVisible, setToastVisible] = useState(false)
   const [burstKey, setBurstKey] = useState(0)

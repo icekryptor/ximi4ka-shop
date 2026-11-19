@@ -32,6 +32,11 @@ const baseSettings: SiteSettings = {
   ymlDeliveryNote: null,
   yandexPayEnabled: false,
   yandexPayMode: 'sandbox',
+  cloudpaymentsEnabled: false,
+  cloudpaymentsMode: 'test',
+  cloudpaymentsSurchargePercent: 0,
+  coinsEnabled: false,
+  coinsCashbackPercent: 10,
   headerPromoText: null,
   trustStripItems: [],
   testimonials: [],
@@ -233,4 +238,80 @@ describe('SettingsForm', () => {
       { quote: 'Топ', author: 'Анна', location: 'Москва', rating: 5 },
     ])
   })
+
+  // --- CloudPayments ---
+
+  it('CloudPayments: поля уходят в сохранение', async () => {
+    vi.mocked(adminUpdateSettings).mockResolvedValueOnce(baseSettings)
+    render(<SettingsForm initial={baseSettings} />)
+
+    fireEvent.click(
+      screen.getByLabelText('Включить CloudPayments на чекауте (только доставка в ЕАЭС)'),
+    )
+    fireEvent.change(screen.getByLabelText('Режим CloudPayments'), { target: { value: 'live' } })
+    fireEvent.change(screen.getByLabelText('Надбавка за способ оплаты, %'), {
+      target: { value: '8' },
+    })
+    fireEvent.submit(screen.getByRole('form', { name: /Настройки сайта/ }))
+
+    await waitFor(() => {
+      expect(adminUpdateSettings).toHaveBeenCalledTimes(1)
+    })
+    expect(vi.mocked(adminUpdateSettings).mock.calls[0][0]).toMatchObject({
+      cloudpaymentsEnabled: true,
+      cloudpaymentsMode: 'live',
+      cloudpaymentsSurchargePercent: 8,
+    })
+  })
+
+  it.each(['16', '', '-1', '2.5'])(
+    'CloudPayments: надбавка «%s» — ошибка поля, сохранение не уходит',
+    async (value) => {
+      render(<SettingsForm initial={baseSettings} />)
+      fireEvent.change(screen.getByLabelText('Надбавка за способ оплаты, %'), {
+        target: { value },
+      })
+      fireEvent.submit(screen.getByRole('form', { name: /Настройки сайта/ }))
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(
+          'Надбавка за способ оплаты — целое число от 0 до 15.',
+        )
+      })
+      expect(adminUpdateSettings).not.toHaveBeenCalled()
+    },
+  )
+
+  // --- Химикоины ---
+
+  it('Химикоины: рубильник и процент уходят в сохранение', async () => {
+    vi.mocked(adminUpdateSettings).mockResolvedValueOnce(baseSettings)
+    render(<SettingsForm initial={baseSettings} />)
+
+    fireEvent.click(screen.getByLabelText('Химикоины включены'))
+    fireEvent.change(screen.getByLabelText('Кэшбек, %'), { target: { value: '7' } })
+    fireEvent.submit(screen.getByRole('form', { name: /Настройки сайта/ }))
+
+    await waitFor(() => {
+      expect(adminUpdateSettings).toHaveBeenCalledTimes(1)
+    })
+    expect(vi.mocked(adminUpdateSettings).mock.calls[0][0]).toMatchObject({
+      coinsEnabled: true,
+      coinsCashbackPercent: 7,
+    })
+  })
+
+  it.each(['51', '', '-1', '2.5'])(
+    'Химикоины: процент «%s» — ошибка, сохранение не уходит',
+    async (value) => {
+      render(<SettingsForm initial={baseSettings} />)
+      fireEvent.change(screen.getByLabelText('Кэшбек, %'), { target: { value } })
+      fireEvent.submit(screen.getByRole('form', { name: /Настройки сайта/ }))
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toHaveTextContent(
+          'Кэшбек — целое число процентов от 0 до 50.',
+        )
+      })
+      expect(adminUpdateSettings).not.toHaveBeenCalled()
+    },
+  )
 })

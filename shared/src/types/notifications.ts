@@ -5,6 +5,7 @@ export type OrderEventKey =
   | 'created'
   | 'status:paid'
   | 'status:shipped'
+  | 'status:delivered'
   | 'status:cancelled'
   | 'status:failed'
   // Сигналы менеджеру по заказам из Яндекса (YCP): оплата при получении и

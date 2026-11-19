@@ -20,7 +20,9 @@
 # new.ximi4ka.ru заменяется блоком из Caddyfile.new-redirect.snippet, и это
 # тело остаётся только у апекса.
 ximi4ka.ru {
+    # Сжимает только Caddy: в web/next.config.ts compress: false (см. deploy/README.md, 5а).
     encode zstd gzip
+    header Strict-Transport-Security "max-age=31536000"
 
     # Express-api: каталог, заказы, вебхук Т-Кассы, загруженные картинки.
     handle /api/* {
@@ -48,5 +50,6 @@ ximi4ka.ru {
 
 # www → апекс, 301, с сохранением пути и query. Сейчас так же отвечает Tilda.
 www.ximi4ka.ru {
+    header Strict-Transport-Security "max-age=31536000"
     redir https://ximi4ka.ru{uri} permanent
 }

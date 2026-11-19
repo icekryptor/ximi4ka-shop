@@ -92,6 +92,9 @@ export function CompactProductCard({ product, images, imageLoading = 'lazy' }: P
                     compareAtPriceRub: product.compareAtPriceRub,
                     stockStatus: product.stockStatus,
                     images,
+                    // Категории из данных каталога: без них CartDrawer докачивает
+                    // их запросом товара и второй раз пишет корзину.
+                    categorySlugs: product.categorySlugs,
                   }}
                   quantity={qty}
                   compact

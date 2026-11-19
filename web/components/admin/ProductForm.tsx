@@ -1,10 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import type { Product, StockStatus } from '@ximi4ka-shop/shared'
+import type { StockStatus } from '@ximi4ka-shop/shared'
 import { ImageUploadField, MultiImageUploadField } from './ImageUploadField'
 import { BlockEditor } from './block-editor/BlockEditor'
-import { ApiError, type AdminProductInput } from '@/lib/adminApi'
+import { ApiError, type AdminProduct, type AdminProductInput } from '@/lib/adminApi'
+import { ProductCategoriesField, useAdminCategories } from './ProductCategoriesField'
 import { LanguageTabs, countFilled } from './LanguageTabs'
 import { DEFAULT_LOCALE, type Locale } from '@/lib/i18n'
 
@@ -15,7 +16,7 @@ const EN_TRACKED_FIELDS = ['name', 'metaTitle', 'metaDescription'] as const
 
 interface Props {
   mode: 'create' | 'edit'
-  initialValue?: Product
+  initialValue?: AdminProduct
   onSubmit: (input: AdminProductInput) => Promise<void>
   submitting: boolean
   error?: ApiError | null
@@ -77,6 +78,15 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
     typeof initialEn?.metaDescription === 'string' ? initialEn.metaDescription : '',
   )
 
+  // Категории. Отправляем их, только когда список загружен и известны текущие
+  // связи товара (при создании — их нет): иначе сохранение стёрло бы связи.
+  // Известность фиксируем при открытии формы: ответы publish/unpublish
+  // приходят без categoryIds и не должны выключать отправку.
+  const categoriesState = useAdminCategories()
+  const [categoryIds, setCategoryIds] = useState<string[]>(() => initialValue?.categoryIds ?? [])
+  const [linksKnown] = useState(() => mode === 'create' || Array.isArray(initialValue?.categoryIds))
+  const canSendCategories = categoriesState.status === 'ready' && linksKnown
+
   const [formError, setFormError] = useState<string | null>(null)
 
   const slugInvalid = slug !== '' && !SLUG_RE.test(slug)
@@ -118,6 +128,7 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
       ycpEnabled,
       images: images.map((img) => ({ url: img.url, alt: img.alt.trim() })),
     }
+    if (canSendCategories) input.categoryIds = categoryIds
 
     // Build the translations blob. EN fields go under `translations.en`;
     // we only include them if they're non-empty (keeps the JSON clean and
@@ -275,6 +286,14 @@ export function ProductForm({ mode, initialValue, onSubmit, submitting, error }:
           />
           <span>Купить в 1 клик через Яндекс</span>
         </label>
+      </Section>
+
+      <Section title="Категории">
+        <ProductCategoriesField
+          state={categoriesState}
+          value={categoryIds}
+          onChange={setCategoryIds}
+        />
       </Section>
 
       <Section title="Медиа">

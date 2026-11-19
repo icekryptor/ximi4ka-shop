@@ -51,6 +51,19 @@ describe('CompactProductRow', () => {
     expect(cart[0]?.quantity).toBe(2)
   })
 
+  it('кладёт в корзину категории товара — drawer не докачивает их вторым запросом', () => {
+    const { container } = render(
+      <CompactProductRow
+        product={{ ...base, categorySlugs: ['reagents'] } as Product}
+        images={images}
+      />,
+    )
+    act(() => {
+      fireEvent.click(within(container).getByRole('button', { name: /В корзину/ }))
+    })
+    expect(loadCart()[0]?.categories).toEqual(['reagents'])
+  })
+
   it('shows «Нет в наличии» instead of the stepper for out-of-stock products', () => {
     const { container } = render(
       <CompactProductRow

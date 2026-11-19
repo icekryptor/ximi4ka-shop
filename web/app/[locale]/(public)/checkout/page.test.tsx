@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { resetPublicYandexPayCacheForTests } from '@/lib/yandexPay'
+import { resetPublicCloudPaymentsCacheForTests } from '@/lib/cloudPayments'
+import { CIS_PAYMENT_NOTE } from '@/lib/orderProcess'
+import { formatDeliveryDates } from '@/lib/shipping'
 import type {
   CdekCity,
   CdekCityPoints,
@@ -11,12 +15,21 @@ import CheckoutPage from './page'
 import { loadGiftChoice, saveGiftChoice } from '@/lib/gift'
 import { loadCart, saveCart, type CartItem } from '@/lib/cart'
 import { reportPurchaseOnce, setMetrikaCounterId } from '@/lib/metrika'
+import { ApiError } from '@/lib/api'
 
 const mockPush = vi.fn<(path: string) => void>()
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => '/checkout',
 }))
+
+// Программа химикоинов подменена: настоящий хук ходил бы за настройками и сдвигал бы
+// счётчики/очередь ответов getPublicSettings в тестах оплаты.
+const coinsProgram = vi.hoisted(() => ({
+  value: { percent: null, signedIn: false } as { percent: number | null; signedIn: boolean },
+}))
+vi.mock('@/lib/useCoinsProgram', () => ({ useCoinsProgram: () => coinsProgram.value }))
 
 const mockRedirectTo = vi.fn<(url: string) => void>()
 
@@ -94,7 +107,7 @@ const mockGetPoints = vi.fn<(cityCode: number) => Promise<CdekCityPoints>>(
 const mockQuoteShipping = vi.fn(async ({ destination }: { destination?: QuoteDestination }) => {
   const subtotalRub = loadCart().reduce((sum, i) => sum + i.priceRub * i.quantity, 0)
   const pvz = destination?.method === 'cdek_pvz'
-  const free = subtotalRub >= (pvz ? 3000 : 5000)
+  const free = subtotalRub >= (pvz ? 2900 : 5000)
   return {
     subtotalRub,
     packages: [
@@ -124,6 +137,16 @@ const mockQuoteShipping = vi.fn(async ({ destination }: { destination?: QuoteDes
   }
 })
 
+// Публичные настройки идут мимо fetch: тесты чекаута считают вызовы fetch.
+const mockGetPublicSettings = vi.fn<(opts?: { fresh?: boolean }) => Promise<unknown>>(async () => ({
+  yandexPay: null,
+}))
+// Админ-превью CloudPayments (?cp_test=1) — тоже мимо fetch.
+const mockCloudPaymentsPreview = vi.fn<() => Promise<unknown>>(async () => null)
+
+// Виджет Сплита грузит pay.js — в тестах скрипта нет, остаётся текст.
+vi.mock('next/script', () => ({ default: () => null }))
+
 vi.mock('@/lib/api', async (importActual) => {
   const actual = await importActual<typeof import('@/lib/api')>()
   return {
@@ -131,10 +154,21 @@ vi.mock('@/lib/api', async (importActual) => {
     quoteShipping: (payload: never) => mockQuoteShipping(payload),
     suggestCdekCities: (q: string) => mockSuggest(q),
     getCdekPoints: (cityCode: number) => mockGetPoints(cityCode),
+    getPublicSettings: (opts?: { fresh?: boolean }) => mockGetPublicSettings(opts),
+    getCloudPaymentsCheckoutPreview: () => mockCloudPaymentsPreview(),
+    // Чип срока в сводке: общий запрос срока — мимо fetch, срока нет.
+    getDeliveryEta: async () => null,
   }
 })
 
 beforeEach(() => {
+  mockGetPublicSettings.mockReset()
+  mockGetPublicSettings.mockImplementation(async () => ({ yandexPay: null }))
+  mockCloudPaymentsPreview.mockReset()
+  mockCloudPaymentsPreview.mockImplementation(async () => null)
+  resetPublicYandexPayCacheForTests()
+  resetPublicCloudPaymentsCacheForTests()
+  coinsProgram.value = { percent: null, signedIn: false }
   window.localStorage.clear()
   window.sessionStorage.clear()
   mockPush.mockReset()
@@ -274,10 +308,20 @@ describe('/checkout page', () => {
     seedCart(seed)
     render(<CheckoutPage />)
     await chooseCity()
+    // Срок — датами: срок СДЭК (3–5 и 2 дня) + сутки на сборку от сегодня.
+    const now = new Date()
+    const pvzDates = formatDeliveryDates(3, 5, now)
+    const courierDates = formatDeliveryDates(2, 2, now)
     expect(
-      screen.getByRole('radio', { name: /пункт выдачи сдэк — 390\s₽, 3–5 дн\./i }),
+      screen.getByRole('radio', {
+        name: new RegExp(`пункт выдачи сдэк — 390\\s₽, ${pvzDates}`, 'i'),
+      }),
     ).toBeChecked()
-    expect(screen.getByRole('radio', { name: /курьер сдэк — 600\s₽, 2 дн\./i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('radio', {
+        name: new RegExp(`курьер сдэк — 600\\s₽, ${courierDates}`, 'i'),
+      }),
+    ).toBeInTheDocument()
     expect(mockQuoteShipping).toHaveBeenCalledWith({
       items: ITEMS,
       destination: { method: 'cdek_pvz', cityCode: 44, address: 'Москва' },
@@ -288,6 +332,27 @@ describe('/checkout page', () => {
     })
     expect(screen.getByTestId('summary-shipping')).toHaveTextContent('390')
     expect(screen.getByTestId('summary-total')).toHaveTextContent('2 390')
+  })
+
+  it('в сводке — чип срока выбранного способа; в ЕАЭС чипа нет', async () => {
+    seedCart(seed)
+    render(<CheckoutPage />)
+    // Города нет, общий срок СДЭК не ответил — чипа нет, место под него есть.
+    expect(screen.getByTestId('delivery-eta')).toBeInTheDocument()
+    expect(screen.queryByTestId('delivery-eta-chip')).not.toBeInTheDocument()
+
+    await chooseCity()
+    const now = new Date()
+    expect(await screen.findByTestId('delivery-eta-chip')).toHaveTextContent(
+      `Доставка: ${formatDeliveryDates(3, 5, now)}`,
+    )
+    fireEvent.click(screen.getByRole('radio', { name: /курьер сдэк/i }))
+    expect(screen.getByTestId('delivery-eta-chip')).toHaveTextContent(
+      `Доставка: ${formatDeliveryDates(2, 2, now)}`,
+    )
+
+    await chooseCisRegion()
+    expect(screen.queryByTestId('delivery-eta')).not.toBeInTheDocument()
   })
 
   describe('подарок', () => {
@@ -341,7 +406,7 @@ describe('/checkout page', () => {
   })
 
   describe('промокод', () => {
-    // 3099 ₽: ПВЗ бесплатно от 3000 ₽; с промокодом 5% будет 2944 ₽, а доставка — по-прежнему бесплатно.
+    // 3099 ₽: ПВЗ бесплатно от 2900 ₽; с промокодом 5% будет 2944 ₽, а доставка — по-прежнему бесплатно.
     const kit: CartItem[] = [{ ...seed[0]!, priceRub: 3099, quantity: 1 }]
 
     function errorResponse(status: number, code: string, message: string) {
@@ -363,6 +428,24 @@ describe('/checkout page', () => {
       expect(screen.getByTestId('summary-promo')).toHaveTextContent('155')
       expect(screen.getByTestId('summary-promo')).toHaveTextContent('RENATA2026')
       expect(screen.getByTestId('summary-total')).toHaveTextContent('2 944')
+    })
+
+    it('строка кэшбека стоит после промокода и считается от суммы после него', async () => {
+      coinsProgram.value = { percent: 10, signedIn: true }
+      seedCart(kit)
+      render(<CheckoutPage />)
+      applyPromo('RENATA2026')
+
+      const cashback = await screen.findByTestId('summary-cashback')
+      expect(cashback).toHaveTextContent('294 химикоина')
+      const promoRow = screen.getByTestId('summary-promo')
+      const shippingRow = screen.getByTestId('summary-shipping').parentElement!
+      expect(
+        promoRow.compareDocumentPosition(cashback) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      expect(
+        cashback.compareDocumentPosition(shippingRow) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
     })
 
     it('доставка остаётся бесплатной, хотя сумма после скидки ниже порога', async () => {
@@ -504,6 +587,18 @@ describe('/checkout page', () => {
       expect(input.getAttribute('data-bwignore')).not.toBeNull()
       expect(input.closest('[aria-hidden="true"]')).not.toBeNull()
       expect(input.value).toBe('')
+    })
+
+    it('поле вне формы заказа: автозаполнение браузера (YaBrowser) его не заполняет', () => {
+      seedCart(seed)
+      render(<CheckoutPage />)
+      // Браузеры заполняют поля той формы, где стоит курсор. Внутри формы YaBrowser принимал
+      // ловушку за поле имени — первый клик «Оформить заказ» получал bot_suspected (лог прода 26.10).
+      // Своя пустая форма: ловушка не в форме заказа и не в «бесформенной» группе с поиском шапки.
+      const own = trapInput().closest('form')
+      expect(own).not.toBeNull()
+      expect(own!.querySelector('button[type="submit"]')).toBeNull()
+      expect(own!.querySelectorAll('input')).toHaveLength(1)
     })
 
     it('пустое поле в заказ не попадает', async () => {
@@ -733,6 +828,217 @@ describe('/checkout page', () => {
       expect(screen.getByLabelText(/телефон/i)).toHaveValue('')
       expect(screen.queryByText('Укажите email — на него придёт чек')).not.toBeInTheDocument()
     })
+
+    describe('оплата картой банка ЕАЭС (CloudPayments)', () => {
+      const FOREIGN_CARD = /Visa \/ Mastercard банка Беларуси/
+
+      function mockPublicSettings(settings: Record<string, unknown>) {
+        mockGetPublicSettings.mockImplementation(async () => settings as never)
+      }
+
+      // Корзина 2000 ₽, Беларусь: доставка 700 ₽ (ниже порога 2900 ₽).
+      async function chooseCisBelarus() {
+        await chooseCisRegion()
+        fillCis('BY', 'Минск')
+      }
+
+      async function chooseRussia() {
+        fireEvent.click(screen.getByRole('radio', { name: /^россия$/i }))
+        await screen.findByRole('combobox', { name: /город/i })
+      }
+
+      function stubCheckoutFetch() {
+        const fetchMock = vi.fn(async () => okCheckoutResponse())
+        vi.stubGlobal('fetch', fetchMock)
+        return fetchMock
+      }
+
+      function lastCheckoutBody(fetchMock: ReturnType<typeof vi.fn>) {
+        const [, init] = fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit]
+        return JSON.parse(init.body as string) as Record<string, unknown>
+      }
+
+      async function submitValidCisForm(fetchMock: ReturnType<typeof vi.fn>) {
+        cisContacts()
+        submit()
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      }
+
+      async function submitValidRuForm(fetchMock: ReturnType<typeof vi.fn>) {
+        await fillValidForm()
+        submit()
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      }
+
+      it('ЕАЭС + CloudPayments 8%: строка надбавки, итог с ней, paymentMethod в запросе', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+        const fetchMock = stubCheckoutFetch()
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        expect(screen.getByRole('note')).toHaveTextContent('отдельным способом')
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        // 8% от 2000 + 700 = 216 ₽.
+        expect(screen.getByTestId('summary-payment-surcharge')).toHaveTextContent('216')
+        expect(screen.getByTestId('summary-total')).toHaveTextContent('2 916')
+        await submitValidCisForm(fetchMock)
+        expect(lastCheckoutBody(fetchMock).paymentMethod).toBe('cloudpayments')
+      })
+
+      it('смена региона на Россию после выбора CloudPayments — сброс на Т-Банк, без надбавки', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+        mapMock.available = false
+        const fetchMock = stubCheckoutFetch()
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        expect(screen.getByTestId('summary-payment-surcharge')).toBeInTheDocument()
+        await chooseRussia()
+        expect(screen.queryByTestId('summary-payment-surcharge')).toBeNull()
+        await submitValidRuForm(fetchMock)
+        expect(lastCheckoutBody(fetchMock).paymentMethod).not.toBe('cloudpayments')
+      })
+
+      it('после возврата в ЕАЭС выбран Т-Банк, надбавки нет', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        await chooseRussia()
+        await chooseCisBelarus()
+        expect(
+          await screen.findByLabelText('Картой «Мир» или российской Visa / Mastercard'),
+        ).toBeChecked()
+        expect(screen.queryByTestId('summary-payment-surcharge')).toBeNull()
+      })
+
+      it('CloudPayments выключили до отправки: 400 — нейтральный текст, Т-Банк, выбор пропал', async () => {
+        // Первые два ответа — загрузка Яндекса и CloudPayments, дальше — перечитывание.
+        const ON = { yandexPay: null, cloudPayments: { surchargePercent: 8 } }
+        mockGetPublicSettings
+          .mockImplementationOnce(async () => ON)
+          .mockImplementationOnce(async () => ON)
+          .mockImplementation(async () => ({ yandexPay: null, cloudPayments: null }))
+        const fetchMock = vi
+          .fn()
+          .mockImplementationOnce(
+            async () =>
+              new Response(
+                JSON.stringify({
+                  error: {
+                    code: 'payment_method_unavailable',
+                    message: 'Оплата картой банка другой страны сейчас недоступна',
+                  },
+                }),
+                { status: 400 },
+              ),
+          )
+          .mockImplementation(async () => okCheckoutResponse())
+        vi.stubGlobal('fetch', fetchMock)
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+        cisContacts()
+        submit()
+        expect(await screen.findByRole('alert')).toHaveTextContent(
+          'Оплата картой банка другой страны сейчас недоступна. Выберите другой способ оплаты и оформите заказ ещё раз.',
+        )
+        // Перечитывание обоих способов — мимо HTTP-кеша настроек.
+        await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(4))
+        expect(mockGetPublicSettings).toHaveBeenNthCalledWith(3, { fresh: true })
+        expect(mockGetPublicSettings).toHaveBeenNthCalledWith(4, { fresh: true })
+        await vi.waitFor(() => expect(screen.queryByLabelText(FOREIGN_CARD)).toBeNull())
+        expect(screen.queryByTestId('summary-payment-surcharge')).toBeNull()
+        expect(screen.getByRole('note')).toHaveTextContent(CIS_PAYMENT_NOTE)
+        expect(loadCart()).toHaveLength(1)
+        submit()
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+        expect(lastCheckoutBody(fetchMock)).not.toHaveProperty('paymentMethod')
+      })
+
+      describe('тестовый режим для админа (?cp_test=1)', () => {
+        const ADMIN_NOTE = 'Тестовый режим CloudPayments — видно только администратору'
+
+        afterEach(() => {
+          window.history.replaceState(null, '', '/')
+        })
+
+        it('публичного нет, админ-превью 8% — выбор и пометка видны, надбавка считается', async () => {
+          window.history.replaceState(null, '', '/checkout?cp_test=1')
+          mockPublicSettings({ yandexPay: null, cloudPayments: null })
+          mockCloudPaymentsPreview.mockImplementation(async () => ({ surchargePercent: 8 }))
+          const fetchMock = stubCheckoutFetch()
+          seedCart(seed)
+          render(<CheckoutPage />)
+          await chooseCisBelarus()
+          fireEvent.click(await screen.findByLabelText(FOREIGN_CARD))
+          expect(screen.getByText(ADMIN_NOTE)).toBeInTheDocument()
+          expect(screen.getByTestId('summary-payment-surcharge')).toHaveTextContent('216')
+          await submitValidCisForm(fetchMock)
+          expect(lastCheckoutBody(fetchMock).paymentMethod).toBe('cloudpayments')
+          expect(mockCloudPaymentsPreview).toHaveBeenCalledTimes(1)
+        })
+
+        it('без cp_test превью не запрашивается', async () => {
+          mockPublicSettings({ yandexPay: null, cloudPayments: null })
+          mockCloudPaymentsPreview.mockImplementation(async () => ({ surchargePercent: 8 }))
+          seedCart(seed)
+          render(<CheckoutPage />)
+          await chooseCisBelarus()
+          await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(2))
+          await act(async () => {})
+          expect(mockCloudPaymentsPreview).not.toHaveBeenCalled()
+          expect(screen.queryByLabelText(FOREIGN_CARD)).toBeNull()
+          expect(screen.queryByText(ADMIN_NOTE)).toBeNull()
+        })
+
+        it('публичное значение есть — превью не нужно, пометки нет', async () => {
+          window.history.replaceState(null, '', '/checkout?cp_test=1')
+          mockPublicSettings({ yandexPay: null, cloudPayments: { surchargePercent: 8 } })
+          seedCart(seed)
+          render(<CheckoutPage />)
+          await chooseCisBelarus()
+          await screen.findByLabelText(FOREIGN_CARD)
+          expect(mockCloudPaymentsPreview).not.toHaveBeenCalled()
+          expect(screen.queryByText(ADMIN_NOTE)).toBeNull()
+        })
+
+        it('превью 401 (не админ) — блока нет, прежняя плашка', async () => {
+          window.history.replaceState(null, '', '/checkout?cp_test=1')
+          mockPublicSettings({ yandexPay: null, cloudPayments: null })
+          mockCloudPaymentsPreview.mockImplementation(async () => {
+            throw new ApiError(401, 'auth_required', 'Authentication required')
+          })
+          seedCart(seed)
+          render(<CheckoutPage />)
+          await chooseCisBelarus()
+          await vi.waitFor(() => expect(mockCloudPaymentsPreview).toHaveBeenCalledTimes(1))
+          await act(async () => {})
+          expect(screen.queryByLabelText(FOREIGN_CARD)).toBeNull()
+          expect(screen.queryByText(ADMIN_NOTE)).toBeNull()
+          expect(screen.getByRole('note')).toHaveTextContent(CIS_PAYMENT_NOTE)
+        })
+      })
+
+      it('CloudPayments недоступен — в блоке ЕАЭС нет выбора оплаты, прежняя плашка', async () => {
+        mockPublicSettings({ yandexPay: null, cloudPayments: null })
+        const fetchMock = stubCheckoutFetch()
+        seedCart(seed)
+        render(<CheckoutPage />)
+        await chooseCisBelarus()
+        // Настройки уже пришли: отсутствие выбора — не из-за того, что они ещё грузятся.
+        await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(2))
+        await act(async () => {})
+        expect(screen.queryByLabelText(FOREIGN_CARD)).toBeNull()
+        expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull()
+        expect(screen.getByRole('note')).toHaveTextContent(CIS_PAYMENT_NOTE)
+        await submitValidCisForm(fetchMock)
+        expect(lastCheckoutBody(fetchMock)).not.toHaveProperty('paymentMethod')
+      })
+    })
   })
 
   describe('отказ сервера по ловушке и лимиту', () => {
@@ -947,7 +1253,7 @@ describe('/checkout page', () => {
     ])
     render(<CheckoutPage />)
     await chooseCity()
-    // 3500 ≥ 3000 → ПВЗ бесплатно
+    // 3500 ≥ 2900 → ПВЗ бесплатно
     expect(screen.getByRole('radio', { name: /пункт выдачи сдэк — бесплатно/i })).toBeChecked()
     expect(screen.getByTestId('summary-shipping')).toHaveTextContent(/бесплатно/i)
     expect(screen.getByTestId('summary-total')).toHaveTextContent('3 500')
@@ -1097,6 +1403,149 @@ describe('/checkout page', () => {
     expect(loadCart()).toHaveLength(1)
     expect(mockPush).not.toHaveBeenCalled()
   })
+  describe('способ оплаты', () => {
+    const ON = { yandexPay: { split: true, merchantId: 'merchant-public-id' } }
+
+    function sentBody(fetchMock: ReturnType<typeof vi.fn>) {
+      const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+      return JSON.parse(init.body as string) as Record<string, unknown>
+    }
+
+    it('Яндекс недоступен — блока нет, paymentMethod не уходит', async () => {
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      await fillValidForm()
+      expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull()
+      submit()
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      expect(sentBody(fetchMock)).not.toHaveProperty('paymentMethod')
+    })
+
+    it('два способа — Т-Банк по умолчанию и Сплит, отдельного «Яндекс Пэй» нет', async () => {
+      mockGetPublicSettings.mockImplementation(async () => ON)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      expect(
+        within(group)
+          .getAllByRole('radio')
+          .map((r) => r.getAttribute('value')),
+      ).toEqual(['tbank', 'yandex_split'])
+      expect(within(group).getByRole('radio', { name: 'Картой — Т-Банк' })).toBeChecked()
+      expect(within(group).queryByRole('radio', { name: 'Яндекс Пэй' })).toBeNull()
+    })
+
+    it('у пункта «Сплит» — ссылка «Как оплатить в Сплит» в новой вкладке, форма не теряется', async () => {
+      mockGetPublicSettings.mockImplementation(async () => ON)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      const link = within(group).getByRole('link', { name: /как оплатить в сплит/i })
+      expect(link).toHaveAttribute('href', '/split')
+      expect(link).toHaveAttribute('target', '_blank')
+      // Чип на чекауте — не ссылка: клик по нему не должен уводить с заполненной формы.
+      expect(within(group).getByTestId('split-installments').closest('a')).toBeNull()
+    })
+
+    it('Сплит: чип на сумму заказа, место виджета, paymentMethod=yandex_split', async () => {
+      mockGetPublicSettings.mockImplementation(async () => ON)
+      mapMock.available = false
+      const fetchMock = vi.fn(async () => okCheckoutResponse())
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      const { container } = render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      // Чип «N ₽ × 4 платежа в Сплит» вместо персональной плашки Яндекса — виден всем.
+      expect(within(group).getByTestId('split-installments')).toHaveTextContent(
+        /500\s₽\s*× 4 платежа в Сплит/,
+      )
+      expect(container.querySelector('yandex-pay-badge')).toBeNull()
+      expect(screen.queryByTestId('split-widget')).toBeNull()
+      fireEvent.click(within(group).getByRole('radio', { name: 'Сплит — оплата частями' }))
+      expect(screen.getByTestId('split-widget')).toBeInTheDocument()
+      await fillValidForm()
+      submit()
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+      expect(sentBody(fetchMock).paymentMethod).toBe('yandex_split')
+    })
+
+    it('способ оплаты — в правой колонке под «Итого», прямо над кнопкой, со значками', async () => {
+      mockGetPublicSettings.mockImplementation(async () => ON)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      expect(group.closest('aside')).not.toBeNull()
+      // Колонка липкая: выше экрана — прокручивается сама, кнопка не уезжает за край.
+      expect(group.closest('aside')!.className).toMatch(/lg:max-h-\[calc\(100dvh-7rem\)\]/)
+      expect(group.closest('aside')!.className).toContain('lg:overflow-y-auto')
+      const button = screen.getByRole('button', { name: /оформить заказ/i })
+      expect(group.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+      expect(
+        screen.getByTestId('summary-total').compareDocumentPosition(group) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy()
+      const tbank = within(group).getByRole('radio', { name: 'Картой — Т-Банк' }).closest('label')!
+      expect(within(tbank).getByTestId('payment-icon-card')).toBeInTheDocument()
+      const split = within(group)
+        .getByRole('radio', { name: 'Сплит — оплата частями' })
+        .closest('label')!
+      expect(split.querySelector('img')).toHaveAttribute('src', '/img/brand/yandex-split-icon.svg')
+    })
+
+    it('доставка в ЕАЭС скрывает Яндекс, выбор сбрасывается на Т-Банк', async () => {
+      mockGetPublicSettings.mockImplementation(async () => ON)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      fireEvent.click(within(group).getByRole('radio', { name: 'Сплит — оплата частями' }))
+      await chooseCisRegion()
+      expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull()
+      fireEvent.click(screen.getByRole('radio', { name: 'Россия' }))
+      const back = await screen.findByRole('group', { name: /способ оплаты/i })
+      expect(within(back).getByRole('radio', { name: 'Картой — Т-Банк' })).toBeChecked()
+    })
+
+    it('Яндекс выключили до отправки: 400 — сообщение, сброс на Т-Банк, блок пропал, корзина цела', async () => {
+      // Первые два ответа — загрузка Яндекса и CloudPayments, дальше — перечитывание.
+      mockGetPublicSettings
+        .mockImplementationOnce(async () => ON)
+        .mockImplementationOnce(async () => ON)
+        .mockImplementation(async () => ({ yandexPay: null }))
+      mapMock.available = false
+      const fetchMock = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: {
+                code: 'payment_method_unavailable',
+                message: 'Яндекс Пэй сейчас недоступен',
+              },
+            }),
+            { status: 400 },
+          ),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+      seedCart(seed)
+      render(<CheckoutPage />)
+      const group = await screen.findByRole('group', { name: /способ оплаты/i })
+      fireEvent.click(within(group).getByRole('radio', { name: 'Сплит — оплата частями' }))
+      await fillValidForm()
+      submit()
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'Яндекс Пэй сейчас недоступен. Выберите другой способ оплаты и оформите заказ ещё раз.',
+      )
+      // Перечитываются оба способа — Яндекс и CloudPayments.
+      await vi.waitFor(() => expect(mockGetPublicSettings).toHaveBeenCalledTimes(4))
+      await vi.waitFor(() =>
+        expect(screen.queryByRole('group', { name: /способ оплаты/i })).toBeNull(),
+      )
+      expect(loadCart()).toHaveLength(1)
+      expect(mockRedirectTo).not.toHaveBeenCalled()
+    })
+  })
 })
 
 describe('чекаут для вошедшего покупателя', () => {
@@ -1108,6 +1557,7 @@ describe('чекаут для вошедшего покупателя', () => {
     name: 'Иван',
     phone: '+79001234567',
     lastDelivery: null,
+    coinBalance: 0,
   }
 
   it('подставляет контакты из профиля и не показывает подсказку входа', async () => {

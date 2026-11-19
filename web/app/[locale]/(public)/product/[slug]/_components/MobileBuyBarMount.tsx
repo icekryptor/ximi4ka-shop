@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { Product } from '@ximi4ka-shop/shared'
 import { MobileBuyBarLJ } from '@/components/product/MobileBuyBarLJ'
-import { useCart } from '@/lib/cart'
+import { useCartActions } from '@/lib/cart'
 
 interface Props {
   product: Pick<Product, 'id' | 'slug' | 'name' | 'priceRub' | 'stockStatus' | 'images'> &
@@ -24,7 +24,7 @@ interface Props {
 export function MobileBuyBarMount({ product }: Props) {
   const [shown, setShown] = useState(false)
   const [hasSentinel, setHasSentinel] = useState(false)
-  const { add } = useCart()
+  const { add } = useCartActions()
 
   useEffect(() => {
     const sentinel = document.querySelector<HTMLElement>('[data-add-to-cart-row]')

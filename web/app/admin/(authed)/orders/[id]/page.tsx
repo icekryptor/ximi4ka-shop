@@ -3,12 +3,13 @@ import { AdminOnly } from '@/components/admin/AdminOnly'
 import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
 import type { OrderDto } from '@ximi4ka-shop/shared'
-import { CIS_COUNTRY_NAMES } from '@ximi4ka-shop/shared/types/cis'
+import { CIS_COUNTRY_NAMES, CIS_TAX_ID } from '@ximi4ka-shop/shared/types/cis'
 import { ADMIN_API_URL_SERVER } from '@/lib/adminAuth'
 import { OrderStatusActions } from './OrderStatusActions'
 import { OrderNotifications } from './OrderNotifications'
 import { CdekShipmentPanel } from './CdekShipmentPanel'
 import { OrderAttribution } from './OrderAttribution'
+import { OrderCoinsPanel } from './OrderCoinsPanel'
 import {
   DELIVERY_METHOD_LABELS,
   HISTORY_ACTOR_LABELS,
@@ -148,6 +149,19 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
                     {order.shippingRub === 0 ? 'Бесплатно' : formatRub(order.shippingRub)}
                   </td>
                 </tr>
+                {order.paymentSurchargeRub > 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-2 text-right text-brand-text-secondary">
+                      Надбавка за оплату картой (CloudPayments)
+                    </td>
+                    <td
+                      data-testid="order-payment-surcharge"
+                      className="px-4 py-2 text-right tabular-nums"
+                    >
+                      {formatRub(order.paymentSurchargeRub)}
+                    </td>
+                  </tr>
+                )}
                 <tr className="border-t border-brand-border font-semibold">
                   <td colSpan={4} className="px-4 py-3 text-right">
                     Итого
@@ -231,6 +245,18 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
             </dl>
           </section>
 
+          {/* Химикоины */}
+          <OrderCoinsPanel
+            order={{
+              status: order.status,
+              customerId: order.customerId ?? null,
+              cashbackPromisedCoins: order.cashbackPromisedCoins ?? 0,
+              cashbackAccruedCoins: order.cashbackAccruedCoins ?? 0,
+              cashbackShortfallCoins: order.cashbackShortfallCoins ?? 0,
+              deliveryProblem: order.deliveryProblem ?? null,
+            }}
+          />
+
           {/* Источник */}
           <OrderAttribution
             attribution={order.attribution}
@@ -257,6 +283,16 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
                   </dd>
                 </div>
               )}
+              {order.deliveryMethod === 'cdek_manual_cis' &&
+                order.deliveryAddress.country &&
+                order.deliveryAddress.taxId && (
+                  <div>
+                    <dt className="text-xs text-brand-text-secondary">
+                      {CIS_TAX_ID[order.deliveryAddress.country]?.label ?? 'ИИН'} (для таможни)
+                    </dt>
+                    <dd className="text-brand-text tabular-nums">{order.deliveryAddress.taxId}</dd>
+                  </div>
+                )}
               <div>
                 <dt className="text-xs text-brand-text-secondary">Адрес</dt>
                 <dd className="text-brand-text">{order.deliveryAddress.address}</dd>
@@ -319,13 +355,11 @@ async function OrderDetail({ params }: { params: Promise<{ id: string }> }) {
           <section className="bg-white rounded-2xl border border-brand-border p-4">
             <h2 className="text-lg font-semibold text-brand-text">Действия</h2>
             <div className="mt-3">
-              {order.status === 'shipped' ? (
-                <p className="text-sm text-brand-text-secondary">
-                  Заказ отправлен — ручное изменение статуса недоступно.
-                </p>
-              ) : (
-                <OrderStatusActions orderId={order.id} status={order.status} />
-              )}
+              <OrderStatusActions
+                orderId={order.id}
+                status={order.status}
+                deliveryProblem={order.deliveryProblem}
+              />
             </div>
           </section>
 

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import CategoryDetailPage, { dynamic, generateMetadata } from './page'
 import * as api from '@/lib/api'
+import * as splitInstallments from '@/lib/splitInstallments'
 
 // Островок сортировки ходит в App Router — в юнит-тесте роутера нет.
 vi.mock('next/navigation', () => ({
@@ -115,6 +116,14 @@ describe('CategoryDetailPage', () => {
       expect(imgs[9]).toHaveAttribute('loading', 'lazy')
     })
 
+    it('широкая первая карточка наборов — только до десктопа: на xl все четыре в один ряд', async () => {
+      const imgs = await renderCategory('kits', 4)
+      const wrapper = imgs[0].closest('article')!.parentElement!
+      expect(wrapper.className).toContain('sm:col-span-2')
+      expect(wrapper.className).toContain('xl:col-span-1')
+      expect(wrapper.parentElement!.className).toContain('xl:grid-cols-4')
+    })
+
     it('сетка наборов: первая картинка priority, вторая eager, десятая lazy', async () => {
       const imgs = await renderCategory('kits')
       expect(imgs[0]).toHaveAttribute('loading', 'eager')
@@ -122,6 +131,21 @@ describe('CategoryDetailPage', () => {
       expect(imgs[1]).toHaveAttribute('loading', 'eager')
       expect(imgs[1]).not.toHaveAttribute('fetchpriority')
       expect(imgs[9]).toHaveAttribute('loading', 'lazy')
+    })
+
+    it('Сплит включён — строка «4 платежа» у наборов, у реактивов нет', async () => {
+      vi.spyOn(splitInstallments, 'fetchSplitAvailable').mockResolvedValue(true)
+      await renderCategory('kits')
+      expect(document.querySelectorAll('[data-testid="split-installments"]')).toHaveLength(12)
+      cleanup()
+      await renderCategory('reagents')
+      expect(document.querySelectorAll('[data-testid="split-installments"]')).toHaveLength(0)
+    })
+
+    it('Сплит выключен — строки нет', async () => {
+      vi.spyOn(splitInstallments, 'fetchSplitAvailable').mockResolvedValue(false)
+      await renderCategory('kits')
+      expect(document.querySelectorAll('[data-testid="split-installments"]')).toHaveLength(0)
     })
   })
 })
